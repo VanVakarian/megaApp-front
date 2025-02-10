@@ -45,14 +45,7 @@ export class FoodSelectDropdownComponent implements OnInit {
   private searchQuery$$: WritableSignal<string> = signal('');
 
   public filteredCatalogue: Signal<CatalogueEntry[]> = computed(() => {
-    const searchTerms = this.searchQuery$$()
-      .toLowerCase()
-      .split(' ')
-      .filter((term) => term.length > 0);
-
-    return this.foodService
-      .catalogueSortedListSelected$$()
-      .filter((food) => searchTerms.every((term) => food.name.toLowerCase().includes(term)));
+    return this.filterCatalogue(this.searchQuery$$());
   });
 
   public get searchQuery() {
@@ -60,17 +53,12 @@ export class FoodSelectDropdownComponent implements OnInit {
   }
 
   public set searchQuery(value: string) {
-    const transliteratedValue = transliterateEnToRu(value);
-    this.searchQuery$$.set(transliteratedValue);
+    this.searchQuery$$.set(value);
   }
 
   constructor(private foodService: FoodService) {}
 
-  public ngOnInit() {
-    this.foodNameControl.valueChanges.subscribe((value) => {
-      this.searchQuery$$.set(value || '');
-    });
-  }
+  public ngOnInit() {}
 
   public shouldShowClearButton(): boolean {
     return this.foodNameControl.value.length > 0;
@@ -88,5 +76,25 @@ export class FoodSelectDropdownComponent implements OnInit {
     setTimeout(() => {
       this.foodInputElem?.nativeElement?.focus();
     }, 0);
+  }
+
+  private filterCatalogue(inputValue: string): CatalogueEntry[] {
+    const searchTerms = inputValue
+      .toLowerCase()
+      .split(' ')
+      .filter((term) => term.length > 0);
+
+    const transliteratedTerms = inputValue
+      .split(' ')
+      .filter((term) => term.length > 0)
+      .map(transliterateEnToRu);
+
+    return this.foodService.catalogueSortedListSelected$$().filter((food) => {
+      const foodNameLower = food.name.toLowerCase();
+      return (
+        searchTerms.every((term) => foodNameLower.includes(term)) ||
+        transliteratedTerms.every((term) => foodNameLower.includes(term))
+      );
+    });
   }
 }
