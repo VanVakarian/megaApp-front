@@ -1,0 +1,33 @@
+<div class="flex gap-2 pt-2">
+  <div class="w-1/2">
+  </div>
+
+  <div class="relative w-1/2">
+
+    <form [formGroup]="form">
+      <mat-form-field fieldStateAnimations
+                      appearance="outline"
+                      class="field-with-progress-animations"
+                      [state]="currentState">
+
+        <mat-label>{{ FormLabels.WEIGHT }}</mat-label>
+
+        <input matInput
+               type="number"
+               formControlName="bodyWeight"
+               (keydown.enter)="onEnter()"
+               (input)="onInput()" />
+
+        <span matTextSuffix
+              class="ml-2 font-medium"
+              [class.invalid-suffix]="!isFormValid"> {{ FormLabels.KG }} </span>
+
+        @if (!isFormValid) {
+          <mat-error> {{ FormErrors.WEIGHT }} </mat-error>
+        }
+
+      </mat-form-field>
+    </form>
+
+  </div>
+</div>

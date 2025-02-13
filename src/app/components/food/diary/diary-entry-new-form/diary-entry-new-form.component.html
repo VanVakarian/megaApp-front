@@ -1,0 +1,68 @@
+<div class="lg:hidden bg-slate-950/80 fixed top-0 left-0 z-20 w-full">
+  <div class="h-dvh p-2"
+       [class.hidden]="!isModalOpened">
+    <div class="rounded-[4px] p-2 bg-white">
+      <app-food-select-dropdown #mobileFoodSelect
+                                [parentForm]="diaryEntryForm"
+                                [foodNameControl]="foodNameControl"
+                                (onFoodSelected)="onFoodSelected($event)" />
+    </div>
+
+    <div class="h-full"
+         (click)="isModalOpened = false"></div>
+  </div>
+</div>
+
+<form #formGroupDirective="ngForm"
+      [formGroup]="diaryEntryForm"
+      (submit)="onSubmit()">
+
+  @if (isMobile) {
+    <mat-form-field appearance="outline"
+                    class="w-full">
+      <mat-label>Еда:</mat-label>
+
+      <input type="text"
+             matInput
+             required
+             [formControl]="foodNameControl"
+             (click)="openModal()" />
+    </mat-form-field>
+  } @else {
+    <app-food-select-dropdown #desktopFoodSelect
+                              [parentForm]="diaryEntryForm"
+                              [foodNameControl]="foodNameControl"
+                              (onFoodSelected)="onFoodSelected($event)" />
+  }
+
+  <mat-form-field appearance="outline"
+                  class="w-full">
+    <mat-label>Вес в граммах:</mat-label>
+
+    <input #weightInputElem
+           type="number"
+           [formControl]="foodWeightControl"
+           matInput
+           class="text-right" />
+
+    <span matSuffix
+          class="mx-2">г.</span>
+
+    @if (foodWeightControl.value !== null && (foodWeightControl.errors?.['required'] || foodWeightControl.errors?.['pattern'])) {
+      <mat-error>
+        Положительное целое число
+      </mat-error>
+    }
+  </mat-form-field>
+
+  <div class="flex flex-row-reverse w-full">
+    <button type="submit"
+            color="primary"
+            [disabled]="!isFormValid()"
+            mat-raised-button
+            class="mat-button-enlarged-45-px text-lg">
+      Добавить
+    </button>
+  </div>
+
+</form>

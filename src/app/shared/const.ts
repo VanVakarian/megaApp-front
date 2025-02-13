@@ -1,6 +1,31 @@
+import { ChartConfiguration } from 'chart.js';
+
+import { Settings } from './interfaces';
+
 export const FETCH_DAYS_RANGE_OFFSET: number = 10; // TODO: create settings item out of this constant
 
-export const WEIGHT_CHART_SETTINGS: any = {
+// export const CHART_COLORS_OLD = {
+//   primary: 'red',
+//   primaryAlpha: '#ff00004f',
+//   average: 'blue',
+//   averageAlpha: '#adadff'
+// };
+
+interface ChartColors {
+  main: string;
+  mainAlpha: string;
+  secondary: string;
+  secondaryAlpha: string;
+}
+
+export const CHART_COLORS: ChartColors = {
+  main: '#578f92',
+  mainAlpha: '#578f9250',
+  secondary: '#345b5b',
+  secondaryAlpha: '#345b5b50',
+};
+
+export const WEIGHT_CHART_SETTINGS: ChartConfiguration = {
   type: 'line',
   data: {
     labels: [],
@@ -10,10 +35,8 @@ export const WEIGHT_CHART_SETTINGS: any = {
         data: [],
         order: 2,
         fill: true,
-        borderColor: 'red',
-        backgroundColor: '#ff00004f',
-        pointBorderColor: 'red',
-        pointBackgroundColor: 'red',
+        borderColor: CHART_COLORS.main,
+        backgroundColor: CHART_COLORS.main,
         pointRadius: 2,
         pointHitRadius: 20,
       },
@@ -21,10 +44,8 @@ export const WEIGHT_CHART_SETTINGS: any = {
         label: 'Средний вес за 7 дней',
         data: [],
         order: 1,
-        borderColor: 'blue',
-        backgroundColor: '#adadff',
-        pointBorderColor: 'blue',
-        pointBackgroundColor: 'blue',
+        borderColor: CHART_COLORS.secondary,
+        backgroundColor: CHART_COLORS.secondary,
         pointRadius: 2,
         pointHitRadius: 20,
       },
@@ -45,8 +66,8 @@ export const WEIGHT_CHART_SETTINGS: any = {
   },
 };
 
-export const KCALS_CHART_SETTINGS: any = {
-  type: 'line',
+export const KCALS_CHART_SETTINGS: ChartConfiguration = {
+  type: 'bar',
   data: {
     labels: [],
     datasets: [
@@ -54,22 +75,19 @@ export const KCALS_CHART_SETTINGS: any = {
         label: 'Ккал за день',
         data: [],
         order: 2,
-        fill: true,
-        borderColor: 'red',
-        backgroundColor: '#ff00004f',
-        pointBorderColor: 'red',
-        pointBackgroundColor: 'red',
-        pointRadius: 2,
-        pointHitRadius: 20,
+        borderColor: CHART_COLORS.main,
+        backgroundColor: CHART_COLORS.main,
+        borderWidth: 1,
+        barThickness: 'flex',
+        maxBarThickness: 30,
       },
       {
         label: 'Целевое значение',
         data: [],
         order: 1,
-        borderColor: 'blue',
-        backgroundColor: '#adadff',
-        pointBorderColor: 'blue',
-        pointBackgroundColor: 'blue',
+        type: 'line',
+        borderColor: CHART_COLORS.secondary,
+        backgroundColor: CHART_COLORS.secondary,
         pointRadius: 2,
         pointHitRadius: 20,
       },
@@ -77,7 +95,6 @@ export const KCALS_CHART_SETTINGS: any = {
   },
   options: {
     animation: false,
-    elements: { line: { tension: 0.5 } },
     maintainAspectRatio: false,
     scales: {
       x: {
@@ -90,68 +107,53 @@ export const KCALS_CHART_SETTINGS: any = {
   },
 };
 
-interface Declentions {
-  [key: number]: string;
-}
-
-export const daysRuDeclentions: Declentions = {
-  1: 'день',
-  2: 'дня',
-  3: 'дня',
-  4: 'дня',
-  5: 'дней',
-  6: 'дней',
-  7: 'дней',
-  8: 'дней',
-  9: 'дней',
-  10: 'дней',
-  11: 'дней',
-  12: 'дней',
-  13: 'дней',
-  14: 'дней',
-  15: 'дней',
-  16: 'дней',
-  17: 'дней',
-  18: 'дней',
-  19: 'дней',
-  20: 'дней',
-  21: 'день',
-  22: 'дня',
-  23: 'дня',
-  24: 'дня',
-  25: 'дней',
-  26: 'дней',
-  27: 'дней',
-  28: 'дней',
-  29: 'дней',
-  30: 'дней',
-  31: 'день',
+export const enToRuTransliterationRules: { [key: string]: string } = {
+  '`': 'ё',
+  q: 'й',
+  w: 'ц',
+  e: 'у',
+  r: 'к',
+  t: 'е',
+  y: 'н',
+  u: 'г',
+  i: 'ш',
+  o: 'щ',
+  p: 'з',
+  '[': 'х',
+  ']': 'ъ',
+  a: 'ф',
+  s: 'ы',
+  d: 'в',
+  f: 'а',
+  g: 'п',
+  h: 'р',
+  j: 'о',
+  k: 'л',
+  l: 'д',
+  ';': 'ж',
+  "'": 'э',
+  z: 'я',
+  x: 'ч',
+  c: 'с',
+  v: 'м',
+  b: 'и',
+  n: 'т',
+  m: 'ь',
+  ',': 'б',
+  '.': 'ю',
 };
 
-export const monthsDeclentions: Declentions = {
-  1: 'месяц',
-  2: 'месяца',
-  3: 'месяца',
-  4: 'месяца',
-  5: 'месяцев',
-  6: 'месяцев',
-  7: 'месяцев',
-  8: 'месяцев',
-  9: 'месяцев',
-  10: 'месяцев',
-  11: 'месяцев',
-  12: 'месяцев',
+export const USER_PREFERRED_MIDNIGHT_OFFSET_HOURS: number = 5;
+
+export const DEFAULT_INPUT_FIELD_PROGRESS_TIMER: number = 2000;
+export const DEFAULT_REQUEST_STATUS_FADE_OUT_TIMER: number = 3000;
+
+export const DEFAULT_SETTINGS: Settings = {
+  selectedChapterFood: false,
+  selectedChapterMoney: false,
+  darkTheme: false,
+  height: null,
+  userName: '',
 };
 
-export const yearsDeclentions: Declentions = {
-  1: 'год',
-  2: 'года',
-  3: 'года',
-  4: 'года',
-  5: 'лет',
-  6: 'лет',
-  7: 'лет',
-  8: 'лет',
-  9: 'лет',
-  10: 'лет',
-};
+export const DEFAULT_CACHED_REQUEST_VALIDITY_MS: number = 1000;

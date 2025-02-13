@@ -1,0 +1,36 @@
+<mat-form-field appearance="outline"
+                class="w-full">
+
+  <mat-label>Еда:</mat-label>
+
+  <input #foodInputElem
+         matInput
+         required
+         type="text"
+         [formControl]="foodNameControl"
+         [(ngModel)]="searchQuery"
+         [matAutocomplete]="autoGroup" />
+
+  @if (shouldShowClearButton()) {
+    <button type="button"
+            (click)="searchQuery = ''"
+            mat-icon-button
+            matSuffix>
+      <mat-icon>close</mat-icon>
+    </button>
+  }
+
+  <mat-autocomplete #autoGroup="matAutocomplete"
+                    (optionSelected)="onOptionSelected($event)">
+    @for (food of filteredCatalogue(); track food.name) {
+      <mat-option [value]="food.name">
+        {{ food.name }}
+      </mat-option>
+    }
+  </mat-autocomplete>
+
+  @if (foodNameControl.value !== '' && (foodNameControl.errors?.['required'] || foodNameControl.errors?.['notInCatalogue'])) {
+    <mat-error>Выберите еду из списка</mat-error>
+  }
+
+</mat-form-field>

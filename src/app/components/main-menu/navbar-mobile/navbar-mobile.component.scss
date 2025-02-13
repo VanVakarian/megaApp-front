@@ -1,0 +1,27 @@
+.menu-btn-bg {
+  height: 80px;
+  width: 80px;
+  background-size: 80px;
+  transform: rotate(15deg);
+  opacity: 0.10;
+}
+
+.food-bg {
+  background-image: url('/../assets/restaurant.svg');
+}
+
+.money-bg {
+  background-image: url('/../assets/paid.svg');
+}
+
+.settings-bg {
+  background-image: url('/../assets/settings.svg');
+}
+
+.login-bg {
+  background-image: url('/../assets/login.svg');
+}
+
+.register-bg {
+  background-image: url('/../assets/person_add.svg');
+}
