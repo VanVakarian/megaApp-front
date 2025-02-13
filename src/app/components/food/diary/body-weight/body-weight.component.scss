@@ -1,0 +1,37 @@
+@import 'src/app/shared/directives/field-state-animations.scss';
+
+::ng-deep {
+  .field-with-progress-animations {
+    .mat-expansion-panel-body {
+      padding: 14px 10px 8px;
+    }
+
+    .mat-mdc-form-field-subscript-wrapper {
+      height: 22px !important;
+    }
+
+    .mat-mdc-floating-label,
+    .mat-mdc-input-element,
+    .mat-mdc-form-field-text-suffix {
+      font-size: 22px !important;
+      font-weight: 500 !important;
+      text-align: right !important;
+    }
+
+    .mat-mdc-form-field-error {
+      font-size: 16px;
+    }
+
+    .mat-mdc-form-field-infix {
+      padding: 12px 0 !important;
+    }
+
+    .mat-mdc-form-field-text-suffix {
+      color: #00000099;
+    }
+
+    .invalid-suffix {
+      color: #f44336;
+    }
+  }
+}

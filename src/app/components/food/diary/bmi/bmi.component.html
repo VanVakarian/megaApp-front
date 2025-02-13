@@ -1,0 +1,26 @@
+<div class="m-1 text-center">Индекс Массы Тела</div>
+
+<div #bmiMeter
+     class="relative mb-4 flex w-full gap-[2px] rounded-md border-2 p-[1px]">
+
+  @if (bmiPointerShiftStyle) {
+    <div class="absolute"
+         [ngStyle]="bmiPointerShiftStyle">
+      <mat-icon class="absolute -left-[11px] -bottom-[9px] scale-75">expand_more</mat-icon>
+      <mat-icon class="absolute -left-[11px] -top-[1px] scale-75">expand_less</mat-icon>
+    </div>
+  }
+
+  @for (segment of bmiSegments; track $index) {
+    <div [class]="segment.divClasses"
+         [ngStyle]="bmiSegmentWidthStyle($index)"
+         [title]="bmiSegmentTitle($index)">
+      @if ($index > 0) {
+        <span [class]="segment.spanClasses">
+          {{ bmiKgThresholdValue($index) }}
+        </span>
+      }
+    </div>
+  }
+
+</div>
