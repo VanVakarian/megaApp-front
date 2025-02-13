@@ -1,59 +1,119 @@
-export interface UserLogin {
-  username: string;
-  password: string;
+//                                                                           APP
+
+export enum ScreenType {
+  MOBILE = 'MOBILE',
+  DESKTOP = 'DESKTOP',
 }
 
-export interface UserRegister {
+//                                                                          AUTH
+
+export interface UserCreds {
   username: string;
   password: string;
 }
 
 export interface AuthResponse {
-  token: string;
+  accessToken: string;
+  refreshToken: string;
 }
 
-// MISC ////////////////////////////////////////////////////////////////////////
+//                                                                            WS
 
-export interface ServerResponse {
+export interface IncomingMessage {
+  [key: string]: string;
+}
+
+//                                                                        SERVER
+
+export interface ServerResponseBasic {
   result: boolean;
-  value?: string;
 }
 
-// FOOD ////////////////////////////////////////////////////////////////////////
-
-export interface HistoryEntry {
-  action: 'init' | 'set' | 'add' | 'subtract';
-  value: number;
+export interface ServerResponseWithData<T> extends ServerResponseBasic {
+  data: T;
 }
+
+export interface ServerResponseWithMessage extends ServerResponseBasic {
+  message?: string;
+}
+
+export interface ServerResponseWithDiaryId extends ServerResponseBasic {
+  diaryId: number;
+}
+
+export interface ServerResponseWithCatalogueEntry extends ServerResponseBasic {
+  id?: number;
+  name?: string;
+  kcals?: number;
+}
+
+//                                                                      SETTINGS
+
+export interface Settings {
+  selectedChapterFood: boolean;
+  selectedChapterMoney: boolean;
+  darkTheme: boolean;
+  height: number | null;
+  userName: string;
+  isUserAdmin?: boolean; // TODO[068]: Think of a better way to work with admin privileges
+}
+
+export enum KeyOfSettings {
+  selectedChapterFood = 'selectedChapterFood',
+  selectedChapterMoney = 'selectedChapterMoney',
+  darkTheme = 'darkTheme',
+  height = 'height',
+  userName = 'userName',
+  isUserAdmin = 'isUserAdmin',
+}
+
+export type SettingsChapterNames = 'selectedChapterFood' | 'selectedChapterMoney' | '';
+
+export type LocalStorageSettings = Settings | null;
+
+//                                                                       NAVBARS
+
+//                                                                          FOOD
 
 export interface DiaryEntry {
   id: number;
-  date: string;
-  food_catalogue_id: number;
-  food_weight: number;
+  dateISO: string;
+  foodCatalogueId: number;
+  foodWeight: number;
   history: HistoryEntry[];
 }
 
+// export interface DiaryEntryEdit {
+//   id: number;
+//   foodWeight: number;
+//   history: HistoryEntry[];
+// }
+
 export interface Diary {
-  [date: string]: {
+  [dateISO: string]: {
     ['food']: {
       [id: number]: DiaryEntry;
     };
-    ['body_weight']: number | null;
-    ['target_kcals']: number;
+    ['bodyWeight']: number | null;
+    ['targetKcals']: number;
   };
 }
 
 export interface FormattedDiaryEntry {
   id: number;
-  date: string;
-  food_catalogue_id: number;
-  food_weight: number;
+  dateISO: string;
+  foodCatalogueId: number;
+  foodWeight: number;
   history: HistoryEntry[];
-  food_name: string;
-  food_kcals: number;
-  food_percent: string;
-  food_kcal_percentage_of_days_norm: number;
+  foodName: string;
+  foodKcals: number;
+  foodPercent: string;
+  foodKcalPercentageOfDaysNorm: number;
+}
+
+export interface HistoryEntry {
+  action: 'init' | 'set' | 'add' | 'subtract';
+  value: number;
 }
 
 export interface FormattedDiary {
@@ -61,12 +121,16 @@ export interface FormattedDiary {
     ['food']: {
       [id: number]: FormattedDiaryEntry;
     };
-    ['body_weight']: number | null;
-    ['target_kcals']: number;
-    ['days_kcals_eaten']: number;
-    ['days_kcals_percent']: number;
+    ['bodyWeight']: number | null;
+    ['targetKcals']: number;
+    ['kcalsEaten']: number;
+    ['kcalsPercent']: number;
   };
 }
+
+export type CatalogueId = number;
+
+export type CatalogueIds = CatalogueId[];
 
 export interface CatalogueEntry {
   id: number;
@@ -75,7 +139,7 @@ export interface CatalogueEntry {
 }
 
 export interface Catalogue {
-  [id: string | number]: CatalogueEntry;
+  [id: number]: CatalogueEntry;
 }
 
 export interface Coefficients {
@@ -83,50 +147,54 @@ export interface Coefficients {
 }
 
 export interface BodyWeight {
-  body_weight: string;
-  date_iso: string;
+  bodyWeight: string;
+  dateISO: string;
 }
 
-export interface BMI {
-  widthFractions: number[];
-  bmiKgs: number[];
-  pointerShiftsInPxByDate: { [date: string]: number };
-}
+//                                                                         STATS
 
 export interface Stats {
   [id: string]: [number, number, number, number];
 }
 
-// MONEY ///////////////////////////////////////////////////////////////////////
-
-export interface Currency {
-  id: number;
-  title: string;
-  ticker: string;
-  symbol: string;
-  symbol_pos: string;
-  whitespace: boolean;
+export interface StatsChartData {
+  dates: string[];
+  weights: number[];
+  weightsAvg: number[];
+  kcals: number[];
+  kcalsTarget: number[];
 }
 
-export interface Bank {
-  id: number;
-  title: string;
-}
+//                                                                         MONEY
 
-export interface Account {
-  id: number;
-  title: string;
-  bank_id: number;
-  currency_id: number;
-  invest: boolean;
-  kind: string;
-}
+// export interface Currency {
+//   id: number;
+//   title: string;
+//   ticker: string;
+//   symbol: string;
+//   symbol_pos: string;
+//   whitespace: boolean;
+// }
 
-export interface Category {
-  id: number;
-  title: string;
-  kind: string;
-}
+// export interface Bank {
+//   id: number;
+//   title: string;
+// }
+
+// export interface Account {
+//   id: number;
+//   title: string;
+//   bank_id: number;
+//   currency_id: number;
+//   invest: boolean;
+//   kind: string;
+// }
+
+// export interface Category {
+//   id: number;
+//   title: string;
+//   kind: string;
+// }
 
 export interface Notification {
   id: number;
@@ -137,22 +205,30 @@ export interface Notification {
   time: number;
 }
 
-export interface Transaction {
-  id: number;
-  date: string;
-  amount: number;
-  account_id: number;
-  category_id: number;
-  kind: string;
-  is_gift: boolean;
-  notes: string | null;
-  twin_transaction_id: number | null;
-  target_account_id: number | null;
-  target_account_amount: number | null;
-}
+// export interface Transaction {
+//   id: number;
+//   date: string;
+//   amount: number;
+//   account_id: number;
+//   category_id: number;
+//   kind: string;
+//   is_gift: boolean;
+//   notes: string | null;
+//   twin_transaction_id: number | null;
+//   target_account_id: number | null;
+//   target_account_amount: number | null;
+// }
 
-export interface DateTimeFormatOptions {
-  weekday?: 'long' | 'short' | 'narrow';
-  month?: 'numeric' | '2-digit' | 'long' | 'short' | 'narrow';
-  day?: 'numeric' | '2-digit';
+// export interface DateTimeFormatOptions {
+//   weekday?: 'long' | 'short' | 'narrow';
+//   month?: 'numeric' | '2-digit' | 'long' | 'short' | 'narrow';
+//   day?: 'numeric' | '2-digit';
+// }
+
+//                                                                            UI
+
+export interface InputWithProgressSubmitData {
+  value: string;
+  resolve: () => void;
+  reject: () => void;
 }
