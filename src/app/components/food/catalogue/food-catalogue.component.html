@@ -11,8 +11,7 @@
 
   <input matInput
          class="text-center"
-         [ngModel]="usersInput"
-         (ngModelChange)="onSearchInput($event)"
+         [(ngModel)]="usersInput"
          placeholder="Введите название" />
 
   @if (usersInput !== "") {
