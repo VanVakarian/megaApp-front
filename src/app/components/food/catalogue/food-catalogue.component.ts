@@ -60,17 +60,37 @@ export class FoodCatalogueComponent {
   }
 
   private filterCatalogue(selected: boolean): CatalogueEntry[] {
-    const query = this.usersSearchQuery$$()
+    const searchTerms = this.usersSearchQuery$$()
+      .toLowerCase()
       .split(' ')
-      .filter((word) => word.length > 0);
+      .filter((term) => term.length > 0);
+
+    const transliteratedTerms = this.usersSearchQuery$$()
+      .split(' ')
+      .filter((term) => term.length > 0)
+      .map(transliterateEnToRu);
+
     const catalogue = selected
       ? this.foodService.catalogueSortedListSelected$$()
       : this.foodService.catalogueSortedListLeftOut$$();
-    return catalogue.filter((entry) => query.every((word) => entry.name.toLowerCase().includes(word)));
+
+    return catalogue.filter((food) => {
+      const foodNameLower = food.name.toLowerCase();
+      return (
+        searchTerms.every((term) => foodNameLower.includes(term)) ||
+        transliteratedTerms.every((term) => foodNameLower.includes(term))
+      );
+    });
   }
 
   public get usersInput(): string {
     return this.usersSearchQuery$$();
+  }
+
+  public set usersInput(value: string) {
+    this.usersSearchQuery$$.set(value);
+    this.pageIndexSelected = 0;
+    this.pageIndexLeftOut = 0;
   }
 
   public get filteredSelectedCatalogueLength(): number {
@@ -92,8 +112,7 @@ export class FoodCatalogueComponent {
   }
 
   public onSearchInput(value: string): void {
-    const transliteratedValue = transliterateEnToRu(value);
-    this.usersSearchQuery$$.set(transliteratedValue);
+    this.usersSearchQuery$$.set(value);
     this.pageIndexSelected = 0;
     this.pageIndexLeftOut = 0;
   }
