@@ -143,7 +143,7 @@ export const enToRuTransliterationRules: { [key: string]: string } = {
   '.': 'ю',
 };
 
-export const USER_PREFERRED_MIDNIGHT_OFFSET_HOURS: number = 5;
+export const USER_PREFERRED_MIDNIGHT_OFFSET_HOURS: number = 4;
 
 export const DEFAULT_INPUT_FIELD_PROGRESS_TIMER: number = 2000;
 export const DEFAULT_REQUEST_STATUS_FADE_OUT_TIMER: number = 3000;
