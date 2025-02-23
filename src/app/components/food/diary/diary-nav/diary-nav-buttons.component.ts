@@ -66,7 +66,6 @@ export class DiaryNavButtonsComponent implements OnInit, OnDestroy {
   public formatDate(dateIso: string): string {
     const date = new Date(dateIso);
     const result = date.toLocaleDateString('ru-RU', { weekday: 'long', month: 'long', day: 'numeric' });
-    console.log('result', result);
     return result[0].toUpperCase() + result.slice(1);
   }
 
@@ -85,7 +84,6 @@ export class DiaryNavButtonsComponent implements OnInit, OnDestroy {
     this.formCalendarSelectedDay.setValue(newDate);
 
     this.selectedDateMsWithUserHourShift = newDate.getTime();
-    console.log('selectedDateMsWithUserHourShift switchCurrentDay', this.selectedDateMsWithUserHourShift);
     const newDateIso = epochToIsoNoTimeNoTZ(this.selectedDateMsWithUserHourShift);
     this.foodService.selectedDayIso$$.set(newDateIso);
   }
