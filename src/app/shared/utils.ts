@@ -16,9 +16,8 @@ export function dateToIsoNoTimeNoTZ(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
-export function epochToIsoNoTimeNoTZ(milliseconds: number): string {
-  const date = new Date(milliseconds);
-  date.setHours(date.getHours() - USER_PREFERRED_MIDNIGHT_OFFSET_HOURS);
+export function epochToIsoNoTimeNoTZ(tsMs: number): string {
+  const date = new Date(tsMs);
   return date.getFullYear() + '-' + ('0' + (date.getMonth() + 1)).slice(-2) + '-' + ('0' + date.getDate()).slice(-2);
 }
 
@@ -28,7 +27,7 @@ export function epochToIsoNoTimeNoTZ(milliseconds: number): string {
 //   return date.getFullYear() + '-' + ('0' + (date.getMonth() + 1)).slice(-2) + '-' + ('0' + date.getDate()).slice(-2);
 // }
 
-export function getAdjustedDate(date: Date): Date {
+export function calcDateWithUserTimeShift(date: Date): Date {
   const adjustedDate = new Date(date.getTime());
   adjustedDate.setHours(adjustedDate.getHours() - USER_PREFERRED_MIDNIGHT_OFFSET_HOURS);
   return adjustedDate;

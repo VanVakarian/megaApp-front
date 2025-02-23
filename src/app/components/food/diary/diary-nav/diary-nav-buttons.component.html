@@ -1,4 +1,4 @@
-<div class="flex gap-2 w-full">
+<div class="flex w-full gap-2">
   <div class="lg:block hidden">
     <button class="diary-day-switch-button w-9"
             mat-raised-button
@@ -9,12 +9,10 @@
   </div>
 
   <div class="grow overflow-hidden whitespace-nowrap pt-[6px] text-center text-xl">
-    {{ formatDate(selectedDateIso) }}
-    <!-- long name for testing: -->
-    <!-- {{ formatDate("2024-12-30") }} -->
+    {{ selectedDateFormatted() }}
   </div>
 
-  <div class="lg:flex hidden flex-col">
+  <div class="lg:flex flex-col hidden">
     <button class="diary-day-switch-button w-9"
             mat-raised-button
             color="primary"
@@ -25,9 +23,9 @@
     <mat-form-field class="w-0 h-0">
       <input matInput
              [matDatepicker]="pickerDesktop"
-             [formControl]="calendarSelectedDay"
+             [formControl]="formCalendarSelectedDay"
              (dateChange)="onDatePicked($event)"
-             [max]="today" />
+             [max]="initDateTodayWithUserHourShift" />
       <mat-datepicker-toggle [for]="pickerDesktop" />
       <mat-datepicker #pickerDesktop />
     </mat-form-field>
@@ -44,7 +42,7 @@
 </div>
 
 <div *ngIf="isAuthenticated"
-     class="lg:hidden flex fixed bottom-0 left-0 gap-5 justify-between px-4 pb-4 w-full"
+     class="lg:hidden fixed bottom-0 left-0 flex justify-between w-full gap-5 px-4 pb-4"
      style="z-index: 10">
   <button class="scale-100"
           mat-fab
@@ -75,9 +73,9 @@
 <mat-form-field class="hide-form">
   <input matInput
          [matDatepicker]="pickerTouch"
-         [formControl]="calendarSelectedDay"
+         [formControl]="formCalendarSelectedDay"
          (dateChange)="onDatePicked($event)"
-         [max]="today" />
+         [max]="initDateTodayWithUserHourShift" />
   <mat-datepicker-toggle [for]="pickerTouch" />
   <mat-datepicker touchUi
                   #pickerTouch />
