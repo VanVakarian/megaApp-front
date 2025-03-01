@@ -19,7 +19,7 @@ import {
   ServerResponseWithData,
   ServerResponseWithDiaryId,
 } from '@app/shared/interfaces';
-import { getTodayIsoNoTimeNoTZ } from '@app/shared/utils';
+import { calculateTodayIsoWithUserTimeShift } from '@app/shared/utils';
 
 @Injectable({
   providedIn: 'root',
@@ -28,7 +28,7 @@ export class FoodService {
   public diary$$: WritableSignal<Diary> = signal({});
   public diaryFormatted$$: Signal<FormattedDiary> = computed(() => this.prepDiary());
 
-  public selectedDayIso$$: WritableSignal<string> = signal(getTodayIsoNoTimeNoTZ());
+  public selectedDayIso$$: WritableSignal<string> = signal(calculateTodayIsoWithUserTimeShift());
   public days$$: Signal<string[]> = computed(() => Object.keys(this.diary$$()));
 
   public catalogue$$: WritableSignal<Catalogue> = signal({});
@@ -51,7 +51,7 @@ export class FoodService {
   constructor(private http: HttpClient) {
     // effect(() => { console.log('DIARY has been updated:', this.diary$$()) }); // prettier-ignore
     // effect(() => { console.log('DIARY FORMATTED has been updated:', this.diaryFormatted$$()) }); // prettier-ignore
-    // effect(() => { console.log('SELECTED DAY has been updated:', this.selectedDayIso$$()) }); // prettier-ignore
+    effect(() => { console.log('SELECTED DAY has been updated:', this.selectedDayIso$$()) }); // prettier-ignore
     // effect(() => { console.log('DAYS have been updated:', this.days$$()) }); // prettier-ignore
     // effect(() => { console.log('CATALOGUE have been updated:', this.catalogue$$()) }); // prettier-ignore
     // effect(() => { console.log('CATALOGUE MY IDS have been updated:', this.catalogueMyIds$$()) }); // prettier-ignore
@@ -127,7 +127,7 @@ export class FoodService {
 
   @exhaustRequest()
   public getFoodDiaryFullUpdateRange(dateIso?: string, offset?: number): Observable<Diary> {
-    const date = dateIso ?? getTodayIsoNoTimeNoTZ();
+    const date = dateIso ?? calculateTodayIsoWithUserTimeShift();
     const paramsStr = `date=${date}&offset=${offset ?? this.FETCH_OFFSET}`;
     return this.http.get<Diary>(`/api/food/diary-full-update?${paramsStr}`).pipe(
       map((response) => {
