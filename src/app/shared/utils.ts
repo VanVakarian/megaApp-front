@@ -1,16 +1,10 @@
 import { enToRuTransliterationRules, USER_PREFERRED_MIDNIGHT_OFFSET_HOURS } from '@app/shared/const';
 
-export function getTodayIsoNoTimeNoTZ(): string {
-  return epochToIsoNoTimeNoTZ(new Date().getTime());
+export function calculateTodayIsoWithUserTimeShift(): string {
+  const todayDate = calcDateWithUserTimeShift(new Date());
+  const todayIso = dateToIsoNoTimeNoTZ(todayDate);
+  return todayIso;
 }
-
-// export function getTodayIsoNoTimeNoTZ(): string {
-//   const userPreferredMidnightOffsetHours = 5;
-//   const now = new Date();
-//   const offsetMilliseconds = userPreferredMidnightOffsetHours * 60 * 60 * 1000;
-//   const adjustedDate = new Date(now.getTime() - offsetMilliseconds);
-//   return dateToIsoNoTimeNoTZ(adjustedDate.getTime());
-// }
 
 export function dateToIsoNoTimeNoTZ(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
