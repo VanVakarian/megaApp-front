@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
+import { firstValueFrom } from 'rxjs';
 
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
@@ -50,7 +51,7 @@ export class AuthFormComponent implements OnInit {
     this.justRegistered = false;
   }
 
-  submit() {
+  async submit() {
     if (this.authForm.invalid) {
       return;
     }
@@ -62,31 +63,21 @@ export class AuthFormComponent implements OnInit {
       password: this.authForm.value.password,
     };
 
-    if (this.isLoginMode) {
-      this.authService.login(user).subscribe({
-        next: () => {
-          this.authForm.reset();
-          this.router.navigate(['']);
-          this.submitted = false;
-        },
-        error: (error) => {
-          console.log(error);
-          this.submitted = false;
-        },
-      });
-    } else {
-      this.authService.register(user).subscribe({
-        next: () => {
-          this.authForm.reset();
-          this.isLoginMode = true; // Switching to login mode after successful registration
-          this.justRegistered = true; // For showing a message about successful registration
-          this.submitted = false;
-        },
-        error: (error) => {
-          console.log(error);
-          this.submitted = false;
-        },
-      });
+    try {
+      if (this.isLoginMode) {
+        await firstValueFrom(this.authService.login(user));
+        this.authForm.reset();
+        this.router.navigate(['']);
+      } else {
+        await firstValueFrom(this.authService.register(user));
+        this.authForm.reset();
+        this.isLoginMode = true;
+        this.justRegistered = true;
+      }
+    } catch (error) {
+      console.log(error);
+    } finally {
+      this.submitted = false;
     }
   }
 }
