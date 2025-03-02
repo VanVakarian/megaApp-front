@@ -112,6 +112,7 @@ export class DiaryEntryEditFormComponent implements OnInit, OnChanges, OnDestroy
   public onNewWeightInput() {
     this.diaryEntryForm.get('foodWeightChange')?.setValue(null);
     const newWeight = this.diaryEntryForm.value.foodWeightNew;
+
     if (this.newWeightPattern.test(newWeight)) {
       this.foodWeightFinal = parseInt(newWeight);
       this.previousWeightDisplay = `${this.diaryEntryForm.value.foodWeightInitial} г.`;
@@ -127,6 +128,7 @@ export class DiaryEntryEditFormComponent implements OnInit, OnChanges, OnDestroy
     this.diaryEntryForm.get('foodWeightNew')?.setValue(null);
     const foorWeightChangeStr = this.diaryEntryForm.value.foodWeightChange;
     const foodWeightChangeInt = parseInt(foorWeightChangeStr);
+
     if (
       this.editWeightPattern.test(foorWeightChangeStr) &&
       this.diaryEntryForm.value.foodWeightInitial + foodWeightChangeInt > 0
@@ -153,8 +155,17 @@ export class DiaryEntryEditFormComponent implements OnInit, OnChanges, OnDestroy
 
   public async onSubmit(): Promise<void> {
     const weightIfChange = this.diaryEntryForm.value.foodWeightChange;
-    this.historyAction = weightIfChange ? (String(weightIfChange).includes('-') ? 'subtract' : 'add') : 'set';
-    const history = { action: this.historyAction, value: Math.abs(weightIfChange) };
+    const weightIfSet = this.diaryEntryForm.value.foodWeightNew;
+    const foodWeight = weightIfChange ?? weightIfSet - this.diaryEntryForm.value.foodWeightInitial;
+    const historyValue = weightIfChange ? Math.abs(foodWeight) : weightIfSet;
+
+    if (weightIfChange === null) {
+      this.historyAction = 'set';
+    } else {
+      this.historyAction = String(weightIfChange).includes('-') ? 'subtract' : 'add';
+    }
+
+    const history = { action: this.historyAction, value: historyValue };
     this.diaryEntryForm.disable();
 
     const preppedFormValues: DiaryEntry = {
@@ -165,8 +176,6 @@ export class DiaryEntryEditFormComponent implements OnInit, OnChanges, OnDestroy
       history: [history],
     };
 
-    const weightIfSet = this.diaryEntryForm.value.foodWeightNew - this.diaryEntryForm.value.foodWeightInitial;
-    const foodWeight = weightIfChange ?? weightIfSet;
     const foodId = this.diaryEntry.foodCatalogueId;
     const foodKcals = this.foodService.catalogue$$()?.[foodId].kcals;
     const foodCoefficient = this.foodService.coefficients$$()?.[foodId] ?? 1;
