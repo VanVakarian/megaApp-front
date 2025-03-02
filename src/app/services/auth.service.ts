@@ -2,9 +2,10 @@ import { HttpClient, HttpResponse } from '@angular/common/http';
 import { Injectable, signal } from '@angular/core';
 import { Router } from '@angular/router';
 
+import { Observable, of } from 'rxjs';
+import { catchError, map, tap } from 'rxjs/operators';
+
 import jwt_decode from 'jwt-decode';
-import { Observable } from 'rxjs';
-import { catchError, tap } from 'rxjs/operators';
 
 import { AuthResponse, UserCreds } from '@app/shared/interfaces';
 
@@ -80,27 +81,34 @@ export class AuthService {
     localStorage.removeItem(this.REFRESH_TOKEN_KEY);
   }
 
-  public initCheckToken(): void {
+  public checkAuth(): Observable<boolean> {
     const token = localStorage.getItem(this.ACCESS_TOKEN_KEY);
     if (token) {
       const decodedToken = jwt_decode(token) as { exp: number };
       const currentTime = Math.round(new Date().getTime() / 1000);
+
       if (decodedToken.exp > currentTime) {
         this.authenticationStatus$$.set(true);
+        return of(true);
       } else {
-        this.refreshToken().subscribe({
-          next: () => {
-            this.authenticationStatus$$.set(true);
-            this.router.navigate(['']);
-          },
-          error: () => {
+        return this.refreshToken().pipe(
+          map((response: AuthResponse) => {
+            if (response.accessToken) {
+              this.setTokens(response);
+              this.authenticationStatus$$.set(true);
+              return true;
+            }
+            return false;
+          }),
+          catchError(() => {
             this.authenticationStatus$$.set(false);
-          },
-        });
+            return of(false);
+          }),
+        );
       }
-    } else {
-      this.authenticationStatus$$.set(false);
     }
+    this.authenticationStatus$$.set(false);
+    return of(false);
   }
 }
 
