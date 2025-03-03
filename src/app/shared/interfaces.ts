@@ -83,12 +83,6 @@ export interface DiaryEntry {
   history: HistoryEntry[];
 }
 
-// export interface DiaryEntryEdit {
-//   id: number;
-//   foodWeight: number;
-//   history: HistoryEntry[];
-// }
-
 export interface Diary {
   [dateISO: string]: {
     ['food']: {
@@ -227,8 +221,8 @@ export interface Notification {
 
 //                                                                            UI
 
-export interface InputWithProgressSubmitData {
-  value: string;
-  resolve: () => void;
-  reject: () => void;
-}
+// export interface InputWithProgressSubmitData {
+//   value: string;
+//   resolve: () => void;
+//   reject: () => void;
+// }
