@@ -51,7 +51,7 @@ export class FoodService {
   constructor(private http: HttpClient) {
     // effect(() => { console.log('DIARY has been updated:', this.diary$$()) }); // prettier-ignore
     // effect(() => { console.log('DIARY FORMATTED has been updated:', this.diaryFormatted$$()) }); // prettier-ignore
-    effect(() => { console.log('SELECTED DAY has been updated:', this.selectedDayIso$$()) }); // prettier-ignore
+    // effect(() => { console.log('SELECTED DAY has been updated:', this.selectedDayIso$$()) }); // prettier-ignore
     // effect(() => { console.log('DAYS have been updated:', this.days$$()) }); // prettier-ignore
     // effect(() => { console.log('CATALOGUE have been updated:', this.catalogue$$()) }); // prettier-ignore
     // effect(() => { console.log('CATALOGUE MY IDS have been updated:', this.catalogueMyIds$$()) }); // prettier-ignore
