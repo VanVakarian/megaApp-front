@@ -1,5 +1,4 @@
 import { ChartConfiguration } from 'chart.js';
-
 import { Settings } from './interfaces';
 
 export const FETCH_DAYS_RANGE_OFFSET: number = 10; // TODO: create settings item out of this constant
@@ -107,7 +106,7 @@ export const KCALS_CHART_SETTINGS: ChartConfiguration = {
   },
 };
 
-export const enToRuTransliterationRules: { [key: string]: string } = {
+export const enToRuTransliterationRules: { [key: string]: string; } = {
   '`': 'ё',
   q: 'й',
   w: 'ц',
@@ -152,6 +151,7 @@ export const DEFAULT_SETTINGS: Settings = {
   selectedChapterFood: false,
   selectedChapterMoney: false,
   darkTheme: false,
+  liteVersion: false,
   height: null,
   userName: '',
 };

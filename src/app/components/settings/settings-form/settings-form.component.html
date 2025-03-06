@@ -29,6 +29,16 @@
                           [disabled]="settingsForm.controls.darkTheme.disabled" />
       </div>
     </div>
+
+    <div class="flex gap-4 mt-4">
+      <div class="font-normal leading-[30px]"> {{ Labels.LITE_VERSION }} </div>
+      <div>
+        <mat-slide-toggle color="primary"
+                          [checked]="settingsForm.controls.liteVersion.value"
+                          (click)="onLiteVersionToggle()"
+                          [disabled]="settingsForm.controls.liteVersion.disabled" />
+      </div>
+    </div>
   </mat-card>
 
   <mat-card class="flex flex-col p-4 mt-4 text-lg">

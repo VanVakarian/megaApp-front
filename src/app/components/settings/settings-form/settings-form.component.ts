@@ -1,42 +1,62 @@
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
-import { ChangeDetectorRef, Component, effect, OnInit } from '@angular/core';
-import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-
+import {
+  ChangeDetectorRef,
+  Component,
+  effect,
+  OnInit,
+} from '@angular/core';
+import {
+  FormControl,
+  FormGroup,
+  ReactiveFormsModule,
+  Validators,
+} from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
-
-import { catchError, firstValueFrom, map, of } from 'rxjs';
-
-import { RequestStatus, SettingsService } from '@app/services/settings.service';
+import {
+  RequestStatus,
+  SettingsService,
+} from '@app/services/settings.service';
 import { DEFAULT_INPUT_FIELD_PROGRESS_TIMER } from '@app/shared/const';
 import {
   AnimationState,
   AnimationStateManager,
   FieldStateAnimationsDirective,
 } from '@app/shared/directives/field-state-animations.directive';
-import { KeyOfSettings, Settings } from '@app/shared/interfaces';
+import {
+  KeyOfSettings,
+  Settings,
+} from '@app/shared/interfaces';
+import {
+  catchError,
+  firstValueFrom,
+  map,
+  of,
+} from 'rxjs';
 
 interface SettingsForm {
   selectedChapterFood: FormControl<boolean>;
   selectedChapterMoney: FormControl<boolean>;
   darkTheme: FormControl<boolean>;
+  liteVersion: FormControl<boolean>;
   height: FormControl<string>;
 }
 
 type FormFields = keyof SettingsForm;
 
 enum Labels {
-  MAIN_SETTINGS = 'Основные настройки',
+  MAIN_SETTINGS = 'Основные настройки',
   CHAPTERS_SELECTION = 'Выбор разделов:',
   FOOD_DIARY = 'Дневник питания',
   MONEY_DIARY = 'Дневник финансов',
   DARK_THEME = 'Тёмная тема:',
-  FOOD_DIARY_SETTINGS = 'Настройки дневника питания',
+  LITE_VERSION = 'Упрощённый интерфейс:',
+  FOOD_DIARY_SETTINGS = 'Настройки дневника питания',
   HEIGHT = 'Рост',
   HEIGHT_SUFFIX = 'см',
   TEMP_SETTINGS = 'Временные настройки', // TODO[066]: Delete this sometime
@@ -78,6 +98,7 @@ export class SettingsFormComponent implements OnInit {
       validators: [Validators.required, Validators.pattern(/^\d{3}$/)],
       nonNullable: true,
     }),
+    liteVersion: new FormControl(false, { nonNullable: true }),
   });
 
   public heightFieldState: AnimationState = AnimationState.IDLE;
@@ -126,6 +147,19 @@ export class SettingsFormComponent implements OnInit {
     if (!requestIsSuccess) {
       this.settingsForm.patchValue({ darkTheme: currentValue }, { emitEvent: false });
       this.settingsService.applyTheme(currentValue);
+    }
+  }
+
+  public async onLiteVersionToggle(): Promise<void> {
+    const currentValue = this.settingsForm.controls.liteVersion.value;
+    const newValue = !currentValue;
+    const setting = { liteVersion: newValue };
+
+    this.settingsForm.patchValue({ liteVersion: newValue }, { emitEvent: false });
+
+    const requestIsSuccess = await this.settingsService.saveSelectedChapter(setting);
+    if (!requestIsSuccess) {
+      this.settingsForm.patchValue({ liteVersion: currentValue }, { emitEvent: false });
     }
   }
 
@@ -188,6 +222,7 @@ export class SettingsFormComponent implements OnInit {
         selectedChapterMoney: settings.selectedChapterMoney,
         darkTheme: settings.darkTheme,
         height: String(settings.height),
+        liteVersion: settings.liteVersion,
       },
       { emitEvent: false },
     );
@@ -213,6 +248,13 @@ export class SettingsFormComponent implements OnInit {
       this.settingsForm.controls.darkTheme.disable();
     } else {
       this.settingsForm.controls.darkTheme.enable();
+    }
+
+    const liteVersionRequestStatus = this.settingsService.requestStatus.liteVersion();
+    if (liteVersionRequestStatus === RequestStatus.IN_PROGRESS) {
+      this.settingsForm.controls.liteVersion.disable();
+    } else {
+      this.settingsForm.controls.liteVersion.enable();
     }
 
     const heightRequestStatus = this.settingsService.requestStatus.height();

@@ -1,9 +1,20 @@
-import { HttpClient, HttpResponse } from '@angular/common/http';
-import { Injectable, signal, WritableSignal } from '@angular/core';
-
-import { catchError, firstValueFrom, map, Observable, of } from 'rxjs';
-
+import {
+  HttpClient,
+  HttpResponse,
+} from '@angular/common/http';
+import {
+  Injectable,
+  signal,
+  WritableSignal,
+} from '@angular/core';
 import { Settings } from '@app/shared/interfaces';
+import {
+  catchError,
+  firstValueFrom,
+  map,
+  Observable,
+  of,
+} from 'rxjs';
 import {
   DEFAULT_CACHED_REQUEST_VALIDITY_MS,
   DEFAULT_REQUEST_STATUS_FADE_OUT_TIMER,
@@ -11,7 +22,7 @@ import {
 } from '../shared/const';
 import { cached } from '../shared/decorators/cached-request.decorator';
 
-type SettingsKeysForRequestTracking = 'selectedChapterFood' | 'selectedChapterMoney' | 'darkTheme' | 'height';
+type SettingsKeysForRequestTracking = 'selectedChapterFood' | 'selectedChapterMoney' | 'darkTheme' | 'liteVersion' | 'height';
 
 const SETTINGS_LOCALSTORAGE_KEY = 'settings';
 
@@ -32,6 +43,7 @@ export class SettingsService {
     selectedChapterFood: signal(RequestStatus.IDLE),
     selectedChapterMoney: signal(RequestStatus.IDLE),
     darkTheme: signal(RequestStatus.IDLE),
+    liteVersion: signal(RequestStatus.IDLE),
     height: signal(RequestStatus.IDLE),
   };
 
@@ -39,6 +51,7 @@ export class SettingsService {
     selectedChapterFood: null,
     selectedChapterMoney: null,
     darkTheme: null,
+    liteVersion: null,
     height: null,
   };
 
