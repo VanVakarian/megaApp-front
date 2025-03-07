@@ -1,8 +1,20 @@
 import { inject } from '@angular/core';
-import { ActivatedRouteSnapshot, ResolveFn, Router, RouterStateSnapshot } from '@angular/router';
+import {
+  ActivatedRouteSnapshot,
+  ResolveFn,
+  Router,
+  RouterStateSnapshot,
+} from '@angular/router';
 import { AuthService } from '@app/services/auth.service';
-import { Observable, of } from 'rxjs';
-import { catchError, map, take } from 'rxjs/operators';
+import {
+  Observable,
+  of,
+} from 'rxjs';
+import {
+  catchError,
+  map,
+  take,
+} from 'rxjs/operators';
 
 export const authResolver: ResolveFn<boolean> = (
   route: ActivatedRouteSnapshot,
@@ -10,6 +22,7 @@ export const authResolver: ResolveFn<boolean> = (
 ): Observable<boolean> => {
   const authService = inject(AuthService);
   const router = inject(Router);
+  const allowUnauthenticated = route.data['allowUnauthenticated'] === true;
 
   return authService.checkAuth().pipe(
     take(1),
@@ -17,11 +30,18 @@ export const authResolver: ResolveFn<boolean> = (
       if (isAuthenticated) {
         return true;
       }
+
+      if (allowUnauthenticated) {
+        return false;
+      }
+
       router.navigate(['/settings']);
       return false;
     }),
     catchError(() => {
-      router.navigate(['/settings']);
+      if (!allowUnauthenticated) {
+        router.navigate(['/settings']);
+      }
       return of(false);
     }),
   );
