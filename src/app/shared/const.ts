@@ -100,13 +100,17 @@ export const KCALS_CHART_SETTINGS: ChartConfiguration = {
         ticks: {},
       },
       y: {
-        ticks: { stepSize: 500 },
+        display: true,
+        ticks: {
+          display: true, // for configuring show/hide of kcals on y axis for lite version
+          stepSize: 500,
+        },
       },
     },
   },
 };
 
-export const enToRuTransliterationRules: { [key: string]: string; } = {
+export const enToRuTransliterationRules: { [key: string]: string } = {
   '`': 'ё',
   q: 'й',
   w: 'ц',

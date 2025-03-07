@@ -1,37 +1,21 @@
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
-import {
-  ChangeDetectorRef,
-  Component,
-  effect,
-  OnInit,
-} from '@angular/core';
-import {
-  FormControl,
-  FormGroup,
-  ReactiveFormsModule,
-  Validators,
-} from '@angular/forms';
+import { ChangeDetectorRef, Component, effect, OnInit } from '@angular/core';
+import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
-import {
-  RequestStatus,
-  SettingsService,
-} from '@app/services/settings.service';
+import { RequestStatus, SettingsService } from '@app/services/settings.service';
 import { DEFAULT_INPUT_FIELD_PROGRESS_TIMER } from '@app/shared/const';
 import {
   AnimationState,
   AnimationStateManager,
   FieldStateAnimationsDirective,
 } from '@app/shared/directives/field-state-animations.directive';
-import {
-  KeyOfSettings,
-  Settings,
-} from '@app/shared/interfaces';
+import { KeyOfSettings, Settings } from '@app/shared/interfaces';
 
 interface SettingsForm {
   selectedChapterFood: FormControl<boolean>;
@@ -49,8 +33,8 @@ enum Labels {
   FOOD_DIARY = 'Дневник питания',
   MONEY_DIARY = 'Дневник финансов',
   DARK_THEME = 'Тёмная тема:',
-  LITE_VERSION = 'Упрощённый интерфейс:',
   FOOD_DIARY_SETTINGS = 'Настройки дневника питания',
+  LITE_VERSION = 'Упрощённый интерфейс:',
   HEIGHT = 'Рост',
   HEIGHT_SUFFIX = 'см',
 }
