@@ -32,12 +32,6 @@ import {
   KeyOfSettings,
   Settings,
 } from '@app/shared/interfaces';
-import {
-  catchError,
-  firstValueFrom,
-  map,
-  of,
-} from 'rxjs';
 
 interface SettingsForm {
   selectedChapterFood: FormControl<boolean>;
@@ -59,8 +53,6 @@ enum Labels {
   FOOD_DIARY_SETTINGS = 'Настройки дневника питания',
   HEIGHT = 'Рост',
   HEIGHT_SUFFIX = 'см',
-  TEMP_SETTINGS = 'Временные настройки', // TODO[066]: Delete this sometime
-  TEMP_GET_OLD_DATA = 'Получить старые данные', // TODO[066]: Delete this sometime
 }
 
 enum ErrorLabels {
@@ -268,18 +260,5 @@ export class SettingsFormComponent implements OnInit {
       this.settingsForm.controls.height.enable();
       this.heightFieldAnimationStateManager.toError();
     }
-  }
-
-  // TODO[066]: Delete this sometime
-  public isTempGetOldDataButtonDisabled = false;
-  public async onTempGetOldDataButtonClick(): Promise<void> {
-    this.isTempGetOldDataButtonDisabled = true;
-    const res = await firstValueFrom(
-      this.http.get<any>('/api/debug/transfer/').pipe(
-        catchError(() => of(false)),
-        map((response) => !!response),
-      ),
-    );
-    this.isTempGetOldDataButtonDisabled = false;
   }
 }

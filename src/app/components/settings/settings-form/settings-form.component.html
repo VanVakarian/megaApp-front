@@ -5,7 +5,7 @@
     <div class="font-normal"> {{ Labels.CHAPTERS_SELECTION }} </div>
     <div class="ml-5">
       <mat-chip-listbox multiple
-                        class="mat-mdc-chip-set-stacked w-64">
+                        class="w-64 mat-mdc-chip-set-stacked">
         <mat-chip-option [selected]="settingsForm.controls.selectedChapterFood.value"
                          (click)="onSelectedChapterChipToggle(KeyOfSettings.selectedChapterFood)"
                          [disabled]="settingsForm.controls.selectedChapterFood.disabled">
@@ -63,16 +63,6 @@
         <mat-error *ngIf="!isHeightValid"> {{ ErrorLabels.HEIGHT }} </mat-error>
       </mat-form-field>
     </div>
-  </mat-card>
-
-  <!-- TODO[066]: Delete this sometime -->
-  <mat-card class="flex flex-col gap-4 p-4 mt-4 text-lg">
-    <div class="font-bold text-right"> {{ Labels.TEMP_SETTINGS }} </div>
-    <button mat-stroked-button
-            [disabled]="isTempGetOldDataButtonDisabled"
-            (click)="onTempGetOldDataButtonClick()"
-            color="basic"> {{ Labels.TEMP_GET_OLD_DATA }}
-    </button>
   </mat-card>
 
 </form>
