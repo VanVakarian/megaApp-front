@@ -8,22 +8,28 @@
             class="food-diary-entry-history-btn scale-75"
             style="background-color: white"
             (click)="toggleHistory()">
-      <mat-icon *ngIf="showHistory">expand_less</mat-icon>
-      <mat-icon *ngIf="!showHistory">expand_more</mat-icon>
+
+      @if (showHistory) {
+        <mat-icon>expand_less</mat-icon>
+      } @else {
+        <mat-icon>expand_more</mat-icon>
+      }
+
     </button>
   </div>
 </div>
 
 <mat-expansion-panel [expanded]="showHistory">
   <div class="flex flex-col gap-2 mt-4">
-    <div *ngFor="let historyEntry of diaryEntry.history"
-         class="relative">
-      <mat-icon class="absolute -left-[6px] -top-[2px] scale-75">
-        {{ chooseIconForHistoryEntry(historyEntry) }}
-      </mat-icon>
+    @for (historyEntry of diaryEntry.history; track historyEntry.action) {
+      <div class="relative">
+        <mat-icon class="absolute -left-[6px] -top-[2px] scale-75">
+          {{ chooseIconForHistoryEntry(historyEntry) }}
+        </mat-icon>
 
-      <div class="ml-5">{{ formHistoryEntry(historyEntry) }}</div>
-    </div>
+        <div class="ml-5">{{ formHistoryEntry(historyEntry) }}</div>
+      </div>
+    }
   </div>
 </mat-expansion-panel>
 
@@ -34,57 +40,54 @@
                     appearance="outline">
       <mat-label>Ввести новый вес:</mat-label>
 
-      <button matPrefix
-              type="button"
-              mat-icon-button
-              *ngIf="diaryEntryForm.value.foodWeightNew && diaryEntryForm.value.foodWeightNew !== ''"
-              aria-label="Очистить"
-              (click)="diaryEntryForm.get('foodWeightNew')?.setValue('')">
-        <mat-icon>close</mat-icon>
-      </button>
+      @if (foodWeightNewControl.value !== null) {
+        <button matPrefix
+                type="button"
+                mat-icon-button
+                aria-label="Очистить"
+                (click)="foodWeightNewControl.setValue(null)">
+          <mat-icon>close</mat-icon>
+        </button>
+      }
 
       <input matInput
              type="number"
              class="text-right"
              formControlName="foodWeightNew"
-             (input)="onNewWeightInput()"
-             (focus)="onFocus()"
-             (blur)="onBlur()" />
+             (input)="onNewWeightInput()" />
 
-      <span matSuffix
-            *ngIf="diaryEntryForm.value.foodWeightNew && diaryEntryForm.value.foodWeightNew !== ''"
-            class="mx-2">
-        г.
-      </span>
+      @if (foodWeightNewControl.value !== null) {
+        <span matSuffix
+              class="mx-2"> г. </span>
+      }
+
     </mat-form-field>
 
     <mat-form-field class="w-1/2"
                     appearance="outline">
       <mat-label>Изменить на:</mat-label>
 
-      <button matPrefix
-              type="button"
-              mat-icon-button
-              *ngIf="diaryEntryForm.value.foodWeightChange && diaryEntryForm.value.foodWeightChange !== ''"
-              aria-label="Очистить"
-              (click)="diaryEntryForm.get('foodWeightChange')?.setValue('')">
-        <mat-icon>close</mat-icon>
-      </button>
+      @if (foodWeightChangeControl.value !== null) {
+        <button matPrefix
+                type="button"
+                mat-icon-button
+                aria-label="Очистить"
+                (click)="foodWeightChangeControl.setValue(null)">
+          <mat-icon>close</mat-icon>
+        </button>
+      }
 
       <input matInput
              #foodWeightChangeElem
              type="number"
              class="text-right"
              formControlName="foodWeightChange"
-             (input)="onChangeWeightInput()"
-             (focus)="onFocus()"
-             (blur)="onBlur()" />
+             (input)="onChangeWeightInput()" />
 
-      <span matSuffix
-            *ngIf="diaryEntryForm.value.foodWeightChange && diaryEntryForm.value.foodWeightChange !== ''"
-            class="mx-2">
-        г.
-      </span>
+      @if (foodWeightChangeControl.value !== null) {
+        <span matSuffix
+              class="mx-2"> г. </span>
+      }
     </mat-form-field>
   </div>
 
