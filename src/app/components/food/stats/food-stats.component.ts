@@ -13,6 +13,7 @@ import {
   BarElement,
   CategoryScale,
   Chart,
+  ChartConfiguration,
   Legend,
   LineController,
   LineElement,
@@ -23,6 +24,7 @@ import {
 } from 'chart.js';
 
 import { FoodStatsService } from '@app/services/food-stats.service';
+import { SettingsService } from '@app/services/settings.service';
 import { KCALS_CHART_SETTINGS, WEIGHT_CHART_SETTINGS } from '@app/shared/const';
 import { debounce, formatDateTicks, getRuDeclension, throttle } from '@app/shared/utils';
 
@@ -75,7 +77,10 @@ export class FoodStatsComponent implements OnInit, OnDestroy, AfterViewInit {
     return this.foodStatsService.statsChartData$$().dates.length - 1;
   }
 
-  constructor(private foodStatsService: FoodStatsService) {
+  constructor(
+    private foodStatsService: FoodStatsService,
+    private settingsService: SettingsService,
+  ) {
     const throttledUpdate = this.createThrottledChartUpdater();
     const debouncedUpdate = this.createDebouncedChartUpdater();
 
@@ -98,6 +103,11 @@ export class FoodStatsComponent implements OnInit, OnDestroy, AfterViewInit {
       throttledUpdate(data);
       debouncedUpdate(data);
     });
+
+    effect(() => {
+      const isLiteVersion = this.settingsService.settings$$()?.liteVersion;
+      this.updateKcalsChartAxisVisibility(isLiteVersion);
+    });
   }
 
   public async ngOnInit(): Promise<void> {
@@ -105,8 +115,8 @@ export class FoodStatsComponent implements OnInit, OnDestroy, AfterViewInit {
       await firstValueFrom(this.foodStatsService.getStats());
     }
 
-    this.weightChart = new Chart('WeightChart', WEIGHT_CHART_SETTINGS);
-    this.kcalsChart = new Chart('KcalsChart', KCALS_CHART_SETTINGS);
+    const isLiteVersion = this.settingsService.settings$$()?.liteVersion;
+    this.initializeCharts(isLiteVersion);
   }
 
   public ngAfterViewInit(): void {
@@ -209,5 +219,58 @@ export class FoodStatsComponent implements OnInit, OnDestroy, AfterViewInit {
     }
 
     return parts.join(' ');
+  }
+
+  private initializeCharts(isLiteVersion: boolean): void {
+    this.weightChart = new Chart('WeightChart', WEIGHT_CHART_SETTINGS);
+
+    const kcalsSettings = this.createKcalsChartSettings(isLiteVersion);
+    this.kcalsChart = new Chart('KcalsChart', kcalsSettings);
+  }
+
+  private createKcalsChartSettings(isLiteVersion: boolean): ChartConfiguration {
+    const settings = { ...KCALS_CHART_SETTINGS };
+    if (settings.options?.scales?.['y']) {
+      settings.options.scales['y'].ticks = {
+        ...settings.options.scales['y'].ticks,
+        display: !isLiteVersion,
+        stepSize: 500,
+      };
+    }
+
+    if (!settings.options) {
+      settings.options = {};
+    }
+    if (!settings.options.plugins) {
+      settings.options.plugins = {};
+    }
+    settings.options.plugins.tooltip = {
+      ...settings.options.plugins.tooltip,
+      enabled: !isLiteVersion,
+    };
+
+    return settings;
+  }
+
+  private updateKcalsChartAxisVisibility(isLiteVersion: boolean): void {
+    if (this.kcalsChart?.options?.scales) {
+      const yScale = this.kcalsChart.options.scales['y'];
+      if (yScale?.ticks) {
+        yScale.ticks = {
+          ...yScale.ticks,
+          display: !isLiteVersion,
+        };
+      }
+
+      if (!this.kcalsChart.options.plugins) {
+        this.kcalsChart.options.plugins = {};
+      }
+      this.kcalsChart.options.plugins.tooltip = {
+        ...this.kcalsChart.options.plugins.tooltip,
+        enabled: !isLiteVersion,
+      };
+
+      this.kcalsChart.update();
+    }
   }
 }

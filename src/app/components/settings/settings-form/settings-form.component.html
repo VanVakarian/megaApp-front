@@ -5,7 +5,7 @@
     <div class="font-normal"> {{ Labels.CHAPTERS_SELECTION }} </div>
     <div class="ml-5">
       <mat-chip-listbox multiple
-                        class="mat-mdc-chip-set-stacked w-64">
+                        class="w-64 mat-mdc-chip-set-stacked">
         <mat-chip-option [selected]="settingsForm.controls.selectedChapterFood.value"
                          (click)="onSelectedChapterChipToggle(KeyOfSettings.selectedChapterFood)"
                          [disabled]="settingsForm.controls.selectedChapterFood.disabled">
@@ -33,6 +33,17 @@
 
   <mat-card class="flex flex-col p-4 mt-4 text-lg">
     <div class="font-bold text-right"> {{ Labels.FOOD_DIARY_SETTINGS }} </div>
+
+    <div class="flex gap-4 mt-4">
+      <div class="font-normal leading-[30px]"> {{ Labels.LITE_VERSION }} </div>
+      <div>
+        <mat-slide-toggle color="primary"
+                          [checked]="settingsForm.controls.liteVersion.value"
+                          (click)="onLiteVersionToggle()"
+                          [disabled]="settingsForm.controls.liteVersion.disabled" />
+      </div>
+    </div>
+
     <div class="w-1/3 mt-4">
       <mat-form-field appearance="outline"
                       class="field-with-progress-animations"
@@ -53,16 +64,6 @@
         <mat-error *ngIf="!isHeightValid"> {{ ErrorLabels.HEIGHT }} </mat-error>
       </mat-form-field>
     </div>
-  </mat-card>
-
-  <!-- TODO[066]: Delete this sometime -->
-  <mat-card class="flex flex-col gap-4 p-4 mt-4 text-lg">
-    <div class="font-bold text-right"> {{ Labels.TEMP_SETTINGS }} </div>
-    <button mat-stroked-button
-            [disabled]="isTempGetOldDataButtonDisabled"
-            (click)="onTempGetOldDataButtonClick()"
-            color="basic"> {{ Labels.TEMP_GET_OLD_DATA }}
-    </button>
   </mat-card>
 
 </form>
