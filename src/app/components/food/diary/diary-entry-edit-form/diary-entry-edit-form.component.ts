@@ -12,21 +12,19 @@ import {
   ViewChild,
 } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
-
-import { delay, filter, firstValueFrom, Subscription, take } from 'rxjs';
-
 import { FoodStatsService } from '@app/services/food-stats.service';
 import { FoodService } from '@app/services/food.service';
 import { ScreenSizeWatcherService } from '@app/services/screen-size-watcher.service';
 import { ConfirmationDialogModalService } from '@app/shared/components/dialog-modal/mat-dialog-modal.service';
 import { DiaryEntry, HistoryEntry } from '@app/shared/interfaces';
+import { UiProgressIcon } from '@app/shared/ui/progress-icon/progress-icon.component';
+import { delay, filter, firstValueFrom, Subscription, take } from 'rxjs';
 
 @Component({
   selector: 'app-diary-entry-edit-form',
@@ -41,6 +39,7 @@ import { DiaryEntry, HistoryEntry } from '@app/shared/interfaces';
     MatCardModule,
     MatFormFieldModule,
     MatInputModule,
+    UiProgressIcon,
   ],
   templateUrl: './diary-entry-edit-form.component.html',
 })
@@ -65,7 +64,8 @@ export class DiaryEntryEditFormComponent implements OnInit, OnChanges, OnDestroy
   private selectedDaysEatenPercent = 0;
   private selectedFoodKcals = 0;
   private diaryEntriesCoefficient = 0;
-  public projectedSelectedDaysEatenPercent = '0';
+  public projectedSelectedDaysEatenPercentNum = 0;
+  public projectedSelectedDaysEatenPercentPadded = '0';
 
   private newWeightPattern = /^(?!0+$)\d+$/; // Digits only, but not zero
   private editWeightPattern = /^[-+]?\d+$/; // Digits only with or without a plus or a minus
@@ -306,7 +306,8 @@ export class DiaryEntryEditFormComponent implements OnInit, OnChanges, OnDestroy
       const deltaInPercent = (weightKcalsWithCoefficient / this.selectedDaysTargerKcals) * 100;
       const totalPercent = this.selectedDaysEatenPercent + deltaInPercent;
 
-      this.projectedSelectedDaysEatenPercent = totalPercent.toFixed(1);
+      this.projectedSelectedDaysEatenPercentNum = totalPercent;
+      this.projectedSelectedDaysEatenPercentPadded = totalPercent.toFixed(1);
     }
   }
 }

@@ -1,0 +1,13 @@
+.progress-circle {
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.progress-circle.is-circle-style {
+  transform: rotate(-90deg);
+}
+
+:host {
+  display: inline-flex;
+  align-items: center;
+}
