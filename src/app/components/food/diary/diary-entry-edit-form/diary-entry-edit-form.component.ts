@@ -174,6 +174,12 @@ export class DiaryEntryEditFormComponent implements OnInit, OnChanges, OnDestroy
     this.updateProjectedDaysEatenPercent();
   }
 
+  public onWeightNewResetClick(): void {
+    this.foodWeightNewControl.setValue(null);
+    this.foodWeightFinal = this.foodWeightInitial;
+    this.updateProjectedDaysEatenPercent();
+  }
+
   public onChangeWeightInput() {
     this.diaryEntryForm.controls.foodWeightNew.setValue(null);
     const foodWeightChangeStr = String(this.foodWeightChangeControl.value);
@@ -190,6 +196,12 @@ export class DiaryEntryEditFormComponent implements OnInit, OnChanges, OnDestroy
       this.foodWeightFinal = this.foodWeightInitial;
     }
 
+    this.updateProjectedDaysEatenPercent();
+  }
+
+  public onWeightChangeResetClick(): void {
+    this.foodWeightChangeControl.setValue(null);
+    this.foodWeightFinal = this.foodWeightInitial;
     this.updateProjectedDaysEatenPercent();
   }
 
