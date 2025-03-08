@@ -10,13 +10,9 @@ import {
   ViewChild,
   ViewChildren,
 } from '@angular/core';
-
 import { MatCardModule } from '@angular/material/card';
 import { MatAccordion, MatExpansionModule, MatExpansionPanel } from '@angular/material/expansion';
 import { MatIconModule } from '@angular/material/icon';
-
-import { combineLatest } from 'rxjs';
-
 import { BMIComponent } from '@app/components/food/diary/bmi/bmi.component';
 import { BodyWeightComponent } from '@app/components/food/diary/body-weight/body-weight.component';
 import { DiaryEntryEditFormComponent } from '@app/components/food/diary/diary-entry-edit-form/diary-entry-edit-form.component';
@@ -24,7 +20,9 @@ import { DiaryEntryNewFormComponent } from '@app/components/food/diary/diary-ent
 import { DiaryNavButtonsComponent } from '@app/components/food/diary/diary-nav/diary-nav-buttons.component';
 import { FoodService } from '@app/services/food.service';
 import { ScreenSizeWatcherService } from '@app/services/screen-size-watcher.service';
+import { SettingsService } from '@app/services/settings.service';
 import { ScreenType } from '@app/shared/interfaces';
+import { combineLatest } from 'rxjs';
 
 @Component({
   selector: 'app-food-diary',
@@ -89,14 +87,27 @@ export class FoodDiaryComponent implements OnInit, AfterViewInit, OnDestroy {
     return Math.round(this.foodService.diaryFormatted$$()?.[this.selectedDateIso]?.['kcalsPercent'] * 10) / 10;
   }
 
+  public get caloriesDisplayText(): string {
+    if (this.isLiteVersionSetting) {
+      return `Съедено ${this.formatSelectedDaysEatenPercent}% от дневной нормы`;
+    } else {
+      return `Съедено ${this.todaysKcalsEaten} ккал. от нормы ${this.todaysTargetKcals} (${this.formatSelectedDaysEatenPercent}%)`;
+    }
+  }
+
   private get selectedDateIso() {
     return this.foodService.selectedDayIso$$();
+  }
+
+  public get isLiteVersionSetting(): boolean {
+    return this.settingsService.settings$$()?.liteVersion ?? false;
   }
 
   constructor(
     public foodService: FoodService,
     private ngZone: NgZone,
     private screenSizeWatcherService: ScreenSizeWatcherService,
+    private settingsService: SettingsService,
   ) {}
 
   public ngOnInit(): void {}
@@ -106,7 +117,7 @@ export class FoodDiaryComponent implements OnInit, AfterViewInit, OnDestroy {
     combineLatest([this.weightsDivs.changes, this.kcalsDivs.changes, this.percentsDivs.changes]).subscribe(() =>
       this.adjustWidths(),
     );
-    setTimeout(() => this.adjustWidths(), 100);
+    setTimeout(() => this.adjustWidths(), 0);
   }
 
   public ngOnDestroy(): void {}
@@ -145,10 +156,13 @@ export class FoodDiaryComponent implements OnInit, AfterViewInit, OnDestroy {
   public accordionCollapse() {
     this.foodAccordion.closeAll();
   }
+
   private adjustWidths(): void {
     this.ngZone.run(() => {
       this.setWidth(this.weightsDivs);
-      this.setWidth(this.kcalsDivs);
+      if (!this.isLiteVersionSetting) {
+        this.setWidth(this.kcalsDivs);
+      }
       this.setWidth(this.percentsDivs);
 
       const weightsWidth = this.getMaxWidth(this.weightsDivs);
@@ -156,7 +170,9 @@ export class FoodDiaryComponent implements OnInit, AfterViewInit, OnDestroy {
       const percentsWidth = this.getMaxWidth(this.percentsDivs);
 
       this.setWidth(this.weightsDivs, weightsWidth + 3);
-      this.setWidth(this.kcalsDivs, kcalsWidth + 10);
+      if (!this.isLiteVersionSetting) {
+        this.setWidth(this.kcalsDivs, kcalsWidth + 10);
+      }
       this.setWidth(this.percentsDivs, percentsWidth + 12);
 
       if (this.contDiv && this.contDiv.nativeElement) {

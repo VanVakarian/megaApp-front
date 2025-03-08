@@ -1,5 +1,4 @@
 import { ChartConfiguration } from 'chart.js';
-
 import { Settings } from './interfaces';
 
 export const FETCH_DAYS_RANGE_OFFSET: number = 10; // TODO: create settings item out of this constant
@@ -101,7 +100,11 @@ export const KCALS_CHART_SETTINGS: ChartConfiguration = {
         ticks: {},
       },
       y: {
-        ticks: { stepSize: 500 },
+        display: true,
+        ticks: {
+          display: true, // for configuring show/hide of kcals on y axis for lite version
+          stepSize: 500,
+        },
       },
     },
   },
@@ -152,6 +155,7 @@ export const DEFAULT_SETTINGS: Settings = {
   selectedChapterFood: false,
   selectedChapterMoney: false,
   darkTheme: false,
+  liteVersion: false,
   height: null,
   userName: '',
 };

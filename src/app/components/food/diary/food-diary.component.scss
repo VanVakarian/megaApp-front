@@ -21,3 +21,8 @@
 .mat-expansion-panel-header.mat-expanded .add-icon {
   transform: scale(1.5) rotate(45deg);
 }
+
+.hidden-if-isLiteVersion {
+  display: none;
+  width: 0 !important;
+}

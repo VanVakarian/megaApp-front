@@ -53,6 +53,7 @@ export interface Settings {
   selectedChapterFood: boolean;
   selectedChapterMoney: boolean;
   darkTheme: boolean;
+  liteVersion: boolean;
   height: number | null;
   userName: string;
   isUserAdmin?: boolean; // TODO[068]: Think of a better way to work with admin privileges
@@ -62,6 +63,7 @@ export enum KeyOfSettings {
   selectedChapterFood = 'selectedChapterFood',
   selectedChapterMoney = 'selectedChapterMoney',
   darkTheme = 'darkTheme',
+  liteVersion = 'liteVersion',
   height = 'height',
   userName = 'userName',
   isUserAdmin = 'isUserAdmin',

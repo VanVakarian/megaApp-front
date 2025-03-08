@@ -1,12 +1,12 @@
-<div class="lg:block hidden mb-4">
+<div class="hidden mb-4 lg:block">
   <mat-card>
-    <div class="my-2 w-full text-xl font-semibold text-center">Дневник</div>
+    <div class="w-full my-2 text-xl font-semibold text-center">Дневник</div>
   </mat-card>
 </div>
 
 <mat-accordion>
   <div class="flex gap-2">
-    <div class="mb-2 w-full">
+    <div class="w-full mb-2">
       <app-diary-nav-buttons />
     </div>
   </div>
@@ -16,9 +16,7 @@
     <mat-expansion-panel-header class="expansion-panel-arrow-indiactor-remove mat-expansion-panel-header-margins-decrease"
                                 [ngStyle]="setBackgroundStyle(todaysKcalsPercent)">
       <div class="overflow-hidden text-center whitespace-nowrap">
-        Съедено {{ todaysKcalsEaten }} ккал. от нормы
-        {{ todaysTargetKcals }}
-        ({{ formatSelectedDaysEatenPercent }}%)
+        {{ caloriesDisplayText }}
       </div>
     </mat-expansion-panel-header>
 
@@ -30,9 +28,9 @@
   <div class="mb-1"></div>
 
   <div #foodCont
-       class="tw-bg-color flex overflow-hidden gap-1 w-full text-base font-normal whitespace-nowrap">
+       class="flex w-full gap-1 overflow-hidden text-base font-normal tw-bg-color whitespace-nowrap">
     <div #foodName
-         class="tw-card-food-entry grow overflow-hidden text-center whitespace-nowrap">
+         class="overflow-hidden text-center tw-card-food-entry grow whitespace-nowrap">
       Блюдо:
     </div>
 
@@ -42,7 +40,8 @@
     </div>
 
     <div #foodKcals
-         class="text-center">
+         class="text-center"
+         [class.hidden-if-isLiteVersion]="isLiteVersionSetting">
       kcal
     </div>
 
@@ -62,9 +61,9 @@
                                   [ngStyle]="setBackgroundStyle(food.foodKcalPercentageOfDaysNorm)">
         <mat-panel-title class="mat-panel-title-margin-remove">
           <div #foodCont
-               class="flex overflow-hidden gap-1 w-full text-base font-normal whitespace-nowrap">
+               class="flex w-full gap-1 overflow-hidden text-base font-normal whitespace-nowrap">
             <div #foodName
-                 class="tw-card-food-entry grow overflow-hidden whitespace-nowrap">
+                 class="overflow-hidden tw-card-food-entry grow whitespace-nowrap">
               {{ food.foodName }}
             </div>
 
@@ -74,7 +73,8 @@
             </div>
 
             <div #foodKcals
-                 class="text-right">
+                 class="text-right"
+                 [class.hidden-if-isLiteVersion]="isLiteVersionSetting">
               {{ food.foodKcals }}
             </div>
 
