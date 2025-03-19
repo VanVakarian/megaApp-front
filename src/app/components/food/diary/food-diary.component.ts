@@ -83,15 +83,18 @@ export class FoodDiaryComponent implements OnInit, AfterViewInit, OnDestroy {
     return this.foodService.diary$$()?.[this.selectedDateIso]?.['targetKcals'];
   }
 
-  public get formatSelectedDaysEatenPercent(): number {
+  public get formattedSelectedDaysEatenPercent(): number {
     return Math.round(this.foodService.diaryFormatted$$()?.[this.selectedDateIso]?.['kcalsPercent'] * 10) / 10;
   }
 
   public get caloriesDisplayText(): string {
+    const percent = this.formattedSelectedDaysEatenPercent;
+    if (Number.isNaN(percent)) return '';
+
     if (this.isLiteVersionSetting) {
-      return `Съедено ${this.formatSelectedDaysEatenPercent}% от дневной нормы`;
+      return `Съедено ${percent}% от дневной нормы`;
     } else {
-      return `Съедено ${this.todaysKcalsEaten} ккал. от нормы ${this.todaysTargetKcals} (${this.formatSelectedDaysEatenPercent}%)`;
+      return `Съедено ${this.todaysKcalsEaten} ккал. от нормы ${this.todaysTargetKcals} (${percent}%)`;
     }
   }
 
@@ -113,7 +116,7 @@ export class FoodDiaryComponent implements OnInit, AfterViewInit, OnDestroy {
   public ngOnInit(): void {}
 
   public ngAfterViewInit(): void {
-    // setting columns width
+    // initial setting columns width
     combineLatest([this.weightsDivs.changes, this.kcalsDivs.changes, this.percentsDivs.changes]).subscribe(() =>
       this.adjustWidths(),
     );

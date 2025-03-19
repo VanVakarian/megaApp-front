@@ -15,8 +15,8 @@ export class FoodStatsService {
 
   public forceUpdateTrigger$$ = signal(0);
 
-  public selectedDateIdxStart$$: WritableSignal<number> = signal(-1);
-  public selectedDateIdxEnd$$: WritableSignal<number> = signal(Infinity);
+  public selectedDateIdxStart$$: WritableSignal<number> = signal(0);
+  public selectedDateIdxEnd$$: WritableSignal<number> = signal(0);
 
   constructor(private http: HttpClient) {
     // effect(() => { console.log('STATS has been updated:', this.stats$$(), Object.keys(this.stats$$()).length) }); // prettier-ignore

@@ -12,13 +12,13 @@ import { SettingsService } from '@app/services/settings.service';
 
 @Component({
   selector: 'app-food-screen',
+  templateUrl: './food-screen.component.html',
   standalone: true,
   imports: [CommonModule, FoodStatsComponent, FoodDiaryComponent, FoodCatalogueComponent],
-  templateUrl: './food-screen.component.html',
 })
 export class FoodScreenComponent implements OnInit {
-  section: string;
-  largeScreen: boolean;
+  public section: string;
+  public largeScreen: boolean;
   private mediaQueryList: MediaQueryList;
 
   constructor(
@@ -31,7 +31,7 @@ export class FoodScreenComponent implements OnInit {
     this.mediaQueryList = window.matchMedia('(min-width: 1024px)');
   }
 
-  ngOnInit() {
+  public ngOnInit() {
     firstValueFrom(this.foodService.getFoodDiaryFullUpdateRange());
     firstValueFrom(this.foodService.getCatalogueEntries());
     firstValueFrom(this.foodService.getMyCatalogueEntries());
@@ -48,7 +48,7 @@ export class FoodScreenComponent implements OnInit {
     });
   }
 
-  ngOnDestroy() {
+  public ngOnDestroy() {
     this.mediaQueryList.removeEventListener('change', this.updateScreenSize.bind(this));
   }
 

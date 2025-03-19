@@ -67,7 +67,7 @@ export class FoodStatsComponent implements OnInit, OnDestroy, AfterViewInit {
   public kcalsChart!: Chart;
 
   public selectedDateIdxStart: number = 0;
-  public selectedDateIdxEnd: number = Infinity;
+  public selectedDateIdxEnd: number = 0;
 
   public sliderStartLabel: string = '';
   public sliderEndLabel: string = '';
@@ -85,9 +85,22 @@ export class FoodStatsComponent implements OnInit, OnDestroy, AfterViewInit {
     const debouncedUpdate = this.createDebouncedChartUpdater();
 
     effect(() => {
+      // Generating labels
       const dates = this.foodStatsService.statsChartData$$().dates;
-      const selectedLowDate = dates[this.foodStatsService.selectedDateIdxStart$$()];
-      const selectedHighDate = dates[this.foodStatsService.selectedDateIdxEnd$$()];
+      const startIdx = this.foodStatsService.selectedDateIdxStart$$();
+      const endIdx = this.foodStatsService.selectedDateIdxEnd$$();
+
+      if (dates.length === 0 || startIdx < 0 || endIdx < 0 || startIdx >= dates.length || endIdx >= dates.length) {
+        this.sliderStartLabel = '';
+        this.sliderEndLabel = '';
+        this.selectedRangeLabel = '';
+        return;
+      }
+
+      const selectedLowDate = dates[startIdx];
+      const selectedHighDate = dates[endIdx];
+      if (!selectedLowDate || !selectedHighDate) return;
+
       this.sliderStartLabel = formatDateTicks(selectedLowDate);
       this.sliderEndLabel = formatDateTicks(selectedHighDate);
       this.selectedRangeLabel = this.formatSelectedRange();
