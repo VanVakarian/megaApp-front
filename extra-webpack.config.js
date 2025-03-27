@@ -4,7 +4,7 @@ const childProcess = require('child_process');
 const fs = require('fs');
 const https = require('https');
 
-const getGitInfo = () => {
+const getLatestGitCommitHash = () => {
   try {
     return childProcess.execSync('git rev-parse --short HEAD').toString().trim();
   } catch (e) {
@@ -12,7 +12,7 @@ const getGitInfo = () => {
   }
 };
 
-const getCommitDateTime = () => {
+const getLatestGitCommitDateTime = () => {
   try {
     const timestamp = childProcess.execSync('git show -s --format=%ci HEAD').toString().trim();
     return new Date(timestamp).toLocaleString('ru-RU', { dateStyle: 'short', timeStyle: 'medium' });
@@ -21,14 +21,14 @@ const getCommitDateTime = () => {
   }
 };
 
-// making a file in assets with latest commit info
+// making a file in assets that shows the latest commit hash, and date-time of both front and back upon build
 class BuildInfoPlugin {
   apply(compiler) {
     compiler.hooks.done.tap('BuildInfoPlugin', () => {
       const buildInfo = `
         const frontInfo = {
-          commitHash: "${getGitInfo()}",
-          commitDateTime: "${getCommitDateTime()}"
+          commitHash: "${getLatestGitCommitHash()}",
+          commitDateTime: "${getLatestGitCommitDateTime()}"
         };
 
         let backendInfo = {
