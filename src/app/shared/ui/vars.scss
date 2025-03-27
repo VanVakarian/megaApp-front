@@ -1,0 +1,72 @@
+:root {
+  --unit-1: 4px;
+  --unit-2: 8px;
+  --unit-3: 12px;
+  --unit-4: 16px;
+  --unit-5: 20px;
+  --unit-6: 24px;
+  --unit-7: 28px;
+  --unit-8: 32px;
+  --unit-9: 36px;
+  --unit-10: 40px;
+  --unit-11: 44px;
+  --unit-12: 48px;
+  --unit-14: 56px;
+  --unit-16: 64px;
+  --unit-20: 80px;
+  --unit-24: 96px;
+  --unit-28: 112px;
+  --unit-32: 128px;
+  --unit-36: 144px;
+  --unit-40: 160px;
+  --unit-44: 176px;
+  --unit-48: 192px;
+  --unit-52: 208px;
+  --unit-56: 224px;
+  --unit-60: 240px;
+  --unit-64: 256px;
+  --unit-72: 288px;
+  --unit-80: 320px;
+  --unit-96: 384px;
+
+  --unit--1: -4px;
+  --unit--2: -8px;
+  --unit--3: -12px;
+  --unit--4: -16px;
+  --unit--6: -24px;
+  --unit--8: -32px;
+  --unit--12: -48px;
+  --unit--16: -64px;
+}
+
+@mixin margin($size) {
+  margin: var(--unit-#{$size});
+}
+
+@mixin padding($size) {
+  padding: var(--unit-#{$size});
+}
+
+@mixin mx($size) {
+  margin-left: var(--unit-#{$size});
+  margin-right: var(--unit-#{$size});
+}
+
+@mixin my($size) {
+  margin-top: var(--unit-#{$size});
+  margin-bottom: var(--unit-#{$size});
+}
+
+@mixin px($size) {
+  padding-left: var(--unit-#{$size});
+  padding-right: var(--unit-#{$size});
+}
+
+@mixin py($size) {
+  padding-top: var(--unit-#{$size});
+  padding-bottom: var(--unit-#{$size});
+}
+
+@mixin gap($size) {
+  gap: var(--unit-#{$size});
+}

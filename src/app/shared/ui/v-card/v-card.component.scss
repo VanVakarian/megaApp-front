@@ -1,0 +1,130 @@
+@import "../../ui/vars.scss";
+
+:host {
+  display: block;
+  position: relative;
+  transition: all 0.2s ease-in-out;
+
+  &.elevation-0 {
+    box-shadow: none;
+  }
+
+  &.elevation-1 {
+    box-shadow: 0 2px 1px -1px rgba(0, 0, 0, .2), 0 1px 1px 0 rgba(0, 0, 0, .14), 0 1px 3px 0 rgba(0, 0, 0, .12);
+  }
+
+  &.elevation-2 {
+    box-shadow: 0 3px 1px -2px rgba(0, 0, 0, .2), 0 2px 2px 0 rgba(0, 0, 0, .14), 0 1px 5px 0 rgba(0, 0, 0, .12);
+  }
+
+  &.elevation-3 {
+    box-shadow: 0 3px 3px -2px rgba(0, 0, 0, .2), 0 3px 4px 0 rgba(0, 0, 0, .14), 0 1px 8px 0 rgba(0, 0, 0, .12);
+  }
+
+  &.elevation-4 {
+    box-shadow: 0 2px 4px -1px rgba(0, 0, 0, .2), 0 4px 5px 0 rgba(0, 0, 0, .14), 0 1px 10px 0 rgba(0, 0, 0, .12);
+  }
+
+  &.elevation-5 {
+    box-shadow: 0 3px 5px -1px rgba(0, 0, 0, .2), 0 5px 8px 0 rgba(0, 0, 0, .14), 0 1px 14px 0 rgba(0, 0, 0, .12);
+  }
+
+  &.full-width {
+    width: 100%;
+  }
+
+  &.hoverable:not(.disabled) {
+    cursor: pointer;
+
+    &:hover {
+      transform: translateY(var(--unit--1));
+      box-shadow: 0 var(--unit-1) var(--unit-2) rgba(0, 0, 0, 0.2);
+    }
+  }
+
+  &.outlined {
+    box-shadow: none;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+  }
+
+  &.disabled {
+    opacity: 0.6;
+    pointer-events: none;
+  }
+
+  &.no-padding {
+    .card-content {
+      padding: 0;
+    }
+  }
+}
+
+.v-card {
+  display: flex;
+  flex-direction: column;
+  background-color: #fff;
+  border-radius: var(--unit-1);
+  overflow: hidden;
+  position: relative;
+
+  &.loading {
+    pointer-events: none;
+  }
+}
+
+[card-header] {
+  padding: var(--unit-4) var(--unit-4) 0;
+}
+
+.card-content {
+  padding: var(--unit-4);
+  flex: 1;
+}
+
+[card-footer] {
+  padding: 0 var(--unit-4) var(--unit-4);
+}
+
+.card-loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(255, 255, 255, 0.7);
+  z-index: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.spinner {
+  width: var(--unit-10);
+  height: var(--unit-10);
+  border-radius: 50%;
+  border: 3px solid transparent;
+  border-top-color: var(--primary-color, #3f51b5);
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+// Dark theme support
+:host-context(.dark-theme) {
+  .v-card {
+    background-color: #2d2d2d;
+    color: #fff;
+  }
+
+  &.outlined {
+    border-color: rgba(255, 255, 255, 0.12);
+  }
+
+  .card-loading-overlay {
+    background-color: rgba(45, 45, 45, 0.7);
+  }
+}

@@ -1,0 +1,19 @@
+<div class="v-card"
+     [class.loading]="loading"
+     (click)="onClick($event)">
+
+  @if(loading) {
+    <div class="card-loading-overlay">
+      <div class="spinner"></div>
+    </div>
+  }
+
+  <ng-content select="[card-header]"></ng-content>
+
+  <div class="card-content">
+    <ng-content></ng-content>
+  </div>
+
+  <ng-content select="[card-footer]"></ng-content>
+
+</div>
