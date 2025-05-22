@@ -4,6 +4,8 @@
 // Angular material themes
 @use '@angular/material' as mat;
 
+@import './app/shared/ui/vars.css';
+
 @include mat.core();
 
 $light-primary: mat.define-palette(mat.$indigo-palette);

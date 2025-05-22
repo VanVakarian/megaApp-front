@@ -1,0 +1,14 @@
+.ui-sample-container {
+  padding: var(--unit-5);
+}
+
+.components-container {
+  margin-top: var(--unit-5);
+}
+
+.col {
+  width: var(--unit-96);
+  display: flex;
+  flex-direction: column;
+  /* padding: var(--unit-5); */
+}
