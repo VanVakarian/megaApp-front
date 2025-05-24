@@ -10,7 +10,4 @@ import { VCardComponent } from '@app/shared/ui/v-card/v-card.component';
 })
 export class UiShowcaseComponent {
   constructor() {}
-  public testClick(event: MouseEvent): void {
-    console.log('Card clicked!', event);
-  }
 }

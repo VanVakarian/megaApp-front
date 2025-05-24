@@ -2,7 +2,7 @@ import { Routes } from '@angular/router';
 import { FoodScreenComponent } from '@app/components/food/food-screen.component';
 import { MoneyScreenComponent } from '@app/components/money/money-screen.component';
 import { SettingsPageComponent } from '@app/components/settings/settings-page.component';
-import { UiShowcaseComponent } from '@app/components/ui-sample/ui-showcase.component';
+import { UiShowcaseComponent } from '@app/components/ui-showcase/ui-showcase.component';
 import { authResolver } from '@app/services/auth.resolver';
 import { isChapterSelected } from '@app/services/is-chapter-selected.guard';
 

@@ -1,0 +1,18 @@
+:host {
+  display: flex;
+  flex-wrap: wrap;
+  flex-direction: column;
+
+  gap: var(--unit-4);
+  padding: var(--unit-10);
+}
+
+.col {
+  width: var(--unit-96);
+}
+
+/* Dynamic columns: min-width with space-filling */
+/* .col {
+  flex: 1 1 var(--unit-96);
+  min-width: var(--unit-96);
+} */

@@ -50,11 +50,13 @@ $dark-theme: mat.define-dark-theme((color: (primary: $dark-primary, accent: $dar
   }
 
   .tw-bg-color-80 {
-    @apply bg-slate-100/90 dark:bg-slate-900/90
+    // @apply bg-slate-100/90 dark:bg-slate-900/90
+    background: #ebf3fa;
   }
 
   .tw-bg-color {
-    @apply bg-slate-100 dark:bg-slate-900
+    // @apply bg-slate-100 dark:bg-slate-900
+    background: #ebf3fa;
   }
 
   .tw-text-color {
