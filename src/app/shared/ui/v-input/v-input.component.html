@@ -1,0 +1,23 @@
+@if (label()) {
+  <label class="label">{{ label() }}</label>
+}
+
+<div class="input-wrapper"
+     [class.focused]="isFocused"
+     [class.disabled]="disabled()">
+  <input #inputElement
+         [type]="type()"
+         [placeholder]="placeholder()"
+         [value]="value"
+         [disabled]="disabled()"
+         [readonly]="readonly()"
+         [required]="required()"
+         (input)="onInputChange($event)"
+         (focus)="onFocus()"
+         (blur)="onBlur()"
+         class="input-field" />
+</div>
+
+@if (errorMessage()) {
+  <div class="error-message">{{ errorMessage() }}</div>
+}

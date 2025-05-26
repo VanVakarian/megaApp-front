@@ -1,0 +1,78 @@
+@import url('../../ui/vars.css');
+
+:host {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.label {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  margin-left: calc(var(--unit-2));
+  display: block;
+}
+
+.input-wrapper {
+  border-radius: var(--unit-1);
+  box-sizing: border-box;
+  width: 100%;
+  display: flex;
+  position: relative;
+  transition: all 0.2s ease;
+
+  box-shadow:
+    inset 3px 3px 3px var(--shadow-dark-light),
+    inset -3px -3px 3px var(--shadow-light-strong);
+
+  background: var(--color-bg-default);
+
+  &.disabled {
+    opacity: 0.6;
+    pointer-events: none;
+  }
+
+  &.focused {
+    box-shadow:
+      inset 4px 4px 4px var(--shadow-dark-medium),
+      inset -4px -4px 4px var(--shadow-light-full);
+  }
+}
+
+.input-field {
+  background: transparent;
+  border: none;
+  outline: none;
+  padding: 0 var(--unit-2);
+  font-size: 1rem;
+  color: var(--color-text-default);
+  width: 100%;
+  font-family: inherit;
+
+  &::placeholder {
+    font-style: italic;
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+  }
+
+  &:read-only {
+    cursor: default;
+  }
+
+  /* Preserving neumorphic effect in autofilled inputs */
+  &:-webkit-autofill,
+  &:-webkit-autofill:hover,
+  &:-webkit-autofill:focus,
+  &:-webkit-autofill:active {
+    -webkit-background-clip: text;
+  }
+}
+
+.error-message {
+  color: var(--color-text-error);
+  font-size: 0.75rem;
+  margin-left: calc(var(--unit-2));
+  font-weight: 500;
+}

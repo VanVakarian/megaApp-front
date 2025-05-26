@@ -1,16 +1,16 @@
 @import url('../../ui/vars.css');
 
 :host {
-  border-radius: var(--unit-3);
-  padding: var(--unit-3);
+  border-radius: var(--v-card-border-radius, var(--unit-2));
+  padding: var(--v-card-padding, var(--unit-2));
   box-sizing: border-box;
   width: 100%;
   display: flex;
   flex-direction: column;
 
   box-shadow:
-    3px 3px 6px rgba(174, 174, 192, 0.3),
-    -3px -3px 6px rgba(255, 255, 255, 0.9);
+    3px 3px 6px var(--shadow-dark-light),
+    -3px -3px 6px var(--shadow-light-strong);
 
   /* more complex shadows, decide later: */
   /* box-shadow:
@@ -21,7 +21,7 @@
     6px 6px 12px rgba(174, 174, 192, 0.08),
     -6px -6px 12px rgba(255, 255, 255, 0.5); */
 
-  background: #ebf3fa;
+  background: var(--color-bg-default);
 
   /* gradient for dimensionality, decide later: */
   /* background: linear-gradient(120deg, #ebf2f9 19.14%, #c6d7eb 154.68%); */

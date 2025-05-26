@@ -1,4 +1,5 @@
 :root {
+  --unit-0: 0;
   --unit-1: 4px;
   --unit-2: 8px;
   --unit-3: 12px;
@@ -37,4 +38,28 @@
   --unit--8: -32px;
   --unit--12: -48px;
   --unit--16: -64px;
+
+  --color-text-default: #374151;
+  --color-text-muted: #6b7280;
+  --color-text-error: #ef4444;
+
+  --color-bg-default: #ebf3fa;
+
+  --shadow-dark-light: rgba(174, 174, 192, 0.3);
+  --shadow-dark-medium: rgba(174, 174, 192, 0.5);
+  --shadow-light-strong: rgba(255, 255, 255, 0.9);
+  --shadow-light-full: rgba(255, 255, 255, 1);
+
+  /* --color-text-disabled */
+  /* --color-text-accent */
+  /* --color-bg-subtle */
+  /* --color-bg-accent */
+  /* --color-bg-error */
+  /* --color-border-default */
+  /* --color-border-muted */
+  /* --color-border-error */
+  /* --color-primary */
+  /* --color-success */
+  /* --color-warning */
+  /* --color-error */
 }

@@ -1,11 +1,32 @@
 <div class="col col-01">
-  <v-card> Карточка 1 </v-card>
-</div>
+  <v-card>Карточка по умолчанию (borderRadius=2, padding=2)</v-card>
 
-<div class="col col-02">
-  <v-card> Карточка 2 </v-card>
-</div>
+  <v-card [borderRadius]="1"
+          [padding]="1">
+    Компактная карточка (маленькие значения)
+  </v-card>
 
-<div class="col col-03">
-  <v-card> Карточка 3 </v-card>
+  <v-card [borderRadius]="0">
+    Карточка без скругления
+    <v-input #testInput />
+  </v-card>
+
+  <v-input label="Имя пользователя"
+           placeholder="Введите ваше имя" />
+
+  <v-input label="Email"
+           type="email"
+           placeholder="example@email.com" />
+
+  <v-input label="Пароль"
+           type="password"
+           placeholder="Введите пароль" />
+
+  <v-input label="Отключенное поле"
+           placeholder="Это поле отключено"
+           [disabled]="true" />
+
+  <v-input label="Поле с ошибкой"
+           placeholder="Введите что-то"
+           errorMessage="Это поле обязательно для заполнения" />
 </div>
