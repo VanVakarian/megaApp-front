@@ -11,10 +11,17 @@
 .col {
   display: flex;
   flex-wrap: wrap;
-
   gap: var(--unit-4);
-
   width: var(--unit-96);
+}
+
+.prefix {
+  padding: 0 var(--unit-2);
+}
+
+.postfix {
+  width: var(--unit-7);
+  height: var(--unit-7);
 }
 
 /* Dynamic columns: min-width with space-filling */

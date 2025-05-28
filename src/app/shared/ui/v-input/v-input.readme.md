@@ -7,19 +7,48 @@ The component has the following structure:
 :host
 ├── label (outside neumorphic frame)
 ├── .input-wrapper (neumorphic frame)
-│   └── input (input field itself)
+│   ├── [v-prefix] (optional prefix content)
+│   ├── input (input field itself)
+│   └── [v-postfix] (optional postfix content)
 └── error-message (outside neumorphic frame)
 ```
 
-**Key Feature**: The neumorphic frame is applied only to the input field, while the label and error message are positioned outside this visual container.
+**Key Features**:
+- The neumorphic frame is applied to the entire input container including prefix and postfix
+- Prefix and postfix replace input padding, taking content space or minimum 8px (var(--unit-2))
+- Input field takes all remaining space (flex: 1)
+- Label and error message are positioned outside the visual container
 
 ## Basic Usage
 
 ```html
+<!-- Simple input -->
 <v-input
   label="Username"
   placeholder="Enter your name"
 />
+
+<!-- Input with postfix -->
+<v-input
+  label="Search"
+  placeholder="Type to search...">
+  <button v-postfix type="button">🔍</button>
+</v-input>
+
+<!-- Input with prefix -->
+<v-input
+  label="Price"
+  placeholder="0.00">
+  <span v-prefix>$</span>
+</v-input>
+
+<!-- Input with both prefix and postfix -->
+<v-input
+  label="Amount"
+  placeholder="Enter amount">
+  <span v-prefix>$</span>
+  <span v-postfix>USD</span>
+</v-input>
 ```
 
 ## Usage with Reactive Forms
@@ -97,35 +126,66 @@ export class ExampleComponent {
   label="Username"
   placeholder="Enter your name" />
 
-<!-- Email field -->
+<!-- Email field with icon postfix -->
 <v-input
   label="Email"
   type="email"
-  placeholder="example@email.com" />
+  placeholder="example@email.com">
+  <i v-postfix class="fa fa-envelope"></i>
+</v-input>
 
-<!-- Password field -->
+<!-- Password field with visibility toggle -->
 <v-input
   label="Password"
   type="password"
-  placeholder="Enter password" />
+  placeholder="Enter password">
+  <button v-postfix type="button">👁️</button>
+</v-input>
 
-<!-- Disabled field -->
+<!-- Currency input with prefix and postfix -->
 <v-input
-  label="Disabled field"
-  placeholder="This field is disabled"
-  [disabled]="true" />
+  label="Price"
+  type="number"
+  placeholder="0.00">
+  <span v-prefix>$</span>
+  <span v-postfix>USD</span>
+</v-input>
 
-<!-- Field with error -->
+<!-- Search input with icon postfix -->
 <v-input
-  label="Field with error"
-  placeholder="Enter something"
-  errorMessage="This field is required" />
+  label="Search"
+  placeholder="Search products...">
+  <button v-postfix type="button" class="search-btn">
+    <svg width="16" height="16" viewBox="0 0 24 24">
+      <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+    </svg>
+  </button>
+</v-input>
 
-<!-- Read-only field -->
+<!-- Disabled field with prefix -->
 <v-input
-  label="Read-only field"
+  label="Account Balance"
+  placeholder="Loading..."
+  [disabled]="true">
+  <span v-prefix>$</span>
+</v-input>
+
+<!-- Field with error and postfix -->
+<v-input
+  label="Phone Number"
+  placeholder="Enter phone"
+  errorMessage="Invalid phone number format">
+  <span v-prefix>+1</span>
+  <button v-postfix type="button">📱</button>
+</v-input>
+
+<!-- Read-only field with prefix -->
+<v-input
+  label="ID"
   [readonly]="true"
-  placeholder="Cannot edit this" />
+  value="USER_12345">
+  <span v-prefix>#</span>
+</v-input>
 ```
 
 ## Styling
@@ -158,3 +218,52 @@ The component is fully compatible with Angular Reactive Forms and Template-drive
 - Automatic browser autofill handling
 - Support for all standard input attributes
 - Built-in validation state support
+
+## Content Projection API
+
+### Prefix Slot
+Add content before the input field:
+```html
+<v-input label="Price">
+  <span v-prefix>$</span>
+</v-input>
+```
+
+### Postfix Slot
+Add content after the input field:
+```html
+<v-input label="Search">
+  <button v-postfix type="button">🔍</button>
+</v-input>
+```
+
+### Combined Usage
+Use both prefix and postfix:
+```html
+<v-input label="Amount">
+  <span v-prefix>$</span>
+  <select v-postfix>
+    <option>USD</option>
+    <option>EUR</option>
+  </select>
+</v-input>
+```
+
+### Interactive Elements
+Prefix and postfix can contain interactive elements:
+```html
+<v-input label="Password" type="password">
+  <button v-postfix
+          type="button"
+          (click)="togglePasswordVisibility()">
+    {{ showPassword ? '🙈' : '👁️' }}
+  </button>
+</v-input>
+```
+
+### Styling Guidelines
+- Prefix and postfix elements should be styled individually as needed
+- They are vertically centered within the input wrapper via align-items: center
+- They replace input padding, ensuring minimum 8px spacing (var(--unit-2)) even when empty
+- Input field takes all remaining space (flex: 1)
+- Both are included within the neumorphic frame

@@ -5,6 +5,11 @@
 <div class="input-wrapper"
      [class.focused]="isFocused"
      [class.disabled]="disabled()">
+
+  <div class="prefix">
+    <ng-content select="[v-prefix]" />
+  </div>
+
   <input #inputElement
          [type]="type()"
          [placeholder]="placeholder()"
@@ -16,6 +21,11 @@
          (focus)="onFocus()"
          (blur)="onBlur()"
          class="input-field" />
+
+  <div class="postfix">
+    <ng-content select="[v-postfix]" />
+  </div>
+
 </div>
 
 @if (errorMessage()) {

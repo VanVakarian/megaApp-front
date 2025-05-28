@@ -8,7 +8,13 @@
 
   <v-card [borderRadius]="0">
     Карточка без скругления
-    <v-input #testInput />
+    <v-input #testInput>
+      <span v-prefix
+            class="prefix">$</span>
+      <button v-postfix
+              type="button"
+              class="postfix">🔍</button>
+    </v-input>
   </v-card>
 
   <v-input label="Имя пользователя"

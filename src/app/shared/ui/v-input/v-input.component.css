@@ -18,6 +18,7 @@
   box-sizing: border-box;
   width: 100%;
   display: flex;
+  align-items: center;
   position: relative;
   transition: all 0.2s ease;
 
@@ -37,16 +38,20 @@
       inset 4px 4px 4px var(--shadow-dark-medium),
       inset -4px -4px 4px var(--shadow-light-full);
   }
+
+  .prefix,
+  .postfix {
+    min-width: var(--unit-2);
+  }
 }
 
 .input-field {
   background: transparent;
   border: none;
   outline: none;
-  padding: 0 var(--unit-2);
   font-size: 1rem;
   color: var(--color-text-default);
-  width: 100%;
+  flex: 1;
   font-family: inherit;
 
   &::placeholder {
