@@ -1,17 +1,17 @@
 import { AfterViewInit, Component, OnInit, ViewChild } from '@angular/core';
-import { VCardComponent } from '@app/shared/ui/v-card/v-card.component';
-import { VInputComponent } from '@app/shared/ui/v-input/v-input.component';
+import { VCard } from '@app/shared/ui/v-card/v-card';
+import { VInput } from '@app/shared/ui/v-input/v-input';
 
 @Component({
   selector: 'app-ui-showcase',
   templateUrl: './ui-showcase.component.html',
   styleUrl: './ui-showcase.component.css',
   standalone: true,
-  imports: [VCardComponent, VInputComponent],
+  imports: [VCard, VInput],
 })
 export class UiShowcaseComponent implements AfterViewInit, OnInit {
   @ViewChild('testInput')
-  protected inputComponent!: VInputComponent;
+  protected inputComponent!: VInput;
 
   constructor() {}
 

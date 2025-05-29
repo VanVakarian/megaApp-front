@@ -131,7 +131,7 @@ The component uses neumorphic styling with the following characteristics:
 ### CSS Variables (from vars.css):
 - **Spacing units**: `--unit-0` to `--unit-96` (from 0px to 384px)
 - **Background**: `--color-bg-default` (#ebf3fa)
-- **Shadows**: 
+- **Shadows**:
   - `--shadow-dark-light` - soft dark shadow for depth
   - `--shadow-light-strong` - bright light shadow for highlight
 

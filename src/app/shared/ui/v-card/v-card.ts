@@ -3,11 +3,11 @@ import { CssUnitValue } from '../types';
 
 @Component({
   selector: 'v-card',
-  templateUrl: './v-card.component.html',
-  styleUrl: './v-card.component.css',
+  templateUrl: './v-card.html',
+  styleUrl: './v-card.css',
   standalone: true,
 })
-export class VCardComponent {
+export class VCard {
   public readonly borderRadius = input<CssUnitValue>(2);
   public readonly padding = input<CssUnitValue>(2);
 
@@ -23,7 +23,7 @@ export class VCardComponent {
     return `var(--unit-${this.padding()})`;
   }
 
-  onClick(event: MouseEvent): void {
+  protected onClick(event: MouseEvent): void {
     this.onCardclick.emit(event);
   }
 }
