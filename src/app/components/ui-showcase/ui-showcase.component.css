@@ -24,6 +24,12 @@
   height: var(--unit-7);
 }
 
+.buttons-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--unit-3);
+}
+
 /* Dynamic columns: min-width with space-filling */
 /* .col {
   flex: 1 1 var(--unit-96);

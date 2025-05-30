@@ -1,0 +1,96 @@
+@import url('../../ui/vars.css');
+
+:host {
+  display: inline-block;
+}
+
+button {
+  border: none;
+  outline: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 500;
+
+  padding: var(--unit-2) var(--unit-4);
+  border-radius: var(--unit-1);
+
+  background: var(--color-bg-default);
+  color: var(--color-text-default);
+
+  transition: all 0.2s ease;
+
+  /* Default: no shadows */
+  /* box-shadow: none; */
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+}
+
+/* Flat directive - with subtle press animation */
+:host([flat]) button {
+  box-shadow: none;
+
+  &:hover {
+    box-shadow:
+      2px 2px 4px var(--shadow-dark-light),
+      -2px -2px 4px var(--shadow-light-strong);
+  }
+
+  &:active {
+    box-shadow:
+      inset 1px 1px 2px var(--shadow-dark-light),
+      inset -1px -1px 2px var(--shadow-light-strong);
+  }
+}
+
+/* Raised directive */
+:host([raised]) button {
+  box-shadow:
+    3px 3px 6px var(--shadow-dark-light),
+    -3px -3px 6px var(--shadow-light-strong);
+
+  &:hover {
+    box-shadow:
+      4px 4px 8px var(--shadow-dark-light),
+      -4px -4px 8px var(--shadow-light-strong);
+  }
+
+  &:active {
+    box-shadow:
+      inset 2px 2px 4px var(--shadow-dark-light),
+      inset -2px -2px 4px var(--shadow-light-strong);
+  }
+}
+
+/* Primary directive */
+:host([primary]) button {
+  color: var(--color-on-primary, white);
+  box-shadow:
+    3px 3px 6px var(--shadow-dark-light),
+    -3px -3px 6px var(--shadow-light-strong);
+
+  --angle: 155deg;
+  --start-pos: -50%;
+  --end-pos: 150%;
+  --lighter-color: #3f51b5;
+  --darker-color: #717dc1;
+  background: linear-gradient(var(--angle), var(--darker-color) var(--start-pos), var(--lighter-color) var(--end-pos));
+
+  &:active {
+    background: linear-gradient(
+      var(--angle),
+      var(--lighter-color) var(--start-pos),
+      var(--darker-color) var(--end-pos)
+    );
+  }
+
+  &:hover {
+    box-shadow:
+      4px 4px 8px var(--shadow-dark-light),
+      -4px -4px 8px var(--shadow-light-strong);
+  }
+}
