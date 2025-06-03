@@ -163,43 +163,28 @@ export interface StatsChartData {
 
 //                                                                         MONEY
 
-// export interface Currency {
-//   id: number;
-//   title: string;
-//   ticker: string;
-//   symbol: string;
-//   symbol_pos: string;
-//   whitespace: boolean;
-// }
-
-// export interface Bank {
-//   id: number;
-//   title: string;
-// }
-
-// export interface Account {
-//   id: number;
-//   title: string;
-//   bank_id: number;
-//   currency_id: number;
-//   invest: boolean;
-//   kind: string;
-// }
-
-// export interface Category {
-//   id: number;
-//   title: string;
-//   kind: string;
-// }
-
-export interface Notification {
-  id: number;
-  message: string;
-  bgColour: string;
-  textColour: string;
-  borderColour: string;
-  time: number;
+export enum SymbolPosition {
+  BEFORE = 'before',
+  AFTER = 'after',
 }
+
+export interface Currency {
+  id?: number;
+  title: string;
+  ticker: string;
+  symbol: string;
+  symbolPosEnum: SymbolPosition;
+  whitespace: boolean;
+}
+
+// export interface Notification {
+//   id: number;
+//   message: string;
+//   bgColour: string;
+//   textColour: string;
+//   borderColour: string;
+//   time: number;
+// }
 
 // export interface Transaction {
 //   id: number;
