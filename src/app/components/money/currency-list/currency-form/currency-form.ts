@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
+import { Component, input, OnInit, output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MoneyService } from '../../../../services/money.service';
 import { Currency, SymbolPosition } from '../../../../shared/interfaces';
@@ -11,14 +11,10 @@ import { Currency, SymbolPosition } from '../../../../shared/interfaces';
   imports: [CommonModule, FormsModule],
 })
 export class CurrencyForm implements OnInit {
-  @Input()
-  public currency: Currency | null = null;
+  public readonly currency = input<Currency | null>(null);
 
-  @Output()
-  public readonly saved = new EventEmitter<void>();
-
-  @Output()
-  public readonly cancelled = new EventEmitter<void>();
+  public readonly saved = output<void>();
+  public readonly cancelled = output<void>();
 
   // Form fields
   protected title = '';
@@ -30,8 +26,9 @@ export class CurrencyForm implements OnInit {
   constructor(private moneyService: MoneyService) {}
 
   public ngOnInit(): void {
-    if (this.currency) {
-      this.fillForm(this.currency);
+    const currentCurrency = this.currency();
+    if (currentCurrency) {
+      this.fillForm(currentCurrency);
     }
   }
 
@@ -40,7 +37,7 @@ export class CurrencyForm implements OnInit {
     this.ticker = currency.ticker;
     this.symbol = currency.symbol;
     this.symbolPosEnum = currency.symbolPosEnum;
-    this.whitespace = currency.whitespace;
+    this.whitespace = Boolean(currency.whitespace);
   }
 
   protected save(): void {
@@ -51,19 +48,18 @@ export class CurrencyForm implements OnInit {
       ticker: this.ticker,
       symbol: this.symbol,
       symbolPosEnum: this.symbolPosEnum,
-      whitespace: this.whitespace,
+      whitespace: Boolean(this.whitespace),
     };
 
-    if (this.currency?.id) {
-      // Update existing
-      currencyData.id = this.currency.id;
+    const currentCurrency = this.currency();
+    if (currentCurrency?.id) {
+      currencyData.id = currentCurrency.id;
       this.moneyService.updateCurrency(currencyData).subscribe((success) => {
         if (success) {
           this.saved.emit();
         }
       });
     } else {
-      // Create new
       this.moneyService.createCurrency(currencyData).subscribe((success) => {
         if (success) {
           this.saved.emit();
@@ -77,6 +73,6 @@ export class CurrencyForm implements OnInit {
   }
 
   protected isEditing(): boolean {
-    return !!this.currency?.id;
+    return !!this.currency()?.id;
   }
 }

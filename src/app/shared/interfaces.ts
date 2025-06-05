@@ -177,6 +177,19 @@ export interface Currency {
   whitespace: boolean;
 }
 
+export enum UsedFor {
+  TRANSACTION = 'transaction',
+  ACCOUNT = 'account',
+  ASSET = 'asset',
+}
+
+export interface Category {
+  id?: number;
+  name: string;
+  usedFor: UsedFor;
+  groupKey?: string | null;
+}
+
 // export interface Notification {
 //   id: number;
 //   message: string;

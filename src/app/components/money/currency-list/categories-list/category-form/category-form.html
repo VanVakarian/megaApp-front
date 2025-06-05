@@ -1,0 +1,43 @@
+<div class="bg-gray-50 p-6 rounded-lg">
+  <h3 class="mb-4 text-lg font-semibold">{{ isEditing() ? 'Edit Category' : 'Add New Category' }}</h3>
+
+  <div class="space-y-4">
+    <div>
+      <label class="block mb-1 text-sm font-medium text-gray-700">Name:</label>
+      <input type="text"
+             placeholder="Food & Dining"
+             [(ngModel)]="name"
+             class="focus:outline-none focus:ring-2 focus:ring-blue-500 w-full px-3 py-2 border border-gray-300 rounded-md">
+    </div>
+
+    <div>
+      <label class="block mb-1 text-sm font-medium text-gray-700">Used For:</label>
+      <select [(ngModel)]="usedFor"
+              class="focus:outline-none focus:ring-2 focus:ring-blue-500 w-full px-3 py-2 border border-gray-300 rounded-md">
+        <option *ngFor="let value of getUsedForValues()"
+                [value]="value">
+          {{ value | titlecase }}
+        </option>
+      </select>
+    </div>
+
+    <div>
+      <label class="block mb-1 text-sm font-medium text-gray-700">Group Key (optional):</label>
+      <input type="text"
+             placeholder="expenses"
+             [(ngModel)]="groupKey"
+             class="focus:outline-none focus:ring-2 focus:ring-blue-500 w-full px-3 py-2 border border-gray-300 rounded-md">
+    </div>
+
+    <div class="flex gap-2">
+      <button (click)="save()"
+              class="hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 px-4 py-2 text-white bg-blue-600 rounded-md">
+        {{ isEditing() ? 'Update' : 'Create' }}
+      </button>
+      <button (click)="cancel()"
+              class="hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 px-4 py-2 text-white bg-gray-600 rounded-md">
+        Cancel
+      </button>
+    </div>
+  </div>
+</div>

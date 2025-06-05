@@ -2,31 +2,37 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, signal, WritableSignal } from '@angular/core';
 import { Observable, of, Subject } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
-import { Currency, ServerResponseBasic } from '../shared/interfaces';
+import { Category, Currency, ServerResponseBasic } from '../shared/interfaces';
 
-interface CurrenciesResponse {
+interface BaseResponse {
   success: boolean;
-  data: Currency[];
 }
 
-interface CreateCurrencyResponse {
-  success: boolean;
-  data: { id: number };
+interface DataResponse<T> extends BaseResponse {
+  data: T;
 }
 
-interface BasicResponse {
-  success: boolean;
+interface MessageResponse extends BaseResponse {
   message?: string;
 }
+
+interface CurrenciesResponse extends DataResponse<Currency[]> {}
+
+interface CategoriesResponse extends DataResponse<Category[]> {}
+
+interface CreateCurrencyResponse extends DataResponse<{ id: number }> {}
+
+interface CreateCategoryResponse extends DataResponse<{ id: number }> {}
+
+interface BasicResponse extends MessageResponse {}
 
 @Injectable({
   providedIn: 'root',
 })
 export class MoneyService {
-  // Currencies
   public currencies$$: WritableSignal<Currency[]> = signal([]);
+  public categories$$: WritableSignal<Category[]> = signal([]);
 
-  // Subjects for notifications
   public postRequestResult$ = new Subject<ServerResponseBasic>();
 
   constructor(private http: HttpClient) {
@@ -37,6 +43,7 @@ export class MoneyService {
 
   public initializeData(): void {
     this.getCurrencies().subscribe();
+    this.getCategories().subscribe();
   }
 
   //                                                                                                          CURRENCIES
@@ -140,6 +147,110 @@ export class MoneyService {
   private removeCurrencyFromState(currencyId: number): void {
     this.currencies$$.update((currencies: Currency[]) =>
       currencies.filter((currency: Currency) => currency.id !== currencyId),
+    );
+  }
+
+  //                                                                                                          CATEGORIES
+
+  public getCategories(): Observable<Category[]> {
+    return this.http.get<CategoriesResponse>('/api/money/categories').pipe(
+      map((response: CategoriesResponse) => {
+        if (response.success && response.data) {
+          this.categories$$.set(response.data);
+          return response.data;
+        }
+        return [];
+      }),
+      catchError((error) => {
+        console.error('Error fetching categories:', error);
+        this.postRequestResult$.next({ result: false });
+        return of([]);
+      }),
+    );
+  }
+
+  public createCategory(categoryData: Category): Observable<boolean> {
+    return this.http.post<CreateCategoryResponse>('/api/money/categories', categoryData).pipe(
+      map((response: CreateCategoryResponse) => {
+        if (response.success && response.data?.id) {
+          const newCategory: Category = {
+            id: response.data.id,
+            ...categoryData,
+          };
+          this.addCategoryToState(newCategory);
+          this.postRequestResult$.next({ result: true });
+          return true;
+        }
+        this.postRequestResult$.next({ result: false });
+        return false;
+      }),
+      catchError((error) => {
+        console.error('Error creating category:', error);
+        this.postRequestResult$.next({ result: false });
+        return of(false);
+      }),
+    );
+  }
+
+  public updateCategory(categoryData: Category): Observable<boolean> {
+    if (!categoryData.id) {
+      console.error('Category ID is required for update');
+      this.postRequestResult$.next({ result: false });
+      return of(false);
+    }
+
+    return this.http.put<BasicResponse>(`/api/money/categories/${categoryData.id}`, categoryData).pipe(
+      map((response: BasicResponse) => {
+        if (response.success) {
+          this.updateCategoryInState(categoryData);
+          this.postRequestResult$.next({ result: true });
+          return true;
+        }
+        this.postRequestResult$.next({ result: false });
+        return false;
+      }),
+      catchError((error) => {
+        console.error('Error updating category:', error);
+        this.postRequestResult$.next({ result: false });
+        return of(false);
+      }),
+    );
+  }
+
+  public deleteCategory(categoryId: number): Observable<boolean> {
+    return this.http.delete<BasicResponse>(`/api/money/categories/${categoryId}`).pipe(
+      map((response: BasicResponse) => {
+        if (response.success) {
+          this.removeCategoryFromState(categoryId);
+          this.postRequestResult$.next({ result: true });
+          return true;
+        }
+        this.postRequestResult$.next({ result: false });
+        return false;
+      }),
+      catchError((error) => {
+        console.error('Error deleting category:', error);
+        this.postRequestResult$.next({ result: false });
+        return of(false);
+      }),
+    );
+  }
+
+  private addCategoryToState(category: Category): void {
+    this.categories$$.update((categories: Category[]) => [...categories, category]);
+  }
+
+  private updateCategoryInState(updatedCategory: Category): void {
+    this.categories$$.update((categories: Category[]) =>
+      categories.map((category: Category) =>
+        category.id === updatedCategory.id ? { ...category, ...updatedCategory } : category,
+      ),
+    );
+  }
+
+  private removeCategoryFromState(categoryId: number): void {
+    this.categories$$.update((categories: Category[]) =>
+      categories.filter((category: Category) => category.id !== categoryId),
     );
   }
 }
