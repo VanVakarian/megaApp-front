@@ -16,12 +16,9 @@ export class CategoryForm implements OnInit {
   public readonly saved = output<void>();
   public readonly cancelled = output<void>();
 
-  // Form fields
   protected name = '';
   protected usedFor: UsedFor = UsedFor.TRANSACTION;
   protected groupKey = '';
-
-  protected UsedFor = UsedFor;
 
   constructor(private moneyService: MoneyService) {}
 
@@ -32,19 +29,13 @@ export class CategoryForm implements OnInit {
     }
   }
 
-  private fillForm(category: Category): void {
-    this.name = category.name;
-    this.usedFor = category.usedFor;
-    this.groupKey = category.groupKey || '';
-  }
-
   protected save(): void {
     if (!this.name || !this.usedFor) return;
 
     const categoryData: Category = {
       name: this.name,
       usedFor: this.usedFor,
-      groupKey: this.groupKey || null,
+      groupKey: this.groupKey,
     };
 
     const currentCategory = this.category();
@@ -74,5 +65,24 @@ export class CategoryForm implements OnInit {
 
   protected getUsedForValues(): UsedFor[] {
     return Object.values(UsedFor);
+  }
+
+  protected getUsedForDisplayName(usedFor: UsedFor): string {
+    switch (usedFor) {
+      case UsedFor.TRANSACTION:
+        return 'Transactions';
+      case UsedFor.ACCOUNT:
+        return 'Accounts';
+      case UsedFor.ASSET:
+        return 'Assets';
+      default:
+        return usedFor;
+    }
+  }
+
+  private fillForm(category: Category): void {
+    this.name = category.name;
+    this.usedFor = category.usedFor;
+    this.groupKey = category.groupKey || '';
   }
 }

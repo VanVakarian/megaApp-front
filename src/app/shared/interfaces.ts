@@ -187,7 +187,7 @@ export interface Category {
   id?: number;
   name: string;
   usedFor: UsedFor;
-  groupKey?: string | null;
+  groupKey: string;
 }
 
 // export interface Notification {
