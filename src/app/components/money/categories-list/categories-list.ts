@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
-import { MoneyService } from '../../../../services/money.service';
-import { Category } from '../../../../shared/interfaces';
+import { MoneyService } from '@app/services/money.service';
+import { Category } from '@app/shared/interfaces';
 import { CategoryForm } from './category-form/category-form';
 
 @Component({

@@ -1,8 +1,8 @@
 import { CommonModule } from '@angular/common';
 import { Component, input, OnInit, output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { MoneyService } from '../../../../../services/money.service';
-import { Category, UsedFor } from '../../../../../shared/interfaces';
+import { MoneyService } from '@app/services/money.service';
+import { Category, UsedFor } from '@app/shared/interfaces';
 
 @Component({
   selector: 'category-form',

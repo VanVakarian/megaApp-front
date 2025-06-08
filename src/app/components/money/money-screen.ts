@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { MoneyService } from '../../services/money.service';
-import { CategoriesList } from './currency-list/categories-list/categories-list';
+import { CategoriesList } from './categories-list/categories-list';
 import { CurrencyList } from './currency-list/currency-list';
 
 @Component({

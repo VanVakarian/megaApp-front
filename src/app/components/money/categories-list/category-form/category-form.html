@@ -14,10 +14,11 @@
       <label class="block mb-1 text-sm font-medium text-gray-700">Used For:</label>
       <select [(ngModel)]="usedFor"
               class="focus:outline-none focus:ring-2 focus:ring-blue-500 w-full px-3 py-2 border border-gray-300 rounded-md">
-        <option *ngFor="let value of getUsedForValues()"
-                [value]="value">
-          {{ value | titlecase }}
-        </option>
+        @for (value of getUsedForValues(); track value) {
+          <option [value]="value">
+            {{ value | titlecase }}
+          </option>
+        }
       </select>
     </div>
 
