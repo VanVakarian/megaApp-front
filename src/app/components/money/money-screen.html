@@ -1,9 +1,39 @@
-<!-- <div class="mx-auto flex w-full max-w-[1200px] items-stretch justify-center gap-x-2"> -->
 <div class="flex items-stretch justify-center w-full gap-2">
 
-  <div class="w-96 flex gap-2 flex-col flex-shrink-0 border-0 border-[#4051B5]">
-    <currency-list />
-    <categories-list />
+  <div class="w-96 flex-shrink-0">
+    <div class="p-2 mb-2 bg-white border border-gray-200 rounded-lg">
+      <div class="flex gap-2">
+        <button (click)="setActiveTab(MoneyTab.Currencies)"
+                [class]="'flex-1 px-4 py-2 text-sm font-medium rounded-md transition-colors ' +
+                        (activeTab === MoneyTab.Currencies ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-100')">
+          Currencies
+        </button>
+
+        <button (click)="setActiveTab(MoneyTab.Categories)"
+                [class]="'flex-1 px-4 py-2 text-sm font-medium rounded-md transition-colors ' +
+                        (activeTab === MoneyTab.Categories ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-100')">
+          Categories
+        </button>
+
+        <button (click)="setActiveTab(MoneyTab.Accounts)"
+                [class]="'flex-1 px-4 py-2 text-sm font-medium rounded-md transition-colors ' +
+                        (activeTab === MoneyTab.Accounts ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-100')">
+          Accounts
+        </button>
+      </div>
+    </div>
+
+    @if (activeTab === MoneyTab.Currencies) {
+      <currency-list />
+    }
+
+    @if (activeTab === MoneyTab.Categories) {
+      <categories-list />
+    }
+
+    @if (activeTab === MoneyTab.Accounts) {
+      <accounts-list />
+    }
   </div>
 
   <div class="w-full flex gap-2 flex-wrap border-0 border-[#4051B5]">

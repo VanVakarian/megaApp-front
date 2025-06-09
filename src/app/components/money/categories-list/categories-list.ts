@@ -1,4 +1,3 @@
-import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
 import { MoneyService } from '@app/services/money.service';
 import { Category, UsedFor } from '@app/shared/interfaces';
@@ -14,7 +13,7 @@ interface GroupedCategories {
   selector: 'categories-list',
   templateUrl: './categories-list.html',
   standalone: true,
-  imports: [CommonModule, CategoryForm],
+  imports: [CategoryForm],
 })
 export class CategoriesList implements OnInit {
   protected categories: Category[] = [];
