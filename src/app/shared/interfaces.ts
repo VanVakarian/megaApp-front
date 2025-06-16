@@ -190,6 +190,24 @@ export interface Category {
   groupKey: string;
 }
 
+export enum AccountKind {
+  CASH = 'cash',
+  CARD = 'card',
+  CHECKING = 'checking',
+  DEPOSIT = 'deposit',
+  BROKERAGE = 'brokerage',
+  CRYPTO = 'crypto',
+}
+
+export interface Account {
+  id?: number;
+  title: string;
+  currencyId: number;
+  invest: boolean;
+  kind: AccountKind;
+  categoryIds: number[];
+}
+
 // export interface Notification {
 //   id: number;
 //   message: string;

@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, signal, WritableSignal } from '@angular/core';
 import { Observable, of, Subject } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
-import { Category, Currency, ServerResponseBasic } from '../shared/interfaces';
+import { Account, Category, Currency, ServerResponseBasic } from '../shared/interfaces';
 
 interface BaseResponse {
   success: boolean;
@@ -20,9 +20,13 @@ interface CurrenciesResponse extends DataResponse<Currency[]> {}
 
 interface CategoriesResponse extends DataResponse<Category[]> {}
 
+interface AccountsResponse extends DataResponse<Account[]> {}
+
 interface CreateCurrencyResponse extends DataResponse<{ id: number }> {}
 
 interface CreateCategoryResponse extends DataResponse<{ id: number }> {}
+
+interface CreateAccountResponse extends DataResponse<{ id: number }> {}
 
 interface BasicResponse extends MessageResponse {}
 
@@ -32,6 +36,7 @@ interface BasicResponse extends MessageResponse {}
 export class MoneyService {
   public currencies$$: WritableSignal<Currency[]> = signal([]);
   public categories$$: WritableSignal<Category[]> = signal([]);
+  public accounts$$: WritableSignal<Account[]> = signal([]);
 
   public postRequestResult$ = new Subject<ServerResponseBasic>();
 
@@ -44,6 +49,7 @@ export class MoneyService {
   public initializeData(): void {
     this.getCurrencies().subscribe();
     this.getCategories().subscribe();
+    this.getAccounts().subscribe();
   }
 
   //                                                                                                          CURRENCIES
@@ -252,5 +258,121 @@ export class MoneyService {
     this.categories$$.update((categories: Category[]) =>
       categories.filter((category: Category) => category.id !== categoryId),
     );
+  }
+
+  //                                                                                                            ACCOUNTS
+
+  public getAccounts(): Observable<Account[]> {
+    return this.http.get<AccountsResponse>('/api/money/accounts').pipe(
+      map((response: AccountsResponse) => {
+        if (response.success && response.data) {
+          const accounts = response.data.map((account: any) => ({
+            ...account,
+            categoryIds: account.categoryIds ? JSON.parse(account.categoryIds) : [],
+          }));
+          this.accounts$$.set(accounts);
+          return accounts;
+        }
+        return [];
+      }),
+      catchError((error) => {
+        console.error('Error fetching accounts:', error);
+        this.postRequestResult$.next({ result: false });
+        return of([]);
+      }),
+    );
+  }
+
+  public createAccount(accountData: Account): Observable<boolean> {
+    const requestData = {
+      ...accountData,
+      categoryIds: accountData.categoryIds || [],
+    };
+
+    return this.http.post<CreateAccountResponse>('/api/money/accounts', requestData).pipe(
+      map((response: CreateAccountResponse) => {
+        if (response.success && response.data?.id) {
+          const newAccount: Account = {
+            id: response.data.id,
+            ...accountData,
+          };
+          this.addAccountToState(newAccount);
+          this.postRequestResult$.next({ result: true });
+          return true;
+        }
+        this.postRequestResult$.next({ result: false });
+        return false;
+      }),
+      catchError((error) => {
+        console.error('Error creating account:', error);
+        this.postRequestResult$.next({ result: false });
+        return of(false);
+      }),
+    );
+  }
+
+  public updateAccount(accountData: Account): Observable<boolean> {
+    if (!accountData.id) {
+      console.error('Account ID is required for update');
+      this.postRequestResult$.next({ result: false });
+      return of(false);
+    }
+
+    const requestData = {
+      ...accountData,
+      categoryIds: accountData.categoryIds || [],
+    };
+
+    return this.http.put<BasicResponse>(`/api/money/accounts/${accountData.id}`, requestData).pipe(
+      map((response: BasicResponse) => {
+        if (response.success) {
+          this.updateAccountInState(accountData);
+          this.postRequestResult$.next({ result: true });
+          return true;
+        }
+        this.postRequestResult$.next({ result: false });
+        return false;
+      }),
+      catchError((error) => {
+        console.error('Error updating account:', error);
+        this.postRequestResult$.next({ result: false });
+        return of(false);
+      }),
+    );
+  }
+
+  public deleteAccount(accountId: number): Observable<boolean> {
+    return this.http.delete<BasicResponse>(`/api/money/accounts/${accountId}`).pipe(
+      map((response: BasicResponse) => {
+        if (response.success) {
+          this.removeAccountFromState(accountId);
+          this.postRequestResult$.next({ result: true });
+          return true;
+        }
+        this.postRequestResult$.next({ result: false });
+        return false;
+      }),
+      catchError((error) => {
+        console.error('Error deleting account:', error);
+        this.postRequestResult$.next({ result: false });
+        return of(false);
+      }),
+    );
+  }
+
+  private addAccountToState(account: Account): void {
+    this.accounts$$.update((accounts: Account[]) => [...accounts, account]);
+  }
+
+  private updateAccountInState(updatedAccount: Account): void {
+    this.accounts$$.update((accounts: Account[]) =>
+      accounts.map((account: Account) =>
+        account.id === updatedAccount.id ? { ...account, ...updatedAccount } : account,
+      ),
+    );
+  }
+
+  private removeAccountFromState(accountId: number): void {
+    this.accounts$$.update((accounts: Account[]) => accounts.filter((account: Account) => account.id !== accountId));
   }
 }
