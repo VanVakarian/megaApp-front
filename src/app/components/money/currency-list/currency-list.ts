@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { Component, computed } from '@angular/core';
 import { MoneyService } from '../../../services/money.service';
 import { Currency } from '../../../shared/interfaces';
 import { CurrencyForm } from './currency-form/currency-form';
@@ -10,22 +10,12 @@ import { CurrencyForm } from './currency-form/currency-form';
   standalone: true,
   imports: [CommonModule, CurrencyForm],
 })
-export class CurrencyList implements OnInit {
-  protected currencies: Currency[] = [];
+export class CurrencyList {
+  protected currencies$$ = computed(() => this.moneyService.currencies$$());
   protected showForm = false;
   protected editingCurrency: Currency | null = null;
 
   constructor(private moneyService: MoneyService) {}
-
-  public ngOnInit(): void {
-    this.loadCurrencies();
-  }
-
-  private loadCurrencies(): void {
-    this.moneyService.getCurrencies().subscribe((currencies) => {
-      this.currencies = currencies;
-    });
-  }
 
   protected showCreateForm(): void {
     this.editingCurrency = null;
@@ -40,7 +30,6 @@ export class CurrencyList implements OnInit {
   protected onSaved(): void {
     this.showForm = false;
     this.editingCurrency = null;
-    this.loadCurrencies();
   }
 
   protected onCancelled(): void {
@@ -49,10 +38,6 @@ export class CurrencyList implements OnInit {
   }
 
   protected deleteCurrency(id: number): void {
-    this.moneyService.deleteCurrency(id).subscribe((success) => {
-      if (success) {
-        this.loadCurrencies();
-      }
-    });
+    this.moneyService.deleteCurrency(id).subscribe((success) => {});
   }
 }

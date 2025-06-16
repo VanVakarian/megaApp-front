@@ -44,14 +44,6 @@ export class MoneyService {
     // effect(() => { console.log('CURRENCIES have been updated:', this.currencies$$()) });
   }
 
-  //                                                                                                                INIT
-
-  public initializeData(): void {
-    this.getCurrencies().subscribe();
-    this.getCategories().subscribe();
-    this.getAccounts().subscribe();
-  }
-
   //                                                                                                          CURRENCIES
 
   public getCurrencies(): Observable<Currency[]> {

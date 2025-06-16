@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, computed } from '@angular/core';
 import { MoneyService } from '@app/services/money.service';
 import { Category, UsedFor } from '@app/shared/interfaces';
 import { CategoryForm } from './category-form/category-form';
@@ -15,17 +15,13 @@ interface GroupedCategories {
   standalone: true,
   imports: [CategoryForm],
 })
-export class CategoriesList implements OnInit {
-  protected categories: Category[] = [];
-  protected groupedCategories: GroupedCategories = {};
+export class CategoriesList {
+  protected categories$$ = computed(() => this.moneyService.categories$$());
+  protected groupedCategories$$ = computed(() => this.groupCategoriesByUsedForAndGroupKey(this.categories$$()));
   protected showForm = false;
   protected editingCategory: Category | null = null;
 
   constructor(private moneyService: MoneyService) {}
-
-  public ngOnInit(): void {
-    this.loadCategories();
-  }
 
   protected showCreateForm(): void {
     this.editingCategory = null;
@@ -38,17 +34,12 @@ export class CategoriesList implements OnInit {
   }
 
   protected deleteCategory(id: number): void {
-    this.moneyService.deleteCategory(id).subscribe((success) => {
-      if (success) {
-        this.loadCategories();
-      }
-    });
+    this.moneyService.deleteCategory(id).subscribe((success) => {});
   }
 
   protected onSaved(): void {
     this.showForm = false;
     this.editingCategory = null;
-    this.loadCategories();
   }
 
   protected onCancelled(): void {
@@ -57,15 +48,15 @@ export class CategoriesList implements OnInit {
   }
 
   protected getUsedForKeys(): UsedFor[] {
-    return Object.keys(this.groupedCategories) as UsedFor[];
+    return Object.keys(this.groupedCategories$$()) as UsedFor[];
   }
 
   protected getGroupKeys(usedFor: UsedFor): string[] {
-    return Object.keys(this.groupedCategories[usedFor] || {});
+    return Object.keys(this.groupedCategories$$()[usedFor] || {});
   }
 
   protected getCategoriesOfGroup(usedFor: UsedFor, groupKey: string): Category[] {
-    return this.groupedCategories[usedFor]?.[groupKey] || [];
+    return this.groupedCategories$$()[usedFor]?.[groupKey] || [];
   }
 
   protected getUsedForDisplayName(usedFor: UsedFor): string {
@@ -79,13 +70,6 @@ export class CategoriesList implements OnInit {
       default:
         return String(usedFor).charAt(0).toUpperCase() + String(usedFor).slice(1);
     }
-  }
-
-  private loadCategories(): void {
-    this.moneyService.getCategories().subscribe((categories) => {
-      this.categories = categories;
-      this.groupedCategories = this.groupCategoriesByUsedForAndGroupKey(categories);
-    });
   }
 
   private groupCategoriesByUsedForAndGroupKey(categories: Category[]): GroupedCategories {

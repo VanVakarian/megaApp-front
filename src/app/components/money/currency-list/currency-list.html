@@ -20,13 +20,13 @@
       }
     </div>
 
-    @if (currencies.length === 0) {
+    @if (currencies$$().length === 0) {
       <div class="py-8 text-center text-gray-500">
         No currencies found.
       </div>
     }
 
-    @for (currency of currencies; track currency.id) {
+    @for (currency of currencies$$(); track currency.id) {
       <div class="last:border-b-0 py-4 border-b border-gray-100">
         <div class="flex items-start justify-between">
           <div class="flex-1">

@@ -3,7 +3,7 @@
   @if (showForm) {
     <div class="mb-8">
       <accounts-form [account]="editingAccount"
-                     [currencies]="currencies"
+                     [currencies]="currencies$$()"
                      [categories]="getAccountCategories()"
                      (saved)="onSaved()"
                      (cancelled)="onCancelled()" />
@@ -21,13 +21,13 @@
       }
     </div>
 
-    @if (accounts.length === 0) {
+    @if (accounts$$().length === 0) {
       <div class="py-8 text-center text-gray-500">
         No accounts found.
       </div>
     }
 
-    @for (account of accounts; track account.id) {
+    @for (account of accounts$$(); track account.id) {
       <div class="last:border-b-0 py-4 border-b border-gray-100">
         <div class="flex items-start justify-between">
           <div class="flex-1">

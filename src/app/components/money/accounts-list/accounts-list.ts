@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { Component, computed } from '@angular/core';
 import { MoneyService } from '@app/services/money.service';
-import { Account, AccountKind, Category, Currency, UsedFor } from '@app/shared/interfaces';
+import { Account, AccountKind, Category, UsedFor } from '@app/shared/interfaces';
 import { AccountsForm } from './accounts-form/accounts-form';
 
 @Component({
@@ -10,18 +10,14 @@ import { AccountsForm } from './accounts-form/accounts-form';
   standalone: true,
   imports: [CommonModule, AccountsForm],
 })
-export class AccountsList implements OnInit {
-  protected accounts: Account[] = [];
-  protected currencies: Currency[] = [];
-  protected categories: Category[] = [];
+export class AccountsList {
+  protected accounts$$ = computed(() => this.moneyService.accounts$$());
+  protected currencies$$ = computed(() => this.moneyService.currencies$$());
+  protected categories$$ = computed(() => this.moneyService.categories$$());
   protected showForm = false;
   protected editingAccount: Account | null = null;
 
   constructor(private moneyService: MoneyService) {}
-
-  public ngOnInit(): void {
-    this.loadData();
-  }
 
   protected showCreateForm(): void {
     this.editingAccount = null;
@@ -34,17 +30,12 @@ export class AccountsList implements OnInit {
   }
 
   protected deleteAccount(id: number): void {
-    this.moneyService.deleteAccount(id).subscribe((success) => {
-      if (success) {
-        this.loadAccounts();
-      }
-    });
+    this.moneyService.deleteAccount(id).subscribe((success) => {});
   }
 
   protected onSaved(): void {
     this.showForm = false;
     this.editingAccount = null;
-    this.loadAccounts();
   }
 
   protected onCancelled(): void {
@@ -72,40 +63,16 @@ export class AccountsList implements OnInit {
   }
 
   protected getCurrencyTitle(currencyId: number): string {
-    const currency = this.currencies.find((c) => c.id === currencyId);
+    const currency = this.currencies$$().find((c) => c.id === currencyId);
     return currency ? currency.title : 'Unknown Currency';
   }
 
   protected getCategoryName(categoryId: number): string {
-    const category = this.categories.find((c) => c.id === categoryId);
+    const category = this.categories$$().find((c) => c.id === categoryId);
     return category ? category.name : 'Unknown Category';
   }
 
   protected getAccountCategories(): Category[] {
-    return this.categories.filter((category) => category.usedFor === UsedFor.ACCOUNT);
-  }
-
-  private loadData(): void {
-    this.loadAccounts();
-    this.loadCurrencies();
-    this.loadCategories();
-  }
-
-  private loadAccounts(): void {
-    this.moneyService.getAccounts().subscribe((accounts) => {
-      this.accounts = accounts;
-    });
-  }
-
-  private loadCurrencies(): void {
-    this.moneyService.getCurrencies().subscribe((currencies) => {
-      this.currencies = currencies;
-    });
-  }
-
-  private loadCategories(): void {
-    this.moneyService.getCategories().subscribe((categories) => {
-      this.categories = categories;
-    });
+    return this.categories$$().filter((category) => category.usedFor === UsedFor.ACCOUNT);
   }
 }

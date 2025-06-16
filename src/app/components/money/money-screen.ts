@@ -1,4 +1,5 @@
 import { Component, OnInit } from '@angular/core';
+import { firstValueFrom } from 'rxjs';
 import { MoneyService } from '../../services/money.service';
 import { AccountsList } from './accounts-list/accounts-list';
 import { CategoriesList } from './categories-list/categories-list';
@@ -23,7 +24,9 @@ export class MoneyScreen implements OnInit {
   constructor(private moneyService: MoneyService) {}
 
   public ngOnInit(): void {
-    this.moneyService.initializeData();
+    firstValueFrom(this.moneyService.getCurrencies());
+    firstValueFrom(this.moneyService.getCategories());
+    firstValueFrom(this.moneyService.getAccounts());
   }
 
   public setActiveTab(tab: MoneyTab): void {
