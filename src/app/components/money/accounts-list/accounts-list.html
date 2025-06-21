@@ -2,11 +2,11 @@
 
   @if (showForm) {
     <div class="mb-8">
-      <accounts-form [account]="editingAccount"
-                     [currencies]="currencies$$()"
-                     [categories]="getAccountCategories()"
-                     (saved)="onSaved()"
-                     (cancelled)="onCancelled()" />
+      <account-form [account]="editingAccount"
+                    [currencies]="currencies$$()"
+                    [categories]="getAccountCategories()"
+                    (saved)="onSaved()"
+                    (cancelled)="onCancelled()" />
     </div>
   }
 

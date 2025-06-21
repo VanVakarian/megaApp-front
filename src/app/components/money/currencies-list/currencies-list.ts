@@ -5,12 +5,12 @@ import { Currency } from '../../../shared/interfaces';
 import { CurrencyForm } from './currency-form/currency-form';
 
 @Component({
-  selector: 'currency-list',
-  templateUrl: './currency-list.html',
+  selector: 'currencies-list',
+  templateUrl: './currencies-list.html',
   standalone: true,
   imports: [CommonModule, CurrencyForm],
 })
-export class CurrencyList {
+export class CurrenciesList {
   protected currencies$$ = computed(() => this.moneyService.currencies$$());
   protected showForm = false;
   protected editingCurrency: Currency | null = null;

@@ -5,12 +5,12 @@ import { MoneyService } from '@app/services/money.service';
 import { Account, AccountKind, Category, Currency } from '@app/shared/interfaces';
 
 @Component({
-  selector: 'accounts-form',
-  templateUrl: './accounts-form.html',
+  selector: 'account-form',
+  templateUrl: './account-form.html',
   standalone: true,
   imports: [CommonModule, FormsModule],
 })
-export class AccountsForm implements OnInit {
+export class AccountForm implements OnInit {
   public readonly account = input<Account | null>(null);
   public readonly currencies = input<Currency[]>([]);
   public readonly categories = input<Category[]>([]);
