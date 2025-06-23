@@ -60,7 +60,7 @@ export class CategoryForm implements OnInit {
   }
 
   protected isEditing(): boolean {
-    return !!this.category()?.id;
+    return Boolean(this.category()?.id);
   }
 
   protected getUsedForValues(): UsedFor[] {

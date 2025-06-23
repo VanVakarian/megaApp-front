@@ -73,6 +73,6 @@ export class CurrencyForm implements OnInit {
   }
 
   protected isEditing(): boolean {
-    return !!this.currency()?.id;
+    return Boolean(this.currency()?.id);
   }
 }

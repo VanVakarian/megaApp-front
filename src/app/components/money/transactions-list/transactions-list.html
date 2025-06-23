@@ -1,0 +1,97 @@
+<div class="max-w-4xl mx-auto">
+
+  @if (showForm) {
+    <div class="mb-8">
+      <transaction-form [transaction]="editingTransaction"
+                        (saved)="onSaved()"
+                        (cancelled)="onCancelled()">
+      </transaction-form>
+    </div>
+  }
+
+  <div class="p-4 bg-white border border-gray-200 rounded-lg">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="text-lg font-semibold">Transactions</h3>
+      @if (!showForm) {
+        <button (click)="showCreateForm()"
+                class="hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 px-4 py-2 text-white bg-blue-600 rounded-md">
+          Add New Transaction
+        </button>
+      }
+    </div>
+
+    @for (group of groupedTransactions$$(); track group.date) {
+      <div class="mb-6">
+        <div class="bg-gray-50 sticky top-0 z-10 py-2 mb-4 border-b border-gray-200">
+          <h4 class="text-lg font-semibold text-gray-800">{{ group.dateDisplay }}</h4>
+        </div>
+
+        @for (transaction of group.transactions; track transaction.id) {
+          <div class="last:border-b-0 py-3 border-b border-gray-100">
+            <div class="flex items-start justify-between">
+              <div class="flex-1">
+
+                <div class="mb-2">
+                  <div class="flex items-center gap-2">
+                    <span class="text-gray-600">{{ getAccountTitle(transaction.accountId) }}</span>
+                  </div>
+                </div>
+
+                <div class="flex items-center gap-2 mb-2">
+                  <span class="text-lg font-bold"
+                        [class]="transaction.amount > 0 ? 'text-green-600' : 'text-red-600'">
+                    {{ transaction.amount > 0 ? '+' : '' }}{{ formatAmount(transaction.amount, transaction.accountId) }}
+                  </span>
+
+                  <span class="px-2 py-1 text-xs rounded"
+                        [class]="transaction.kind === 'income' ? 'text-green-700 bg-green-200' : 'text-red-700 bg-red-200'">
+                    {{ getKindDisplayName(transaction.kind) }}
+                  </span>
+
+                  @if (transaction.isGift) {
+                    <span class="px-2 py-1 text-xs text-purple-700 bg-purple-200 rounded">
+                      Gift
+                    </span>
+                  }
+                </div>
+
+                @if (getCategoryNames(transaction.categoryIds).length > 0) {
+                  <div class="flex flex-wrap gap-1 mb-2">
+                    @for (categoryName of getCategoryNames(transaction.categoryIds); track categoryName) {
+                      <span class="px-2 py-1 text-xs text-gray-700 bg-gray-200 rounded">
+                        {{ categoryName }}
+                      </span>
+                    }
+                  </div>
+                }
+
+                @if (transaction.notes) {
+                  <div class="text-sm text-gray-600">
+                    {{ transaction.notes }}
+                  </div>
+                }
+              </div>
+
+              <div class="flex gap-2 ml-4">
+                <button (click)="editTransaction(transaction)"
+                        class="hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500 px-3 py-1 text-sm text-blue-700 bg-blue-100 rounded">
+                  Edit
+                </button>
+                <button (click)="deleteTransaction(transaction.id!)"
+                        class="hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-red-500 px-3 py-1 text-sm text-red-700 bg-red-100 rounded">
+                  Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        }
+
+      </div>
+    } @empty {
+      <div class="py-8 text-center text-gray-500">
+        No transactions found.
+      </div>
+    }
+
+  </div>
+</div>

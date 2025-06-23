@@ -1,0 +1,108 @@
+<div class="bg-gray-50 p-6 rounded-lg">
+  <h3 class="mb-4 text-lg font-semibold">{{ isEditing() ? 'Edit Transaction' : 'Add New Transaction' }}</h3>
+
+  <div class="space-y-4">
+    <div>
+      <label class="block mb-1 text-sm font-medium text-gray-700">Date <span class="text-red-500">*</span>:</label>
+      <input type="date"
+             [(ngModel)]="dateISO"
+             class="focus:outline-none focus:ring-2 focus:ring-blue-500 w-full px-3 py-2 border border-gray-300 rounded-md">
+    </div>
+
+    <div>
+      <label class="block mb-1 text-sm font-medium text-gray-700">Account <span class="text-red-500">*</span>:</label>
+      <select [(ngModel)]="accountId"
+              class="focus:outline-none focus:ring-2 focus:ring-blue-500 w-full px-3 py-2 border border-gray-300 rounded-md">
+        <option [value]="null">Select an account</option>
+        @for (account of getAccounts(); track account.id) {
+          <option [value]="account.id">{{ account.title }}</option>
+        }
+      </select>
+    </div>
+
+    <div>
+      <label class="block mb-1 text-sm font-medium text-gray-700">Amount <span class="text-red-500">*</span>:</label>
+      <input type="number"
+             step="0.01"
+             min="0"
+             placeholder="0.00"
+             [(ngModel)]="amount"
+             class="focus:outline-none focus:ring-2 focus:ring-blue-500 w-full px-3 py-2 border border-gray-300 rounded-md">
+      <p class="mt-1 text-xs text-gray-500">
+        Enter positive amount - it will be automatically
+        <span [class]="kind === 'expense' ? 'text-red-600' : 'text-green-600'">
+          {{ kind === 'expense' ? 'subtracted' : 'added' }}
+        </span>
+        based on transaction type
+      </p>
+    </div>
+
+    <div>
+      <label class="block mb-1 text-sm font-medium text-gray-700">Type <span class="text-red-500">*</span>:</label>
+      <select [(ngModel)]="kind"
+              class="focus:outline-none focus:ring-2 focus:ring-blue-500 w-full px-3 py-2 border border-gray-300 rounded-md">
+        @for (kindOption of getKindValues(); track kindOption) {
+          <option [value]="kindOption">{{ getKindDisplayName(kindOption) }}</option>
+        }
+      </select>
+    </div>
+
+    <div class="flex items-center">
+      <input type="checkbox"
+             [(ngModel)]="isGift"
+             class="focus:ring-blue-500 w-4 h-4 mr-2 text-blue-600 border-gray-300 rounded">
+      <label class="text-sm font-medium text-gray-700">
+        This is a gift
+      </label>
+    </div>
+
+    <div>
+      <label class="block mb-1 text-sm font-medium text-gray-700">Notes (optional):</label>
+      <textarea [(ngModel)]="notes"
+                placeholder="Add any notes about this transaction..."
+                rows="3"
+                class="focus:outline-none focus:ring-2 focus:ring-blue-500 w-full px-3 py-2 border border-gray-300 rounded-md resize-none"></textarea>
+    </div>
+
+    <div>
+      <label class="block mb-2 text-sm font-medium text-gray-700">Categories (optional):</label>
+      <div class="max-h-32 p-3 space-y-2 overflow-y-auto border border-gray-300 rounded-md">
+        @if (getTransactionCategories().length === 0) {
+          <p class="text-sm italic text-gray-500">No transaction categories available</p>
+        } @else {
+          @for (category of getTransactionCategories(); track category.id) {
+            <div class="flex items-center">
+              <input type="checkbox"
+                     [id]="'category-' + category.id"
+                     [checked]="isCategorySelected(category.id!)"
+                     (change)="toggleCategory(category.id!, $event)"
+                     class="focus:ring-blue-500 w-4 h-4 mr-2 text-blue-600 border-gray-300 rounded">
+              <label [for]="'category-' + category.id"
+                     class="text-sm text-gray-700">
+                {{ category.name }}
+                @if (category.groupKey) {
+                  <span class="text-gray-500">({{ category.groupKey }})</span>
+                }
+              </label>
+            </div>
+            }
+            }
+      </div>
+    </div>
+
+    <div class="flex gap-2">
+      <button [disabled]="!isFormValid()"
+              class="hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-400 disabled:cursor-not-allowed px-4 py-2 text-white bg-blue-600 rounded-md"
+              (click)="save()"
+              type="button">
+        {{ isEditing() ? 'Update' : 'Create' }}
+      </button>
+
+      <button class="hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 px-4 py-2 text-white bg-gray-600 rounded-md"
+              (click)="cancel()"
+              type="button">
+        Cancel
+      </button>
+    </div>
+  </div>
+</div>

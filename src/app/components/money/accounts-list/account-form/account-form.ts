@@ -66,11 +66,11 @@ export class AccountForm implements OnInit {
   }
 
   protected isEditing(): boolean {
-    return !!this.account()?.id;
+    return Boolean(this.account()?.id);
   }
 
   protected isFormValid(): boolean {
-    return !!(this.title && this.currencyId && this.kind);
+    return Boolean(this.title && this.currencyId && this.kind);
   }
 
   protected getKindValues(): AccountKind[] {

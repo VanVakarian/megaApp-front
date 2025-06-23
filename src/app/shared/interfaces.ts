@@ -208,6 +208,23 @@ export interface Account {
   categoryIds: number[];
 }
 
+export enum TransactionKind {
+  INCOME = 'income',
+  EXPENSE = 'expense',
+}
+
+export interface Transaction {
+  id?: number;
+  dateISO: string;
+  accountId: number;
+  amount: number;
+  categoryIds: number[];
+  kind: TransactionKind;
+  isGift: boolean;
+  notes?: string;
+  details?: any;
+}
+
 // export interface Notification {
 //   id: number;
 //   message: string;

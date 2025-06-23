@@ -62,14 +62,14 @@ export class AccountsList {
     }
   }
 
-  protected getCurrencyTitle(currencyId: number): string {
+  protected getCurrencySymbol(currencyId: number): string {
     const currency = this.currencies$$().find((c) => c.id === currencyId);
-    return currency ? currency.title : 'Unknown Currency';
+    return currency ? currency.symbol : '';
   }
 
   protected getCategoryName(categoryId: number): string {
     const category = this.categories$$().find((c) => c.id === categoryId);
-    return category ? category.name : 'Unknown Category';
+    return category ? category.name : '';
   }
 
   protected getAccountCategories(): Category[] {
