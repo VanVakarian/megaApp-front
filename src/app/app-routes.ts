@@ -1,6 +1,6 @@
 import { Routes } from '@angular/router';
 import { FoodScreenComponent } from '@app/components/food/food-screen.component';
-import { MoneyScreenComponent } from '@app/components/money/money-screen.component';
+import { MoneyScreen } from '@app/components/money/money-screen';
 import { SettingsPageComponent } from '@app/components/settings/settings-page.component';
 import { authResolver } from '@app/services/auth.resolver';
 import { isChapterSelected } from '@app/services/is-chapter-selected.guard';
@@ -20,7 +20,7 @@ export const routes: Routes = [
   },
   {
     path: 'money',
-    component: MoneyScreenComponent,
+    component: MoneyScreen,
     resolve: { auth: authResolver },
     canActivate: [isChapterSelected],
   },
@@ -28,7 +28,7 @@ export const routes: Routes = [
     path: 'settings',
     component: SettingsPageComponent,
     resolve: { auth: authResolver },
-    data: { allowUnauthenticated: true }
+    data: { allowUnauthenticated: true },
   },
   { path: '', redirectTo: 'food', pathMatch: 'full' },
   { path: '**', redirectTo: 'food', pathMatch: 'full' },
