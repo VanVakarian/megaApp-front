@@ -39,12 +39,12 @@
 
                 <div class="flex items-center gap-2 mb-2">
                   <span class="text-lg font-bold"
-                        [class]="transaction.amount > 0 ? 'text-green-600' : 'text-red-600'">
-                    {{ transaction.amount > 0 ? '+' : '' }}{{ formatAmount(transaction.amount, transaction.accountId) }}
+                        [class]="transactionKindIsIncome(transaction) ? 'text-green-600' : 'text-red-600'">
+                    {{ formatAmount(transaction) }}
                   </span>
 
                   <span class="px-2 py-1 text-xs rounded"
-                        [class]="transaction.kind === 'income' ? 'text-green-700 bg-green-200' : 'text-red-700 bg-red-200'">
+                        [class]="transactionKindIsIncome(transaction) ? 'text-green-700 bg-green-200' : 'text-red-700 bg-red-200'">
                     {{ getKindDisplayName(transaction.kind) }}
                   </span>
 

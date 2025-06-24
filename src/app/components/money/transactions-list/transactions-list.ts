@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, computed } from '@angular/core';
 import { MoneyService } from '@app/services/money.service';
-import { Transaction, TransactionKind } from '@app/shared/interfaces';
+import { SymbolPosition, Transaction, TransactionKind } from '@app/shared/interfaces';
 import { TransactionForm } from './transaction-form/transaction-form';
 
 interface TransactionGroup {
@@ -62,22 +62,25 @@ export class TransactionsList {
     });
   }
 
-  protected formatAmount(amount: number, accountId: number): string {
-    const account = this.accounts$$().find((a) => a.id === accountId);
-    if (!account) return amount.toString();
+  protected formatAmount(transaction: Transaction): string {
+    const account = this.accounts$$().find((a) => a.id === transaction.accountId);
+    if (!account) return transaction.amount.toString();
 
     const currency = this.currencies$$().find((c) => c.id === account.currencyId);
-    if (!currency) return amount.toString();
+    if (!currency) return transaction.amount.toString();
 
-    const formattedAmount = Math.abs(amount).toFixed(2);
-    const symbol = currency.symbol;
     const whitespace = currency.whitespace ? ' ' : '';
+    const sign = transaction.kind === TransactionKind.INCOME ? '+' : '-';
 
-    if (currency.symbolPosEnum === 'before') {
-      return `${symbol}${whitespace}${formattedAmount}`;
+    if (currency.symbolPosEnum === SymbolPosition.BEFORE) {
+      return `${currency.symbol}${whitespace}${sign}${transaction.amount.toFixed(2)}`;
     } else {
-      return `${formattedAmount}${whitespace}${symbol}`;
+      return `${sign}${transaction.amount.toFixed(2)}${whitespace}${currency.symbol}`;
     }
+  }
+
+  protected transactionKindIsIncome(transaction: Transaction): boolean {
+    return transaction.kind === TransactionKind.INCOME;
   }
 
   protected deleteTransaction(id: number): void {

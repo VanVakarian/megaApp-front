@@ -122,7 +122,7 @@ export class TransactionForm implements OnInit {
   private fillForm(transaction: Transaction): void {
     this.dateISO = transaction.dateISO;
     this.accountId = transaction.accountId;
-    this.amount = Math.abs(transaction.amount);
+    this.amount = transaction.amount;
     this.kind = transaction.kind;
     this.isGift = transaction.isGift;
     this.notes = transaction.notes || '';
