@@ -35,24 +35,32 @@
               <span class="ml-2 text-gray-600">{{ currency.ticker }}</span>
               <span class="ml-2 text-gray-800">{{ currency.symbol }}</span>
             </div>
+
             <div class="flex gap-2">
-              @if (currency.symbolPosEnum === 'after') {
-                <span class="px-2 py-1 text-xs text-gray-700 bg-gray-200 rounded">
+              <span class="px-2 py-1 text-xs text-gray-700 bg-gray-200 rounded">
+                @if (currency.symbolPosEnum === 'after') {
                   After
-                </span>
-              }
-              @if (currency.whitespace) {
-                <span class="px-2 py-1 text-xs text-gray-700 bg-gray-200 rounded">
-                  With w/s
-                </span>
-              }
+                } @else {
+                  Before
+                }
+              </span>
+
+              <span class="px-2 py-1 text-xs text-gray-700 bg-gray-200 rounded">
+                @if (currency.whitespace) {
+                  With whitespace
+                } @else {
+                  No whitespace
+                }
+              </span>
             </div>
           </div>
+
           <div class="flex gap-2 ml-4">
             <button (click)="editCurrency(currency)"
                     class="hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500 px-3 py-1 text-sm text-blue-700 bg-blue-100 rounded">
               Edit
             </button>
+
             <button (click)="deleteCurrency(currency.id!)"
                     class="hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-red-500 px-3 py-1 text-sm text-red-700 bg-red-100 rounded">
               Delete
@@ -61,6 +69,5 @@
         </div>
       </div>
     }
-
   </div>
 </div>
