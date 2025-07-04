@@ -1,5 +1,5 @@
 import { HashLocationStrategy, LocationStrategy } from '@angular/common';
-import { HTTP_INTERCEPTORS, HttpClientModule } from '@angular/common/http';
+import { HTTP_INTERCEPTORS } from '@angular/common/http';
 import { importProvidersFrom } from '@angular/core';
 import { bootstrapApplication } from '@angular/platform-browser';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
@@ -19,7 +19,6 @@ bootstrapApplication(MainAppComponent, {
     provideRouter(routes),
     { provide: LocationStrategy, useClass: HashLocationStrategy },
     importProvidersFrom(
-      HttpClientModule,
       BrowserAnimationsModule,
       JwtModule.forRoot({
         config: {
