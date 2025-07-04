@@ -9,7 +9,6 @@ import { RequestStatus, SettingsService } from '@app/services/settings.service';
 
 @Component({
   selector: 'app-dark-switch',
-  standalone: true,
   imports: [CommonModule, MatIconModule, MatButtonModule],
   templateUrl: './dark-switch.component.html',
 })

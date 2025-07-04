@@ -1,10 +1,11 @@
 import { HashLocationStrategy, LocationStrategy } from '@angular/common';
-import { HTTP_INTERCEPTORS } from '@angular/common/http';
+import { HTTP_INTERCEPTORS, provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
 import { importProvidersFrom } from '@angular/core';
 import { bootstrapApplication } from '@angular/platform-browser';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { provideRouter } from '@angular/router';
 
+import { MatNativeDateModule } from '@angular/material/core';
 import { MatDialogModule } from '@angular/material/dialog';
 
 import { JwtModule } from '@auth0/angular-jwt';
@@ -16,6 +17,7 @@ import { tokenGetter } from '@app/services/auth.service';
 
 bootstrapApplication(MainAppComponent, {
   providers: [
+    provideHttpClient(withInterceptorsFromDi()),
     provideRouter(routes),
     { provide: LocationStrategy, useClass: HashLocationStrategy },
     importProvidersFrom(
@@ -32,6 +34,7 @@ bootstrapApplication(MainAppComponent, {
         },
       }),
       MatDialogModule,
+      MatNativeDateModule,
     ),
     { provide: HTTP_INTERCEPTORS, useClass: AuthInterceptor, multi: true },
   ],

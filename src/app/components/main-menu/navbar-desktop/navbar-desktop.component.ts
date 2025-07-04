@@ -11,7 +11,6 @@ import { MainMenuService } from '@app/services/main-menu.service';
 
 @Component({
   selector: 'app-navbar-desktop',
-  standalone: true,
   imports: [RouterLink, MatButtonModule, DarkSwitchComponent],
   templateUrl: './navbar-desktop.component.html',
 })

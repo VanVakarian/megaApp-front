@@ -1,5 +1,5 @@
 import { HttpClient } from '@angular/common/http';
-import { computed, effect, Injectable, Signal, signal, WritableSignal } from '@angular/core';
+import { computed, Injectable, Signal, signal, WritableSignal } from '@angular/core';
 
 import { catchError, firstValueFrom, map, Observable, of, Subject, tap } from 'rxjs';
 
@@ -59,11 +59,11 @@ export class FoodService {
     // effect(() => { console.log('CATALOGUE SORTED LIST LEFT OUT have been updated:', this.catalogueSortedListLeftOut$$()) }); // prettier-ignore
     // effect(() => { console.log('COEFFICIENTS have been updated:', this.coefficients$$()) }); // prettier-ignore
 
-    effect(() => {
-      if (this.shouldLoadMore()) {
-        this.fetchMoreDiaryTrigger$.next();
-      }
-    });
+    // effect(() => {
+    //   if (this.shouldLoadMore()) {
+    //     this.fetchMoreDiaryTrigger$.next();
+    //   }
+    // });
 
     this.subscribe();
   }

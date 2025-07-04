@@ -7,7 +7,6 @@ import { AuthService } from '@app/services/auth.service';
 
 @Component({
   selector: 'app-settings-page',
-  standalone: true,
   imports: [CommonModule, SettingsFormComponent, AuthFormComponent],
   templateUrl: './settings-page.component.html',
 })

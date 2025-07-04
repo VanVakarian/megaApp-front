@@ -34,7 +34,6 @@ enum FormErrors {
   templateUrl: './body-weight.component.html',
   styleUrl: './body-weight.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  standalone: true,
   imports: [ReactiveFormsModule, MatFormFieldModule, MatInputModule, FieldStateAnimationsDirective],
 })
 export class BodyWeightComponent {

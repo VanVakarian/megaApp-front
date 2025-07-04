@@ -25,7 +25,6 @@ import { transliterateEnToRu } from '@app/shared/utils';
 @Component({
   selector: 'app-food-select-dropdown',
   templateUrl: './food-select-dropdown.component.html',
-  standalone: true,
   imports: [ReactiveFormsModule, MatAutocompleteModule, MatFormFieldModule, MatInputModule, MatIconModule],
   host: {},
 })

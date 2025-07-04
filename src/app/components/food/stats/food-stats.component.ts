@@ -54,7 +54,6 @@ interface StatsChartData {
   templateUrl: './food-stats.component.html',
   styleUrl: './food-stats.component.scss',
   imports: [CommonModule, MatCardModule, MatSliderModule, FormsModule, MatButtonModule],
-  standalone: true,
 })
 export class FoodStatsComponent implements OnInit, OnDestroy, AfterViewInit {
   @ViewChild('weightChartCanvas')
