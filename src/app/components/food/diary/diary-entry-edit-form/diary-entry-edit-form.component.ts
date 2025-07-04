@@ -41,7 +41,6 @@ interface DiaryEntryFormModel {
 
 @Component({
   selector: 'app-diary-entry-edit-form',
-  standalone: true,
   imports: [
     ReactiveFormsModule,
     MatButtonModule,

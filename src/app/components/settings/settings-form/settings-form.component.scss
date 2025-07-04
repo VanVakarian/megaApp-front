@@ -1,4 +1,4 @@
-@import 'src/app/shared/directives/field-state-animations.scss';
+@use 'src/app/shared/directives/field-state-animations.scss';
 
 ::ng-deep {
   .field-with-progress-animations {

@@ -18,7 +18,6 @@ import { PaginatorLocalisation } from '@app/paginator-localisation';
       useClass: PaginatorLocalisation,
     },
   ],
-  standalone: true,
   imports: [NavbarMobileComponent, NavbarDesktopComponent, RouterOutlet, MatNativeDateModule],
 })
 export class MainAppComponent implements OnInit {
