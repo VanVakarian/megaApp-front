@@ -8,12 +8,11 @@
          required
          type="text"
          [formControl]="foodNameControl"
-         [(ngModel)]="searchQuery"
          [matAutocomplete]="autoGroup" />
 
   @if (shouldShowClearButton()) {
     <button type="button"
-            (click)="searchQuery = ''"
+            (click)="clearInput()"
             mat-icon-button
             matSuffix>
       <mat-icon>close</mat-icon>
