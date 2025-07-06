@@ -28,7 +28,6 @@ import { combineLatest } from 'rxjs';
   selector: 'app-food-diary',
   templateUrl: './food-diary.component.html',
   styleUrl: './food-diary.component.scss',
-  standalone: true,
   imports: [
     NgStyle,
     MatExpansionModule,

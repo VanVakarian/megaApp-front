@@ -47,7 +47,6 @@ enum ErrorLabels {
   selector: 'app-settings-form',
   templateUrl: './settings-form.component.html',
   styleUrl: './settings-form.component.scss',
-  standalone: true,
   imports: [
     CommonModule,
     ReactiveFormsModule,
