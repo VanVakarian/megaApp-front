@@ -1,5 +1,6 @@
 import {
   Component,
+  DestroyRef,
   ElementRef,
   EventEmitter,
   Input,
@@ -11,9 +12,11 @@ import {
   computed,
   signal,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 
 import { MatAutocompleteModule, MatAutocompleteSelectedEvent } from '@angular/material/autocomplete';
+import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
@@ -26,7 +29,14 @@ import { transliterateEnToRu } from '@app/shared/utils';
   selector: 'app-food-select-dropdown',
   templateUrl: './food-select-dropdown.component.html',
   standalone: true,
-  imports: [ReactiveFormsModule, MatAutocompleteModule, MatFormFieldModule, MatInputModule, MatIconModule],
+  imports: [
+    ReactiveFormsModule,
+    MatAutocompleteModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatIconModule,
+    MatButtonModule,
+  ],
   host: {},
 })
 export class FoodSelectDropdownComponent implements OnInit {
@@ -48,20 +58,25 @@ export class FoodSelectDropdownComponent implements OnInit {
     return this.filterCatalogue(this.searchQuery$$());
   });
 
-  public get searchQuery() {
-    return this.searchQuery$$();
+  constructor(
+    private foodService: FoodService,
+    private destroyRef: DestroyRef,
+  ) {}
+
+  public ngOnInit() {
+    const subscription = this.foodNameControl.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((value) => {
+        this.searchQuery$$.set(value || '');
+      });
   }
-
-  public set searchQuery(value: string) {
-    this.searchQuery$$.set(value);
-  }
-
-  constructor(private foodService: FoodService) {}
-
-  public ngOnInit() {}
 
   public shouldShowClearButton(): boolean {
-    return this.foodNameControl.value.length > 0;
+    return this.foodNameControl.value && this.foodNameControl.value.length > 0;
+  }
+
+  public clearInput(): void {
+    this.foodNameControl.setValue('');
   }
 
   public onOptionSelected(event: MatAutocompleteSelectedEvent): void {

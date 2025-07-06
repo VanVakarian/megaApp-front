@@ -11,7 +11,6 @@ import { MainMenuService } from '@app/services/main-menu.service';
 
 @Component({
   selector: 'app-navbar-mobile',
-  standalone: true,
   imports: [RouterLink, NgClass, MatIconModule, MatButtonModule],
   templateUrl: './navbar-mobile.component.html',
   styleUrl: './navbar-mobile.component.scss',

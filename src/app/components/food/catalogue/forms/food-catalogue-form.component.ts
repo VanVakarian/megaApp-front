@@ -25,7 +25,6 @@ export function uniqueCatalogueNameValidator(foodService: FoodService, isNewForm
 
 @Component({
   selector: 'app-food-catalogue-form',
-  standalone: true,
   imports: [NgIf, ReactiveFormsModule, MatFormFieldModule, MatInputModule, MatButtonModule],
   templateUrl: './food-catalogue-form.component.html',
 })

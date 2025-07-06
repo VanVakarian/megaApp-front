@@ -27,7 +27,6 @@ interface BmiSegment {
   selector: 'app-bmi',
   templateUrl: './bmi.component.html',
   styleUrl: './bmi.component.scss',
-  standalone: true,
   imports: [CommonModule, MatIconModule],
 })
 export class BMIComponent implements OnInit, AfterViewInit, OnDestroy {
