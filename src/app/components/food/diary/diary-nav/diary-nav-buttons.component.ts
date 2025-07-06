@@ -14,7 +14,6 @@ import { calcDateWithUserTimeShift, dateToIsoNoTimeNoTZ, epochToIsoNoTimeNoTZ } 
 
 @Component({
   selector: 'app-diary-nav-buttons',
-  standalone: true,
   imports: [
     NgIf,
     MatButtonModule,

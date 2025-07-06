@@ -163,43 +163,76 @@ export interface StatsChartData {
 
 //                                                                         MONEY
 
-// export interface Currency {
-//   id: number;
-//   title: string;
-//   ticker: string;
-//   symbol: string;
-//   symbol_pos: string;
-//   whitespace: boolean;
-// }
-
-// export interface Bank {
-//   id: number;
-//   title: string;
-// }
-
-// export interface Account {
-//   id: number;
-//   title: string;
-//   bank_id: number;
-//   currency_id: number;
-//   invest: boolean;
-//   kind: string;
-// }
-
-// export interface Category {
-//   id: number;
-//   title: string;
-//   kind: string;
-// }
-
-export interface Notification {
-  id: number;
-  message: string;
-  bgColour: string;
-  textColour: string;
-  borderColour: string;
-  time: number;
+export enum SymbolPosition {
+  BEFORE = 'before',
+  AFTER = 'after',
 }
+
+export interface Currency {
+  id?: number;
+  title: string;
+  ticker: string;
+  symbol: string;
+  symbolPosEnum: SymbolPosition;
+  whitespace: boolean;
+}
+
+export enum UsedFor {
+  TRANSACTION = 'transaction',
+  ACCOUNT = 'account',
+  ASSET = 'asset',
+}
+
+export interface Category {
+  id?: number;
+  name: string;
+  usedFor: UsedFor;
+  groupKey: string;
+}
+
+export enum AccountKind {
+  CASH = 'cash',
+  CARD = 'card',
+  CHECKING = 'checking',
+  DEPOSIT = 'deposit',
+  BROKERAGE = 'brokerage',
+  CRYPTO = 'crypto',
+}
+
+export interface Account {
+  id?: number;
+  title: string;
+  currencyId: number;
+  invest: boolean;
+  kind: AccountKind;
+  categoryIds: number[];
+}
+
+export enum TransactionKind {
+  INCOME = 'income',
+  EXPENSE = 'expense',
+}
+
+export interface Transaction {
+  id?: number;
+  dateISO: string;
+  accountId: number;
+  amount: number;
+  categoryIds: number[];
+  kind: TransactionKind;
+  isGift: boolean;
+  notes?: string;
+  details?: any;
+}
+
+// export interface Notification {
+//   id: number;
+//   message: string;
+//   bgColour: string;
+//   textColour: string;
+//   borderColour: string;
+//   time: number;
+// }
 
 // export interface Transaction {
 //   id: number;

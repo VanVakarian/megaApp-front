@@ -9,7 +9,6 @@ export interface DialogData {
 
 @Component({
   selector: 'app-mat-dialog-modal',
-  standalone: true,
   imports: [MatDialogModule, MatButtonModule],
   templateUrl: './mat-dialog-modal.component.html',
 })

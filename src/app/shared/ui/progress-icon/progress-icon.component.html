@@ -35,9 +35,10 @@
             [attr.stroke]="color" />
 
     <!-- Pie slice representing progress -->
-    <path *ngIf="piePathData"
-          [attr.d]="piePathData"
-          [attr.fill]="color" />
+    @if (piePathData) {
+      <path [attr.d]="piePathData"
+            [attr.fill]="color" />
+    }
   }
 
 </svg>

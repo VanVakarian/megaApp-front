@@ -26,7 +26,6 @@ import { transliterateEnToRu } from '@app/shared/utils';
 
 @Component({
   selector: 'app-food-catalogue',
-  standalone: true,
   imports: [
     FormsModule,
     FoodCatalogueFormComponent,

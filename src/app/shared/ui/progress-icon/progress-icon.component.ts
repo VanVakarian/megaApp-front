@@ -1,12 +1,9 @@
-import { CommonModule } from '@angular/common';
 import { Component, ElementRef, Input, OnChanges } from '@angular/core';
 
 @Component({
   selector: 'ui-progress-icon',
   templateUrl: './progress-icon.component.html',
   styleUrl: './progress-icon.component.scss',
-  standalone: true,
-  imports: [CommonModule],
 })
 export class UiProgressIcon implements OnChanges {
   @Input()

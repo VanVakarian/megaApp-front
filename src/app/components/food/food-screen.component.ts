@@ -13,7 +13,6 @@ import { SettingsService } from '@app/services/settings.service';
 @Component({
   selector: 'app-food-screen',
   templateUrl: './food-screen.component.html',
-  standalone: true,
   imports: [CommonModule, FoodStatsComponent, FoodDiaryComponent, FoodCatalogueComponent],
 })
 export class FoodScreenComponent implements OnInit {

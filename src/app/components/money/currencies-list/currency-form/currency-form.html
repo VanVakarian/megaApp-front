@@ -1,0 +1,58 @@
+<div class="bg-gray-50 p-6 rounded-lg">
+  <h3 class="mb-4 text-lg font-semibold">{{ isEditing() ? 'Edit Currency' : 'Add New Currency' }}</h3>
+
+  <div class="space-y-4">
+    <div>
+      <label class="block mb-1 text-sm font-medium text-gray-700">Title:</label>
+      <input type="text"
+             placeholder="US Dollar"
+             [(ngModel)]="title"
+             class="focus:outline-none focus:ring-2 focus:ring-blue-500 w-full px-3 py-2 border border-gray-300 rounded-md">
+    </div>
+
+    <div>
+      <label class="block mb-1 text-sm font-medium text-gray-700">Ticker:</label>
+      <input type="text"
+             placeholder="USD"
+             [(ngModel)]="ticker"
+             class="focus:outline-none focus:ring-2 focus:ring-blue-500 w-full px-3 py-2 border border-gray-300 rounded-md">
+    </div>
+
+    <div>
+      <label class="block mb-1 text-sm font-medium text-gray-700">Symbol:</label>
+      <input type="text"
+             placeholder="$"
+             [(ngModel)]="symbol"
+             class="focus:outline-none focus:ring-2 focus:ring-blue-500 w-full px-3 py-2 border border-gray-300 rounded-md">
+    </div>
+
+    <div>
+      <label class="block mb-1 text-sm font-medium text-gray-700">Symbol Position:</label>
+      <select [(ngModel)]="symbolPosEnum"
+              class="focus:outline-none focus:ring-2 focus:ring-blue-500 w-full px-3 py-2 border border-gray-300 rounded-md">
+        <option value="before">Before</option>
+        <option value="after">After</option>
+      </select>
+    </div>
+
+    <div class="flex items-center">
+      <input type="checkbox"
+             [(ngModel)]="whitespace"
+             class="focus:ring-blue-500 w-4 h-4 mr-2 text-blue-600 border-gray-300 rounded">
+      <label class="text-sm font-medium text-gray-700">
+        Whitespace between symbol and amount
+      </label>
+    </div>
+
+    <div class="flex gap-2">
+      <button (click)="save()"
+              class="hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 px-4 py-2 text-white bg-blue-600 rounded-md">
+        {{ isEditing() ? 'Update' : 'Create' }}
+      </button>
+      <button (click)="cancel()"
+              class="hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 px-4 py-2 text-white bg-gray-600 rounded-md">
+        Cancel
+      </button>
+    </div>
+  </div>
+</div>

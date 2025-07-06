@@ -37,7 +37,6 @@ import { FoodSelectDropdownComponent } from './food-select-dropdown/food-select-
 @Component({
   selector: 'app-diary-entry-new-form',
   templateUrl: './diary-entry-new-form.component.html',
-  standalone: true,
   imports: [
     ReactiveFormsModule,
     MatButtonModule,
