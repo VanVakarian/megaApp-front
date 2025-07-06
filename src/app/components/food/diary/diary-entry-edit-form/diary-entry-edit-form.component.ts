@@ -30,7 +30,7 @@ import { FoodService } from '@app/services/food.service';
 import { ScreenSizeWatcherService } from '@app/services/screen-size-watcher.service';
 import { ConfirmationDialogModalService } from '@app/shared/components/dialog-modal/mat-dialog-modal.service';
 import { DiaryEntry, HistoryEntry } from '@app/shared/interfaces';
-import { UiProgressIcon } from '@app/shared/ui/progress-icon/progress-icon.component';
+import { UiProgressIcon } from '@app/shared/ui-kit/progress-icon/progress-icon.component';
 import { delay, filter, firstValueFrom, Subscription, take } from 'rxjs';
 
 interface DiaryEntryFormModel {

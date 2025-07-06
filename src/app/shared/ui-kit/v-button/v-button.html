@@ -1,0 +1,14 @@
+<button type="button"
+        (click)="onButtonClick($event)">
+
+  <div class="prefix">
+    <ng-content select="[v-prefix]" />
+  </div>
+
+  <ng-content />
+
+  <div class="postfix">
+    <ng-content select="[v-postfix]" />
+  </div>
+
+</button>

@@ -1,0 +1,37 @@
+<nav class="sidebar">
+
+  <!-- <div class="sidebar-header">
+    <h3>UI Kit</h3>
+  </div> -->
+
+  <div class="sidebar-menu">
+    <v-button [buttonStyle]="foodButtonStyle()"
+              [width]="'100%'"
+              class="menu-item"
+              (click)="navigateToFood()">
+      Food
+    </v-button>
+
+    <v-button [buttonStyle]="moneyButtonStyle()"
+              [width]="'100%'"
+              class="menu-item"
+              (click)="navigateToMoney()">
+      Money
+    </v-button>
+
+    <v-button [buttonStyle]="otherButtonStyle()"
+              [width]="'100%'"
+              class="menu-item"
+              (click)="navigateToOther()">
+      Other
+    </v-button>
+
+    <v-button [buttonStyle]="settingsButtonStyle()"
+              [width]="'100%'"
+              class="menu-item"
+              (click)="navigateToSettings()">
+      Settings
+    </v-button>
+  </div>
+
+</nav>

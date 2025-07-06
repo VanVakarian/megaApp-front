@@ -1,10 +1,12 @@
-@import url('../../ui/vars.css');
+@import url('../vars.css');
 
 :host {
   display: inline-block;
 }
 
 button {
+  width: 100%;
+  box-sizing: border-box;
   border: none;
   outline: none;
   cursor: pointer;
@@ -28,6 +30,14 @@ button {
     cursor: not-allowed;
     pointer-events: none;
   }
+}
+
+:host:not([style*='width']) {
+  width: fit-content;
+}
+
+:host:not([style*='width']) button {
+  width: auto;
 }
 
 /* Flat directive - with subtle press animation */
