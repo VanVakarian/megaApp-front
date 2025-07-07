@@ -1,0 +1,50 @@
+@import '@app/shared/ui-kit/vars.css';
+
+:host {
+  border-radius: var(--v-expand-border-radius, var(--unit-2));
+  display: block;
+  overflow: hidden;
+
+  box-shadow:
+    3px 3px 6px var(--shadow-dark-light),
+    -3px -3px 6px var(--shadow-light-strong);
+
+  background: var(--color-bg-default);
+}
+
+.header {
+  padding: var(--v-expand-padding, var(--unit-2));
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  user-select: none;
+  transition: background-color 0.2s ease;
+}
+
+.header:hover {
+  background-color: var(--color-bg-hover, rgba(0, 0, 0, 0.05));
+}
+
+.toggle-icon {
+  transition: transform 0.3s ease;
+  font-size: 0.8em;
+  color: var(--color-text-secondary);
+}
+
+.toggle-icon.expanded {
+  transform: rotate(180deg);
+}
+
+.body {
+  height: 0;
+  transition: height 0.1s ease-in-out;
+}
+
+.body.expanded {
+  height: auto;
+}
+
+.body-content {
+  padding: var(--v-expand-padding, var(--unit-2));
+}

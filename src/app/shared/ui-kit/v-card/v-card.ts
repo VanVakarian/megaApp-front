@@ -5,7 +5,6 @@ import { CssUnitValue } from '../types';
   selector: 'v-card',
   templateUrl: './v-card.html',
   styleUrl: './v-card.css',
-  standalone: true,
 })
 export class VCard {
   public readonly borderRadius = input<CssUnitValue>(2);
@@ -14,12 +13,12 @@ export class VCard {
   public readonly onCardclick = output<MouseEvent>();
 
   @HostBinding('style.--v-card-border-radius')
-  get cardBorderRadius() {
+  get cardBorderRadius(): string {
     return `var(--unit-${this.borderRadius()})`;
   }
 
   @HostBinding('style.--v-card-padding')
-  get cardPadding() {
+  get cardPadding(): string {
     return `var(--unit-${this.padding()})`;
   }
 

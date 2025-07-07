@@ -4,7 +4,7 @@
 // Angular material themes
 @use '@angular/material' as mat;
 
-@import './app/shared/ui-kit/vars.css';
+@import '@app/shared/ui-kit/vars.css';
 
 @include mat.core();
 

@@ -4,10 +4,10 @@ import { MoneyScreen } from '@app/components/money/money-screen';
 import { SettingsPageComponent } from '@app/components/settings/settings-page.component';
 import { authResolver } from '@app/services/auth.resolver';
 import { isChapterSelected } from '@app/services/is-chapter-selected.guard';
-import { Food } from './components/ui-showcase/food/food';
-import { Money } from './components/ui-showcase/money/money';
-import { Other } from './components/ui-showcase/other/other';
-import { Settings } from './components/ui-showcase/settings/settings';
+import { Food } from './components/ui-showcase/pages/food/food';
+import { Money } from './components/ui-showcase/pages/money/money';
+import { Other } from './components/ui-showcase/pages/other/other';
+import { Settings } from './components/ui-showcase/pages/settings/settings';
 import { UiShowcase } from './components/ui-showcase/ui-showcase';
 
 export const routes: Routes = [

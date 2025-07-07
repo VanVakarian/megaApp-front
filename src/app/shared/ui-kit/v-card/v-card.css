@@ -1,4 +1,4 @@
-@import url('../vars.css');
+@import '@app/shared/ui-kit/vars.css';
 
 :host {
   border-radius: var(--v-card-border-radius, var(--unit-2));

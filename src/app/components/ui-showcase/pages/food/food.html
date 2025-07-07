@@ -1,0 +1,26 @@
+<v-card>
+  <h2>Food UI Components</h2>
+  <p>Here will be food-related UI components showcase</p>
+</v-card>
+
+<v-expand>
+  <h3 v-header>🍕 Pizza Menu</h3>
+  <div v-body>
+    <p>Margherita - Classic tomato and mozzarella - $12</p>
+    <p>Pepperoni - Spicy pepperoni with cheese - $14</p>
+    <p>Veggie Supreme - Bell peppers, mushrooms, olives - $13</p>
+  </div>
+</v-expand>
+
+<v-expand [expanded]="true">
+  <h3 v-header>🥗 Daily Specials</h3>
+  <div v-body>
+    <h4>Today's Features:</h4>
+    <ul>
+      <li>Caesar Salad with grilled chicken - $11</li>
+      <li>Beef Stroganoff with rice - $16</li>
+      <li>Vegetarian Buddha Bowl - $13</li>
+    </ul>
+    <p><strong>Chef's Recommendation:</strong> Try our seasonal soup of the day!</p>
+  </div>
+</v-expand>

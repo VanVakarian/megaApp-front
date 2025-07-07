@@ -1,4 +1,4 @@
-import { Component, ElementRef, HostBinding, inject, input, output } from '@angular/core';
+import { Component, ElementRef, inject, input, output } from '@angular/core';
 
 export enum ButtonStyle {
   Flat = 'flat',
@@ -15,6 +15,12 @@ export enum ButtonStyle {
   `,
   templateUrl: './v-button.html',
   styleUrl: './v-button.css',
+  host: {
+    '[style.width]': 'width()',
+    '[attr.flat]': 'isFlat ? "" : null',
+    '[attr.raised]': 'isRaised ? "" : null',
+    '[attr.primary]': 'isPrimary ? "" : null',
+  },
 })
 export class VButton {
   public readonly buttonStyle = input<ButtonStyle>();
@@ -23,27 +29,21 @@ export class VButton {
 
   public readonly onClick = output<MouseEvent>();
 
+  public get isFlat(): boolean {
+    return this.getActiveStyle() === ButtonStyle.Flat;
+  }
+
+  public get isRaised(): boolean {
+    return this.getActiveStyle() === ButtonStyle.Raised;
+  }
+
+  public get isPrimary(): boolean {
+    return this.getActiveStyle() === ButtonStyle.Primary;
+  }
+
   private readonly elementRef = inject(ElementRef);
 
-  @HostBinding('style.width')
-  get widthStyle() {
-    return this.width();
-  }
-
-  @HostBinding('attr.flat')
-  get flatAttribute() {
-    return this.getActiveStyle() === ButtonStyle.Flat ? '' : null;
-  }
-
-  @HostBinding('attr.raised')
-  get raisedAttribute() {
-    return this.getActiveStyle() === ButtonStyle.Raised ? '' : null;
-  }
-
-  @HostBinding('attr.primary')
-  get primaryAttribute() {
-    return this.getActiveStyle() === ButtonStyle.Primary ? '' : null;
-  }
+  constructor() {}
 
   protected onButtonClick(event: MouseEvent): void {
     this.onClick.emit(event);
@@ -51,9 +51,7 @@ export class VButton {
 
   private getActiveStyle(): ButtonStyle | null {
     const styleInput = this.buttonStyle();
-    if (styleInput) {
-      return styleInput;
-    }
+    if (styleInput) return styleInput;
 
     const element = this.elementRef.nativeElement;
     if (element.hasAttribute('flat')) return ButtonStyle.Flat;
