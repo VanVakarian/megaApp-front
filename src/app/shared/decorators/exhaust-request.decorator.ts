@@ -1,30 +1,23 @@
-import { Observable, finalize } from 'rxjs';
+import { Observable, finalize, shareReplay } from 'rxjs';
 
 export function exhaustRequest() {
   return function (target: any, propertyKey: string, descriptor: PropertyDescriptor) {
     const originalMethod = descriptor.value;
-    let running = false;
+    let inFlightRequest$: Observable<any> | null = null;
 
     descriptor.value = function (...args: any[]): Observable<any> {
-      return new Observable((subscriber) => {
-        if (running) {
-          subscriber.complete();
-          return;
-        }
+      if (inFlightRequest$) {
+        return inFlightRequest$;
+      }
 
-        running = true;
-
-        const subscription = originalMethod
-          .apply(this, args)
-          .pipe(
-            finalize(() => {
-              running = false;
-            }),
-          )
-          .subscribe(subscriber);
-
-        return () => subscription.unsubscribe();
-      });
+      const request$ = originalMethod.apply(this, args).pipe(
+        finalize(() => {
+          inFlightRequest$ = null;
+        }),
+        shareReplay(1),
+      );
+      inFlightRequest$ = request$;
+      return request$;
     };
 
     return descriptor;
