@@ -3,7 +3,7 @@
   <p>Here will be food-related UI components showcase</p>
 </v-card>
 
-<v-expand>
+<v-expand outer-shadow>
   <h3 v-header>🍕 Pizza Menu</h3>
   <div v-body>
     <p>Margherita - Classic tomato and mozzarella - $12</p>
@@ -12,7 +12,7 @@
   </div>
 </v-expand>
 
-<v-expand [expanded]="true">
+<v-expand outer-shadow>
   <h3 v-header>🥗 Daily Specials</h3>
   <div v-body>
     <h4>Today's Features:</h4>
@@ -24,3 +24,18 @@
     <p><strong>Chef's Recommendation:</strong> Try our seasonal soup of the day!</p>
   </div>
 </v-expand>
+
+<div outer-shadow
+     class="items">
+  @for (i of [0,1,2,3,4]; track i) {
+    <v-expand accordion
+              class="item">
+      <div v-header>
+        Item {{ i + 1 }}
+      </div>
+      <div v-body>
+        <p>Description for item {{ i + 1 }}.</p>
+      </div>
+    </v-expand>
+  }
+</div>

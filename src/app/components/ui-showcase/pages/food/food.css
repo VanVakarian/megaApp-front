@@ -5,3 +5,47 @@
   flex-direction: column;
   gap: var(--unit-4);
 }
+
+.item.open {
+  position: relative;
+
+  &::before,
+  &::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    width: 100%;
+    height: 0.3px;
+    background: linear-gradient(to right, transparent, var(--slate-400), transparent);
+  }
+
+  &::before {
+    top: 0;
+  }
+
+  &::after {
+    bottom: 0;
+  }
+}
+
+/* .first {
+  border-radius: var(--v-expand-border-radius, var(--unit-2)) var(--v-expand-border-radius, var(--unit-2)) 0 0;
+  box-shadow:
+    -3px -3px 6px var(--shadow-light-strong),
+    3px 0 6px var(--shadow-dark-light),
+    -3px 0 6px var(--shadow-light-strong);
+}
+
+.middle {
+  box-shadow:
+    3px 0 6px var(--shadow-dark-light),
+    -3px 0 6px var(--shadow-light-strong);
+}
+
+.last {
+  border-radius: 0 0 var(--v-expand-border-radius, var(--unit-2)) var(--v-expand-border-radius, var(--unit-2));
+  box-shadow:
+    3px 3px 6px var(--shadow-dark-light),
+    3px 0 6px var(--shadow-dark-light),
+    -3px 0 6px var(--shadow-light-strong);
+} */

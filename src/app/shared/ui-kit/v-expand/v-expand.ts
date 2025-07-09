@@ -33,6 +33,10 @@ export class VExpand {
     this._isExpanded.set(!this._isExpanded());
   }
 
+  public setExpanded(expanded: boolean): void {
+    this._isExpanded.set(expanded);
+  }
+
   constructor() {
     this._isExpanded.set(this.expanded());
   }
