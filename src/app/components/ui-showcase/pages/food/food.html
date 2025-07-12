@@ -1,9 +1,12 @@
 <v-card>
   <h2>Food UI Components</h2>
   <p>Here will be food-related UI components showcase</p>
+  <p><strong>Note:</strong> Food menu items are in "food-menu" group, items below are in "items-group"</p>
 </v-card>
 
-<v-expand outer-shadow>
+<v-expand accordion
+          outer-shadow
+          [expanded]="true">
   <h3 v-header>🍕 Pizza Menu</h3>
   <div v-body>
     <p>Margherita - Classic tomato and mozzarella - $12</p>
@@ -12,7 +15,8 @@
   </div>
 </v-expand>
 
-<v-expand outer-shadow>
+<v-expand accordion
+          inner-shadow>
   <h3 v-header>🥗 Daily Specials</h3>
   <div v-body>
     <h4>Today's Features:</h4>
@@ -27,8 +31,8 @@
 
 <div outer-shadow
      class="items">
-  @for (i of [0,1,2,3,4]; track i) {
-    <v-expand accordion
+  @for (i of [0,1,2]; track i) {
+    <v-expand accordion="test-group"
               class="item">
       <div v-header>
         Item {{ i + 1 }}

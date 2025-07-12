@@ -1,5 +1,5 @@
 import { Component } from '@angular/core';
-import { ShadowDirective } from '@app/shared/ui-kit/shadow.directive';
+import { InnerShadowDirective, OuterShadowDirective } from '@app/shared/ui-kit/shadow.directive';
 import { VCard } from '@app/shared/ui-kit/v-card/v-card';
 import { AccordionDirective } from '@app/shared/ui-kit/v-expand/accordion.directive';
 import { VExpand } from '@app/shared/ui-kit/v-expand/v-expand';
@@ -8,6 +8,6 @@ import { VExpand } from '@app/shared/ui-kit/v-expand/v-expand';
   selector: 'food',
   templateUrl: './food.html',
   styleUrl: './food.css',
-  imports: [VCard, VExpand, ShadowDirective, AccordionDirective],
+  imports: [VCard, VExpand, OuterShadowDirective, InnerShadowDirective, AccordionDirective],
 })
 export class Food {}

@@ -1,4 +1,4 @@
-import { Directive, ElementRef, HostListener, OnDestroy, OnInit } from '@angular/core';
+import { Directive, ElementRef, HostListener, OnDestroy, OnInit, input } from '@angular/core';
 import { AccordionService } from './accordion.service';
 
 @Directive({
@@ -8,30 +8,41 @@ import { AccordionService } from './accordion.service';
   },
 })
 export class AccordionDirective implements OnInit, OnDestroy {
+  public readonly accordion = input<string | boolean>(true);
+
   private isOpen = false;
   private id = crypto.randomUUID();
+  private groupId = 'default';
 
   constructor(
-    private accordion: AccordionService,
+    private accordionService: AccordionService,
     private el: ElementRef,
   ) {}
 
   public ngOnInit() {
-    this.accordion.register(this.id, () => {
+    const accordionValue = this.accordion();
+    this.groupId = typeof accordionValue === 'string' ? accordionValue : 'default';
+
+    this.accordionService.register(this.groupId, this.id, () => {
       this.isOpen = false;
       this.setVExpandState(false);
     });
   }
 
   public ngOnDestroy() {
-    this.accordion.unregister(this.id);
+    this.accordionService.unregister(this.groupId, this.id);
   }
 
-  @HostListener('click')
-  private toggle() {
-    this.accordion.toggle(this.id);
-    this.isOpen = this.accordion.isOpen(this.id);
-    this.setVExpandState(this.isOpen);
+  @HostListener('click', ['$event'])
+  private toggle(event: Event) {
+    const target = event.target as HTMLElement;
+    const headerElement = this.el.nativeElement.querySelector('.header');
+
+    if (headerElement && headerElement.contains(target)) {
+      this.accordionService.toggle(this.groupId, this.id);
+      this.isOpen = this.accordionService.isOpen(this.groupId, this.id);
+      this.setVExpandState(this.isOpen);
+    }
   }
 
   private setVExpandState(expanded: boolean) {

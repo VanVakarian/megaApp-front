@@ -1,4 +1,4 @@
-import { Component, input, signal } from '@angular/core';
+import { Component, effect, input, signal } from '@angular/core';
 import { CssUnitValue } from '../types';
 
 @Component({
@@ -15,7 +15,7 @@ export class VExpand {
   public readonly padding = input<CssUnitValue>(2);
   public readonly expanded = input<boolean>(false);
 
-  private readonly _isExpanded = signal(this.expanded());
+  private readonly _isExpanded = signal(false);
 
   public get expandBorderRadius(): string {
     return `var(--unit-${this.borderRadius()})`;
@@ -38,6 +38,8 @@ export class VExpand {
   }
 
   constructor() {
-    this._isExpanded.set(this.expanded());
+    effect(() => {
+      this._isExpanded.set(this.expanded());
+    });
   }
 }

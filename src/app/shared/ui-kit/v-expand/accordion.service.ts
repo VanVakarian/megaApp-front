@@ -4,45 +4,67 @@ import { Injectable, signal } from '@angular/core';
   providedIn: 'root',
 })
 export class AccordionService {
-  private readonly openedId = signal<string | null>(null);
-  private readonly registry = new Map<string, () => void>();
+  private readonly openedIds = signal<Map<string, string | null>>(new Map());
+  private readonly registry = new Map<string, Map<string, () => void>>(new Map());
 
-  // private readonly currentOpenedId = computed(() => this.openedId());
-
-  public register(id: string, closeFn: () => void) {
-    this.registry.set(id, closeFn);
+  public register(groupId: string, id: string, closeFn: () => void) {
+    if (!this.registry.has(groupId)) {
+      this.registry.set(groupId, new Map());
+    }
+    this.registry.get(groupId)!.set(id, closeFn);
   }
 
-  public unregister(id: string) {
-    this.registry.delete(id);
-  }
-
-  public toggle(id: string) {
-    if (this.openedId() === id) {
-      this.openedId.set(null);
-    } else {
-      this.openedId.set(id);
-      for (const [key, closeFn] of this.registry.entries()) {
-        if (key !== id) closeFn();
+  public unregister(groupId: string, id: string) {
+    const group = this.registry.get(groupId);
+    if (group) {
+      group.delete(id);
+      if (group.size === 0) {
+        this.registry.delete(groupId);
       }
     }
   }
 
-  public isOpen(id: string): boolean {
-    return this.openedId() === id;
+  public toggle(groupId: string, id: string) {
+    const openedIds = this.openedIds();
+    const currentOpenedId = openedIds.get(groupId);
+
+    if (currentOpenedId === id) {
+      openedIds.set(groupId, null);
+    } else {
+      openedIds.set(groupId, id);
+      const group = this.registry.get(groupId);
+      if (group) {
+        for (const [key, closeFn] of group.entries()) {
+          if (key !== id) closeFn();
+        }
+      }
+    }
+    this.openedIds.set(new Map(openedIds));
   }
 
-  public open(id: string) {
-    this.toggle(id);
+  public isOpen(groupId: string, id: string): boolean {
+    return this.openedIds().get(groupId) === id;
   }
 
-  public close(id: string) {
-    if (this.openedId() === id) {
-      this.openedId.set(null);
+  public open(groupId: string, id: string) {
+    this.toggle(groupId, id);
+  }
+
+  public close(groupId: string, id: string) {
+    const openedIds = this.openedIds();
+    if (openedIds.get(groupId) === id) {
+      openedIds.set(groupId, null);
+      this.openedIds.set(new Map(openedIds));
     }
   }
 
+  public closeGroup(groupId: string) {
+    const openedIds = this.openedIds();
+    openedIds.set(groupId, null);
+    this.openedIds.set(new Map(openedIds));
+  }
+
   public closeAll() {
-    this.openedId.set(null);
+    this.openedIds.set(new Map());
   }
 }
