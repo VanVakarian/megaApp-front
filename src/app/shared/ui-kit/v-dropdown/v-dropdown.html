@@ -1,0 +1,54 @@
+<div class="dropdown-wrapper"
+     [class.open]="isOpen">
+
+  <v-input #inputComponent
+           [label]="label()"
+           [placeholder]="placeholder()"
+           [disabled]="isDisabled()"
+           [required]="isRequired()"
+           [errorMessage]="computedErrorMessage"
+           (onInputChanged)="onInputChange($event)"
+           (onFocused)="onFocus()"
+           (onBlurred)="onBlur()">
+    @if (value) {
+      <div v-postfix
+           class="clear-icon"
+           (mousedown)="$event.preventDefault()"
+           (click)="clearInput()">
+        <svg width="12"
+             height="12"
+             viewBox="0 0 12 12"
+             fill="none">
+          <path d="M9 3L3 9M3 3L9 9"
+                stroke="currentColor"
+                stroke-width="1"
+                stroke-linecap="round"
+                stroke-linejoin="round" />
+        </svg>
+      </div>
+    }
+  </v-input>
+
+  @if (isOpen && filteredItems.length > 0) {
+    <div class="dropdown-list"
+         [class.align-left]="expandDirection() === 'left'"
+         [ngStyle]="dropdownListStyles">
+      @for (item of filteredItems; track item.value) {
+        <div class="dropdown-item"
+             (click)="selectItem(item)">
+          {{ item.label }}
+        </div>
+      }
+    </div>
+  }
+
+  @if (isOpen && filteredItems.length === 0 && value) {
+    <div class="dropdown-list"
+         [class.align-left]="expandDirection() === 'left'"
+         [ngStyle]="dropdownListStyles">
+      <div class="dropdown-item empty">
+        No items found
+      </div>
+    </div>
+  }
+</div>

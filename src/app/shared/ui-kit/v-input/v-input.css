@@ -3,7 +3,7 @@
 :host {
   display: flex;
   flex-direction: column;
-  width: 100%;
+  /* width: 100%; */
 }
 
 .label {
@@ -14,12 +14,13 @@
 }
 
 .input-wrapper {
-  border-radius: var(--unit-1);
-  box-sizing: border-box;
-  width: 100%;
+  position: relative;
   display: flex;
   align-items: center;
-  position: relative;
+  width: 100%;
+  padding: var(--unit-2) 0;
+  border-radius: var(--unit-1);
+  box-sizing: border-box;
   transition: all 0.2s ease;
 
   box-shadow:

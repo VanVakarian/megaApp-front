@@ -1,5 +1,6 @@
 @if (label()) {
-  <label class="label">{{ label() }}</label>
+  <label class="label"
+         [for]="inputId">{{ label() }}</label>
 }
 
 <div class="input-wrapper"
@@ -11,6 +12,8 @@
   </div>
 
   <input #inputElement
+         [id]="inputId"
+         [name]="name() || inputId"
          [type]="type()"
          [placeholder]="placeholder()"
          [value]="value"

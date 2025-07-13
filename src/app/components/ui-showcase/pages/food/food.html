@@ -5,8 +5,7 @@
 </v-card>
 
 <v-expand accordion
-          outer-shadow
-          [expanded]="true">
+          outer-shadow>
   <h3 v-header>🍕 Pizza Menu</h3>
   <div v-body>
     <p>Margherita - Classic tomato and mozzarella - $12</p>
@@ -42,4 +41,29 @@
       </div>
     </v-expand>
   }
+</div>
+
+<div class="flex gap-4">
+  <v-input label="random input"
+           placeholder="Введите что-нибудь" />
+
+  <v-dropdown label="Select Food Item"
+              placeholder="Search food items"
+              [items]="foodItems"
+              [isRequired]="true"
+              [minDropdownWidth]="'300px'"
+              [expandDirection]="'left'"
+              (onSelectionChanged)="onFoodItemChange($event)">
+  </v-dropdown>
+</div>
+
+<div class="flex gap-4">
+  <v-dropdown label="Select Food Item"
+              placeholder="Search food items"
+              [minDropdownWidth]="'250px'"
+              class="w-full"
+              [items]="foodItems"
+              [isRequired]="true"
+              (onSelectionChanged)="onFoodItemChange($event)">
+  </v-dropdown>
 </div>

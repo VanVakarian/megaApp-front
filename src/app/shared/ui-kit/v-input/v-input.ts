@@ -2,6 +2,8 @@ import { CommonModule } from '@angular/common';
 import { Component, ElementRef, forwardRef, input, output, ViewChild } from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 
+let uniqueId = 0;
+
 @Component({
   selector: 'v-input',
   templateUrl: './v-input.html',
@@ -26,6 +28,7 @@ export class VInput implements ControlValueAccessor {
   public readonly readonly = input<boolean>(false);
   public readonly required = input<boolean>(false);
   public readonly errorMessage = input<string>('');
+  public readonly name = input<string>('');
 
   public readonly onInputChanged = output<Event>();
   public readonly onFocused = output<Event>();
@@ -33,6 +36,7 @@ export class VInput implements ControlValueAccessor {
 
   protected value: string = '';
   protected isFocused = false;
+  protected readonly inputId = `v-input-${++uniqueId}`;
 
   // ControlValueAccessor implementation
   private onChange = (value: string) => {};
