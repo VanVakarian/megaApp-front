@@ -1,3 +1,17 @@
+<v-expand accordion
+          outer-shadow
+          class="BMI">
+  <div v-header
+       class="v-header w-full p-2 text-center"
+       [ngStyle]="setBackgroundStyle(todaysKcalsPercent)">
+    Съедено 80.6% от дневной нормы
+  </div>
+  <div v-body
+       class="p-2">
+    <app-bmi />
+  </div>
+</v-expand>
+
 <v-card>
   <h2>Food UI Components</h2>
   <p>Here will be food-related UI components showcase</p>
