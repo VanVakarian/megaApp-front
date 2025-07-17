@@ -36,16 +36,16 @@
            placeholder="Введите ваше имя" />
 
   <v-input label="Email"
-           type="email"
-           placeholder="example@email.com" />
+           placeholder="example@email.com"
+           [type]="InputType.Email" />
 
   <v-input label="Пароль"
-           type="password"
-           placeholder="Введите пароль" />
+           placeholder="Введите пароль"
+           [type]="InputType.Password" />
 
   <v-input label="Отключенное поле"
            placeholder="Это поле отключено"
-           [disabled]="true" />
+           [isDisabled]="true" />
 
   <v-input label="Поле с ошибкой"
            placeholder="Введите что-то"

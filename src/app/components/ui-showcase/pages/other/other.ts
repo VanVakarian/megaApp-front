@@ -1,7 +1,7 @@
 import { AfterViewInit, Component, OnInit, ViewChild } from '@angular/core';
 import { VButton } from '@app/shared/ui-kit/v-button/v-button';
 import { VCard } from '@app/shared/ui-kit/v-card/v-card';
-import { VInput } from '@app/shared/ui-kit/v-input/v-input';
+import { InputType, VInput } from '@app/shared/ui-kit/v-input/v-input';
 
 @Component({
   selector: 'other',
@@ -12,6 +12,7 @@ import { VInput } from '@app/shared/ui-kit/v-input/v-input';
 export class Other implements AfterViewInit, OnInit {
   @ViewChild('testInput')
   protected inputComponent!: VInput;
+  protected InputType = InputType;
 
   constructor() {}
 

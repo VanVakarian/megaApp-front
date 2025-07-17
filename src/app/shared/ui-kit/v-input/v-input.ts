@@ -2,6 +2,15 @@ import { CommonModule } from '@angular/common';
 import { Component, ElementRef, forwardRef, input, output, ViewChild } from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 
+export enum InputType {
+  Text = 'text',
+  Password = 'password',
+  Email = 'email',
+  Number = 'number',
+  Tel = 'tel',
+  Url = 'url',
+}
+
 let uniqueId = 0;
 
 @Component({
@@ -21,13 +30,14 @@ export class VInput implements ControlValueAccessor {
   @ViewChild('inputElement')
   public readonly inputElement!: ElementRef<HTMLInputElement>;
 
-  public readonly label = input<string>('');
-  public readonly placeholder = input<string>('');
-  public readonly type = input<string>('text');
-  public readonly disabled = input<boolean>(false);
-  public readonly readonly = input<boolean>(false);
-  public readonly required = input<boolean>(false);
+  public readonly isDisabled = input<boolean>(false);
+  public readonly isRequired = input<boolean>(false);
+  public readonly isReadonly = input<boolean>(false);
+
   public readonly errorMessage = input<string>('');
+  public readonly placeholder = input<string>('');
+  public readonly label = input<string>('');
+  public readonly type = input<string>(InputType.Text);
   public readonly name = input<string>('');
 
   public readonly onInputChanged = output<Event>();

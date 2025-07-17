@@ -5,7 +5,7 @@
 
 <div class="input-wrapper"
      [class.focused]="isFocused"
-     [class.disabled]="disabled()">
+     [class.disabled]="isDisabled()">
 
   <div class="prefix">
     <ng-content select="[v-prefix]" />
@@ -17,9 +17,9 @@
          [type]="type()"
          [placeholder]="placeholder()"
          [value]="value"
-         [disabled]="disabled()"
-         [readonly]="readonly()"
-         [required]="required()"
+         [disabled]="isDisabled()"
+         [readonly]="isReadonly()"
+         [required]="isRequired()"
          (input)="onInputChange($event)"
          (focus)="onFocus()"
          (blur)="onBlur()"

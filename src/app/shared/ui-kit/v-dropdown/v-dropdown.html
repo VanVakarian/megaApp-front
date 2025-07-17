@@ -4,8 +4,8 @@
   <v-input #inputComponent
            [label]="label()"
            [placeholder]="placeholder()"
-           [disabled]="isDisabled()"
-           [required]="isRequired()"
+           [isDisabled]="isDisabled()"
+           [isRequired]="isRequired()"
            [errorMessage]="computedErrorMessage"
            (onInputChanged)="onInputChange($event)"
            (onFocused)="onFocus()"
