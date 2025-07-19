@@ -19,7 +19,6 @@
          [value]="value"
          [disabled]="isDisabled()"
          [readonly]="isReadonly()"
-         [required]="isRequired()"
          (input)="onInputChange($event)"
          (focus)="onFocus()"
          (blur)="onBlur()"
@@ -31,6 +30,6 @@
 
 </div>
 
-@if (errorMessage()) {
-  <div class="error-message">{{ errorMessage() }}</div>
+@if (getErrorMessage()) {
+  <div class="error-message">{{ getErrorMessage() }}</div>
 }

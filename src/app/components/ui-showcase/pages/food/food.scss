@@ -4,6 +4,14 @@
   .BMI .header {
     justify-content: center !important;
   }
+
+  .weight-input {
+    input {
+      text-align: center;
+      font-size: x-large !important;
+      font-weight: 600;
+    }
+  }
 }
 
 :host {

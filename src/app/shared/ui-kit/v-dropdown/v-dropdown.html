@@ -1,13 +1,13 @@
 <div class="dropdown-wrapper"
-     [class.open]="isOpen">
+     [class.open]="isOpen"
+     [formGroup]="internalForm">
 
   <v-input #inputComponent
            [label]="label()"
            [placeholder]="placeholder()"
            [isDisabled]="isDisabled()"
-           [isRequired]="isRequired()"
            [errorMessage]="computedErrorMessage"
-           (onInputChanged)="onInputChange($event)"
+           formControlName="search"
            (onFocused)="onFocus()"
            (onBlurred)="onBlur()">
     @if (value) {

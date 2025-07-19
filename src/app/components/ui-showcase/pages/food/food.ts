@@ -1,5 +1,6 @@
 import { NgStyle } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
+import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { BMIComponent } from '@app/components/food/diary/bmi/bmi.component';
 import { InnerShadowDirective, OuterShadowDirective } from '@app/shared/ui-kit/shadow.directive';
 import { VCard } from '@app/shared/ui-kit/v-card/v-card';
@@ -7,6 +8,7 @@ import { DropdownItem, VDropdown } from '@app/shared/ui-kit/v-dropdown/v-dropdow
 import { AccordionDirective } from '@app/shared/ui-kit/v-expand/accordion.directive';
 import { VExpand } from '@app/shared/ui-kit/v-expand/v-expand';
 import { VInput } from '@app/shared/ui-kit/v-input/v-input';
+import { weightValidator } from '@app/shared/ui-kit/v-input/validators';
 
 @Component({
   selector: 'food',
@@ -14,6 +16,7 @@ import { VInput } from '@app/shared/ui-kit/v-input/v-input';
   styleUrl: './food.scss',
   imports: [
     NgStyle,
+    ReactiveFormsModule,
     VCard,
     VExpand,
     VDropdown,
@@ -36,6 +39,13 @@ export class Food implements OnInit {
   ];
   protected selectedFoodItem: string = '';
   protected readonly todaysKcalsPercent = 80.6;
+
+  protected form = new FormGroup({
+    weight: new FormControl(100, [Validators.required, weightValidator()]),
+    test01: new FormControl(''),
+    // test02: new FormControl(''),
+    // test03: new FormControl(''),
+  });
 
   constructor() {}
 

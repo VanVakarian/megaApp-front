@@ -7,8 +7,16 @@
     Съедено 80.6% от дневной нормы
   </div>
   <div v-body
-       class="p-2">
+       class="flex flex-col gap-4 p-2">
     <app-bmi />
+    <form [formGroup]="form"
+          class="flex justify-end">
+      <v-input type="text"
+               label="Вес"
+               placeholder="Введите вес"
+               formControlName="weight"
+               class="weight-input w-1/2" />
+    </form>
   </div>
 </v-expand>
 
@@ -58,8 +66,11 @@
 </div>
 
 <div class="flex gap-4">
-  <v-input label="random input"
-           placeholder="Введите что-нибудь" />
+  <div [formGroup]="form">
+    <v-input label="random input"
+             placeholder="Введите что-нибудь"
+             formControlName="test01" />
+  </div>
 
   <v-dropdown label="Select Food Item"
               placeholder="Search food items"
@@ -74,8 +85,8 @@
 <div class="flex gap-4">
   <v-dropdown label="Select Food Item"
               placeholder="Search food items"
-              [minDropdownWidth]="'250px'"
               class="w-full"
+              [minDropdownWidth]="'250px'"
               [items]="foodItems"
               [isRequired]="true"
               (onSelectionChanged)="onFoodItemChange($event)">

@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
-import { Component, ElementRef, forwardRef, input, output, ViewChild } from '@angular/core';
-import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
+import { Component, ElementRef, input, output, Self, ViewChild } from '@angular/core';
+import { ControlValueAccessor, NgControl } from '@angular/forms';
+import { getValidationErrorMessage } from './validators';
 
 export enum InputType {
   Text = 'text',
@@ -18,26 +19,18 @@ let uniqueId = 0;
   templateUrl: './v-input.html',
   styleUrl: './v-input.css',
   imports: [CommonModule],
-  providers: [
-    {
-      provide: NG_VALUE_ACCESSOR,
-      useExisting: forwardRef(() => VInput),
-      multi: true,
-    },
-  ],
 })
 export class VInput implements ControlValueAccessor {
   @ViewChild('inputElement')
   public readonly inputElement!: ElementRef<HTMLInputElement>;
 
   public readonly isDisabled = input<boolean>(false);
-  public readonly isRequired = input<boolean>(false);
   public readonly isReadonly = input<boolean>(false);
 
-  public readonly errorMessage = input<string>('');
-  public readonly placeholder = input<string>('');
-  public readonly label = input<string>('');
   public readonly type = input<string>(InputType.Text);
+  public readonly label = input<string>('');
+  public readonly placeholder = input<string>('');
+  public readonly errorMessage = input<string>('');
   public readonly name = input<string>('');
 
   public readonly onInputChanged = output<Event>();
@@ -48,8 +41,29 @@ export class VInput implements ControlValueAccessor {
   protected isFocused = false;
   protected readonly inputId = `v-input-${++uniqueId}`;
 
-  // ControlValueAccessor implementation
+  constructor(
+    @Self()
+    public ngControl: NgControl,
+  ) {
+    this.ngControl.valueAccessor = this;
+  }
+
+  protected getErrorMessage(): string {
+    return this.errorMessage() || this.getValidationErrorMessage();
+  }
+
+  private getValidationErrorMessage(): string {
+    const control = this.ngControl.control;
+    if (!control || !control.errors) return '';
+
+    const errorKey = Object.keys(control.errors)[0];
+    const errorValue = control.errors[errorKey];
+
+    return getValidationErrorMessage(errorKey, errorValue);
+  }
+
   private onChange = (value: string) => {};
+
   private onTouched = () => {};
 
   public writeValue(value: string): void {
@@ -70,7 +84,6 @@ export class VInput implements ControlValueAccessor {
     const target = event.target as HTMLInputElement;
     this.value = target.value;
     this.onChange(this.value);
-    this.onInputChanged.emit(event);
   }
 
   protected onFocus(): void {

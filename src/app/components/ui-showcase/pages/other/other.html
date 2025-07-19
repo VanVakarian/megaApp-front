@@ -23,31 +23,39 @@
 
   <v-card [borderRadius]="0">
     Карточка без скругления
-    <v-input #testInput>
-      <span v-prefix
-            class="prefix">$</span>
-      <button v-postfix
-              type="button"
-              class="postfix">🔍</button>
-    </v-input>
+    <div [formGroup]="form">
+      <v-input #testInput
+               formControlName="testInput">
+        <span v-prefix
+              class="prefix">$</span>
+        <button v-postfix
+                type="button"
+                class="postfix">🔍</button>
+      </v-input>
+    </div>
   </v-card>
 
-  <v-input label="Имя пользователя"
-           placeholder="Введите ваше имя" />
+  <form [formGroup]="form">
+    <v-input label="Имя пользователя"
+             placeholder="Введите ваше имя"
+             formControlName="username" />
 
-  <v-input label="Email"
-           placeholder="example@email.com"
-           [type]="InputType.Email" />
+    <v-input label="Email"
+             placeholder="example@email.com"
+             [type]="InputType.Email"
+             formControlName="email" />
 
-  <v-input label="Пароль"
-           placeholder="Введите пароль"
-           [type]="InputType.Password" />
+    <v-input label="Пароль"
+             placeholder="Введите пароль"
+             [type]="InputType.Password"
+             formControlName="password" />
 
-  <v-input label="Отключенное поле"
-           placeholder="Это поле отключено"
-           [isDisabled]="true" />
+    <v-input label="Отключенное поле"
+             placeholder="Это поле отключено"
+             formControlName="disabled" />
 
-  <v-input label="Поле с ошибкой"
-           placeholder="Введите что-то"
-           errorMessage="Это поле обязательно для заполнения" />
+    <v-input label="Поле с ошибкой"
+             placeholder="Введите что-то"
+             formControlName="error" />
+  </form>
 </div>

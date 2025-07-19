@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, ElementRef, forwardRef, input, output, ViewChild } from '@angular/core';
-import { ControlValueAccessor, FormsModule, NG_VALUE_ACCESSOR } from '@angular/forms';
+import { ControlValueAccessor, FormControl, FormGroup, NG_VALUE_ACCESSOR, ReactiveFormsModule } from '@angular/forms';
 import { VInput } from '../v-input/v-input';
 
 export interface DropdownItem {
@@ -12,7 +12,7 @@ export interface DropdownItem {
   selector: 'v-dropdown',
   templateUrl: './v-dropdown.html',
   styleUrl: './v-dropdown.css',
-  imports: [CommonModule, VInput, FormsModule],
+  imports: [CommonModule, VInput, ReactiveFormsModule],
   providers: [
     {
       provide: NG_VALUE_ACCESSOR,
@@ -41,11 +41,21 @@ export class VDropdown implements ControlValueAccessor {
   protected filteredItems: DropdownItem[] = [];
   protected validationError: string = '';
   protected dropdownWidth = 0;
+  protected internalForm = new FormGroup({
+    search: new FormControl(''),
+  });
 
   private onChange = (value: string) => {};
   private onTouched = () => {};
 
-  constructor(private elementRef: ElementRef) {}
+  constructor(private elementRef: ElementRef) {
+    this.internalForm.get('search')?.valueChanges.subscribe((value) => {
+      this.value = value || '';
+      this.onChange(this.value);
+      this.updateFilteredItems();
+      this.isOpen = true;
+    });
+  }
 
   protected get computedErrorMessage(): string {
     if (this.isOpen) {
@@ -68,11 +78,9 @@ export class VDropdown implements ControlValueAccessor {
 
   public writeValue(value: string): void {
     this.value = value || '';
+    this.internalForm.get('search')?.setValue(this.value, { emitEvent: false });
     this.updateFilteredItems();
     this.validateInput();
-    if (this.inputComponent) {
-      this.inputComponent.writeValue(this.value);
-    }
   }
 
   public registerOnChange(fn: (value: string) => void): void {
@@ -84,14 +92,6 @@ export class VDropdown implements ControlValueAccessor {
   }
 
   public setDisabledState(isDisabled: boolean): void {}
-
-  protected onInputChange(event: Event): void {
-    const target = event.target as HTMLInputElement;
-    this.value = target.value;
-    this.onChange(this.value);
-    this.updateFilteredItems();
-    this.isOpen = true;
-  }
 
   protected onFocus(): void {
     this.isOpen = true;
@@ -110,11 +110,11 @@ export class VDropdown implements ControlValueAccessor {
   protected selectItem(item: DropdownItem): void {
     this.value = item.label;
     this.validationError = '';
+    this.internalForm.get('search')?.setValue(this.value, { emitEvent: false });
     this.onChange(item.value);
     this.onSelectionChanged.emit(item);
     this.isOpen = false;
     if (this.inputComponent) {
-      this.inputComponent.writeValue(this.value);
       this.inputComponent.inputElement.nativeElement.blur();
     }
   }
@@ -122,12 +122,10 @@ export class VDropdown implements ControlValueAccessor {
   protected clearInput(): void {
     this.value = '';
     this.validationError = '';
+    this.internalForm.get('search')?.setValue('', { emitEvent: false });
     this.onChange('');
     this.onSelectionChanged.emit(null);
     this.updateFilteredItems();
-    if (this.inputComponent) {
-      this.inputComponent.writeValue(this.value);
-    }
   }
 
   private updateFilteredItems(): void {

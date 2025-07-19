@@ -19,7 +19,6 @@ Searchable dropdown component with automatic filtering and form integration.
 | `label` | `string` | `''` | Label text |
 | `placeholder` | `string` | `''` | Placeholder text |
 | `items` | `DropdownItem[]` | `[]` | Options array |
-| `isRequired` | `boolean` | `false` | Required validation |
 | `isDisabled` | `boolean` | `false` | Disable component |
 | `errorMessage` | `string` | `''` | Error message |
 | `minDropdownWidth` | `string` | `''` | Min width (e.g. '300px') |
@@ -62,18 +61,17 @@ form = new FormGroup({
   placeholder="Search food..."
   formControlName="food"
   [items]="items"
-  [isRequired]="true"
   (onSelectionChanged)="onSelect($event)"
 />
 ```
 
 ### Common Configurations
 ```html
-<!-- Required with custom width -->
+<!-- Required field (via form validation) -->
 <v-dropdown
   label="Category"
   [items]="categories"
-  [isRequired]="true"
+  formControlName="category"
   [minDropdownWidth]="'250px'"
 />
 

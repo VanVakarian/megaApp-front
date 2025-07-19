@@ -1,91 +1,73 @@
-# V-Input Component Usage Examples
+# V-Input
 
-## Component Architecture
-
-The component has the following structure:
-```
-:host
-├── label (outside neumorphic frame)
-├── .input-wrapper (neumorphic frame)
-│   ├── [v-prefix] (optional prefix content)
-│   ├── input (input field itself)
-│   └── [v-postfix] (optional postfix content)
-└── error-message (outside neumorphic frame)
-```
-
-**Key Features**:
-- The neumorphic frame is applied to the entire input container including prefix and postfix
-- Prefix and postfix replace input padding, taking content space or minimum 8px (var(--unit-2))
-- Input field takes all remaining space (flex: 1)
-- Label and error message are positioned outside the visual container
+Neumorphic input component with form integration and content projection.
 
 ## Basic Usage
 
 ```html
-<!-- Simple input -->
 <v-input
   label="Username"
   placeholder="Enter your name"
+  formControlName="username"
 />
+```
 
-<!-- Input with postfix -->
-<v-input
-  label="Search"
-  placeholder="Type to search...">
+## Properties
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `label` | `string` | `''` | Label text |
+| `placeholder` | `string` | `''` | Placeholder text |
+| `type` | `string` | `'text'` | Input type |
+| `isDisabled` | `boolean` | `false` | Disable component |
+| `isReadonly` | `boolean` | `false` | Read-only mode |
+| `errorMessage` | `string` | `''` | Error message |
+| `name` | `string` | `''` | Input name attribute |
+
+## Events
+
+| Event | Type | Description |
+|-------|------|-------------|
+| `onInputChanged` | `Event` | Value changed |
+| `onFocused` | `Event` | Input focused |
+| `onBlurred` | `Event` | Input blurred |
+
+## Content Projection
+
+### Prefix & Postfix
+```html
+<v-input label="Price">
+  <span v-prefix>$</span>
   <button v-postfix type="button">🔍</button>
-</v-input>
-
-<!-- Input with prefix -->
-<v-input
-  label="Price"
-  placeholder="0.00">
-  <span v-prefix>$</span>
-</v-input>
-
-<!-- Input with both prefix and postfix -->
-<v-input
-  label="Amount"
-  placeholder="Enter amount">
-  <span v-prefix>$</span>
-  <span v-postfix>USD</span>
 </v-input>
 ```
 
-## Usage with Reactive Forms
+## Examples
 
+### With Forms
 ```typescript
-// In component:
-import { FormControl, FormGroup, Validators } from '@angular/forms';
-
-export class ExampleComponent {
-  userForm = new FormGroup({
-    username: new FormControl('', [Validators.required, Validators.minLength(3)]),
-    email: new FormControl('', [Validators.required, Validators.email]),
-    password: new FormControl('', [Validators.required, Validators.minLength(6)])
-  });
-
-  get username() { return this.userForm.get('username'); }
-  get email() { return this.userForm.get('email'); }
-  get password() { return this.userForm.get('password'); }
-}
+// Component
+form = new FormGroup({
+  username: new FormControl('', Validators.required),
+  email: new FormControl('', [Validators.required, Validators.email]),
+  password: new FormControl('', Validators.required)
+});
 ```
 
 ```html
-<!-- In template: -->
-<form [formGroup]="userForm">
+<!-- Template -->
+<form [formGroup]="form">
   <v-input
     label="Username"
-    placeholder="Enter your name"
+    placeholder="Enter name"
     formControlName="username"
-    [errorMessage]="username?.invalid && username?.touched ? 'Username is required (minimum 3 characters)' : ''"
   />
 
   <v-input
     label="Email"
     type="email"
-    placeholder="example@email.com"
+    placeholder="user@example.com"
     formControlName="email"
-    [errorMessage]="email?.invalid && email?.touched ? 'Please enter a valid email' : ''"
   />
 
   <v-input
@@ -93,49 +75,67 @@ export class ExampleComponent {
     type="password"
     placeholder="Enter password"
     formControlName="password"
-    [errorMessage]="password?.invalid && password?.touched ? 'Password must contain at least 6 characters' : ''"
   />
 </form>
 ```
 
-## Available Properties
-
-### Input Properties (Signal-based API)
-- `label`: input<string>('') - Label text above the field
-- `placeholder`: input<string>('') - Placeholder text
-- `type`: input<string>('text') - Input type (text, email, password, etc.)
-- `disabled`: input<boolean>(false) - Disable the field
-- `readonly`: input<boolean>(false) - Read-only mode
-- `required`: input<boolean>(false) - Required field
-- `errorMessage`: input<string>('') - Error message
-
-### Output Events (Signal-based API)
-- `onInputChanged`: output<Event>() - Event fired when value changes
-- `onFocused`: output<Event>() - Event fired when field gains focus
-- `onBlurred`: output<Event>() - Event fired when field loses focus
-
-### Methods
-- `focus()`: void - Programmatically set focus on the field
-- `writeValue(value: string)`: void - Set value (ControlValueAccessor)
-
-## Different State Examples
-
+### Input Types
 ```html
-<!-- Basic field -->
-<v-input
-  label="Username"
-  placeholder="Enter your name" />
+<!-- Text input -->
+<v-input type="text" label="Name" />
 
-<!-- Email field with icon postfix -->
-<v-input
-  label="Email"
-  type="email"
-  placeholder="example@email.com">
-  <i v-postfix class="fa fa-envelope"></i>
+<!-- Email input -->
+<v-input type="email" label="Email" />
+
+<!-- Password input -->
+<v-input type="password" label="Password" />
+
+<!-- Number input -->
+<v-input type="number" label="Age" />
+```
+
+### With Prefix/Postfix
+```html
+<!-- Currency input -->
+<v-input label="Price">
+  <span v-prefix>$</span>
+  <span v-postfix>USD</span>
 </v-input>
 
-<!-- Password field with visibility toggle -->
+<!-- Search input -->
+<v-input label="Search" placeholder="Type to search...">
+  <button v-postfix type="button">🔍</button>
+</v-input>
+
+<!-- Phone input -->
+<v-input label="Phone">
+  <span v-prefix>+1</span>
+</v-input>
+```
+
+### States
+```html
+<!-- Disabled -->
 <v-input
+  label="Loading"
+  placeholder="Please wait..."
+  [isDisabled]="true"
+/>
+
+<!-- Read-only -->
+<v-input
+  label="ID"
+  value="USER_12345"
+  [isReadonly]="true"
+/>
+
+<!-- With error -->
+<v-input
+  label="Required Field"
+  formControlName="field"
+  errorMessage="This field is required"
+/>
+```
   label="Password"
   type="password"
   placeholder="Enter password">
