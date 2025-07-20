@@ -37,11 +37,13 @@ export class Food implements OnInit {
     { label: 'Dessert', value: 'dessert' },
     { label: 'Beverage', value: 'beverage' },
   ];
+
   protected selectedFoodItem: string = '';
+
   protected readonly todaysKcalsPercent = 80.6;
 
   protected form = new FormGroup({
-    weight: new FormControl(100, [Validators.required, weightValidator()]),
+    weight: new FormControl<number | null>(null, [Validators.required, weightValidator()]),
     test01: new FormControl(''),
     // test02: new FormControl(''),
     // test03: new FormControl(''),

@@ -28,8 +28,10 @@
 
 <v-expand accordion
           outer-shadow>
-  <h3 v-header>🍕 Pizza Menu</h3>
-  <div v-body>
+  <h3 v-header
+      class="p-2">🍕 Pizza Menu</h3>
+  <div v-body
+       class="p-2">
     <p>Margherita - Classic tomato and mozzarella - $12</p>
     <p>Pepperoni - Spicy pepperoni with cheese - $14</p>
     <p>Veggie Supreme - Bell peppers, mushrooms, olives - $13</p>
@@ -38,8 +40,10 @@
 
 <v-expand accordion
           inner-shadow>
-  <h3 v-header>🥗 Daily Specials</h3>
-  <div v-body>
+  <h3 v-header
+      class="p-2">🥗 Daily Specials</h3>
+  <div v-body
+       class="p-2">
     <h4>Today's Features:</h4>
     <ul>
       <li>Caesar Salad with grilled chicken - $11</li>
@@ -55,10 +59,12 @@
   @for (i of [0,1,2]; track i) {
     <v-expand accordion="test-group"
               class="item">
-      <div v-header>
+      <div v-header
+           class="p-2">
         Item {{ i + 1 }}
       </div>
-      <div v-body>
+      <div v-body
+           class="p-2">
         <p>Description for item {{ i + 1 }}.</p>
       </div>
     </v-expand>
@@ -75,7 +81,6 @@
   <v-dropdown label="Select Food Item"
               placeholder="Search food items"
               [items]="foodItems"
-              [isRequired]="true"
               [minDropdownWidth]="'300px'"
               [expandDirection]="'left'"
               (onSelectionChanged)="onFoodItemChange($event)">
@@ -88,7 +93,6 @@
               class="w-full"
               [minDropdownWidth]="'250px'"
               [items]="foodItems"
-              [isRequired]="true"
               (onSelectionChanged)="onFoodItemChange($event)">
   </v-dropdown>
 </div>

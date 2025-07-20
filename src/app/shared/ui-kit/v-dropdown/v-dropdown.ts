@@ -76,7 +76,7 @@ export class VDropdown implements ControlValueAccessor {
     return styles;
   }
 
-  public writeValue(value: string): void {
+  public writeValue(value: string | null): void {
     this.value = value || '';
     this.internalForm.get('search')?.setValue(this.value, { emitEvent: false });
     this.updateFilteredItems();

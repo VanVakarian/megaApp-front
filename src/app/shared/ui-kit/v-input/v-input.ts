@@ -12,6 +12,8 @@ export enum InputType {
   Url = 'url',
 }
 
+type InputValue = string | number | null;
+
 let uniqueId = 0;
 
 @Component({
@@ -39,6 +41,7 @@ export class VInput implements ControlValueAccessor {
 
   protected value: string = '';
   protected isFocused = false;
+  protected hasInteracted = false;
   protected readonly inputId = `v-input-${++uniqueId}`;
 
   constructor(
@@ -49,6 +52,7 @@ export class VInput implements ControlValueAccessor {
   }
 
   protected getErrorMessage(): string {
+    if (!this.hasInteracted) return '';
     return this.errorMessage() || this.getValidationErrorMessage();
   }
 
@@ -62,15 +66,16 @@ export class VInput implements ControlValueAccessor {
     return getValidationErrorMessage(errorKey, errorValue);
   }
 
-  private onChange = (value: string) => {};
+  private onChange = (value: InputValue) => {};
 
   private onTouched = () => {};
 
-  public writeValue(value: string): void {
-    this.value = value || '';
+  public writeValue(value: InputValue): void {
+    this.value = value != null ? String(value) : '';
+    this.hasInteracted = false;
   }
 
-  public registerOnChange(fn: (value: string) => void): void {
+  public registerOnChange(fn: (value: InputValue) => void): void {
     this.onChange = fn;
   }
 
@@ -83,7 +88,18 @@ export class VInput implements ControlValueAccessor {
   protected onInputChange(event: Event): void {
     const target = event.target as HTMLInputElement;
     this.value = target.value;
-    this.onChange(this.value);
+    this.hasInteracted = true;
+    const outputValue = this.convertToOutputValue(this.value);
+    this.onChange(outputValue);
+  }
+
+  private convertToOutputValue(inputValue: string): InputValue {
+    if (this.type() !== InputType.Number || inputValue.trim() === '') {
+      return inputValue;
+    }
+
+    const numValue = Number(inputValue);
+    return isNaN(numValue) ? inputValue : numValue;
   }
 
   protected onFocus(): void {
