@@ -46,10 +46,10 @@ export class MoneyService {
   public postRequestResult$ = new Subject<ServerResponseBasic>();
 
   constructor(private http: HttpClient) {
-    // effect(() => { console.log('CURRENCIES have been updated:', this.currencies$$()) }); // prettier-ignore
-    // effect(() => { console.log('CATEGORIES have been updated:', this.categories$$()) }); // prettier-ignore
-    // effect(() => { console.log('ACCOUNTS have been updated:', this.accounts$$()) }); // prettier-ignore
-    // effect(() => { console.log('TRANSACTIONS have been updated:', this.transactions$$()) }); // prettier-ignore
+    // effect(() => { console.log('CURRENCIES:', this.currencies$$()) }); // prettier-ignore
+    // effect(() => { console.log('CATEGORIES:', this.categories$$()) }); // prettier-ignore
+    // effect(() => { console.log('ACCOUNTS:', this.accounts$$()) }); // prettier-ignore
+    // effect(() => { console.log('TRANSACTIONS:', this.transactions$$()) }); // prettier-ignore
   }
 
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

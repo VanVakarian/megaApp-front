@@ -1,7 +1,16 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed } from '@angular/core';
+import {
+  AfterViewInit,
+  ApplicationRef,
+  Component,
+  ComponentRef,
+  EnvironmentInjector,
+  OnDestroy,
+  computed,
+  createComponent,
+} from '@angular/core';
 import { MoneyService } from '@app/services/money.service';
-import { Transaction, TransactionKind } from '@app/shared/interfaces';
+import { SymbolPosition, Transaction, TransactionKind } from '@app/shared/interfaces';
 import { TransactionForm } from './transaction-form/transaction-form';
 
 interface TransactionGroup {
@@ -14,18 +23,35 @@ interface TransactionGroup {
   selector: 'transactions-list',
   templateUrl: './transactions-list.html',
   standalone: true,
-  imports: [CommonModule, TransactionForm],
+  imports: [CommonModule],
 })
-export class TransactionsList {
+export class TransactionsList implements AfterViewInit, OnDestroy {
   protected currencies$$ = computed(() => this.moneyService.currencies$$());
   protected categories$$ = computed(() => this.moneyService.categories$$());
   protected accounts$$ = computed(() => this.moneyService.accounts$$());
   protected groupedTransactions$$ = computed(() => this.groupTransactionsByDate());
 
-  protected showForm = false;
-  protected editingTransaction: Transaction | null = null;
+  private formRef: ComponentRef<TransactionForm> | null = null;
+  private activeFormTarget: HTMLElement | null = null;
 
-  constructor(private moneyService: MoneyService) {}
+  constructor(
+    private moneyService: MoneyService,
+    private appRef: ApplicationRef,
+    private injector: EnvironmentInjector,
+  ) {
+    // effect(() => { console.log('GROUPED TRANSACTIONS:', this.groupedTransactions$$()) }); // prettier-ignore
+  }
+
+  public ngAfterViewInit(): void {
+    this.createFormComponent();
+  }
+
+  public ngOnDestroy(): void {
+    if (this.formRef) {
+      this.appRef.detachView(this.formRef.hostView);
+      this.formRef.destroy();
+    }
+  }
 
   protected getKindDisplayName(kind: TransactionKind): string {
     switch (kind) {
@@ -53,76 +79,111 @@ export class TransactionsList {
       .filter(Boolean);
   }
 
-  protected formatDate(dateISO: string): string {
-    const date = new Date(dateISO + 'T00:00:00');
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
-  }
-
-  protected formatAmount(amount: number, accountId: number): string {
-    const account = this.accounts$$().find((a) => a.id === accountId);
-    if (!account) return amount.toString();
+  protected formatAmount(transaction: Transaction): string {
+    const account = this.accounts$$().find((a) => a.id === transaction.accountId);
+    if (!account) return transaction.amount.toString();
 
     const currency = this.currencies$$().find((c) => c.id === account.currencyId);
-    if (!currency) return amount.toString();
+    if (!currency) return transaction.amount.toString();
 
-    const formattedAmount = Math.abs(amount).toFixed(2);
-    const symbol = currency.symbol;
     const whitespace = currency.whitespace ? ' ' : '';
+    const sign = transaction.kind === TransactionKind.INCOME ? '+' : '-';
+    const amount = transaction.amount.toFixed(2);
 
-    if (currency.symbolPosEnum === 'before') {
-      return `${symbol}${whitespace}${formattedAmount}`;
+    if (currency.symbolPosEnum === SymbolPosition.BEFORE) {
+      return `${currency.symbol}${whitespace}${sign}${amount}`;
     } else {
-      return `${formattedAmount}${whitespace}${symbol}`;
+      return `${sign}${amount}${whitespace}${currency.symbol}`;
     }
+  }
+
+  protected transactionKindIsIncome(transaction: Transaction): boolean {
+    return transaction.kind === TransactionKind.INCOME;
   }
 
   protected deleteTransaction(id: number): void {
     this.moneyService.deleteTransaction(id).subscribe((success) => {});
   }
 
-  protected showCreateForm(): void {
-    this.editingTransaction = null;
-    this.showForm = true;
+  protected showTransactionForm(targetElem: HTMLElement, dateISO?: string, transaction?: Transaction): void {
+    if (dateISO) {
+      this.toggleForm(targetElem, dateISO, undefined);
+    } else if (transaction) {
+      this.toggleForm(targetElem, undefined, transaction);
+    }
   }
 
-  protected editTransaction(transaction: Transaction): void {
-    this.editingTransaction = transaction;
-    this.showForm = true;
+  private createFormComponent(): void {
+    this.formRef = createComponent(TransactionForm, {
+      environmentInjector: this.injector,
+    });
+    this.formRef.instance.onSaved.subscribe(() => this.hideForm());
+    this.formRef.instance.onCancelled.subscribe(() => this.hideForm());
+    this.appRef.attachView(this.formRef.hostView);
   }
 
-  protected onSaved(): void {
-    this.showForm = false;
-    this.editingTransaction = null;
+  private toggleForm(targetElement: HTMLElement, dateISO?: string, transaction?: Transaction): void {
+    if (this.activeFormTarget === targetElement) {
+      this.hideForm();
+    } else {
+      this.moveFormTo(targetElement, dateISO, transaction);
+    }
   }
 
-  protected onCancelled(): void {
-    this.showForm = false;
-    this.editingTransaction = null;
+  private moveFormTo(targetElement: HTMLElement, dateISO?: string, transaction?: Transaction): void {
+    if (!this.formRef) return;
+
+    const formElement = this.formRef.location.nativeElement as HTMLElement;
+    if (formElement.parentNode) {
+      formElement.parentNode.removeChild(formElement);
+    }
+
+    targetElement.appendChild(formElement);
+    this.activeFormTarget = targetElement;
+
+    if (transaction) {
+      this.formRef.setInput('dateIsoInput', null);
+      this.formRef.setInput('transactionInput', transaction);
+    } else {
+      this.formRef.setInput('dateIsoInput', dateISO);
+      this.formRef.setInput('transactionInput', null);
+    }
+
+    this.showForm();
+  }
+
+  private showForm(): void {
+    if (this.formRef) {
+      (this.formRef.location.nativeElement as HTMLElement).style.display = 'block';
+    }
+  }
+
+  private hideForm(): void {
+    if (this.formRef) {
+      (this.formRef.location.nativeElement as HTMLElement).style.display = 'none';
+      this.activeFormTarget = null;
+    }
   }
 
   private groupTransactionsByDate(): TransactionGroup[] {
     const transactions = this.moneyService.transactions$$();
-    const groups = new Map<string, TransactionGroup>();
+    const transactionsByDateMap = new Map<string, TransactionGroup>();
 
     transactions.forEach((transaction) => {
-      const dateKey = transaction.dateISO;
+      const dateIsoKey = transaction.dateISO;
 
-      if (!groups.has(dateKey)) {
-        groups.set(dateKey, {
-          date: dateKey,
+      if (!transactionsByDateMap.has(dateIsoKey)) {
+        transactionsByDateMap.set(dateIsoKey, {
+          date: dateIsoKey,
           dateDisplay: this.formatDate(transaction.dateISO),
           transactions: [],
         });
       }
 
-      groups.get(dateKey)!.transactions.push(transaction);
+      transactionsByDateMap.get(dateIsoKey)!.transactions.push(transaction);
     });
 
-    const sortedGroups = Array.from(groups.values()).sort((a, b) => b.date.localeCompare(a.date));
+    const groupsSortedByDate = Array.from(transactionsByDateMap.values()).sort((a, b) => b.date.localeCompare(a.date));
 
     // Let's see if we want to sort transactions by id within each group
     // sortedGroups.forEach((group) => {
@@ -134,6 +195,22 @@ export class TransactionsList {
     //   });
     // });
 
-    return sortedGroups;
+    return groupsSortedByDate;
+  }
+
+  private formatDate(dateISO: string): string {
+    const date = new Date(dateISO + 'T00:00:00');
+    const currentYear = new Date().getFullYear();
+    const options: Intl.DateTimeFormatOptions = {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+    };
+
+    if (date.getFullYear() !== currentYear) {
+      options.year = 'numeric';
+    }
+
+    return date.toLocaleDateString('en-US', options);
   }
 }
