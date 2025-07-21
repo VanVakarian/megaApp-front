@@ -1,5 +1,5 @@
 import { HttpClient } from '@angular/common/http';
-import { effect, Injectable, signal, WritableSignal } from '@angular/core';
+import { Injectable, signal, WritableSignal } from '@angular/core';
 import { Observable, of, Subject } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import { Account, Category, Currency, ServerResponseBasic, Transaction } from '../shared/interfaces';
@@ -46,10 +46,10 @@ export class MoneyService {
   public postRequestResult$ = new Subject<ServerResponseBasic>();
 
   constructor(private http: HttpClient) {
-    effect(() => { console.log('CURRENCIES:', this.currencies$$()) }); // prettier-ignore
-    effect(() => { console.log('CATEGORIES:', this.categories$$()) }); // prettier-ignore
-    effect(() => { console.log('ACCOUNTS:', this.accounts$$()) }); // prettier-ignore
-    effect(() => { console.log('TRANSACTIONS:', this.transactions$$()) }); // prettier-ignore
+    // effect(() => { console.log('CURRENCIES:', this.currencies$$()) }); // prettier-ignore
+    // effect(() => { console.log('CATEGORIES:', this.categories$$()) }); // prettier-ignore
+    // effect(() => { console.log('ACCOUNTS:', this.accounts$$()) }); // prettier-ignore
+    // effect(() => { console.log('TRANSACTIONS:', this.transactions$$()) }); // prettier-ignore
   }
 
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

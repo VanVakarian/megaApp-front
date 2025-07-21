@@ -8,7 +8,6 @@ import {
   OnDestroy,
   computed,
   createComponent,
-  effect,
 } from '@angular/core';
 import { MoneyService } from '@app/services/money.service';
 import { SymbolPosition, Transaction, TransactionKind } from '@app/shared/interfaces';
@@ -40,7 +39,7 @@ export class TransactionsList implements AfterViewInit, OnDestroy {
     private appRef: ApplicationRef,
     private injector: EnvironmentInjector,
   ) {
-    effect(() => { console.log('GROUPED TRANSACTIONS:', this.groupedTransactions$$()) }); // prettier-ignore
+    // effect(() => { console.log('GROUPED TRANSACTIONS:', this.groupedTransactions$$()) }); // prettier-ignore
   }
 
   public ngAfterViewInit(): void {
