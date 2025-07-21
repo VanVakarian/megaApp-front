@@ -30,7 +30,7 @@ import { FoodStatsService } from '@app/services/food-stats.service';
 import { FoodService } from '@app/services/food.service';
 import { ScreenSizeWatcherService } from '@app/services/screen-size-watcher.service';
 import { CatalogueEntry, DiaryEntry, ScreenType } from '@app/shared/interfaces';
-import { UiProgressIcon } from '@app/shared/ui/progress-icon/progress-icon.component';
+import { UiProgressIcon } from '@app/shared/ui-kit/progress-icon/progress-icon.component';
 import { firstValueFrom } from 'rxjs';
 import { FoodSelectDropdownComponent } from './food-select-dropdown/food-select-dropdown.component';
 

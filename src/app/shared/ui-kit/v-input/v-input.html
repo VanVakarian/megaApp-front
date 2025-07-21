@@ -1,0 +1,35 @@
+@if (label()) {
+  <label class="label"
+         [for]="inputId">{{ label() }}</label>
+}
+
+<div class="input-wrapper"
+     [class.focused]="isFocused"
+     [class.disabled]="isDisabled()">
+
+  <div class="prefix">
+    <ng-content select="[v-prefix]" />
+  </div>
+
+  <input #inputElement
+         [id]="inputId"
+         [name]="name() || inputId"
+         [type]="type()"
+         [placeholder]="placeholder()"
+         [value]="value"
+         [disabled]="isDisabled()"
+         [readonly]="isReadonly()"
+         (input)="onInputChange($event)"
+         (focus)="onFocus()"
+         (blur)="onBlur()"
+         class="input-field" />
+
+  <div class="postfix">
+    <ng-content select="[v-postfix]" />
+  </div>
+
+</div>
+
+@if (getErrorMessage()) {
+  <div class="error-message">{{ getErrorMessage() }}</div>
+}

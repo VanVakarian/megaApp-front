@@ -1,0 +1,84 @@
+@import '@app/shared/ui-kit/vars.css';
+
+:host {
+  display: flex;
+  flex-direction: column;
+  /* width: 100%; */
+}
+
+.label {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  margin-left: calc(var(--unit-2));
+  display: block;
+}
+
+.input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: var(--unit-2) 0;
+  border-radius: var(--unit-1);
+  box-sizing: border-box;
+  transition: all 0.2s ease;
+
+  box-shadow:
+    inset 3px 3px 3px var(--shadow-dark-light),
+    inset -3px -3px 3px var(--shadow-light-strong);
+
+  background: var(--color-bg-default);
+
+  &.disabled {
+    opacity: 0.6;
+    pointer-events: none;
+  }
+
+  &.focused {
+    box-shadow:
+      inset 4px 4px 4px var(--shadow-dark-medium),
+      inset -4px -4px 4px var(--shadow-light-full);
+  }
+
+  .prefix,
+  .postfix {
+    min-width: var(--unit-2);
+  }
+}
+
+.input-field {
+  background: transparent;
+  border: none;
+  outline: none;
+  font-size: 1rem;
+  color: var(--color-text-default);
+  flex: 1;
+  font-family: inherit;
+
+  &::placeholder {
+    font-style: italic;
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+  }
+
+  &:read-only {
+    cursor: default;
+  }
+
+  /* A hack to remove background in chrome autofilled input that overlaps with neumorphic styling */
+  &:-webkit-autofill,
+  &:-webkit-autofill:hover,
+  &:-webkit-autofill:focus,
+  &:-webkit-autofill:active {
+    -webkit-background-clip: text;
+  }
+}
+
+.error-message {
+  color: var(--color-text-error);
+  font-size: 0.75rem;
+  margin-left: calc(var(--unit-2));
+  font-weight: 500;
+}
