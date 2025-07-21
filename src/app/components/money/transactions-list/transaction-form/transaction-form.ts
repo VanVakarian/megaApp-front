@@ -1,9 +1,8 @@
 import { CommonModule } from '@angular/common';
-import { Component, input, OnInit, output } from '@angular/core';
+import { Component, effect, input, output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MoneyService } from '@app/services/money.service';
 import { Account, Category, Transaction, TransactionKind, UsedFor } from '@app/shared/interfaces';
-import { calculateTodayIsoWithUserTimeShift } from '@app/shared/utils';
 
 @Component({
   selector: 'transaction-form',
@@ -11,11 +10,12 @@ import { calculateTodayIsoWithUserTimeShift } from '@app/shared/utils';
   standalone: true,
   imports: [CommonModule, FormsModule],
 })
-export class TransactionForm implements OnInit {
-  public readonly transaction = input<Transaction | null>(null);
+export class TransactionForm {
+  public readonly dateIsoInput = input<string | null>(null);
+  public readonly transactionInput = input<Transaction | null>(null);
 
-  public readonly saved = output<void>();
-  public readonly cancelled = output<void>();
+  public readonly onSaved = output<void>();
+  public readonly onCancelled = output<void>();
 
   // Form fields
   protected dateISO = '';
@@ -26,15 +26,17 @@ export class TransactionForm implements OnInit {
   protected notes = '';
   protected selectedCategoryIds: number[] = [];
 
-  constructor(private moneyService: MoneyService) {}
+  constructor(private moneyService: MoneyService) {
+    effect(() => {
+      const date = this.dateIsoInput();
+      const transaction = this.transactionInput();
 
-  public ngOnInit(): void {
-    this.dateISO = calculateTodayIsoWithUserTimeShift();
-
-    const currentTransaction = this.transaction();
-    if (currentTransaction) {
-      this.fillForm(currentTransaction);
-    }
+      if (transaction) {
+        this.prepFormWithTransaction(transaction);
+      } else if (date) {
+        this.prepFormWithDate(date);
+      }
+    });
   }
 
   protected save(): void {
@@ -50,31 +52,31 @@ export class TransactionForm implements OnInit {
       categoryIds: this.selectedCategoryIds,
     };
 
-    const currentTransaction = this.transaction();
+    const currentTransaction = this.transactionInput();
     if (currentTransaction?.id) {
       // Edit mode
       transactionData.id = currentTransaction.id;
       this.moneyService.updateTransaction(transactionData).subscribe((success) => {
         if (success) {
-          this.saved.emit();
+          this.onSaved.emit();
         }
       });
     } else {
       // Create mode
       this.moneyService.createTransaction(transactionData).subscribe((success) => {
         if (success) {
-          this.saved.emit();
+          this.onSaved.emit();
         }
       });
     }
   }
 
   protected cancel(): void {
-    this.cancelled.emit();
+    this.onCancelled.emit();
   }
 
   protected isEditing(): boolean {
-    return Boolean(this.transaction()?.id);
+    return Boolean(this.transactionInput()?.id);
   }
 
   protected isFormValid(): boolean {
@@ -119,13 +121,23 @@ export class TransactionForm implements OnInit {
     }
   }
 
-  private fillForm(transaction: Transaction): void {
+  private prepFormWithTransaction(transaction: Transaction): void {
     this.dateISO = transaction.dateISO;
     this.accountId = transaction.accountId;
-    this.amount = Math.abs(transaction.amount);
+    this.amount = transaction.amount;
     this.kind = transaction.kind;
     this.isGift = transaction.isGift;
     this.notes = transaction.notes || '';
     this.selectedCategoryIds = [...(transaction.categoryIds || [])];
+  }
+
+  private prepFormWithDate(dateInput: string): void {
+    this.dateISO = dateInput;
+    this.accountId = null;
+    this.amount = null;
+    this.kind = TransactionKind.EXPENSE;
+    this.isGift = false;
+    this.notes = '';
+    this.selectedCategoryIds = [];
   }
 }

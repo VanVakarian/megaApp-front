@@ -48,17 +48,13 @@
               <span class="px-2 py-1 text-xs text-blue-700 bg-blue-200 rounded">
                 {{ getKindDisplayName(account.kind) }}
               </span>
-            </div>
 
-            @if (account.categoryIds.length > 0) {
-              <div class="flex flex-wrap gap-1">
-                @for (categoryId of account.categoryIds; track categoryId) {
-                  <span class="px-2 py-1 text-xs text-gray-700 bg-gray-200 rounded">
-                    {{ getCategoryName(categoryId) }}
-                  </span>
-                }
-              </div>
-            }
+              @for (categoryId of account.categoryIds; track categoryId) {
+                <span class="px-2 py-1 text-xs text-gray-700 bg-gray-200 rounded">
+                  {{ getCategoryName(categoryId) }}
+                </span>
+              }
+            </div>
           </div>
 
           <div class="flex gap-2 ml-4">
