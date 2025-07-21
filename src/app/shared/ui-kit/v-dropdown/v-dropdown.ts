@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, ElementRef, forwardRef, input, output, ViewChild } from '@angular/core';
 import { ControlValueAccessor, FormControl, FormGroup, NG_VALUE_ACCESSOR, ReactiveFormsModule } from '@angular/forms';
-import { VInput } from '../v-input/v-input';
+import { VInput } from '@app/shared/ui-kit/v-input/v-input';
 
 export interface DropdownItem {
   value: string;

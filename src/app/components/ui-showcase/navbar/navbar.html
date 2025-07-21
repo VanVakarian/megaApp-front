@@ -7,29 +7,45 @@
   <div class="sidebar-menu">
     <v-button [buttonStyle]="foodButtonStyle()"
               [width]="'100%'"
+              [pX]="2"
               class="menu-item"
               (click)="navigateToFood()">
+      <v-icon v-prefix
+              [name]="IconName.Restaurant"
+              [size]="5" />
       Food
     </v-button>
 
     <v-button [buttonStyle]="moneyButtonStyle()"
               [width]="'100%'"
+              [pX]="2"
               class="menu-item"
               (click)="navigateToMoney()">
+      <v-icon v-prefix
+              [name]="IconName.Paid"
+              [size]="5" />
       Money
     </v-button>
 
     <v-button [buttonStyle]="otherButtonStyle()"
               [width]="'100%'"
+              [pX]="2"
               class="menu-item"
               (click)="navigateToOther()">
+      <v-icon v-prefix
+              [name]="IconName.Article"
+              [size]="5" />
       Other
     </v-button>
 
     <v-button [buttonStyle]="settingsButtonStyle()"
               [width]="'100%'"
+              [pX]="2"
               class="menu-item"
               (click)="navigateToSettings()">
+      <v-icon v-prefix
+              [name]="IconName.Settings"
+              [size]="5" />
       Settings
     </v-button>
   </div>

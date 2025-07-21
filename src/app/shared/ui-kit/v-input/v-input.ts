@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, ElementRef, input, output, Self, ViewChild } from '@angular/core';
 import { ControlValueAccessor, NgControl } from '@angular/forms';
-import { getValidationErrorMessage } from './validators';
+import { getValidationErrorMessage } from '@app/shared/ui-kit/v-input/validators';
 
 export enum InputType {
   Text = 'text',

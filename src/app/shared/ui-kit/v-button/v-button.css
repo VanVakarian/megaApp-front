@@ -5,6 +5,9 @@
 }
 
 button {
+  display: flex;
+  gap: var(--unit-2);
+  justify-content: space-between;
   width: 100%;
   box-sizing: border-box;
   border: none;
@@ -14,7 +17,7 @@ button {
   font-size: 1rem;
   font-weight: 500;
 
-  padding: var(--unit-2) var(--unit-4);
+  padding: var(--v-btn-p-y, var(--unit-2)) var(--v-btn-p-x, var(--unit-4));
   border-radius: var(--unit-1);
 
   background: var(--color-bg-default);
@@ -103,4 +106,11 @@ button {
       4px 4px 8px var(--shadow-dark-light),
       -4px -4px 8px var(--shadow-light-strong);
   }
+}
+
+.prefix,
+.postfix {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }

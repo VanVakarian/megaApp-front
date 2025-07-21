@@ -1,10 +1,5 @@
 import { Component, ElementRef, inject, input, output } from '@angular/core';
-
-export enum ButtonStyle {
-  Flat = 'flat',
-  Raised = 'raised',
-  Primary = 'primary',
-}
+import { ButtonStyle, CssUnitValue } from '@app/shared/ui-kit/types';
 
 @Component({
   selector: `
@@ -17,6 +12,8 @@ export enum ButtonStyle {
   styleUrl: './v-button.css',
   host: {
     '[style.width]': 'width()',
+    '[style.--v-btn-p-y]': 'btnPY',
+    '[style.--v-btn-p-x]': 'btnPX',
     '[attr.flat]': 'isFlat ? "" : null',
     '[attr.raised]': 'isRaised ? "" : null',
     '[attr.primary]': 'isPrimary ? "" : null',
@@ -24,10 +21,19 @@ export enum ButtonStyle {
 })
 export class VButton {
   public readonly buttonStyle = input<ButtonStyle>();
-
   public readonly width = input<string>();
+  public readonly pY = input<CssUnitValue>(2);
+  public readonly pX = input<CssUnitValue>(4);
 
   public readonly onClick = output<MouseEvent>();
+
+  public get btnPY(): string {
+    return `var(--unit-${this.pY()})`;
+  }
+
+  public get btnPX(): string {
+    return `var(--unit-${this.pX()})`;
+  }
 
   public get isFlat(): boolean {
     return this.getActiveStyle() === ButtonStyle.Flat;

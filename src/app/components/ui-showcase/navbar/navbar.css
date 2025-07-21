@@ -1,7 +1,7 @@
 .sidebar {
   /* width: 200px; */
   height: 100vh;
-  padding: var(--unit-6) var(--unit-4);
+  padding: var(--unit-4) var(--unit-4);
 }
 
 .sidebar-header {
@@ -10,9 +10,9 @@
   /* border-bottom: 1px solid #ddd; */
 }
 
-.sidebar-header h3 {
+/* .sidebar-header h3 {
   font-size: 1.2rem;
-}
+} */
 
 .sidebar-menu {
   display: flex;
