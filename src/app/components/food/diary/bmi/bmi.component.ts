@@ -1,26 +1,12 @@
 import { CommonModule } from '@angular/common';
-import {
-  AfterViewInit,
-  Component,
-  computed,
-  effect,
-  ElementRef,
-  OnDestroy,
-  OnInit,
-  Signal,
-  signal,
-  ViewChild,
-  WritableSignal,
-} from '@angular/core';
-
+import { Component, computed, OnInit, Signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
-
 import { FoodService } from '@app/services/food.service';
 import { SettingsService } from '@app/services/settings.service';
 
 interface BmiSegment {
-  divClasses: string;
-  spanClasses?: string;
+  twSegmentClasses: string;
+  twLabelClasses?: string;
 }
 
 @Component({
@@ -29,103 +15,62 @@ interface BmiSegment {
   styleUrl: './bmi.component.scss',
   imports: [CommonModule, MatIconModule],
 })
-export class BMIComponent implements OnInit, AfterViewInit, OnDestroy {
-  @ViewChild('bmiMeter') bmiMeterElem!: ElementRef;
-
-  public bmiSegments: BmiSegment[] = [
+export class BMIComponent implements OnInit {
+  protected bmiSegments: BmiSegment[] = [
     {
-      divClasses: 'relative h-2 rounded-l-md bg-yellow-300',
+      twSegmentClasses: 'relative h-2 rounded-l-md bg-yellow-300',
     },
     {
-      divClasses: 'relative h-2 bg-green-400',
-      spanClasses: 'absolute left-0 top-[10px] text-sm -translate-x-1/2',
+      twSegmentClasses: 'relative h-2 bg-green-400',
+      twLabelClasses: 'absolute left-0 top-[10px] text-sm -translate-x-1/2',
     },
     {
-      divClasses: 'relative h-2 bg-yellow-300',
-      spanClasses: 'absolute left-0 top-[10px] text-sm -translate-x-1/2',
+      twSegmentClasses: 'relative h-2 bg-yellow-300',
+      twLabelClasses: 'absolute left-0 top-[10px] text-sm -translate-x-1/2',
     },
     {
-      divClasses: 'relative h-2 bg-red-300',
-      spanClasses: 'absolute left-0 top-[10px] text-sm -translate-x-1/2',
+      twSegmentClasses: 'relative h-2 bg-red-300',
+      twLabelClasses: 'absolute left-0 top-[10px] text-sm -translate-x-1/2',
     },
     {
-      divClasses: 'relative h-2 bg-red-500',
-      spanClasses: 'absolute left-0 top-[10px] text-sm -translate-x-1/2',
+      twSegmentClasses: 'relative h-2 bg-red-500',
+      twLabelClasses: 'absolute left-0 top-[10px] text-sm -translate-x-1/2',
     },
     {
-      divClasses: 'relative h-2 rounded-r-md bg-red-700',
-      spanClasses: 'absolute left-0 top-[10px] text-sm -translate-x-1/2',
+      twSegmentClasses: 'relative h-2 rounded-r-md bg-red-700',
+      twLabelClasses: 'absolute left-0 top-[10px] text-sm -translate-x-1/2',
     },
   ];
 
-  public bmiContainerWidth$$: WritableSignal<number> = signal(0);
-  public bmiPointerShift$$: Signal<number | null> = computed(() => this.calculateBmiPointerShift());
+  protected bmiSegmentsWidthFractions: number[] = [];
+
+  protected bmiPointerPercent$$: Signal<number | null> = computed(() => this.calculateBmiPointerPercent());
 
   private bmiValues = [16, 18.5, 25, 30, 35, 40, 45];
-  private bmiSegmentsWidthFractions: number[] = [];
-  private bmiSegmentsThresholdsInKgs: number[] = [];
+
+  private bmiSegmentsThresholdsInKgs$$: Signal<number[]> = computed(() => this.prepBmiSegmentsThresholdsInKgs());
 
   private selectedDateWeight$$: Signal<number> = computed(() => this.getSelectedDateWeight());
 
-  private resizeObserver: ResizeObserver | null = null;
-
-  public get bmiPointerShiftStyle(): { left: string } | null {
-    const shift = this.bmiPointerShift$$();
-    if (shift) {
-      return { left: `${shift}px` };
-    } else {
-      return null;
-    }
-  }
-
   constructor(
-    public foodService: FoodService,
-    public settingsService: SettingsService,
+    private foodService: FoodService,
+    private settingsService: SettingsService,
   ) {
-    effect(() => {
-      this.bmiPointerShift$$(); // needed to trigger re-calculation
-      this.bmiSegmentsThresholdsInKgs = this.prepBmiSegmentsThresholdsInKgs();
-
-      // console.log('bmiPointerShift has been updated:', this.bmiPointerShift$$()); // prettier-ignore
-      // console.log('selectedDateWeight has been updated:', this.selectedDateWeight$$()); // prettier-ignore
-    });
-
-    this.resizeObserver = new ResizeObserver(() => {
-      const width = this.bmiMeterElem?.nativeElement?.clientWidth;
-      this.bmiContainerWidth$$.set(width ? width - 2 : 0); // adjusting for padding
-    });
+    // effect(() => { console.log('SELECTEDDATEWEIGHT has been updated:', this.selectedDateWeight$$()) }); // prettier-ignore
   }
 
   public ngOnInit(): void {
     this.bmiSegmentsWidthFractions = this.calculateBmiSegmentsWidthFractions();
   }
 
-  public ngAfterViewInit(): void {
-    if (this.bmiMeterElem?.nativeElement) {
-      this.resizeObserver?.observe(this.bmiMeterElem.nativeElement);
-    }
+  protected bmiKgThresholdValue(idx: number): number {
+    return this.bmiSegmentsThresholdsInKgs$$()[idx];
   }
 
-  public ngOnDestroy(): void {
-    if (this.bmiMeterElem?.nativeElement) {
-      this.resizeObserver?.unobserve(this.bmiMeterElem.nativeElement);
-    }
-    this.resizeObserver?.disconnect();
-  }
-
-  public bmiKgThresholdValue(idx: number): number {
-    return this.bmiSegmentsThresholdsInKgs[idx];
-  }
-
-  public bmiSegmentWidthStyle(segmentIdx: number): { width: string } {
-    const segmentWidthFraction = this.bmiSegmentsWidthFractions[segmentIdx];
-    const segmentWidthPx = segmentWidthFraction * this.bmiContainerWidth$$();
-    return { width: `${segmentWidthPx}px` };
-  }
-
-  public bmiSegmentTitle(segmentIdx: number): string {
-    const segmentStart = this.bmiSegmentsThresholdsInKgs[segmentIdx];
-    const segmentEnd = this.bmiSegmentsThresholdsInKgs[segmentIdx + 1];
+  protected bmiSegmentTitle(segmentIdx: number): string {
+    const thresholds = this.bmiSegmentsThresholdsInKgs$$();
+    const segmentStart = thresholds[segmentIdx];
+    const segmentEnd = thresholds[segmentIdx + 1];
     return `${segmentStart} - ${segmentEnd}`;
   }
 
@@ -134,19 +79,20 @@ export class BMIComponent implements OnInit, AfterViewInit, OnDestroy {
     return this.foodService.diary$$()?.[selectedDateISO]?.bodyWeight ?? 0;
   }
 
-  private calculateBmiPointerShift(): number | null {
+  private calculateBmiPointerPercent(): number | null {
     const weight = this.selectedDateWeight$$();
     if (!this.isWeightWithinRange(weight)) return null;
 
-    const containerWidth = this.bmiContainerWidth$$();
-    const bmiKgs = this.bmiSegmentsThresholdsInKgs;
+    const bmiKgs = this.bmiSegmentsThresholdsInKgs$$();
+    if (bmiKgs.length === 0) return null;
+
     const percentShift = (weight - bmiKgs[0]) / (bmiKgs[bmiKgs.length - 1] - bmiKgs[0]);
-    return containerWidth * percentShift;
+    return Math.max(0, Math.min(100, percentShift * 100));
   }
 
   private isWeightWithinRange(weight: number): boolean {
-    const thresholds = this.bmiSegmentsThresholdsInKgs;
-    return weight > thresholds[0] && weight < thresholds[thresholds.length - 1];
+    const bmiKgs = this.bmiSegmentsThresholdsInKgs$$();
+    return weight > bmiKgs[0] && weight < bmiKgs[bmiKgs.length - 1];
   }
 
   private prepBmiSegmentsThresholdsInKgs(): number[] {

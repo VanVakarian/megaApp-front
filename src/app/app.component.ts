@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { DateAdapter, MatNativeDateModule } from '@angular/material/core';
 import { MatPaginatorIntl } from '@angular/material/paginator';
-import { RouterOutlet } from '@angular/router';
+import { Router, RouterOutlet } from '@angular/router';
 
 import { NetworkMonitor } from '@app/services/network-monitor.service';
 import { SettingsService } from '@app/services/settings.service';
@@ -24,15 +24,20 @@ export class MainAppComponent implements OnInit {
   constructor(
     private dateAdapter: DateAdapter<Date>,
     private settingsService: SettingsService,
-    public networkMonitorService: NetworkMonitor,
+    private networkMonitorService: NetworkMonitor,
+    private router: Router,
   ) {
     this.networkMonitorService.initNetworkEvents();
   }
 
-  async ngOnInit(): Promise<void> {
+  public async ngOnInit(): Promise<void> {
     this.makeMondayFirstDayOfWeek();
 
     await this.settingsService.initLoadSettings();
+  }
+
+  protected getIsNavbarHidden(): boolean {
+    return this.router.url.startsWith('/ui-showcase');
   }
 
   private makeMondayFirstDayOfWeek() {

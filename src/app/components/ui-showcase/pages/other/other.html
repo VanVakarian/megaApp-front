@@ -1,0 +1,61 @@
+<div class="col col-01">
+  <v-card>
+    Карточка по умолчанию (borderRadius=2, padding=2)
+    <div class="buttons-row">
+      <v-button flat>
+        Кнопка
+      </v-button>
+
+      <v-button raised>
+        Кнопка
+      </v-button>
+
+      <v-button primary>
+        Кнопка
+      </v-button>
+    </div>
+  </v-card>
+
+  <v-card [borderRadius]="1"
+          [padding]="1">
+    Компактная карточка (маленькие значения)
+  </v-card>
+
+  <v-card [borderRadius]="0">
+    Карточка без скругления
+    <div [formGroup]="form">
+      <v-input #testInput
+               formControlName="testInput">
+        <span v-prefix
+              class="prefix">$</span>
+        <button v-postfix
+                type="button"
+                class="postfix">🔍</button>
+      </v-input>
+    </div>
+  </v-card>
+
+  <form [formGroup]="form">
+    <v-input label="Имя пользователя"
+             placeholder="Введите ваше имя"
+             formControlName="username" />
+
+    <v-input label="Email"
+             placeholder="example@email.com"
+             [type]="InputType.Email"
+             formControlName="email" />
+
+    <v-input label="Пароль"
+             placeholder="Введите пароль"
+             [type]="InputType.Password"
+             formControlName="password" />
+
+    <v-input label="Отключенное поле"
+             placeholder="Это поле отключено"
+             formControlName="disabled" />
+
+    <v-input label="Поле с ошибкой"
+             placeholder="Введите что-то"
+             formControlName="error" />
+  </form>
+</div>

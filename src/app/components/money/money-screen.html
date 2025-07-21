@@ -1,0 +1,56 @@
+<div class="flex items-stretch justify-center w-full gap-2">
+
+  <div class="w-96 flex-shrink-0">
+    <div class="p-2 mb-2 bg-white border border-gray-200 rounded-lg">
+      <div class="flex gap-2">
+        <button (click)="setActiveTab(MoneyTab.Currencies)"
+                [class]="'flex-1 px-4 py-2 text-sm font-medium rounded-md transition-colors ' +
+                        (activeTab === MoneyTab.Currencies ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-100')">
+          💱
+        </button>
+
+        <button (click)="setActiveTab(MoneyTab.Categories)"
+                [class]="'flex-1 px-4 py-2 text-sm font-medium rounded-md transition-colors ' +
+                        (activeTab === MoneyTab.Categories ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-100')">
+          🗂️
+        </button>
+
+        <button (click)="setActiveTab(MoneyTab.Accounts)"
+                [class]="'flex-1 px-4 py-2 text-sm font-medium rounded-md transition-colors ' +
+                        (activeTab === MoneyTab.Accounts ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-100')">
+          🏦
+        </button>
+
+        <button (click)="setActiveTab(MoneyTab.Transactions)"
+                [class]="'flex-1 px-4 py-2 text-sm font-medium rounded-md transition-colors ' +
+                        (activeTab === MoneyTab.Transactions ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-100')">
+          Transactions
+        </button>
+      </div>
+    </div>
+
+    @if (activeTab === MoneyTab.Currencies) {
+      <currencies-list />
+    }
+
+    @if (activeTab === MoneyTab.Categories) {
+      <categories-list />
+    }
+
+    @if (activeTab === MoneyTab.Accounts) {
+      <accounts-list />
+    }
+
+    @if (activeTab === MoneyTab.Transactions) {
+      <transactions-list />
+    }
+  </div>
+
+  <div class="w-full flex gap-2 flex-wrap border-0 border-[#4051B5]">
+    <!-- Future dashboard -->
+    @for (item of [].constructor(4); track $index) {
+      <div class="w-96 flex flex-shrink-0 border-2 border-[#4051B5]">Card {{ $index }}</div>
+    }
+  </div>
+
+</div>

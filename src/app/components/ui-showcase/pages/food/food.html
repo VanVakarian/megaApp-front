@@ -1,0 +1,98 @@
+<v-expand accordion
+          outer-shadow
+          class="BMI">
+  <div v-header
+       class="v-header w-full p-2 text-center"
+       [ngStyle]="setBackgroundStyle(todaysKcalsPercent)">
+    Съедено 80.6% от дневной нормы
+  </div>
+  <div v-body
+       class="flex flex-col gap-4 p-2">
+    <app-bmi />
+    <form [formGroup]="form"
+          class="flex justify-end">
+      <v-input type="text"
+               label="Вес"
+               placeholder="Введите вес"
+               formControlName="weight"
+               class="weight-input w-1/2" />
+    </form>
+  </div>
+</v-expand>
+
+<v-card>
+  <h2>Food UI Components</h2>
+  <p>Here will be food-related UI components showcase</p>
+  <p><strong>Note:</strong> Food menu items are in "food-menu" group, items below are in "items-group"</p>
+</v-card>
+
+<v-expand accordion
+          outer-shadow>
+  <h3 v-header
+      class="p-2">🍕 Pizza Menu</h3>
+  <div v-body
+       class="p-2">
+    <p>Margherita - Classic tomato and mozzarella - $12</p>
+    <p>Pepperoni - Spicy pepperoni with cheese - $14</p>
+    <p>Veggie Supreme - Bell peppers, mushrooms, olives - $13</p>
+  </div>
+</v-expand>
+
+<v-expand accordion
+          inner-shadow>
+  <h3 v-header
+      class="p-2">🥗 Daily Specials</h3>
+  <div v-body
+       class="p-2">
+    <h4>Today's Features:</h4>
+    <ul>
+      <li>Caesar Salad with grilled chicken - $11</li>
+      <li>Beef Stroganoff with rice - $16</li>
+      <li>Vegetarian Buddha Bowl - $13</li>
+    </ul>
+    <p><strong>Chef's Recommendation:</strong> Try our seasonal soup of the day!</p>
+  </div>
+</v-expand>
+
+<div outer-shadow
+     class="items">
+  @for (i of [0,1,2]; track i) {
+    <v-expand accordion="test-group"
+              class="item">
+      <div v-header
+           class="p-2">
+        Item {{ i + 1 }}
+      </div>
+      <div v-body
+           class="p-2">
+        <p>Description for item {{ i + 1 }}.</p>
+      </div>
+    </v-expand>
+  }
+</div>
+
+<div class="flex gap-4">
+  <div [formGroup]="form">
+    <v-input label="random input"
+             placeholder="Введите что-нибудь"
+             formControlName="test01" />
+  </div>
+
+  <v-dropdown label="Select Food Item"
+              placeholder="Search food items"
+              [items]="foodItems"
+              [minDropdownWidth]="'300px'"
+              [expandDirection]="'left'"
+              (onSelectionChanged)="onFoodItemChange($event)">
+  </v-dropdown>
+</div>
+
+<div class="flex gap-4">
+  <v-dropdown label="Select Food Item"
+              placeholder="Search food items"
+              class="w-full"
+              [minDropdownWidth]="'250px'"
+              [items]="foodItems"
+              (onSelectionChanged)="onFoodItemChange($event)">
+  </v-dropdown>
+</div>
