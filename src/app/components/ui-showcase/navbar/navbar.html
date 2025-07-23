@@ -1,53 +1,63 @@
-<nav class="sidebar">
-
+<nav class="sidebar-container">
   <!-- <div class="sidebar-header">
     <h3>UI Kit</h3>
   </div> -->
 
-  <div class="sidebar-menu">
+  <div class="main-chapters-block">
     <v-button [buttonStyle]="foodButtonStyle()"
               [width]="'100%'"
               [pX]="2"
+              [isLabelHidden]="isMenuCollapsed"
               class="menu-item"
               (click)="navigateToFood()">
       <v-icon v-prefix
-              [name]="IconName.Restaurant"
-              [size]="5" />
+              [name]="IconName.Restaurant" />
       Food
     </v-button>
 
     <v-button [buttonStyle]="moneyButtonStyle()"
               [width]="'100%'"
               [pX]="2"
+              [isLabelHidden]="isMenuCollapsed"
               class="menu-item"
               (click)="navigateToMoney()">
       <v-icon v-prefix
-              [name]="IconName.Paid"
-              [size]="5" />
+              [name]="IconName.Paid" />
       Money
     </v-button>
 
     <v-button [buttonStyle]="otherButtonStyle()"
               [width]="'100%'"
               [pX]="2"
+              [isLabelHidden]="isMenuCollapsed"
               class="menu-item"
               (click)="navigateToOther()">
       <v-icon v-prefix
-              [name]="IconName.Article"
-              [size]="5" />
+              [name]="IconName.Article" />
       Other
+    </v-button>
+  </div>
+
+  <div class="tools-block">
+    <v-button [buttonStyle]="ButtonStyle.Flat"
+              [pX]="2"
+              [isLabelHidden]="true"
+              class="menu-item"
+              (click)="toggleMenuCollapse()">
+      <v-icon v-prefix
+              [name]="getMenuSizeControlIconName()" />
+      Settings
     </v-button>
 
     <v-button [buttonStyle]="settingsButtonStyle()"
               [width]="'100%'"
               [pX]="2"
+              [isLabelHidden]="isMenuCollapsed"
               class="menu-item"
               (click)="navigateToSettings()">
       <v-icon v-prefix
-              [name]="IconName.Settings"
-              [size]="5" />
+              [name]="IconName.Settings" />
       Settings
     </v-button>
   </div>
-
 </nav>

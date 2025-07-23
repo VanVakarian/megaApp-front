@@ -13,9 +13,7 @@ import { CssUnitValue, IconName } from '@app/shared/ui-kit/types';
 })
 export class VIcon {
   public readonly name = input.required<IconName>();
-
-  public readonly size = input<CssUnitValue>(4);
-
+  public readonly size = input<CssUnitValue>(6);
   public readonly color = input<string>('var(--color-text-default)');
 
   public readonly iconPath = computed(() => {

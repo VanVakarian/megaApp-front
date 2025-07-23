@@ -11,7 +11,7 @@ import { ButtonStyle, CssUnitValue } from '@app/shared/ui-kit/types';
   templateUrl: './v-button.html',
   styleUrl: './v-button.css',
   host: {
-    '[style.width]': 'width()',
+    '[style.width]': 'width() ? width() : null',
     '[style.--v-btn-p-y]': 'btnPY',
     '[style.--v-btn-p-x]': 'btnPX',
     '[attr.flat]': 'isFlat ? "" : null',
@@ -24,6 +24,7 @@ export class VButton {
   public readonly width = input<string>();
   public readonly pY = input<CssUnitValue>(2);
   public readonly pX = input<CssUnitValue>(4);
+  public readonly isLabelHidden = input<boolean>(false);
 
   public readonly onClick = output<MouseEvent>();
 

@@ -13,10 +13,6 @@
 .icon-svg {
   width: 100%;
   height: 100%;
-  /* display: inline-block; */
   background-color: currentColor;
   mask-image: var(--v-icon-background);
-  /* mask-repeat: no-repeat; */
-  /* mask-position: center; */
-  mask-size: contain;
 }

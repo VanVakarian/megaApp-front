@@ -7,7 +7,7 @@
 button {
   display: flex;
   gap: var(--unit-2);
-  justify-content: space-between;
+  align-items: center;
   width: 100%;
   box-sizing: border-box;
   border: none;
@@ -25,14 +25,22 @@ button {
 
   transition: all 0.2s ease;
 
-  /* Default: no shadows */
-  /* box-shadow: none; */
-
   &:disabled {
     opacity: 0.6;
     cursor: not-allowed;
     pointer-events: none;
   }
+}
+
+button > :not(.prefix):not(.postfix) {
+  flex: 1;
+}
+
+.prefix,
+.postfix {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 :host:not([style*='width']) {
@@ -106,11 +114,4 @@ button {
       4px 4px 8px var(--shadow-dark-light),
       -4px -4px 8px var(--shadow-light-strong);
   }
-}
-
-.prefix,
-.postfix {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
 }

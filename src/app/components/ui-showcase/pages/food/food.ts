@@ -2,7 +2,12 @@ import { NgStyle } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { BMIComponent } from '@app/components/food/diary/bmi/bmi.component';
-import { InnerShadowDirective, OuterShadowDirective } from '@app/shared/ui-kit/shadow.directive';
+import {
+  InnerShadowDirective,
+  InnerShadowRoundedDirective,
+  OuterShadowDirective,
+  OuterShadowRoundedDirective,
+} from '@app/shared/ui-kit/shadow.directive';
 import { VCard } from '@app/shared/ui-kit/v-card/v-card';
 import { DropdownItem, VDropdown } from '@app/shared/ui-kit/v-dropdown/v-dropdown';
 import { AccordionDirective } from '@app/shared/ui-kit/v-expand/accordion.directive';
@@ -23,7 +28,9 @@ import { weightValidator } from '@app/shared/ui-kit/v-input/validators';
     VInput,
     BMIComponent,
     OuterShadowDirective,
+    OuterShadowRoundedDirective,
     InnerShadowDirective,
+    InnerShadowRoundedDirective,
     AccordionDirective,
   ],
 })

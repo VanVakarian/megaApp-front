@@ -21,8 +21,10 @@ enum SelectedPage {
 })
 export class Navbar implements OnInit {
   protected selectedPage: SelectedPage = SelectedPage.Other;
-
   protected readonly IconName = IconName;
+  protected isMenuCollapsed = true; // TODO: move to settings
+
+  protected readonly ButtonStyle = ButtonStyle;
 
   constructor(
     private router: Router,
@@ -64,6 +66,14 @@ export class Navbar implements OnInit {
 
   protected settingsButtonStyle(): ButtonStyle {
     return this.selectedPage === SelectedPage.Settings ? ButtonStyle.Raised : ButtonStyle.Flat;
+  }
+
+  protected toggleMenuCollapse(): void {
+    this.isMenuCollapsed = !this.isMenuCollapsed;
+  }
+
+  protected getMenuSizeControlIconName(): IconName {
+    return this.isMenuCollapsed ? IconName.LeftPanelOpen : IconName.LeftPanelClose;
   }
 
   private subscribe(): void {
