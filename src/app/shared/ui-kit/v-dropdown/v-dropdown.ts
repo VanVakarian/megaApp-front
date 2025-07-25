@@ -1,7 +1,13 @@
 import { CommonModule } from '@angular/common';
 import { Component, ElementRef, forwardRef, input, output, ViewChild } from '@angular/core';
 import { ControlValueAccessor, FormControl, FormGroup, NG_VALUE_ACCESSOR, ReactiveFormsModule } from '@angular/forms';
+import { VBackdropDirective } from '@app/shared/ui-kit/backdrop.directive';
 import { VInput } from '@app/shared/ui-kit/v-input/v-input';
+
+export enum ddExpandDirection {
+  Left = 'left',
+  Right = 'right',
+}
 
 export interface DropdownItem {
   value: string;
@@ -12,7 +18,7 @@ export interface DropdownItem {
   selector: 'v-dropdown',
   templateUrl: './v-dropdown.html',
   styleUrl: './v-dropdown.css',
-  imports: [CommonModule, VInput, ReactiveFormsModule],
+  imports: [CommonModule, VInput, ReactiveFormsModule, VBackdropDirective],
   providers: [
     {
       provide: NG_VALUE_ACCESSOR,
@@ -22,9 +28,6 @@ export interface DropdownItem {
   ],
 })
 export class VDropdown implements ControlValueAccessor {
-  @ViewChild('inputComponent')
-  protected readonly inputComponent!: VInput;
-
   public readonly label = input<string>('');
   public readonly placeholder = input<string>('');
   public readonly isDisabled = input<boolean>(false);
@@ -32,23 +35,26 @@ export class VDropdown implements ControlValueAccessor {
   public readonly errorMessage = input<string>('');
   public readonly items = input<DropdownItem[]>([]);
   public readonly minDropdownWidth = input<string>('');
-  public readonly expandDirection = input<'left' | 'right'>('left');
+  public readonly expandDirection = input<ddExpandDirection>(ddExpandDirection.Left);
 
   public readonly onSelectionChanged = output<DropdownItem | null>();
+
+  @ViewChild('inputComponent')
+  protected readonly inputComponent!: VInput;
 
   protected value: string = '';
   protected isOpen = false;
   protected filteredItems: DropdownItem[] = [];
   protected validationError: string = '';
   protected dropdownWidth = 0;
-  protected internalForm = new FormGroup({
+  protected readonly internalForm = new FormGroup({
     search: new FormControl(''),
   });
 
   private onChange = (value: string) => {};
   private onTouched = () => {};
 
-  constructor(private elementRef: ElementRef) {
+  constructor(private readonly elementRef: ElementRef) {
     this.internalForm.get('search')?.valueChanges.subscribe((value) => {
       this.value = value || '';
       this.onChange(this.value);
@@ -101,9 +107,7 @@ export class VDropdown implements ControlValueAccessor {
 
   protected onBlur(): void {
     setTimeout(() => {
-      this.isOpen = false;
-      this.validateInput();
-      this.onTouched();
+      this.closeDropdown();
     }, 150);
   }
 
@@ -114,9 +118,7 @@ export class VDropdown implements ControlValueAccessor {
     this.onChange(item.value);
     this.onSelectionChanged.emit(item);
     this.isOpen = false;
-    if (this.inputComponent) {
-      this.inputComponent.inputElement.nativeElement.blur();
-    }
+    this.inputComponent?.inputElement.nativeElement.blur();
   }
 
   protected clearInput(): void {
@@ -126,6 +128,12 @@ export class VDropdown implements ControlValueAccessor {
     this.onChange('');
     this.onSelectionChanged.emit(null);
     this.updateFilteredItems();
+  }
+
+  protected closeDropdown(): void {
+    this.isOpen = false;
+    this.validateInput();
+    this.onTouched();
   }
 
   private updateFilteredItems(): void {
