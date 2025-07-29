@@ -1,22 +1,22 @@
-import { HttpClient, HttpResponse } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { Injectable, signal, WritableSignal } from '@angular/core';
+import { catchError, firstValueFrom, of } from 'rxjs';
+
+import { DEFAULT_REQUEST_STATUS_FADE_OUT_TIMER, DEFAULT_SETTINGS } from '@app/shared/const';
 import { Settings } from '@app/shared/interfaces';
-import { catchError, firstValueFrom, map, Observable, of } from 'rxjs';
-import {
-  DEFAULT_CACHED_REQUEST_VALIDITY_MS,
-  DEFAULT_REQUEST_STATUS_FADE_OUT_TIMER,
-  DEFAULT_SETTINGS,
-} from '../shared/const';
-import { cached } from '../shared/decorators/cached-request.decorator';
+import { LocalStorageService } from './local-storage.service';
+import { NetworkService } from './network.service';
+import { NotificationService } from './notification.service';
+import { SyncQueueService } from './sync-queue.service';
 
-type SettingsKeysForRequestTracking =
-  | 'selectedChapterFood'
-  | 'selectedChapterMoney'
-  | 'darkTheme'
-  | 'liteVersion'
-  | 'height';
+const SETTINGS_STORAGE_KEY = 'localfirst-settings';
 
-const SETTINGS_LOCALSTORAGE_KEY = 'settings';
+export enum SyncStatus {
+  IDLE = 'idle',
+  SYNCING = 'syncing',
+  SUCCESS = 'success',
+  ERROR = 'error',
+}
 
 export enum RequestStatus {
   IDLE = 'Idle',
@@ -25,11 +25,19 @@ export enum RequestStatus {
   ERROR = 'Error',
 }
 
+type SettingsKeysForRequestTracking =
+  | 'selectedChapterFood'
+  | 'selectedChapterMoney'
+  | 'darkTheme'
+  | 'liteVersion'
+  | 'height';
+
 @Injectable({
   providedIn: 'root',
 })
 export class SettingsService {
-  public settings$$: WritableSignal<Settings> = signal(this.loadSettingsFromLocalStorage());
+  public settings$$: WritableSignal<Settings> = signal(DEFAULT_SETTINGS);
+  public syncStatus$$: WritableSignal<SyncStatus> = signal(SyncStatus.IDLE);
 
   public requestStatus: Record<SettingsKeysForRequestTracking, WritableSignal<RequestStatus>> = {
     selectedChapterFood: signal(RequestStatus.IDLE),
@@ -47,30 +55,125 @@ export class SettingsService {
     height: null,
   };
 
-  public USE_COEFFICIENTS_TEMP = true; // TODO[067] implement sometime
+  public USE_COEFFICIENTS_TEMP = true;
 
-  constructor(private http: HttpClient) {
-    // effect(() => { console.log('settings', this.settings$$()); }); // prettier-ignore
+  constructor(
+    private http: HttpClient,
+    private localStorage: LocalStorageService,
+    private syncQueue: SyncQueueService,
+    private notifications: NotificationService,
+    private network: NetworkService,
+  ) {
+    this.initializeFromLocal();
   }
 
-  public async initLoadSettings(): Promise<Settings> {
-    const response = await this.fetchSettings();
-    this.settings$$.set(response);
-    this.saveSettingsToLocalStorage(response);
-    this.applyTheme(response.darkTheme);
-    return response;
+  async initializeApp(): Promise<void> {
+    this.initializeFromLocal();
+    await this.syncWithServer();
   }
 
-  @cached(DEFAULT_CACHED_REQUEST_VALIDITY_MS)
-  private fetchSettings(): Promise<Settings> {
-    return firstValueFrom(
-      this.http.get<Settings>('/api/settings/').pipe(
-        catchError((error) => {
-          console.error('Failed to fetch settings:', error);
-          return of(this.loadSettingsFromLocalStorage());
-        }),
-      ),
-    );
+  async initLoadSettings(): Promise<Settings> {
+    await this.initializeApp();
+    return this.settings$$();
+  }
+
+  private initializeFromLocal(): void {
+    const localSettings = this.localStorage.get<Settings>(SETTINGS_STORAGE_KEY);
+    if (localSettings) {
+      this.settings$$.set(localSettings);
+      this.applyTheme(localSettings.darkTheme);
+    }
+  }
+
+  private async syncWithServer(): Promise<void> {
+    try {
+      this.syncStatus$$.set(SyncStatus.SYNCING);
+
+      const serverSettings = await firstValueFrom(
+        this.http.get<Settings>('/api/settings/').pipe(
+          catchError((error) => {
+            console.error('Failed to fetch settings from server:', error);
+            return of(null);
+          }),
+        ),
+      );
+
+      if (serverSettings) {
+        this.settings$$.set(serverSettings);
+        this.localStorage.set(SETTINGS_STORAGE_KEY, serverSettings);
+        this.applyTheme(serverSettings.darkTheme);
+        this.syncStatus$$.set(SyncStatus.SUCCESS);
+      } else {
+        this.syncStatus$$.set(SyncStatus.ERROR);
+      }
+    } catch (error) {
+      console.error('Settings sync error:', error);
+      this.syncStatus$$.set(SyncStatus.ERROR);
+    }
+  }
+
+  async updateSetting<K extends keyof Settings>(key: K, value: Settings[K]): Promise<boolean> {
+    if (!this.network.isNetworkAvailable()) {
+      this.notifications.showOfflineMode();
+      return false;
+    }
+
+    const timeoutKey = key as SettingsKeysForRequestTracking;
+    if (timeoutKey in this.requestStatus) {
+      this.setRequestStatus(timeoutKey, RequestStatus.IN_PROGRESS);
+    }
+
+    const currentSettings = this.settings$$();
+    const newSettings = { ...currentSettings, [key]: value };
+
+    this.settings$$.set(newSettings);
+    this.localStorage.set(SETTINGS_STORAGE_KEY, newSettings);
+
+    if (key === 'darkTheme') {
+      this.applyTheme(value as boolean);
+    }
+
+    try {
+      const operationId = this.syncQueue.addOperation({
+        type: 'update',
+        endpoint: '/api/settings/',
+        data: { [key]: value },
+      });
+
+      const queueStatus = this.syncQueue.queueStatus$$();
+      if (queueStatus.lastError) {
+        this.rollbackSetting(key, currentSettings[key]);
+        this.notifications.showSyncError('Failed to save settings');
+        if (timeoutKey in this.requestStatus) {
+          this.setRequestStatus(timeoutKey, RequestStatus.ERROR);
+        }
+        return false;
+      }
+
+      if (timeoutKey in this.requestStatus) {
+        this.setRequestStatus(timeoutKey, RequestStatus.SUCCESS);
+      }
+      return true;
+    } catch (error) {
+      this.rollbackSetting(key, currentSettings[key]);
+      this.notifications.showSyncError('Failed to save settings');
+      if (timeoutKey in this.requestStatus) {
+        this.setRequestStatus(timeoutKey, RequestStatus.ERROR);
+      }
+      return false;
+    }
+  }
+
+  private rollbackSetting<K extends keyof Settings>(key: K, previousValue: Settings[K]): void {
+    const currentSettings = this.settings$$();
+    const rolledBackSettings = { ...currentSettings, [key]: previousValue };
+
+    this.settings$$.set(rolledBackSettings);
+    this.localStorage.set(SETTINGS_STORAGE_KEY, rolledBackSettings);
+
+    if (key === 'darkTheme') {
+      this.applyTheme(previousValue as boolean);
+    }
   }
 
   public applyTheme(isDarkTheme: boolean): void {
@@ -81,53 +184,27 @@ export class SettingsService {
     }
   }
 
-  public async saveSelectedChapter(setting: Partial<Settings>): Promise<boolean> {
-    return await firstValueFrom(this.putRequest(setting));
-  }
+  private setRequestStatus(settingKey: SettingsKeysForRequestTracking, status: RequestStatus): void {
+    this.requestStatus[settingKey].set(status);
 
-  private putRequest(newSetting: Partial<Settings>): Observable<boolean> {
-    const settingKey = Object.keys(newSetting)[0] as keyof Settings;
-    if (!(settingKey in this.requestStatus)) return of(false);
-
-    const currentTimeout = this.requestStatusTimeouts[settingKey as SettingsKeysForRequestTracking];
+    const currentTimeout = this.requestStatusTimeouts[settingKey];
     if (currentTimeout) clearTimeout(currentTimeout);
 
-    const timeoutKey = settingKey as SettingsKeysForRequestTracking;
-    this.requestStatus[timeoutKey].set(RequestStatus.IN_PROGRESS);
-
-    return this.http.put<HttpResponse<any>>('/api/settings/', newSetting, { observe: 'response' }).pipe(
-      map((response: HttpResponse<any>) => {
-        if (response.status === 200) {
-          const updatedSettings = { ...this.settings$$(), ...newSetting };
-          this.settings$$.set(updatedSettings);
-          this.saveSettingsToLocalStorage(updatedSettings);
-          this.updateRequestStatus(timeoutKey, RequestStatus.SUCCESS);
-          return true;
-        } else {
-          this.updateRequestStatus(timeoutKey, RequestStatus.ERROR);
-          return false;
-        }
-      }),
-      catchError(() => {
-        this.updateRequestStatus(timeoutKey, RequestStatus.ERROR);
-        return of(false);
-      }),
-    );
+    if (status !== RequestStatus.IN_PROGRESS) {
+      this.requestStatusTimeouts[settingKey] = setTimeout(() => {
+        this.requestStatus[settingKey].set(RequestStatus.IDLE);
+      }, DEFAULT_REQUEST_STATUS_FADE_OUT_TIMER);
+    }
   }
 
-  private updateRequestStatus(settingKey: SettingsKeysForRequestTracking, status: RequestStatus): void {
-    this.requestStatus[settingKey].set(status);
-    this.requestStatusTimeouts[settingKey] = setTimeout(() => {
-      this.requestStatus[settingKey].set(RequestStatus.IDLE);
-    }, DEFAULT_REQUEST_STATUS_FADE_OUT_TIMER);
-  }
+  async saveSelectedChapter(setting: Partial<Settings>): Promise<boolean> {
+    const key = Object.keys(setting)[0] as keyof Settings;
+    const value = setting[key];
 
-  private loadSettingsFromLocalStorage(): Settings {
-    const settings = localStorage.getItem(SETTINGS_LOCALSTORAGE_KEY);
-    return settings ? JSON.parse(settings) : DEFAULT_SETTINGS;
-  }
+    if (value !== undefined) {
+      return await this.updateSetting(key, value);
+    }
 
-  private saveSettingsToLocalStorage(settings: Settings): void {
-    localStorage.setItem(SETTINGS_LOCALSTORAGE_KEY, JSON.stringify(settings));
+    return false;
   }
 }

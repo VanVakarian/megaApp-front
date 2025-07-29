@@ -1,53 +1,26 @@
 import { HttpClient } from '@angular/common/http';
-import { Injectable, OnDestroy, WritableSignal, signal } from '@angular/core';
-import { BehaviorSubject, EMPTY, Observable, Subscription, of, timer } from 'rxjs';
+import { Injectable, OnDestroy } from '@angular/core';
+
+import { BehaviorSubject, EMPTY, Subscription, of, timer } from 'rxjs';
 import { catchError, retry, switchMap } from 'rxjs/operators';
 import { WebSocketSubject, webSocket } from 'rxjs/webSocket';
 
 import { tokenGetter } from '@app/services/auth.service';
 import { IncomingMessage } from '@app/shared/interfaces';
-import { NotificationService } from './notification.service';
 
 @Injectable({
   providedIn: 'root',
 })
-export class NetworkService implements OnDestroy {
-  public isOnline$$: WritableSignal<boolean> = signal(navigator.onLine);
-  public isConnected$$: WritableSignal<boolean> = signal(false);
-
+export class NetworkServiceDel implements OnDestroy {
   private socket$: WebSocketSubject<any> | undefined;
-  private reconnectDelaySec = 1;
+  private reconnectDelaySec = 1; // время задержки между попытками переподключения в случае потери соединения с сервером
   private connectionStatus: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(false);
-  private connectionStatusSubscription!: Subscription;
+  private connectionStatusSubscription: Subscription;
+  // private pingInterval: any;
+  // private pingIntervalSec: number = 50;
   private isConnected: boolean = false;
 
-  constructor(
-    private http: HttpClient,
-    private notifications: NotificationService,
-  ) {
-    this.initNetworkEvents();
-    this.initWebSocket();
-  }
-
-  private initNetworkEvents(): void {
-    window.addEventListener('online', () => this.updateOnlineStatus(true));
-    window.addEventListener('offline', () => this.updateOnlineStatus(false));
-
-    this.isOnline$$.set(navigator.onLine);
-  }
-
-  private updateOnlineStatus(isOnline: boolean): void {
-    console.log('Network status changed:', isOnline ? 'online' : 'offline');
-    this.isOnline$$.set(isOnline);
-
-    if (!isOnline) {
-      this.notifications.showOfflineMode();
-    } else {
-      this.connect();
-    }
-  }
-
-  private initWebSocket(): void {
+  constructor(private http: HttpClient) {
     this.connectionStatusSubscription = this.connectionStatus
       .pipe(
         switchMap((isConnected) => {
@@ -86,7 +59,6 @@ export class NetworkService implements OnDestroy {
             console.error('WebSocket error:', error);
             this.connectionStatus.next(false);
             this.isConnected = false;
-            this.isConnected$$.set(false);
             return EMPTY;
           }),
         )
@@ -96,25 +68,35 @@ export class NetworkService implements OnDestroy {
             console.error('WebSocket connection error:', err);
             this.connectionStatus.next(false);
             this.isConnected = false;
-            this.isConnected$$.set(false);
           },
           complete: () => {
             console.warn('WebSocket connection closed');
             this.connectionStatus.next(false);
             this.isConnected = false;
-            this.isConnected$$.set(false);
           },
         });
 
       this.connectionStatus.next(true);
       this.isConnected = true;
-      this.isConnected$$.set(true);
+      // this.initWsPingPong(); // TODO: See if I need this to keep ws connection live
       this.sendTokenOnWebSocket();
     }
   }
 
+  // public initWsPingPong() {
+  //   if (this.pingInterval) {
+  //     clearInterval(this.pingInterval);
+  //   }
+  //   this.pingInterval = setInterval(() => {
+  //     if (this.socket$ && !this.socket$.closed) {
+  //       this.socket$.next({ message: 'ping' });
+  //     }
+  //   }, this.pingIntervalSec * 1000);
+  // }
+
   private sendTokenOnWebSocket() {
     const token = tokenGetter();
+    // console.log('Sending token:', token);
     if (token && this.socket$ && !this.socket$.closed) {
       this.socket$.next({ auth: token });
     }
@@ -125,6 +107,7 @@ export class NetworkService implements OnDestroy {
   }
 
   private handleMessage(data: IncomingMessage) {
+    // console.log('Received message:', data);
     const key = Object.keys(data).length === 1 ? Object.keys(data)[0] : null;
     if (key) {
       if (data[key] === 'pong') {
@@ -132,33 +115,16 @@ export class NetworkService implements OnDestroy {
       } else if (data[key] === 'token-needed') {
         console.log('Received auth demand');
         this.sendTokenOnWebSocket();
-      } else {
-        console.log('Received SSE update:', data);
       }
     }
   }
 
-  subscribeToUpdates(entityType: string): Observable<any> {
-    return new Observable((observer) => {
-      if (this.socket$) {
-        this.socket$.subscribe({
-          next: (data) => {
-            if (data[entityType]) {
-              observer.next(data[entityType]);
-            }
-          },
-          error: (err) => observer.error(err),
-        });
-      }
-    });
-  }
-
-  isNetworkAvailable(): boolean {
-    return this.isOnline$$() && this.isConnected$$();
-  }
-
   ngOnDestroy() {
     this.connectionStatusSubscription.unsubscribe();
+
+    // if (this.pingInterval) {
+    //   clearInterval(this.pingInterval);
+    // }
 
     if (this.socket$) {
       this.socket$.complete();
