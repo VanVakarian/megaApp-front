@@ -1,9 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, effect } from '@angular/core';
-
-import { firstValueFrom } from 'rxjs';
-
 import { NetworkMonitor } from '@app/services/network-monitor.service';
+import { firstValueFrom } from 'rxjs';
 
 type ActionQueue = {
   [key: string | number]: {
@@ -51,7 +49,6 @@ export class ActionService {
   }
 
   public async startSendingRequests() {
-    // const isOnline = this.networkMonitor.isOnline$$();
     if (!this.networkMonitor.isOnline$$()) return;
     if (!Object.keys(this.actionQueue).length) return;
 

@@ -1,11 +1,10 @@
 import { HttpClient } from '@angular/common/http';
-import { Injectable, OnDestroy, WritableSignal, signal } from '@angular/core';
+import { Injectable, OnDestroy, WritableSignal, computed, signal } from '@angular/core';
+import { tokenGetter } from '@app/services/auth.service';
+import { IncomingMessage } from '@app/shared/interfaces';
 import { BehaviorSubject, EMPTY, Observable, Subscription, of, timer } from 'rxjs';
 import { catchError, retry, switchMap } from 'rxjs/operators';
 import { WebSocketSubject, webSocket } from 'rxjs/webSocket';
-
-import { tokenGetter } from '@app/services/auth.service';
-import { IncomingMessage } from '@app/shared/interfaces';
 import { NotificationService } from './notification.service';
 
 @Injectable({
@@ -14,6 +13,7 @@ import { NotificationService } from './notification.service';
 export class NetworkService implements OnDestroy {
   public isOnline$$: WritableSignal<boolean> = signal(navigator.onLine);
   public isConnected$$: WritableSignal<boolean> = signal(false);
+  public isNetworkAvailable$$ = computed(() => this.isOnline$$() && this.isConnected$$());
 
   private socket$: WebSocketSubject<any> | undefined;
   private reconnectDelaySec = 1;
@@ -29,6 +29,14 @@ export class NetworkService implements OnDestroy {
     this.initWebSocket();
   }
 
+  public ngOnDestroy() {
+    this.connectionStatusSubscription.unsubscribe();
+
+    if (this.socket$) {
+      this.socket$.complete();
+    }
+  }
+
   private initNetworkEvents(): void {
     window.addEventListener('online', () => this.updateOnlineStatus(true));
     window.addEventListener('offline', () => this.updateOnlineStatus(false));
@@ -37,7 +45,6 @@ export class NetworkService implements OnDestroy {
   }
 
   private updateOnlineStatus(isOnline: boolean): void {
-    console.log('Network status changed:', isOnline ? 'online' : 'offline');
     this.isOnline$$.set(isOnline);
 
     if (!isOnline) {
@@ -71,7 +78,6 @@ export class NetworkService implements OnDestroy {
 
   private connect() {
     if (!this.socket$ || !this.isConnected) {
-      console.log('Connecting...');
       this.socket$ = this.getNewWebSocket();
 
       this.socket$
@@ -138,7 +144,7 @@ export class NetworkService implements OnDestroy {
     }
   }
 
-  subscribeToUpdates(entityType: string): Observable<any> {
+  private subscribeToUpdates(entityType: string): Observable<any> {
     return new Observable((observer) => {
       if (this.socket$) {
         this.socket$.subscribe({
@@ -151,17 +157,5 @@ export class NetworkService implements OnDestroy {
         });
       }
     });
-  }
-
-  isNetworkAvailable(): boolean {
-    return this.isOnline$$() && this.isConnected$$();
-  }
-
-  ngOnDestroy() {
-    this.connectionStatusSubscription.unsubscribe();
-
-    if (this.socket$) {
-      this.socket$.complete();
-    }
   }
 }

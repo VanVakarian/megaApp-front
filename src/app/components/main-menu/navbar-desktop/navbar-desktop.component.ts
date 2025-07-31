@@ -1,13 +1,10 @@
 import { Component, ElementRef, OnDestroy, OnInit, ViewChild } from '@angular/core';
-import { RouterLink } from '@angular/router';
-
 import { MatButtonModule } from '@angular/material/button';
-
-import { debounceTime, fromEvent, merge, Subscription, throttleTime } from 'rxjs';
-
+import { RouterLink } from '@angular/router';
 import { DarkSwitchComponent } from '@app/components/settings/dark-switch/dark-switch.component';
 import { AuthService } from '@app/services/auth.service';
 import { MainMenuService } from '@app/services/main-menu.service';
+import { debounceTime, fromEvent, merge, Subscription, throttleTime } from 'rxjs';
 
 @Component({
   selector: 'app-navbar-desktop',
