@@ -6,6 +6,7 @@ import { catchError, firstValueFrom, of } from 'rxjs';
 import { LocalStorageService } from './local-storage.service';
 import { NetworkService } from './network.service';
 import { NotificationService } from './notification.service';
+import { SyncOperationType, SyncQueueService } from './sync-queue.service';
 
 const SETTINGS_STORAGE_KEY = 'settings';
 
@@ -22,6 +23,7 @@ export class SettingsService {
     private localStorage: LocalStorageService,
     private notificationsService: NotificationService,
     private networkService: NetworkService,
+    private syncQueue: SyncQueueService,
   ) {
     this.initializeFromLocalStorage();
     this.performBackgroundSync();
@@ -68,6 +70,10 @@ export class SettingsService {
   }
 
   async updateSetting<K extends keyof Settings>(key: K, value: Settings[K]): Promise<boolean> {
+    if (!this.networkService.isNetworkAvailable$$()) {
+      return false;
+    }
+
     const currentSettings = this.settings$$();
     const newSettings = { ...currentSettings, [key]: value };
 
@@ -78,20 +84,17 @@ export class SettingsService {
       this.applyTheme(value as boolean);
     }
 
-    if (this.networkService.isNetworkAvailable$$()) {
-      try {
-        await firstValueFrom(this.http.put<void>('/api/settings/', { [key]: value }));
-        return true;
-      } catch (error) {
-        console.error('Failed to update setting on server:', error);
+    this.syncQueue.addOperation({
+      type: SyncOperationType.UPDATE,
+      endpoint: '/api/settings/',
+      data: { [key]: value },
+      rollbackCallback: () => {
         this.rollbackSetting(key, currentSettings[key]);
         this.notificationsService.showSyncError('Failed to save settings');
-        return false;
-      }
-    } else {
-      this.notificationsService.showOfflineMode();
-      return true;
-    }
+      },
+    });
+
+    return true;
   }
 
   private rollbackSetting<K extends keyof Settings>(key: K, previousValue: Settings[K]): void {

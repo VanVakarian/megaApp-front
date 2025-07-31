@@ -1,4 +1,3 @@
-import { HttpClient } from '@angular/common/http';
 import { Injectable, OnDestroy, WritableSignal, computed, signal } from '@angular/core';
 import { tokenGetter } from '@app/services/auth.service';
 import { IncomingMessage } from '@app/shared/interfaces';
@@ -21,10 +20,7 @@ export class NetworkService implements OnDestroy {
   private connectionStatusSubscription!: Subscription;
   private isConnected: boolean = false;
 
-  constructor(
-    private http: HttpClient,
-    private notifications: NotificationService,
-  ) {
+  constructor(private notifications: NotificationService) {
     this.initNetworkEvents();
     this.initWebSocket();
   }
