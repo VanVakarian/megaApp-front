@@ -1,8 +1,5 @@
 import { HttpClient } from '@angular/common/http';
 import { computed, effect, Injectable, Signal, signal, WritableSignal } from '@angular/core';
-
-import { catchError, firstValueFrom, map, Observable, of, Subject, tap } from 'rxjs';
-
 import { exhaustRequest } from '@app/shared/decorators/exhaust-request.decorator';
 import {
   BodyWeight,
@@ -20,6 +17,12 @@ import {
   ServerResponseWithDiaryId,
 } from '@app/shared/interfaces';
 import { calculateTodayIsoWithUserTimeShift } from '@app/shared/utils';
+import { catchError, firstValueFrom, map, Observable, of, Subject, tap } from 'rxjs';
+import { LocalStorageService } from './local-storage.service';
+import { NetworkService } from './network.service';
+import { SyncQueueService } from './sync-queue.service';
+
+const DIARY_STORAGE_KEY = 'food_diary';
 
 @Injectable({
   providedIn: 'root',
@@ -48,7 +51,12 @@ export class FoodService {
   private loadedRange$$: WritableSignal<{ start: string; end: string } | null> = signal(null);
   private fetchMoreDiaryTrigger$ = new Subject<void>();
 
-  constructor(private http: HttpClient) {
+  constructor(
+    private http: HttpClient,
+    private localStorageService: LocalStorageService,
+    private networkService: NetworkService,
+    private syncQueueService: SyncQueueService,
+  ) {
     // effect(() => { console.log('DIARY has been updated:', this.diary$$()) }); // prettier-ignore
     // effect(() => { console.log('DIARY FORMATTED has been updated:', this.diaryFormatted$$()) }); // prettier-ignore
     // effect(() => { console.log('SELECTED DAY has been updated:', this.selectedDayIso$$()) }); // prettier-ignore
@@ -58,6 +66,8 @@ export class FoodService {
     // effect(() => { console.log('CATALOGUE SORTED LIST SELECTED have been updated:', this.catalogueSortedListSelected$$()) }); // prettier-ignore
     // effect(() => { console.log('CATALOGUE SORTED LIST LEFT OUT have been updated:', this.catalogueSortedListLeftOut$$()) }); // prettier-ignore
     // effect(() => { console.log('COEFFICIENTS have been updated:', this.coefficients$$()) }); // prettier-ignore
+
+    this.loadDiaryFromLocalStorage();
 
     effect(() => {
       if (this.shouldLoadMore()) {
@@ -78,7 +88,7 @@ export class FoodService {
 
   private prepDiary(): FormattedDiary {
     const formattedDiary: FormattedDiary = {};
-    if (Object.keys(this.catalogue$$()).length === 0) return formattedDiary; // postpone formatting Diary if there is no catalogue yet
+    if (Object.keys(this.catalogue$$()).length === 0) return {}; // postpone formatting Diary if there is no catalogue yet
 
     for (const dateISO in this.diary$$()) {
       formattedDiary[dateISO] = {
@@ -132,6 +142,7 @@ export class FoodService {
     return this.http.get<Diary>(`/api/food/diary-full-update?${paramsStr}`).pipe(
       map((response) => {
         this.diary$$.update((diary) => ({ ...diary, ...response }));
+        this.saveDiaryToLocalStorage();
         this.updateLoadedRange(date);
         return response;
       }),
@@ -448,5 +459,41 @@ export class FoodService {
       start: newStart.toISOString().split('T')[0],
       end: newEnd.toISOString().split('T')[0],
     });
+  }
+
+  //                                                                                                       LOCAL STORAGE
+
+  public saveDiaryToLocalStorage(): void {
+    this.localStorageService.set(DIARY_STORAGE_KEY, this.diary$$());
+  }
+
+  public loadDiaryFromLocalStorage(): void {
+    const savedDiary = this.localStorageService.get<Diary>(DIARY_STORAGE_KEY);
+    console.log('Loading diary from localStorage:', savedDiary);
+    if (savedDiary) {
+      this.diary$$.set(savedDiary);
+    }
+  }
+
+  //                                                                                                     NETWORK HELPERS
+
+  private checkNetworkAvailability(): boolean {
+    return this.networkService.isNetworkAvailable$$();
+  }
+
+  //                                                                                                    ROLLBACK HELPERS
+
+  private createRollbackForDiaryEntry(originalDiary: Diary): () => void {
+    return () => {
+      this.diary$$.set(originalDiary);
+      this.saveDiaryToLocalStorage();
+    };
+  }
+
+  private createRollbackForDeletedEntry(deletedEntry: DiaryEntry): () => void {
+    return () => {
+      this.updateDiaryEntryWithNewValues(deletedEntry);
+      this.saveDiaryToLocalStorage();
+    };
   }
 }
