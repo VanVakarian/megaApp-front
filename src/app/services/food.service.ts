@@ -12,7 +12,6 @@ import {
   FormattedDiary,
   FormattedDiaryEntry,
   ServerResponseBasic,
-  ServerResponseWithCatalogueEntry,
   ServerResponseWithData,
   ServerResponseWithDiaryId,
 } from '@app/shared/interfaces';
@@ -20,9 +19,11 @@ import { calculateTodayIsoWithUserTimeShift } from '@app/shared/utils';
 import { catchError, firstValueFrom, map, Observable, of, Subject, tap } from 'rxjs';
 import { LocalStorageService } from './local-storage.service';
 import { NetworkService } from './network.service';
-import { SyncQueueService } from './sync-queue.service';
+import { SyncOperationType, SyncQueueService } from './sync-queue.service';
 
 const DIARY_STORAGE_KEY = 'food_diary';
+const CATALOGUE_STORAGE_KEY = 'food_catalogue';
+const CATALOGUE_MY_IDS_STORAGE_KEY = 'food_catalogue_my_ids';
 
 @Injectable({
   providedIn: 'root',
@@ -67,13 +68,15 @@ export class FoodService {
     // effect(() => { console.log('CATALOGUE SORTED LIST LEFT OUT have been updated:', this.catalogueSortedListLeftOut$$()) }); // prettier-ignore
     // effect(() => { console.log('COEFFICIENTS have been updated:', this.coefficients$$()) }); // prettier-ignore
 
-    this.loadDiaryFromLocalStorage();
-
     effect(() => {
       if (this.shouldLoadMore()) {
         this.fetchMoreDiaryTrigger$.next();
       }
     });
+
+    this.loadDiaryFromLocalStorage();
+    this.loadCatalogueFromLocalStorage();
+    this.loadCatalogueMyIdsFromLocalStorage();
 
     this.subscribe();
   }
@@ -265,6 +268,7 @@ export class FoodService {
     return this.http.get<Catalogue>('/api/food/catalogue').pipe(
       map((response: Catalogue) => {
         this.catalogue$$.set(response);
+        this.saveCatalogueToLocalStorage();
         return response;
       }),
       catchError((error) => {
@@ -275,20 +279,36 @@ export class FoodService {
   }
 
   public createNewCatalogueEntry(foodName: string, foodKcals: number): Observable<number | null> {
-    return this.http.post<ServerResponseWithCatalogueEntry>('/api/food/catalogue/', { foodName, foodKcals }).pipe(
-      map((response) => {
-        if (response.result && response.id) {
-          this.addFoodEntryToCatalogue(foodName, foodKcals, response.id);
-          this.addFoodIdToUserCatalogue(response.id);
-          return response.id;
-        }
-        return null;
-      }),
-      catchError((error) => {
-        console.error('Failed adding user food item:', error);
-        return of(null);
-      }),
-    );
+    if (!this.checkNetworkAvailability()) {
+      console.error('Network not available for creating catalogue entry');
+      return of(null);
+    }
+
+    const tempId = Date.now();
+
+    const originalCatalogue = { ...this.catalogue$$() };
+    const originalMyIds = [...this.catalogueMyIds$$()];
+
+    this.addFoodEntryToCatalogue(foodName, foodKcals, tempId);
+    this.addFoodIdToUserCatalogue(tempId);
+    this.saveCatalogueToLocalStorage();
+    this.saveCatalogueMyIdsToLocalStorage();
+
+    const rollbackFunction = () => {
+      this.catalogue$$.set(originalCatalogue);
+      this.catalogueMyIds$$.set(originalMyIds);
+      this.saveCatalogueToLocalStorage();
+      this.saveCatalogueMyIdsToLocalStorage();
+    };
+
+    this.syncQueueService.addOperation({
+      type: SyncOperationType.CREATE,
+      endpoint: '/api/food/catalogue/',
+      data: { foodName, foodKcals },
+      rollbackCallback: rollbackFunction,
+    });
+
+    return of(tempId);
   }
 
   private addFoodEntryToCatalogue(foodName: string, foodKcals: number, newId: number): void {
@@ -303,35 +323,51 @@ export class FoodService {
   }
 
   public editCatalogueEntry(foodId: number, foodName: string, foodKcals: number): Observable<boolean> {
-    return this.http
-      .put<ServerResponseWithCatalogueEntry>('/api/food/catalogue/', { foodId, foodName, foodKcals })
-      .pipe(
-        map((response) => {
-          if (response.result) {
-            this.catalogue$$.update((catalogue) => {
-              return {
-                ...catalogue,
-                [foodId]: {
-                  id: foodId,
-                  name: foodName,
-                  kcals: foodKcals,
-                },
-              };
-            });
-          }
-          return response.result;
-        }),
-        catchError((error) => {
-          console.error('Failed updating user food item:', error);
-          return of(false);
-        }),
-      );
+    if (!this.checkNetworkAvailability()) {
+      console.error('Network not available for editing catalogue entry');
+      return of(false);
+    }
+
+    const originalCatalogue = { ...this.catalogue$$() };
+    const originalEntry = originalCatalogue[foodId];
+
+    if (!originalEntry) {
+      console.error('Cannot edit catalogue entry: entry not found');
+      return of(false);
+    }
+
+    this.catalogue$$.update((catalogue) => {
+      return {
+        ...catalogue,
+        [foodId]: {
+          id: foodId,
+          name: foodName,
+          kcals: foodKcals,
+        },
+      };
+    });
+    this.saveCatalogueToLocalStorage();
+
+    const rollbackFunction = () => {
+      this.catalogue$$.set(originalCatalogue);
+      this.saveCatalogueToLocalStorage();
+    };
+
+    this.syncQueueService.addOperation({
+      type: SyncOperationType.UPDATE,
+      endpoint: '/api/food/catalogue/',
+      data: { foodId, foodName, foodKcals },
+      rollbackCallback: rollbackFunction,
+    });
+
+    return of(true);
   }
 
   public getMyCatalogueEntries(): Observable<CatalogueIds> {
     return this.http.get<CatalogueIds>('/api/food/user-catalogue').pipe(
       map((response: CatalogueIds) => {
         this.catalogueMyIds$$.set(response);
+        this.saveCatalogueMyIdsToLocalStorage();
         return response;
       }),
       catchError((error) => {
@@ -469,9 +505,30 @@ export class FoodService {
 
   public loadDiaryFromLocalStorage(): void {
     const savedDiary = this.localStorageService.get<Diary>(DIARY_STORAGE_KEY);
-    console.log('Loading diary from localStorage:', savedDiary);
     if (savedDiary) {
       this.diary$$.set(savedDiary);
+    }
+  }
+
+  public saveCatalogueToLocalStorage(): void {
+    this.localStorageService.set(CATALOGUE_STORAGE_KEY, this.catalogue$$());
+  }
+
+  public loadCatalogueFromLocalStorage(): void {
+    const savedCatalogue = this.localStorageService.get<Catalogue>(CATALOGUE_STORAGE_KEY);
+    if (savedCatalogue) {
+      this.catalogue$$.set(savedCatalogue);
+    }
+  }
+
+  public saveCatalogueMyIdsToLocalStorage(): void {
+    this.localStorageService.set(CATALOGUE_MY_IDS_STORAGE_KEY, this.catalogueMyIds$$());
+  }
+
+  public loadCatalogueMyIdsFromLocalStorage(): void {
+    const savedMyIds = this.localStorageService.get<CatalogueIds>(CATALOGUE_MY_IDS_STORAGE_KEY);
+    if (savedMyIds) {
+      this.catalogueMyIds$$.set(savedMyIds);
     }
   }
 
@@ -494,6 +551,20 @@ export class FoodService {
     return () => {
       this.updateDiaryEntryWithNewValues(deletedEntry);
       this.saveDiaryToLocalStorage();
+    };
+  }
+
+  private createRollbackForCatalogueEntry(originalCatalogue: Catalogue): () => void {
+    return () => {
+      this.catalogue$$.set(originalCatalogue);
+      this.saveCatalogueToLocalStorage();
+    };
+  }
+
+  private createRollbackForCatalogueMyIds(originalMyIds: CatalogueIds): () => void {
+    return () => {
+      this.catalogueMyIds$$.set(originalMyIds);
+      this.saveCatalogueMyIdsToLocalStorage();
     };
   }
 }
