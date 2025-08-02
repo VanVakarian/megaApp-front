@@ -24,6 +24,7 @@ import { SyncOperationType, SyncQueueService } from './sync-queue.service';
 const DIARY_STORAGE_KEY = 'food_diary';
 const CATALOGUE_STORAGE_KEY = 'food_catalogue';
 const CATALOGUE_MY_IDS_STORAGE_KEY = 'food_catalogue_my_ids';
+const COEFFICIENTS_STORAGE_KEY = 'food_coefficients';
 
 @Injectable({
   providedIn: 'root',
@@ -77,6 +78,7 @@ export class FoodService {
     this.loadDiaryFromLocalStorage();
     this.loadCatalogueFromLocalStorage();
     this.loadCatalogueMyIdsFromLocalStorage();
+    this.loadCoefficientsFromLocalStorage();
 
     this.subscribe();
   }
@@ -378,16 +380,34 @@ export class FoodService {
   }
 
   public pickUserFoodId(foodId: number): Observable<boolean> {
-    return this.http.put<ServerResponseBasic>('/api/food/user-catalogue/pick/', { foodId: foodId }).pipe(
-      map((response) => {
-        if (response.result) this.addFoodIdToUserCatalogue(foodId);
-        return response.result;
-      }),
-      catchError((error) => {
-        console.error('Failed picking user food id:', error);
-        return of(false);
-      }),
-    );
+    if (!this.checkNetworkAvailability()) {
+      return of(false);
+    }
+
+    const originalMyIds = [...this.catalogueMyIds$$()];
+    const originalCoefficients = { ...this.coefficients$$() };
+
+    this.addFoodIdToUserCatalogue(foodId);
+    this.saveCatalogueMyIdsToLocalStorage();
+
+    this.coefficients$$.update((coefficients) => ({ ...coefficients, [foodId]: 1 }));
+    this.saveCoefficientsToLocalStorage();
+
+    const rollbackFunction = () => {
+      this.catalogueMyIds$$.set(originalMyIds);
+      this.saveCatalogueMyIdsToLocalStorage();
+      this.coefficients$$.set(originalCoefficients);
+      this.saveCoefficientsToLocalStorage();
+    };
+
+    this.syncQueueService.addOperation({
+      type: SyncOperationType.UPDATE,
+      endpoint: '/api/food/user-catalogue/pick/',
+      data: { foodId },
+      rollbackCallback: rollbackFunction,
+    });
+
+    return of(true);
   }
 
   private addFoodIdToUserCatalogue(foodId: number): void {
@@ -397,16 +417,38 @@ export class FoodService {
   }
 
   public dismissUserFoodId(foodId: number): Observable<boolean> {
-    return this.http.put<ServerResponseBasic>('/api/food/user-catalogue/dismiss/', { foodId: foodId }).pipe(
-      map((response) => {
-        if (response.result) this.removeFoodIdFromCatalogue(foodId);
-        return response.result;
-      }),
-      catchError((error) => {
-        console.error('Failed dismissing user food id:', error);
-        return of(false);
-      }),
-    );
+    if (!this.checkNetworkAvailability()) {
+      return of(false);
+    }
+
+    const originalMyIds = [...this.catalogueMyIds$$()];
+    const originalCoefficients = { ...this.coefficients$$() };
+
+    this.removeFoodIdFromCatalogue(foodId);
+    this.saveCatalogueMyIdsToLocalStorage();
+
+    this.coefficients$$.update((coefficients) => {
+      const updated = { ...coefficients };
+      delete updated[foodId];
+      return updated;
+    });
+    this.saveCoefficientsToLocalStorage();
+
+    const rollbackFunction = () => {
+      this.catalogueMyIds$$.set(originalMyIds);
+      this.saveCatalogueMyIdsToLocalStorage();
+      this.coefficients$$.set(originalCoefficients);
+      this.saveCoefficientsToLocalStorage();
+    };
+
+    this.syncQueueService.addOperation({
+      type: SyncOperationType.UPDATE,
+      endpoint: '/api/food/user-catalogue/dismiss/',
+      data: { foodId },
+      rollbackCallback: rollbackFunction,
+    });
+
+    return of(true);
   }
 
   private removeFoodIdFromCatalogue(foodId: number): void {
@@ -416,9 +458,17 @@ export class FoodService {
   //                                                                                                        COEFFICIENTS
 
   public getCoefficients(): Observable<ServerResponseWithData<Coefficients>> {
+    const localCoefficients = this.coefficients$$();
+
+    if (Object.keys(localCoefficients).length > 0) {
+      this.fetchCoefficientsInBackground();
+      return of({ result: true, data: localCoefficients });
+    }
+
     return this.http.get<ServerResponseWithData<Coefficients>>('/api/food/coefficients').pipe(
       map((response) => {
         this.coefficients$$.set(response.data);
+        this.saveCoefficientsToLocalStorage();
         return response;
       }),
       catchError((error) => {
@@ -426,6 +476,26 @@ export class FoodService {
         return of({ result: false, data: {} as Coefficients });
       }),
     );
+  }
+
+  private async fetchCoefficientsInBackground(): Promise<void> {
+    try {
+      const response = await firstValueFrom(
+        this.http.get<ServerResponseWithData<Coefficients>>('/api/food/coefficients').pipe(
+          catchError((error) => {
+            console.error('Failed fetching coefficients in background:', error);
+            return of({ result: false, data: {} as Coefficients });
+          }),
+        ),
+      );
+
+      if (response.result) {
+        this.coefficients$$.set(response.data);
+        this.saveCoefficientsToLocalStorage();
+      }
+    } catch (error) {
+      console.error('Failed fetching coefficients in background:', error);
+    }
   }
 
   //                                                                                                     AUTO DIARY LOAD
@@ -532,6 +602,17 @@ export class FoodService {
     }
   }
 
+  public saveCoefficientsToLocalStorage(): void {
+    this.localStorageService.set(COEFFICIENTS_STORAGE_KEY, this.coefficients$$());
+  }
+
+  public loadCoefficientsFromLocalStorage(): void {
+    const savedCoefficients = this.localStorageService.get<Coefficients>(COEFFICIENTS_STORAGE_KEY);
+    if (savedCoefficients) {
+      this.coefficients$$.set(savedCoefficients);
+    }
+  }
+
   //                                                                                                     NETWORK HELPERS
 
   private checkNetworkAvailability(): boolean {
@@ -565,6 +646,13 @@ export class FoodService {
     return () => {
       this.catalogueMyIds$$.set(originalMyIds);
       this.saveCatalogueMyIdsToLocalStorage();
+    };
+  }
+
+  private createRollbackForCoefficients(originalCoefficients: Coefficients): () => void {
+    return () => {
+      this.coefficients$$.set(originalCoefficients);
+      this.saveCoefficientsToLocalStorage();
     };
   }
 }
