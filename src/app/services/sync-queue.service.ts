@@ -14,6 +14,7 @@ interface SyncOperation {
   endpoint: string;
   data: any;
   retryCount: number;
+  successCallback?: (response: any) => void;
   rollbackCallback?: () => void;
 }
 
@@ -48,7 +49,11 @@ export class SyncQueueService {
 
       try {
         const request$ = this.createRequest(operation);
-        await firstValueFrom(request$.pipe(timeout(this.timeoutMs)));
+        const response = await firstValueFrom(request$.pipe(timeout(this.timeoutMs)));
+
+        if (operation.successCallback) {
+          operation.successCallback(response);
+        }
 
         this.queue.shift();
       } catch (error) {

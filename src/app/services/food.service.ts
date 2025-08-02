@@ -16,7 +16,7 @@ import {
   ServerResponseWithDiaryId,
 } from '@app/shared/interfaces';
 import { calculateTodayIsoWithUserTimeShift } from '@app/shared/utils';
-import { catchError, firstValueFrom, map, Observable, of, Subject, tap } from 'rxjs';
+import { catchError, firstValueFrom, map, Observable, of, Subject } from 'rxjs';
 import { LocalStorageService } from './local-storage.service';
 import { NetworkService } from './network.service';
 import { SyncOperationType, SyncQueueService } from './sync-queue.service';
@@ -157,40 +157,104 @@ export class FoodService {
   //                                                                                                               DIARY
 
   public createDiaryEntry(diaryEntry: DiaryEntry): Observable<ServerResponseWithDiaryId> {
-    return this.http.post<ServerResponseWithDiaryId>('/api/food/diary/', diaryEntry).pipe(
-      tap((response: ServerResponseWithDiaryId) => {
-        if (response?.result) {
-          diaryEntry.id = response.diaryId;
-          this.updateDiaryEntryWithNewValues(diaryEntry);
-        } else {
-          console.error('Creation of diary entry failed');
-        }
-      }),
-    );
+    if (!this.checkNetworkAvailability()) {
+      console.error('Network not available for creating diary entry');
+      return of({ result: false, diaryId: 0 });
+    }
+
+    const tempId = Date.now();
+    const originalDiary = { ...this.diary$$() };
+
+    const entryWithTempId = { ...diaryEntry, id: tempId };
+    this.updateDiaryEntryWithNewValues(entryWithTempId);
+    this.saveDiaryToLocalStorage();
+
+    const successCallback = (response: ServerResponseWithDiaryId) => {
+      if (response.result && response.diaryId) {
+        this.updateDiaryEntryId(tempId, response.diaryId);
+      }
+    };
+
+    const rollbackFunction = () => {
+      this.diary$$.set(originalDiary);
+      this.saveDiaryToLocalStorage();
+    };
+
+    this.syncQueueService.addOperation({
+      type: SyncOperationType.CREATE,
+      endpoint: '/api/food/diary/',
+      data: diaryEntry,
+      successCallback: successCallback,
+      rollbackCallback: rollbackFunction,
+    });
+
+    return of({ result: true, diaryId: tempId });
   }
 
   public editDiaryEntry(diaryEntry: DiaryEntry): Observable<ServerResponseBasic> {
-    return this.http.put<ServerResponseBasic>('/api/food/diary', diaryEntry).pipe(
-      tap((response: ServerResponseBasic) => {
-        if (response?.result) {
-          this.updateDiaryEntryWithNewValues(diaryEntry);
-        } else {
-          console.error('Updating diary entry failed');
-        }
-      }),
-    );
+    if (!this.checkNetworkAvailability()) {
+      console.error('Network not available for editing diary entry');
+      return of({ result: false });
+    }
+
+    const originalDiary = { ...this.diary$$() };
+    const selectedDay = this.selectedDayIso$$();
+    const originalEntry = originalDiary[selectedDay]?.food[diaryEntry.id];
+
+    if (!originalEntry) {
+      console.error('Cannot edit diary entry: entry not found');
+      return of({ result: false });
+    }
+
+    this.updateDiaryEntryWithNewValues(diaryEntry);
+    this.saveDiaryToLocalStorage();
+
+    const rollbackFunction = () => {
+      this.diary$$.set(originalDiary);
+      this.saveDiaryToLocalStorage();
+    };
+
+    this.syncQueueService.addOperation({
+      type: SyncOperationType.UPDATE,
+      endpoint: '/api/food/diary',
+      data: diaryEntry,
+      rollbackCallback: rollbackFunction,
+    });
+
+    return of({ result: true });
   }
 
   public deleteDiaryEntry(diaryEntryId: number): Observable<ServerResponseBasic> {
-    return this.http.delete<ServerResponseBasic>(`/api/food/diary/${diaryEntryId}`).pipe(
-      tap((response: ServerResponseBasic) => {
-        if (response?.result) {
-          this.removeDiaryEntry(diaryEntryId);
-        } else {
-          console.error('Error deleting diary entry');
-        }
-      }),
-    );
+    if (!this.checkNetworkAvailability()) {
+      console.error('Network not available for deleting diary entry');
+      return of({ result: false });
+    }
+
+    const selectedDay = this.selectedDayIso$$();
+    const originalDiary = { ...this.diary$$() };
+    const deletedEntry = originalDiary[selectedDay]?.food[diaryEntryId];
+
+    if (!deletedEntry) {
+      console.error('Cannot delete diary entry: entry not found');
+      return of({ result: false });
+    }
+
+    this.removeDiaryEntry(diaryEntryId);
+    this.saveDiaryToLocalStorage();
+
+    const rollbackFunction = () => {
+      this.diary$$.set(originalDiary);
+      this.saveDiaryToLocalStorage();
+    };
+
+    this.syncQueueService.addOperation({
+      type: SyncOperationType.DELETE,
+      endpoint: `/api/food/diary/${diaryEntryId}`,
+      data: {},
+      rollbackCallback: rollbackFunction,
+    });
+
+    return of({ result: true });
   }
 
   private updateDiaryEntryWithNewValues(updatedDiaryEntry: DiaryEntry): void {
@@ -237,6 +301,26 @@ export class FoodService {
       updatedDiary[selectedDay] = updatedDay;
       return updatedDiary;
     });
+  }
+
+  private updateDiaryEntryId(tempId: number, realId: number): void {
+    this.diary$$.update((oldDiary) => {
+      const selectedDay = this.selectedDayIso$$();
+      const updatedDiary = { ...oldDiary };
+      const updatedDay = { ...updatedDiary[selectedDay] };
+      const updatedFood = { ...updatedDay.food };
+
+      if (updatedFood[tempId]) {
+        const entry = { ...updatedFood[tempId], id: realId };
+        updatedFood[realId] = entry;
+        delete updatedFood[tempId];
+      }
+
+      updatedDay.food = updatedFood;
+      updatedDiary[selectedDay] = updatedDay;
+      return updatedDiary;
+    });
+    this.saveDiaryToLocalStorage();
   }
 
   //                                                                                                              WEIGHT
@@ -296,6 +380,12 @@ export class FoodService {
     this.saveCatalogueToLocalStorage();
     this.saveCatalogueMyIdsToLocalStorage();
 
+    const successCallback = (response: any) => {
+      if (response.result && response.id) {
+        this.updateCatalogueEntryId(tempId, response.id);
+      }
+    };
+
     const rollbackFunction = () => {
       this.catalogue$$.set(originalCatalogue);
       this.catalogueMyIds$$.set(originalMyIds);
@@ -307,6 +397,7 @@ export class FoodService {
       type: SyncOperationType.CREATE,
       endpoint: '/api/food/catalogue/',
       data: { foodName, foodKcals },
+      successCallback: successCallback,
       rollbackCallback: rollbackFunction,
     });
 
@@ -322,6 +413,43 @@ export class FoodService {
       };
       return { ...catalogue, [newId]: newCatalogueEntry };
     });
+  }
+
+  private updateCatalogueEntryId(tempId: number, realId: number): void {
+    this.catalogue$$.update((catalogue) => {
+      if (catalogue[tempId]) {
+        const entry = { ...catalogue[tempId], id: realId };
+        const updated = { ...catalogue };
+        updated[realId] = entry;
+        delete updated[tempId];
+        return updated;
+      }
+      return catalogue;
+    });
+
+    this.catalogueMyIds$$.update((myIds) => {
+      const index = myIds.indexOf(tempId);
+      if (index !== -1) {
+        const updated = [...myIds];
+        updated[index] = realId;
+        return updated;
+      }
+      return myIds;
+    });
+
+    this.coefficients$$.update((coefficients) => {
+      if (coefficients[tempId]) {
+        const updated = { ...coefficients };
+        updated[realId] = coefficients[tempId];
+        delete updated[tempId];
+        return updated;
+      }
+      return coefficients;
+    });
+
+    this.saveCatalogueToLocalStorage();
+    this.saveCatalogueMyIdsToLocalStorage();
+    this.saveCoefficientsToLocalStorage();
   }
 
   public editCatalogueEntry(foodId: number, foodName: string, foodKcals: number): Observable<boolean> {
