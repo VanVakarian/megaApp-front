@@ -70,8 +70,8 @@ export class FoodCatalogueComponent {
       .map(transliterateEnToRu);
 
     const catalogue = selected
-      ? this.foodService.catalogueSortedListSelected$$()
-      : this.foodService.catalogueSortedListLeftOut$$();
+      ? this.foodService.catalogueIdsSelectedSorted$$()
+      : this.foodService.catalogueIdsLeftOutSorted$$();
 
     return catalogue.filter((food) => {
       const foodNameLower = food.name.toLowerCase();

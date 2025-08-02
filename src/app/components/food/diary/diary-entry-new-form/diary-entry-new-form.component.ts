@@ -77,7 +77,7 @@ export class DiaryEntryNewFormComponent implements OnChanges {
   public projectedSelectedDaysEatenPercentPadded = '0';
 
   private catalogueNames$$: Signal<string[]> = computed(() =>
-    this.foodService.catalogueSortedListSelected$$().map((food: CatalogueEntry) => food.name),
+    this.foodService.catalogueIdsSelectedSorted$$().map((food: CatalogueEntry) => food.name),
   );
 
   private catalogueNameValidator(): ValidatorFn {
@@ -126,17 +126,10 @@ export class DiaryEntryNewFormComponent implements OnChanges {
     private screenSizeWatcherService: ScreenSizeWatcherService,
   ) {
     effect(() => {
-      const selectedDateIso = this.foodService.selectedDayIso$$();
-      this.selectedDaysTargerKcals = this.foodService.diary$$()?.[selectedDateIso]?.['targetKcals'] ?? 0;
-    });
-
-    effect(() => {
-      const selectedDateIso = this.foodService.selectedDayIso$$();
-      const formattedDiary = this.foodService.diaryFormatted$$();
-      if (formattedDiary) {
-        this.selectedDaysEatenPercent = formattedDiary[selectedDateIso]?.['kcalsPercent'] ?? 0;
-        this.updateProjectedDaysEatenPercent(0);
-      }
+      const totals = this.foodService.selectedDayTotals$$();
+      this.selectedDaysTargerKcals = totals.targetKcals;
+      this.selectedDaysEatenPercent = totals.kcalsPercent;
+      this.updateProjectedDaysEatenPercent(0);
     });
   }
 

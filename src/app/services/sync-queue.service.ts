@@ -24,8 +24,6 @@ interface SyncOperation {
 export class SyncQueueService {
   private queue: SyncOperation[] = [];
   private isProcessing = false;
-  private readonly maxRetries = BACKGROUND_SYNC_RETRIES_MAX;
-  private readonly timeoutMs = BACKGROUND_SYNC_TIMEOUT_MS;
 
   constructor(private http: HttpClient) {}
 
@@ -49,7 +47,7 @@ export class SyncQueueService {
 
       try {
         const request$ = this.createRequest(operation);
-        const response = await firstValueFrom(request$.pipe(timeout(this.timeoutMs)));
+        const response = await firstValueFrom(request$.pipe(timeout(BACKGROUND_SYNC_TIMEOUT_MS)));
 
         if (operation.successCallback) {
           operation.successCallback(response);
@@ -59,8 +57,8 @@ export class SyncQueueService {
       } catch (error) {
         operation.retryCount++;
 
-        if (operation.retryCount >= this.maxRetries) {
-          console.error(`Operation failed after ${this.maxRetries} retries:`, error);
+        if (operation.retryCount >= BACKGROUND_SYNC_RETRIES_MAX) {
+          console.error(`Operation failed after ${BACKGROUND_SYNC_RETRIES_MAX} retries:`, error);
 
           if (operation.rollbackCallback) {
             operation.rollbackCallback();
@@ -70,7 +68,7 @@ export class SyncQueueService {
 
           break;
         } else {
-          console.warn(`Operation failed, retry ${operation.retryCount}/${this.maxRetries}`);
+          console.warn(`Operation failed, retry ${operation.retryCount}/${BACKGROUND_SYNC_RETRIES_MAX}`);
           await this.delay(1000 * operation.retryCount);
         }
       }

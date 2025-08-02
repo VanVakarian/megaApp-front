@@ -119,7 +119,7 @@ export class FoodCatalogueFormComponent implements OnInit, OnChanges {
 
   // USERS CATALOGUE
   public get isCatalogueEntryPicked(): boolean {
-    if (this.categoryEntry && this.foodService.catalogueMyIds$$().includes(this.categoryEntry.id)) {
+    if (this.categoryEntry && this.foodService.catalogueIdsSelected$$().includes(this.categoryEntry.id)) {
       return true;
     }
     return false;

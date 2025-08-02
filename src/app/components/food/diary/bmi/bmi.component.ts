@@ -76,7 +76,7 @@ export class BMIComponent implements OnInit {
 
   private getSelectedDateWeight(): number {
     const selectedDateISO = this.foodService.selectedDayIso$$();
-    return this.foodService.diary$$()?.[selectedDateISO]?.bodyWeight ?? 0;
+    return this.foodService.diary$$()?.[selectedDateISO]?.totals.bodyWeight ?? 0;
   }
 
   private calculateBmiPointerPercent(): number | null {

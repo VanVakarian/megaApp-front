@@ -81,7 +81,7 @@ export class FoodSelectDropdownComponent implements OnInit {
 
   public onOptionSelected(event: MatAutocompleteSelectedEvent): void {
     const catalogueItem = this.foodService
-      .catalogueSortedListSelected$$()
+      .catalogueIdsSelectedSorted$$()
       .find((food) => food.name === event.option.value);
 
     this.onFoodSelected.emit(catalogueItem || null);
@@ -104,7 +104,7 @@ export class FoodSelectDropdownComponent implements OnInit {
       .filter((term) => term.length > 0)
       .map(transliterateEnToRu);
 
-    return this.foodService.catalogueSortedListSelected$$().filter((food) => {
+    return this.foodService.catalogueIdsSelectedSorted$$().filter((food) => {
       const foodNameLower = food.name.toLowerCase();
       return (
         searchTerms.every((term) => foodNameLower.includes(term)) ||

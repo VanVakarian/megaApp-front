@@ -63,27 +63,24 @@ export class FoodDiaryComponent implements OnInit, AfterViewInit, OnDestroy {
   public percentsDivs!: QueryList<ElementRef>;
 
   public get todaysKcalsPercent() {
-    return this.foodService.diaryFormatted$$()?.[this.selectedDateIso]?.['kcalsPercent'] ?? 0;
+    return this.foodService.selectedDayTotals$$().kcalsPercent;
   }
 
   public get selectedDayFood() {
     const selectedDay = this.foodService.selectedDayIso$$();
-    const selectedDayFood = this.foodService.diaryFormatted$$()?.[selectedDay]?.food;
-
-    if (selectedDayFood) return Object.values(selectedDayFood);
-    return [];
+    return this.foodService.diary$$()[selectedDay]?.food || [];
   }
 
   public get todaysKcalsEaten() {
-    return this.foodService.diaryFormatted$$()?.[this.selectedDateIso]?.['kcalsEaten'];
+    return this.foodService.selectedDayTotals$$().kcalsEaten;
   }
 
   public get todaysTargetKcals() {
-    return this.foodService.diary$$()?.[this.selectedDateIso]?.['targetKcals'];
+    return this.foodService.selectedDayTotals$$().targetKcals;
   }
 
   public get formattedSelectedDaysEatenPercent(): number {
-    return Math.round(this.foodService.diaryFormatted$$()?.[this.selectedDateIso]?.['kcalsPercent'] * 10) / 10;
+    return Math.round(this.foodService.selectedDayTotals$$().kcalsPercent * 10) / 10;
   }
 
   public get caloriesDisplayText(): string {

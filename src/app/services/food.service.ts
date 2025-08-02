@@ -7,13 +7,14 @@ import {
   CatalogueEntry,
   CatalogueIds,
   Coefficients,
+  DayTotals,
   Diary,
   DiaryEntry,
-  FormattedDiary,
-  FormattedDiaryEntry,
+  DiaryEntryWithFullData,
   ServerResponseBasic,
   ServerResponseWithData,
   ServerResponseWithDiaryId,
+  UnifiedDiary,
 } from '@app/shared/interfaces';
 import { calculateTodayIsoWithUserTimeShift } from '@app/shared/utils';
 import { catchError, firstValueFrom, map, Observable, of, Subject } from 'rxjs';
@@ -23,23 +24,25 @@ import { SyncOperationType, SyncQueueService } from './sync-queue.service';
 
 const DIARY_STORAGE_KEY = 'food_diary';
 const CATALOGUE_STORAGE_KEY = 'food_catalogue';
-const CATALOGUE_MY_IDS_STORAGE_KEY = 'food_catalogue_my_ids';
+const CATALOGUE_IDS_SELECTED_STORAGE_KEY = 'food_catalogue_ids_selected';
 const COEFFICIENTS_STORAGE_KEY = 'food_coefficients';
 
 @Injectable({
   providedIn: 'root',
 })
 export class FoodService {
-  public diary$$: WritableSignal<Diary> = signal({});
-  public diaryFormatted$$: Signal<FormattedDiary> = computed(() => this.prepDiary());
+  private diaryRaw$$: WritableSignal<Diary> = signal({});
+  public days$$: Signal<string[]> = computed(() => Object.keys(this.diaryRaw$$()));
+
+  public diary$$: Signal<UnifiedDiary> = computed(() => this.prepUnifiedDiary());
 
   public selectedDayIso$$: WritableSignal<string> = signal(calculateTodayIsoWithUserTimeShift());
-  public days$$: Signal<string[]> = computed(() => Object.keys(this.diary$$()));
+  public selectedDayTotals$$: Signal<DayTotals> = computed(() => this.extractSelectedDayTotals());
 
   public catalogue$$: WritableSignal<Catalogue> = signal({});
-  public catalogueMyIds$$: WritableSignal<CatalogueIds> = signal([]);
-  public catalogueSortedListSelected$$: Signal<CatalogueEntry[]> = computed(() => this.prepCatalogueSortedListSeparate(true)); // prettier-ignore
-  public catalogueSortedListLeftOut$$: Signal<CatalogueEntry[]> = computed(() => this.prepCatalogueSortedListSeparate(false)); // prettier-ignore
+  public catalogueIdsSelected$$: WritableSignal<CatalogueIds> = signal([]);
+  public catalogueIdsSelectedSorted$$: Signal<CatalogueEntry[]> = computed(() => this.prepCatalogueSortedListSeparate(true)); // prettier-ignore
+  public catalogueIdsLeftOutSorted$$: Signal<CatalogueEntry[]> = computed(() => this.prepCatalogueSortedListSeparate(false)); // prettier-ignore
 
   public coefficients$$: WritableSignal<Coefficients> = signal({});
 
@@ -59,14 +62,15 @@ export class FoodService {
     private networkService: NetworkService,
     private syncQueueService: SyncQueueService,
   ) {
-    // effect(() => { console.log('DIARY has been updated:', this.diary$$()) }); // prettier-ignore
-    // effect(() => { console.log('DIARY FORMATTED has been updated:', this.diaryFormatted$$()) }); // prettier-ignore
-    // effect(() => { console.log('SELECTED DAY has been updated:', this.selectedDayIso$$()) }); // prettier-ignore
+    // effect(() => { console.log('DIARY RAW has been updated:', this.diaryRaw$$()) }); // prettier-ignore
     // effect(() => { console.log('DAYS have been updated:', this.days$$()) }); // prettier-ignore
+    // effect(() => { console.log('UNIFIED DIARY has been updated:', this.diary$$()) }); // prettier-ignore
+    // effect(() => { console.log('SELECTED DAY has been updated:', this.selectedDayIso$$()) }); // prettier-ignore
+    // effect(() => { console.log('SELECTED DAY TOTALS has been updated:', this.selectedDayTotals$$()) }); // prettier-ignore
     // effect(() => { console.log('CATALOGUE have been updated:', this.catalogue$$()) }); // prettier-ignore
-    // effect(() => { console.log('CATALOGUE MY IDS have been updated:', this.catalogueMyIds$$()) }); // prettier-ignore
-    // effect(() => { console.log('CATALOGUE SORTED LIST SELECTED have been updated:', this.catalogueSortedListSelected$$()) }); // prettier-ignore
-    // effect(() => { console.log('CATALOGUE SORTED LIST LEFT OUT have been updated:', this.catalogueSortedListLeftOut$$()) }); // prettier-ignore
+    // effect(() => { console.log('CATALOGUE IDS SELECTED have been updated:', this.catalogueIdsSelected$$()) }); // prettier-ignore
+    // effect(() => { console.log('CATALOGUE SORTED LIST SELECTED have been updated:', this.catalogueIdsSelectedSorted$$()) }); // prettier-ignore
+    // effect(() => { console.log('CATALOGUE SORTED LIST LEFT OUT have been updated:', this.catalogueIdsLeftOutSorted$$()) }); // prettier-ignore
     // effect(() => { console.log('COEFFICIENTS have been updated:', this.coefficients$$()) }); // prettier-ignore
 
     effect(() => {
@@ -77,7 +81,7 @@ export class FoodService {
 
     this.loadDiaryFromLocalStorage();
     this.loadCatalogueFromLocalStorage();
-    this.loadCatalogueMyIdsFromLocalStorage();
+    this.loadCatalogueIdsSelectedFromLocalStorage();
     this.loadCoefficientsFromLocalStorage();
 
     this.subscribe();
@@ -89,55 +93,48 @@ export class FoodService {
     });
   }
 
-  //                                                                                                                INIT
+  //                                                                                                               DIARY
 
-  private prepDiary(): FormattedDiary {
-    const formattedDiary: FormattedDiary = {};
-    if (Object.keys(this.catalogue$$()).length === 0) return {}; // postpone formatting Diary if there is no catalogue yet
+  private prepUnifiedDiary(): UnifiedDiary {
+    const rawDiary = this.diaryRaw$$();
+    const catalogue = this.catalogue$$();
+    const coefficients = this.coefficients$$();
+    const result: UnifiedDiary = {};
 
-    for (const dateISO in this.diary$$()) {
-      formattedDiary[dateISO] = {
-        food: {},
-        bodyWeight: this.diary$$()[dateISO].bodyWeight,
-        targetKcals: this.diary$$()[dateISO].targetKcals,
-        kcalsEaten: 0,
-        kcalsPercent: 0,
-      };
+    for (const [dateISO, day] of Object.entries(rawDiary)) {
+      const foodEntries: DiaryEntryWithFullData[] = [];
+      let kcalsEaten = 0;
+      let kcalsPercent = 0;
 
-      for (const id in this.diary$$()[dateISO].food) {
-        const entry = this.diary$$()[dateISO].food[id];
-        const entryWeight = entry.foodWeight / 100;
-        const catalogueKcals = this.catalogue$$()[entry.foodCatalogueId]?.kcals ?? 0;
-        const entryCoefficient = this.coefficients$$()[entry.foodCatalogueId] || 1;
-        const entryFinalKcals = Math.round(entryWeight * catalogueKcals * entryCoefficient);
-        const entryPercent = (entryFinalKcals / this.diary$$()[dateISO].targetKcals) * 100;
+      for (const [id, entry] of Object.entries(day.food)) {
+        const kcals = this.calculateEntryKcals(entry, catalogue, coefficients);
+        const percentage = this.calculatePercentage(kcals, day.targetKcals);
 
-        const formattedEntry: FormattedDiaryEntry = {
-          id: Number(id),
-          dateISO: entry.dateISO,
-          foodCatalogueId: entry.foodCatalogueId,
-          foodWeight: entry.foodWeight,
-          history: entry.history || [],
-          foodName: this.catalogue$$()[entry.foodCatalogueId]?.name || '',
-          foodKcals: entryFinalKcals,
-          foodPercent: `${Math.floor(entryPercent) < 100 ? entryPercent.toFixed(1) : Math.round(entryPercent).toString()}`,
-          foodKcalPercentageOfDaysNorm: entryPercent,
+        const formattedEntry: DiaryEntryWithFullData = {
+          ...entry,
+          foodName: catalogue[entry.foodCatalogueId]?.name || '',
+          foodKcals: kcals,
+          foodPercent: this.formatPercentage(percentage),
+          foodKcalPercentageOfDaysNorm: percentage,
         };
 
-        formattedDiary[dateISO].food[id] = formattedEntry;
-        formattedDiary[dateISO].kcalsEaten += entryFinalKcals;
-        formattedDiary[dateISO].kcalsPercent += entryPercent;
+        foodEntries.push(formattedEntry);
+        kcalsEaten += kcals;
+        kcalsPercent += percentage;
       }
-    }
-    return formattedDiary;
-  }
 
-  private prepCatalogueSortedListSeparate(selected: boolean): CatalogueEntry[] {
-    return Object.values(this.catalogue$$())
-      .filter((item) =>
-        selected ? this.catalogueMyIds$$().includes(item.id) : !this.catalogueMyIds$$().includes(item.id),
-      )
-      .sort((a, b) => a.name.localeCompare(b.name));
+      result[dateISO] = {
+        food: foodEntries,
+        totals: {
+          kcalsEaten,
+          kcalsPercent,
+          bodyWeight: day.bodyWeight,
+          targetKcals: day.targetKcals,
+        },
+      };
+    }
+
+    return result;
   }
 
   @exhaustRequest()
@@ -146,15 +143,13 @@ export class FoodService {
     const paramsStr = `date=${date}&offset=${offset ?? this.FETCH_OFFSET}`;
     return this.http.get<Diary>(`/api/food/diary-full-update?${paramsStr}`).pipe(
       map((response) => {
-        this.diary$$.update((diary) => ({ ...diary, ...response }));
+        this.diaryRaw$$.update((diary) => ({ ...diary, ...response }));
         this.saveDiaryToLocalStorage();
         this.updateLoadedRange(date);
         return response;
       }),
     );
   }
-
-  //                                                                                                               DIARY
 
   public createDiaryEntry(diaryEntry: DiaryEntry): Observable<ServerResponseWithDiaryId> {
     if (!this.checkNetworkAvailability()) {
@@ -163,7 +158,7 @@ export class FoodService {
     }
 
     const tempId = Date.now();
-    const originalDiary = { ...this.diary$$() };
+    const originalDiary = { ...this.diaryRaw$$() };
 
     const entryWithTempId = { ...diaryEntry, id: tempId };
     this.updateDiaryEntryWithNewValues(entryWithTempId);
@@ -176,7 +171,7 @@ export class FoodService {
     };
 
     const rollbackFunction = () => {
-      this.diary$$.set(originalDiary);
+      this.diaryRaw$$.set(originalDiary);
       this.saveDiaryToLocalStorage();
     };
 
@@ -197,7 +192,7 @@ export class FoodService {
       return of({ result: false });
     }
 
-    const originalDiary = { ...this.diary$$() };
+    const originalDiary = { ...this.diaryRaw$$() };
     const selectedDay = this.selectedDayIso$$();
     const originalEntry = originalDiary[selectedDay]?.food[diaryEntry.id];
 
@@ -210,7 +205,7 @@ export class FoodService {
     this.saveDiaryToLocalStorage();
 
     const rollbackFunction = () => {
-      this.diary$$.set(originalDiary);
+      this.diaryRaw$$.set(originalDiary);
       this.saveDiaryToLocalStorage();
     };
 
@@ -231,7 +226,7 @@ export class FoodService {
     }
 
     const selectedDay = this.selectedDayIso$$();
-    const originalDiary = { ...this.diary$$() };
+    const originalDiary = { ...this.diaryRaw$$() };
     const deletedEntry = originalDiary[selectedDay]?.food[diaryEntryId];
 
     if (!deletedEntry) {
@@ -243,7 +238,7 @@ export class FoodService {
     this.saveDiaryToLocalStorage();
 
     const rollbackFunction = () => {
-      this.diary$$.set(originalDiary);
+      this.diaryRaw$$.set(originalDiary);
       this.saveDiaryToLocalStorage();
     };
 
@@ -258,7 +253,7 @@ export class FoodService {
   }
 
   private updateDiaryEntryWithNewValues(updatedDiaryEntry: DiaryEntry): void {
-    this.diary$$.update((oldDiary) => {
+    this.diaryRaw$$.update((oldDiary) => {
       const selectedDay = this.selectedDayIso$$();
       const updatedDiary = { ...oldDiary };
       const updatedDay = { ...updatedDiary[selectedDay] };
@@ -289,7 +284,7 @@ export class FoodService {
   }
 
   private removeDiaryEntry(diaryEntryId: number): void {
-    this.diary$$.update((oldDiary) => {
+    this.diaryRaw$$.update((oldDiary) => {
       const selectedDay = this.selectedDayIso$$();
       const updatedDiary = { ...oldDiary };
       const updatedDay = { ...updatedDiary[selectedDay] };
@@ -304,7 +299,7 @@ export class FoodService {
   }
 
   private updateDiaryEntryId(tempId: number, realId: number): void {
-    this.diary$$.update((oldDiary) => {
+    this.diaryRaw$$.update((oldDiary) => {
       const selectedDay = this.selectedDayIso$$();
       const updatedDiary = { ...oldDiary };
       const updatedDay = { ...updatedDiary[selectedDay] };
@@ -323,13 +318,34 @@ export class FoodService {
     this.saveDiaryToLocalStorage();
   }
 
+  public calculateEntryKcals(entry: DiaryEntry, catalogue: Catalogue, coefficients: Coefficients): number {
+    const entryWeight = entry.foodWeight / 100;
+    const catalogueKcals = catalogue[entry.foodCatalogueId]?.kcals ?? 0;
+    const coefficient = coefficients[entry.foodCatalogueId] || 1;
+    return Math.round(entryWeight * catalogueKcals * coefficient);
+  }
+
+  private calculatePercentage(kcals: number, targetKcals: number): number {
+    if (targetKcals === 0) return 0;
+    return (kcals / targetKcals) * 100;
+  }
+
+  private formatPercentage(percent: number): string {
+    return Math.floor(percent) < 100 ? percent.toFixed(1) : Math.round(percent).toString();
+  }
+
+  private extractSelectedDayTotals(): DayTotals {
+    const selectedDay = this.selectedDayIso$$();
+    return this.diary$$()[selectedDay]?.totals || { kcalsEaten: 0, kcalsPercent: 0, bodyWeight: null, targetKcals: 0 };
+  }
+
   //                                                                                                              WEIGHT
 
   public setUserBodyWeight(bodyWeight: BodyWeight): Observable<boolean> {
     return this.http.post<ServerResponseBasic>('/api/food/body-weight', bodyWeight).pipe(
       map((response) => {
         if (response.result) {
-          this.diary$$.update((diary) => {
+          this.diaryRaw$$.update((diary) => {
             return {
               ...diary,
               [bodyWeight.dateISO]: {
@@ -349,6 +365,16 @@ export class FoodService {
   }
 
   //                                                                                                           CATALOGUE
+
+  private prepCatalogueSortedListSeparate(isSelectedEntries: boolean): CatalogueEntry[] {
+    return Object.values(this.catalogue$$())
+      .filter((item) =>
+        isSelectedEntries
+          ? this.catalogueIdsSelected$$().includes(item.id)
+          : !this.catalogueIdsSelected$$().includes(item.id),
+      )
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }
 
   public getCatalogueEntries(): Observable<Catalogue> {
     return this.http.get<Catalogue>('/api/food/catalogue').pipe(
@@ -373,12 +399,12 @@ export class FoodService {
     const tempId = Date.now();
 
     const originalCatalogue = { ...this.catalogue$$() };
-    const originalMyIds = [...this.catalogueMyIds$$()];
+    const originalIdsSelected = [...this.catalogueIdsSelected$$()];
 
     this.addFoodEntryToCatalogue(foodName, foodKcals, tempId);
-    this.addFoodIdToUserCatalogue(tempId);
+    this.addFoodIdToCatalogueIdsSelected(tempId);
     this.saveCatalogueToLocalStorage();
-    this.saveCatalogueMyIdsToLocalStorage();
+    this.saveCatalogueIdsSelectedToLocalStorage();
 
     const successCallback = (response: any) => {
       if (response.result && response.id) {
@@ -388,9 +414,9 @@ export class FoodService {
 
     const rollbackFunction = () => {
       this.catalogue$$.set(originalCatalogue);
-      this.catalogueMyIds$$.set(originalMyIds);
+      this.catalogueIdsSelected$$.set(originalIdsSelected);
       this.saveCatalogueToLocalStorage();
-      this.saveCatalogueMyIdsToLocalStorage();
+      this.saveCatalogueIdsSelectedToLocalStorage();
     };
 
     this.syncQueueService.addOperation({
@@ -427,7 +453,7 @@ export class FoodService {
       return catalogue;
     });
 
-    this.catalogueMyIds$$.update((myIds) => {
+    this.catalogueIdsSelected$$.update((myIds) => {
       const index = myIds.indexOf(tempId);
       if (index !== -1) {
         const updated = [...myIds];
@@ -448,7 +474,7 @@ export class FoodService {
     });
 
     this.saveCatalogueToLocalStorage();
-    this.saveCatalogueMyIdsToLocalStorage();
+    this.saveCatalogueIdsSelectedToLocalStorage();
     this.saveCoefficientsToLocalStorage();
   }
 
@@ -493,11 +519,11 @@ export class FoodService {
     return of(true);
   }
 
-  public getMyCatalogueEntries(): Observable<CatalogueIds> {
+  public getCatalogueEntriesSelected(): Observable<CatalogueIds> {
     return this.http.get<CatalogueIds>('/api/food/user-catalogue').pipe(
       map((response: CatalogueIds) => {
-        this.catalogueMyIds$$.set(response);
-        this.saveCatalogueMyIdsToLocalStorage();
+        this.catalogueIdsSelected$$.set(response);
+        this.saveCatalogueIdsSelectedToLocalStorage();
         return response;
       }),
       catchError((error) => {
@@ -512,18 +538,18 @@ export class FoodService {
       return of(false);
     }
 
-    const originalMyIds = [...this.catalogueMyIds$$()];
+    const originalIdsSelected = [...this.catalogueIdsSelected$$()];
     const originalCoefficients = { ...this.coefficients$$() };
 
-    this.addFoodIdToUserCatalogue(foodId);
-    this.saveCatalogueMyIdsToLocalStorage();
+    this.addFoodIdToCatalogueIdsSelected(foodId);
+    this.saveCatalogueIdsSelectedToLocalStorage();
 
     this.coefficients$$.update((coefficients) => ({ ...coefficients, [foodId]: 1 }));
     this.saveCoefficientsToLocalStorage();
 
     const rollbackFunction = () => {
-      this.catalogueMyIds$$.set(originalMyIds);
-      this.saveCatalogueMyIdsToLocalStorage();
+      this.catalogueIdsSelected$$.set(originalIdsSelected);
+      this.saveCatalogueIdsSelectedToLocalStorage();
       this.coefficients$$.set(originalCoefficients);
       this.saveCoefficientsToLocalStorage();
     };
@@ -538,22 +564,16 @@ export class FoodService {
     return of(true);
   }
 
-  private addFoodIdToUserCatalogue(foodId: number): void {
-    this.catalogueMyIds$$.update((foodIds) => {
-      return [...foodIds, foodId];
-    });
-  }
-
   public dismissUserFoodId(foodId: number): Observable<boolean> {
     if (!this.checkNetworkAvailability()) {
       return of(false);
     }
 
-    const originalMyIds = [...this.catalogueMyIds$$()];
+    const originalIdsSelected = [...this.catalogueIdsSelected$$()];
     const originalCoefficients = { ...this.coefficients$$() };
 
-    this.removeFoodIdFromCatalogue(foodId);
-    this.saveCatalogueMyIdsToLocalStorage();
+    this.removeFoodIdFromCatalogueIdsSelected(foodId);
+    this.saveCatalogueIdsSelectedToLocalStorage();
 
     this.coefficients$$.update((coefficients) => {
       const updated = { ...coefficients };
@@ -563,8 +583,8 @@ export class FoodService {
     this.saveCoefficientsToLocalStorage();
 
     const rollbackFunction = () => {
-      this.catalogueMyIds$$.set(originalMyIds);
-      this.saveCatalogueMyIdsToLocalStorage();
+      this.catalogueIdsSelected$$.set(originalIdsSelected);
+      this.saveCatalogueIdsSelectedToLocalStorage();
       this.coefficients$$.set(originalCoefficients);
       this.saveCoefficientsToLocalStorage();
     };
@@ -579,8 +599,14 @@ export class FoodService {
     return of(true);
   }
 
-  private removeFoodIdFromCatalogue(foodId: number): void {
-    this.catalogueMyIds$$.update((foodIds) => foodIds.filter((id) => id !== foodId));
+  private addFoodIdToCatalogueIdsSelected(foodId: number): void {
+    this.catalogueIdsSelected$$.update((foodIds) => {
+      return [...foodIds, foodId];
+    });
+  }
+
+  private removeFoodIdFromCatalogueIdsSelected(foodId: number): void {
+    this.catalogueIdsSelected$$.update((foodIds) => foodIds.filter((id) => id !== foodId));
   }
 
   //                                                                                                        COEFFICIENTS
@@ -698,13 +724,13 @@ export class FoodService {
   //                                                                                                       LOCAL STORAGE
 
   public saveDiaryToLocalStorage(): void {
-    this.localStorageService.set(DIARY_STORAGE_KEY, this.diary$$());
+    this.localStorageService.set(DIARY_STORAGE_KEY, this.diaryRaw$$());
   }
 
   public loadDiaryFromLocalStorage(): void {
     const savedDiary = this.localStorageService.get<Diary>(DIARY_STORAGE_KEY);
     if (savedDiary) {
-      this.diary$$.set(savedDiary);
+      this.diaryRaw$$.set(savedDiary);
     }
   }
 
@@ -719,14 +745,14 @@ export class FoodService {
     }
   }
 
-  public saveCatalogueMyIdsToLocalStorage(): void {
-    this.localStorageService.set(CATALOGUE_MY_IDS_STORAGE_KEY, this.catalogueMyIds$$());
+  public saveCatalogueIdsSelectedToLocalStorage(): void {
+    this.localStorageService.set(CATALOGUE_IDS_SELECTED_STORAGE_KEY, this.catalogueIdsSelected$$());
   }
 
-  public loadCatalogueMyIdsFromLocalStorage(): void {
-    const savedMyIds = this.localStorageService.get<CatalogueIds>(CATALOGUE_MY_IDS_STORAGE_KEY);
-    if (savedMyIds) {
-      this.catalogueMyIds$$.set(savedMyIds);
+  public loadCatalogueIdsSelectedFromLocalStorage(): void {
+    const savedIdsSelected = this.localStorageService.get<CatalogueIds>(CATALOGUE_IDS_SELECTED_STORAGE_KEY);
+    if (savedIdsSelected) {
+      this.catalogueIdsSelected$$.set(savedIdsSelected);
     }
   }
 
@@ -751,7 +777,7 @@ export class FoodService {
 
   private createRollbackForDiaryEntry(originalDiary: Diary): () => void {
     return () => {
-      this.diary$$.set(originalDiary);
+      this.diaryRaw$$.set(originalDiary);
       this.saveDiaryToLocalStorage();
     };
   }
@@ -770,10 +796,10 @@ export class FoodService {
     };
   }
 
-  private createRollbackForCatalogueMyIds(originalMyIds: CatalogueIds): () => void {
+  private createRollbackForCatalogueIdsSelected(originalIdsSelected: CatalogueIds): () => void {
     return () => {
-      this.catalogueMyIds$$.set(originalMyIds);
-      this.saveCatalogueMyIdsToLocalStorage();
+      this.catalogueIdsSelected$$.set(originalIdsSelected);
+      this.saveCatalogueIdsSelectedToLocalStorage();
     };
   }
 

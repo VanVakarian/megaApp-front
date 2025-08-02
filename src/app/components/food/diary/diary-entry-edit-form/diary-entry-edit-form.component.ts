@@ -117,9 +117,9 @@ export class DiaryEntryEditFormComponent implements OnInit, OnChanges, OnDestroy
     private screenSizeWatcherService: ScreenSizeWatcherService,
   ) {
     effect(() => {
-      const selectedDateIso = this.foodService.selectedDayIso$$();
-      this.selectedDaysEatenPercent = this.foodService.diaryFormatted$$()?.[selectedDateIso]?.['kcalsPercent'] ?? 0;
-      this.selectedDaysTargerKcals = this.foodService.diary$$()?.[selectedDateIso]?.['targetKcals'] ?? 0;
+      const totals = this.foodService.selectedDayTotals$$();
+      this.selectedDaysEatenPercent = totals.kcalsPercent;
+      this.selectedDaysTargerKcals = totals.targetKcals;
       this.selectedFoodKcals = this.foodService.catalogue$$()?.[this.diaryEntry.foodCatalogueId]?.kcals ?? 0;
       this.diaryEntriesCoefficient = this.foodService.coefficients$$()?.[this.diaryEntry.foodCatalogueId] ?? 1;
     });
@@ -317,10 +317,15 @@ export class DiaryEntryEditFormComponent implements OnInit, OnChanges, OnDestroy
   }
 
   private calculateKcalsDelta(weightValue: number): number {
-    const foodId = this.diaryEntry.foodCatalogueId;
-    const foodKcals = this.foodService.catalogue$$()?.[foodId]?.kcals ?? 0;
-    const foodCoefficient = this.foodService.coefficients$$()?.[foodId] ?? 1;
-    return (weightValue / 100) * foodKcals * foodCoefficient;
+    const tempEntry: DiaryEntry = {
+      ...this.diaryEntry,
+      foodWeight: weightValue,
+    };
+    return this.foodService.calculateEntryKcals(
+      tempEntry,
+      this.foodService.catalogue$$(),
+      this.foodService.coefficients$$(),
+    );
   }
 
   private updateProjectedDaysEatenPercent(): void {

@@ -134,7 +134,7 @@ export class BodyWeightComponent {
 
   private applyWeight(): void {
     const selectedDateISO = this.foodService.selectedDayIso$$();
-    const weight = this.foodService.diary$$()?.[selectedDateISO]?.['bodyWeight'];
+    const weight = this.foodService.diary$$()?.[selectedDateISO]?.totals.bodyWeight;
 
     if (!weight) {
       this.form.patchValue({ bodyWeight: null });
