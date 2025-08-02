@@ -1,9 +1,8 @@
 import { HttpClient } from '@angular/common/http';
 import { computed, Injectable, Signal, signal, WritableSignal } from '@angular/core';
-import { catchError, Observable, of, tap } from 'rxjs';
-
 import { Stats, StatsChartData } from '@app/shared/interfaces';
-import { formatDateTicks } from '../shared/utils';
+import { firstValueFrom } from 'rxjs';
+import { formatDateTicks } from '../../shared/utils';
 
 @Injectable({
   providedIn: 'root',
@@ -26,16 +25,16 @@ export class FoodStatsService {
     // effect(() => { console.log('SELECTED DATE IDX HIGH has been updated:', this.selectedDateIdxEnd$$()) }); // prettier-ignore
   }
 
-  public getStats(): Observable<Stats> {
-    return this.http.get<Stats>('/api/food/stats').pipe(
-      tap((statsData: Stats) => {
-        this.setupInitialData(statsData);
-      }),
-      catchError((error) => {
-        console.error('Failed fetching stats:', error);
-        return of({});
-      }),
-    );
+  public async getStats(): Promise<Stats> {
+    try {
+      const statsData = await firstValueFrom(this.http.get<Stats>('/api/food/stats'));
+
+      this.setupInitialData(statsData);
+      return statsData;
+    } catch (error) {
+      console.error('Failed fetching stats:', error);
+      return {};
+    }
   }
 
   public updateStats(dateIso: string, weightDelta: number, kcalsDelta: number) {

@@ -14,14 +14,12 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
-
 import { MatAutocompleteModule, MatAutocompleteSelectedEvent } from '@angular/material/autocomplete';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
-
-import { FoodService } from '@app/services/food.service';
+import { FoodCatalogueService } from '@app/services/food/food-catalogue.service';
 import { CatalogueEntry } from '@app/shared/interfaces';
 import { transliterateEnToRu } from '@app/shared/utils';
 
@@ -59,7 +57,7 @@ export class FoodSelectDropdownComponent implements OnInit {
   });
 
   constructor(
-    private foodService: FoodService,
+    private foodCatalogueService: FoodCatalogueService,
     private destroyRef: DestroyRef,
   ) {}
 
@@ -80,7 +78,7 @@ export class FoodSelectDropdownComponent implements OnInit {
   }
 
   public onOptionSelected(event: MatAutocompleteSelectedEvent): void {
-    const catalogueItem = this.foodService
+    const catalogueItem = this.foodCatalogueService
       .catalogueIdsSelectedSorted$$()
       .find((food) => food.name === event.option.value);
 
@@ -104,7 +102,7 @@ export class FoodSelectDropdownComponent implements OnInit {
       .filter((term) => term.length > 0)
       .map(transliterateEnToRu);
 
-    return this.foodService.catalogueIdsSelectedSorted$$().filter((food) => {
+    return this.foodCatalogueService.catalogueIdsSelectedSorted$$().filter((food) => {
       const foodNameLower = food.name.toLowerCase();
       return (
         searchTerms.every((term) => foodNameLower.includes(term)) ||

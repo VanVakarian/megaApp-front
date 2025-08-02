@@ -25,13 +25,15 @@ import { MatExpansionModule } from '@angular/material/expansion';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
-import { FoodStatsService } from '@app/services/food-stats.service';
-import { FoodService } from '@app/services/food.service';
+import { FoodCatalogueService } from '@app/services/food/food-catalogue.service';
+import { FoodCoefficientsService } from '@app/services/food/food-coefficients.service';
+import { FoodDiaryService } from '@app/services/food/food-diary.service';
+import { FoodStatsService } from '@app/services/food/food-stats.service';
 import { ScreenSizeWatcherService } from '@app/services/screen-size-watcher.service';
 import { ConfirmationDialogModalService } from '@app/shared/components/dialog-modal/mat-dialog-modal.service';
 import { DiaryEntry, HistoryEntry } from '@app/shared/interfaces';
 import { UiProgressIcon } from '@app/shared/ui-kit/progress-icon/progress-icon.component';
-import { delay, filter, firstValueFrom, Subscription, take } from 'rxjs';
+import { delay, filter, Subscription, take } from 'rxjs';
 
 interface DiaryEntryFormModel {
   id: FormControl<number>;
@@ -107,21 +109,24 @@ export class DiaryEntryEditFormComponent implements OnInit, OnChanges, OnDestroy
   private subs = new Subscription();
 
   public get selectedFoodName() {
-    return this.foodService.catalogue$$()?.[this.diaryEntry.foodCatalogueId]?.name;
+    return this.foodCatalogueService.catalogue$$()?.[this.diaryEntry.foodCatalogueId]?.name;
   }
 
   constructor(
-    private foodService: FoodService,
+    private foodDiaryService: FoodDiaryService,
+    private foodCatalogueService: FoodCatalogueService,
+    private foodCoefficientsService: FoodCoefficientsService,
     private foodStatsService: FoodStatsService,
     private confirmModal: ConfirmationDialogModalService,
     private screenSizeWatcherService: ScreenSizeWatcherService,
   ) {
     effect(() => {
-      const totals = this.foodService.selectedDayTotals$$();
+      const totals = this.foodDiaryService.selectedDayTotals$$();
       this.selectedDaysEatenPercent = totals.kcalsPercent;
       this.selectedDaysTargerKcals = totals.targetKcals;
-      this.selectedFoodKcals = this.foodService.catalogue$$()?.[this.diaryEntry.foodCatalogueId]?.kcals ?? 0;
-      this.diaryEntriesCoefficient = this.foodService.coefficients$$()?.[this.diaryEntry.foodCatalogueId] ?? 1;
+      this.selectedFoodKcals = this.foodCatalogueService.catalogue$$()?.[this.diaryEntry.foodCatalogueId]?.kcals ?? 0;
+      this.diaryEntriesCoefficient =
+        this.foodCoefficientsService.coefficients$$()?.[this.diaryEntry.foodCatalogueId] ?? 1;
     });
   }
 
@@ -221,7 +226,7 @@ export class DiaryEntryEditFormComponent implements OnInit, OnChanges, OnDestroy
 
     const preppedFormValues: DiaryEntry = {
       id: this.diaryEntryForm.getRawValue().id,
-      dateISO: this.foodService.selectedDayIso$$(),
+      dateISO: this.foodDiaryService.selectedDayIso$$(),
       foodCatalogueId: this.diaryEntry.foodCatalogueId,
       foodWeight: this.foodWeightFinal,
       history: [history],
@@ -230,13 +235,13 @@ export class DiaryEntryEditFormComponent implements OnInit, OnChanges, OnDestroy
     const kcalsDelta = this.calculateKcalsDelta(foodWeight);
 
     try {
-      const res = await firstValueFrom(this.foodService.editDiaryEntry(preppedFormValues));
+      const res = await this.foodDiaryService.editDiaryEntry(preppedFormValues);
       this.diaryEntryForm.enable();
       this.diaryEntryForm.reset();
       this.onServerSuccessfullEditResponse.emit();
 
-      if (res.result && kcalsDelta) {
-        this.foodStatsService.updateStats(this.foodService.selectedDayIso$$(), 0, kcalsDelta);
+      if (res && kcalsDelta) {
+        this.foodStatsService.updateStats(this.foodDiaryService.selectedDayIso$$(), 0, kcalsDelta);
       }
     } catch {
       this.diaryEntryForm.enable();
@@ -286,7 +291,7 @@ export class DiaryEntryEditFormComponent implements OnInit, OnChanges, OnDestroy
 
   private subscribe(): void {
     this.subs.add(
-      this.foodService.diaryEntryClickedFocus$
+      this.foodDiaryService.diaryEntryClickedFocus$
         .pipe(
           filter((diaryEntryId) => this.diaryEntryForm.value.id === diaryEntryId),
           delay(100), // delay is the duration of the panel expansion animation, otherwise focus messes with it.
@@ -303,13 +308,13 @@ export class DiaryEntryEditFormComponent implements OnInit, OnChanges, OnDestroy
 
     this.diaryEntryForm.disable();
     try {
-      const res = await firstValueFrom(this.foodService.deleteDiaryEntry(this.diaryEntryForm.getRawValue().id));
+      const res = await this.foodDiaryService.deleteDiaryEntry(this.diaryEntryForm.getRawValue().id);
       this.diaryEntryForm.enable();
       this.diaryEntryForm.reset();
       this.onServerSuccessfullEditResponse.emit();
 
-      if (res.result && kcalsDelta) {
-        this.foodStatsService.updateStats(this.foodService.selectedDayIso$$(), 0, kcalsDelta);
+      if (res && kcalsDelta) {
+        this.foodStatsService.updateStats(this.foodDiaryService.selectedDayIso$$(), 0, kcalsDelta);
       }
     } catch {
       this.diaryEntryForm.enable();
@@ -321,11 +326,7 @@ export class DiaryEntryEditFormComponent implements OnInit, OnChanges, OnDestroy
       ...this.diaryEntry,
       foodWeight: weightValue,
     };
-    return this.foodService.calculateEntryKcals(
-      tempEntry,
-      this.foodService.catalogue$$(),
-      this.foodService.coefficients$$(),
-    );
+    return this.foodDiaryService.calculateEntryKcals(tempEntry);
   }
 
   private updateProjectedDaysEatenPercent(): void {

@@ -1,21 +1,19 @@
-import { NgIf } from '@angular/common';
+import { CommonModule } from '@angular/common';
 import { Component, computed, OnDestroy, OnInit, Signal } from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
-
 import { MatButtonModule } from '@angular/material/button';
 import { MatDatepickerInputEvent, MatDatepickerModule } from '@angular/material/datepicker';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
-
 import { AuthService } from '@app/services/auth.service';
-import { FoodService } from '@app/services/food.service';
+import { FoodDiaryService } from '@app/services/food/food-diary.service';
 import { calcDateWithUserTimeShift, dateToIsoNoTimeNoTZ, epochToIsoNoTimeNoTZ } from '@app/shared/utils';
 
 @Component({
   selector: 'app-diary-nav-buttons',
   imports: [
-    NgIf,
+    CommonModule,
     MatButtonModule,
     MatIconModule,
     MatDatepickerModule,
@@ -28,20 +26,21 @@ import { calcDateWithUserTimeShift, dateToIsoNoTimeNoTZ, epochToIsoNoTimeNoTZ } 
 })
 export class DiaryNavButtonsComponent implements OnInit, OnDestroy {
   public initDateTodayWithUserHourShift: Date = calcDateWithUserTimeShift(new Date());
-  private selectedDateMsWithUserHourShift: number = this.initDateTodayWithUserHourShift.getTime();
 
   public formCalendarSelectedDay: FormControl<Date> = new FormControl<Date>(this.initDateTodayWithUserHourShift, {
     nonNullable: true,
   });
 
-  public selectedDateFormatted: Signal<string> = computed(() => this.formatDate(this.foodService.selectedDayIso$$()));
+  public selectedDateFormatted: Signal<string> = computed(() => this.formatDate(this.foodDiaryService.selectedDayIso$$())); // prettier-ignore
+
+  private selectedDateMsWithUserHourShift: number = this.initDateTodayWithUserHourShift.getTime();
 
   // private keyboardSubscription!: Subscription;
 
   constructor(
     // private keyboardService: KeyboardService,
     private authService: AuthService,
-    public foodService: FoodService,
+    public foodDiaryService: FoodDiaryService,
   ) {
     // this.keyboardSubscription = this.keyboardService.getKeyboardEvents$().subscribe((event) => {
     //   if (event.key === 'ArrowRight') {
@@ -84,7 +83,7 @@ export class DiaryNavButtonsComponent implements OnInit, OnDestroy {
 
     this.selectedDateMsWithUserHourShift = newDate.getTime();
     const newDateIso = epochToIsoNoTimeNoTZ(this.selectedDateMsWithUserHourShift);
-    this.foodService.selectedDayIso$$.set(newDateIso);
+    this.foodDiaryService.selectedDayIso$$.set(newDateIso);
   }
 
   public onDatePicked(event: MatDatepickerInputEvent<Date>): void {
@@ -92,6 +91,6 @@ export class DiaryNavButtonsComponent implements OnInit, OnDestroy {
 
     this.selectedDateMsWithUserHourShift = event.value.getTime();
     const newDateIso = dateToIsoNoTimeNoTZ(event.value);
-    this.foodService.selectedDayIso$$.set(newDateIso);
+    this.foodDiaryService.selectedDayIso$$.set(newDateIso);
   }
 }

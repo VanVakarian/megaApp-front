@@ -1,13 +1,9 @@
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, effect } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
-
-import { firstValueFrom } from 'rxjs';
-
-import { FoodStatsService } from '@app/services/food-stats.service';
-import { FoodService } from '@app/services/food.service';
+import { FoodDiaryService } from '@app/services/food/food-diary.service';
+import { FoodStatsService } from '@app/services/food/food-stats.service';
 import { DEFAULT_INPUT_FIELD_PROGRESS_TIMER } from '@app/shared/const';
 import {
   AnimationState,
@@ -58,7 +54,7 @@ export class BodyWeightComponent {
   });
 
   constructor(
-    private foodService: FoodService,
+    private foodDiaryService: FoodDiaryService,
     private foodStatsService: FoodStatsService,
     private cdRef: ChangeDetectorRef,
   ) {
@@ -104,7 +100,7 @@ export class BodyWeightComponent {
   }
 
   private async submitValue(): Promise<void> {
-    const selectedDateISO = this.foodService.selectedDayIso$$();
+    const selectedDateISO = this.foodDiaryService.selectedDayIso$$();
     const weightValue = this.form.controls.bodyWeight.value;
     const weightDelta = Number(weightValue) - Number(this.previousValue);
     if (!weightValue) return;
@@ -118,7 +114,7 @@ export class BodyWeightComponent {
         dateISO: selectedDateISO,
       };
 
-      const result = await firstValueFrom(this.foodService.setUserBodyWeight(weight));
+      const result = await this.foodDiaryService.setUserBodyWeight(weight);
       if (!result) throw new Error();
 
       this.previousValue = weightValue;
@@ -133,8 +129,8 @@ export class BodyWeightComponent {
   }
 
   private applyWeight(): void {
-    const selectedDateISO = this.foodService.selectedDayIso$$();
-    const weight = this.foodService.diary$$()?.[selectedDateISO]?.totals.bodyWeight;
+    const selectedDateISO = this.foodDiaryService.selectedDayIso$$();
+    const weight = this.foodDiaryService.diary$$()?.[selectedDateISO]?.totals.bodyWeight;
 
     if (!weight) {
       this.form.patchValue({ bodyWeight: null });

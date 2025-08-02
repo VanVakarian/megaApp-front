@@ -46,8 +46,7 @@ export class SyncQueueService {
       const operation = this.queue[0];
 
       try {
-        const request$ = this.createRequest(operation);
-        const response = await firstValueFrom(request$.pipe(timeout(BACKGROUND_SYNC_TIMEOUT_MS)));
+        const response = await firstValueFrom(this.createRequest(operation).pipe(timeout(BACKGROUND_SYNC_TIMEOUT_MS)));
 
         if (operation.successCallback) {
           operation.successCallback(response);

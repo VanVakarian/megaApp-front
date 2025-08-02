@@ -1,13 +1,13 @@
 import { CommonModule } from '@angular/common';
 import { AfterViewInit, Component, ElementRef, OnDestroy, OnInit, ViewChild, effect } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatSliderModule } from '@angular/material/slider';
-
-import { firstValueFrom } from 'rxjs';
-
+import { FoodStatsService } from '@app/services/food/food-stats.service';
+import { SettingsService } from '@app/services/settings.service';
+import { KCALS_CHART_SETTINGS, WEIGHT_CHART_SETTINGS } from '@app/shared/const';
+import { debounce, formatDateTicks, getRuDeclension, throttle } from '@app/shared/utils';
 import {
   BarController,
   BarElement,
@@ -22,11 +22,6 @@ import {
   Title,
   Tooltip,
 } from 'chart.js';
-
-import { FoodStatsService } from '@app/services/food-stats.service';
-import { SettingsService } from '@app/services/settings.service';
-import { KCALS_CHART_SETTINGS, WEIGHT_CHART_SETTINGS } from '@app/shared/const';
-import { debounce, formatDateTicks, getRuDeclension, throttle } from '@app/shared/utils';
 
 Chart.register(
   CategoryScale,
@@ -124,7 +119,7 @@ export class FoodStatsComponent implements OnInit, OnDestroy, AfterViewInit {
 
   public async ngOnInit(): Promise<void> {
     if (!Object.keys(this.foodStatsService.stats$$()).length) {
-      await firstValueFrom(this.foodStatsService.getStats());
+      await this.foodStatsService.getStats();
     }
 
     const isLiteVersion = this.settingsService.settings$$()?.liteVersion;

@@ -10,16 +10,14 @@ import {
   signal,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-
 import { MatCardModule } from '@angular/material/card';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
-
 import { FoodCatalogueFormComponent } from '@app/components/food/catalogue/forms/food-catalogue-form.component';
-import { FoodService } from '@app/services/food.service';
+import { FoodCatalogueService } from '@app/services/food/food-catalogue.service';
 import { SettingsService } from '@app/services/settings.service';
 import { CatalogueEntry } from '@app/shared/interfaces';
 import { transliterateEnToRu } from '@app/shared/utils';
@@ -51,7 +49,7 @@ export class FoodCatalogueComponent {
   public pageIndexLeftOut: number = 0;
 
   constructor(
-    private foodService: FoodService,
+    private foodCatalogueService: FoodCatalogueService,
     private settingsService: SettingsService,
   ) {
     // effect(() => { console.log('CATALOGUE FILTERED LIST SELECTED have been updated:', this.catalogueFilteredListSelected$$()); });
@@ -70,8 +68,8 @@ export class FoodCatalogueComponent {
       .map(transliterateEnToRu);
 
     const catalogue = selected
-      ? this.foodService.catalogueIdsSelectedSorted$$()
-      : this.foodService.catalogueIdsLeftOutSorted$$();
+      ? this.foodCatalogueService.catalogueIdsSelectedSorted$$()
+      : this.foodCatalogueService.catalogueIdsLeftOutSorted$$();
 
     return catalogue.filter((food) => {
       const foodNameLower = food.name.toLowerCase();

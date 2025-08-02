@@ -1,23 +1,22 @@
-import { NgIf } from '@angular/common';
+import { CommonModule } from '@angular/common';
 import { ChangeDetectorRef, Component, Input, OnChanges, OnInit } from '@angular/core';
 import { AbstractControl, FormControl, FormGroup, ReactiveFormsModule, ValidatorFn, Validators } from '@angular/forms';
-
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
-
-import { firstValueFrom } from 'rxjs';
-
-import { FoodService } from '@app/services/food.service';
+import { FoodCatalogueService } from '@app/services/food/food-catalogue.service';
 import { SettingsService } from '@app/services/settings.service';
 import { CatalogueEntry } from '@app/shared/interfaces';
 
-export function uniqueCatalogueNameValidator(foodService: FoodService, isNewForm: boolean): ValidatorFn {
+export function uniqueCatalogueNameValidator(
+  foodCatalogueService: FoodCatalogueService,
+  isNewForm: boolean,
+): ValidatorFn {
   return (control: AbstractControl): { [key: string]: any } | null => {
     if (!isNewForm) return null; // Пропускаем валидацию, если это не новая форма
 
     const name = control?.value?.trim().toLowerCase();
-    const catalogue = foodService.catalogue$$();
+    const catalogue = foodCatalogueService.catalogue$$();
     const isDuplicate = Object.values(catalogue).some((entry) => entry.name.trim().toLowerCase() === name);
     return isDuplicate ? { duplicateName: { value: control.value } } : null;
   };
@@ -25,7 +24,7 @@ export function uniqueCatalogueNameValidator(foodService: FoodService, isNewForm
 
 @Component({
   selector: 'app-food-catalogue-form',
-  imports: [NgIf, ReactiveFormsModule, MatFormFieldModule, MatInputModule, MatButtonModule],
+  imports: [CommonModule, ReactiveFormsModule, MatFormFieldModule, MatInputModule, MatButtonModule],
   templateUrl: './food-catalogue-form.component.html',
 })
 export class FoodCatalogueFormComponent implements OnInit, OnChanges {
@@ -40,7 +39,7 @@ export class FoodCatalogueFormComponent implements OnInit, OnChanges {
   public foodForm: FormGroup = new FormGroup([]);
 
   constructor(
-    public foodService: FoodService,
+    public foodCatalogueService: FoodCatalogueService,
     private settingsService: SettingsService,
     private cd: ChangeDetectorRef,
   ) {}
@@ -56,7 +55,10 @@ export class FoodCatalogueFormComponent implements OnInit, OnChanges {
     }
     this.foodForm
       .get('name')
-      ?.setValidators([Validators.required, uniqueCatalogueNameValidator(this.foodService, this.formRole === 'new')]);
+      ?.setValidators([
+        Validators.required,
+        uniqueCatalogueNameValidator(this.foodCatalogueService, this.formRole === 'new'),
+      ]);
     this.foodForm.get('name')?.updateValueAndValidity();
   }
 
@@ -65,7 +67,7 @@ export class FoodCatalogueFormComponent implements OnInit, OnChanges {
       id: new FormControl(0),
       name: new FormControl('', [
         Validators.required,
-        uniqueCatalogueNameValidator(this.foodService, this.formRole === 'new'),
+        uniqueCatalogueNameValidator(this.foodCatalogueService, this.formRole === 'new'),
       ]),
       kcals: new FormControl({ value: 0, disabled: !this.isAdmin }, [
         Validators.required,
@@ -105,11 +107,11 @@ export class FoodCatalogueFormComponent implements OnInit, OnChanges {
     const foodName = this.foodForm.value.name as string;
     const foodKcals = this.foodForm.value.kcals as number;
     if (this.formRole === 'new') {
-      await firstValueFrom(this.foodService.createNewCatalogueEntry(foodName, foodKcals));
+      await this.foodCatalogueService.createNewCatalogueEntry(foodName, foodKcals);
       this.initForm();
     } else if (this.formRole === 'edit') {
       const foodId = this.foodForm.value.id as number;
-      const isSuccess = await firstValueFrom(this.foodService.editCatalogueEntry(foodId, foodName, foodKcals));
+      const isSuccess = await this.foodCatalogueService.editCatalogueEntry(foodId, foodName, foodKcals);
       if (!isSuccess) this.foodForm.patchValue(this.initialValues);
     }
 
@@ -119,7 +121,7 @@ export class FoodCatalogueFormComponent implements OnInit, OnChanges {
 
   // USERS CATALOGUE
   public get isCatalogueEntryPicked(): boolean {
-    if (this.categoryEntry && this.foodService.catalogueIdsSelected$$().includes(this.categoryEntry.id)) {
+    if (this.categoryEntry && this.foodCatalogueService.catalogueIdsSelected$$().includes(this.categoryEntry.id)) {
       return true;
     }
     return false;
@@ -130,10 +132,10 @@ export class FoodCatalogueFormComponent implements OnInit, OnChanges {
     const selectedFoodId = this.foodForm.value.id as number;
     if (selectedFoodId) {
       if (this.isCatalogueEntryPicked) {
-        const isSuccess = await firstValueFrom(this.foodService.dismissUserFoodId(selectedFoodId));
+        const isSuccess = await this.foodCatalogueService.dismissUserFoodId(selectedFoodId);
         // if (isSuccess) this.ownershipChanged.emit(selectedFoodId);
       } else {
-        const isSuccess = await firstValueFrom(this.foodService.pickUserFoodId(selectedFoodId));
+        const isSuccess = await this.foodCatalogueService.pickUserFoodId(selectedFoodId);
         // if (isSuccess) this.ownershipChanged.emit(selectedFoodId);
       }
     }
