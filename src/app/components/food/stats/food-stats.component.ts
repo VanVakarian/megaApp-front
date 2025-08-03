@@ -118,7 +118,7 @@ export class FoodStatsComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   public async ngOnInit(): Promise<void> {
-    await this.foodStatsService.getStats();
+    this.foodStatsService.getStats();
 
     const isLiteVersion = this.settingsService.settings$$()?.liteVersion;
     this.initializeCharts(isLiteVersion);
