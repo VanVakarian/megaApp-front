@@ -1,5 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { computed, effect, Injectable, signal, Signal, WritableSignal } from '@angular/core';
+import { exhaustRequest } from '@app/shared/decorators/exhaust-request.decorator';
 import {
   BodyWeight,
   DayTotals,
@@ -77,6 +78,7 @@ export class FoodDiaryService extends BaseFoodService {
     return Math.round(entryWeight * catalogueKcals * coefficient);
   }
 
+  @exhaustRequest()
   public async getFoodDiaryFullUpdateRange(dateIso?: string, offset?: number): Promise<Diary> {
     const date = dateIso ?? calculateTodayIsoWithUserTimeShift();
     const paramsStr = `date=${date}&offset=${offset ?? this.FETCH_OFFSET}`;

@@ -1,5 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { computed, Injectable, signal, Signal, WritableSignal } from '@angular/core';
+import { exhaustRequest } from '@app/shared/decorators/exhaust-request.decorator';
 import { Catalogue, CatalogueEntry, CatalogueIds } from '@app/shared/interfaces';
 import { firstValueFrom } from 'rxjs';
 import { LocalStorageService } from '../local-storage.service';
@@ -41,6 +42,7 @@ export class FoodCatalogueService extends BaseFoodService {
     // effect(() => { console.log('CATALOGUE SORTED LIST LEFT OUT have been updated:', this.catalogueIdsLeftOutSorted$$()) }); // prettier-ignore
   }
 
+  @exhaustRequest()
   public async getCatalogueEntries(): Promise<Catalogue> {
     try {
       const response = await firstValueFrom(this.http.get<Catalogue>('/api/food/catalogue'));
@@ -134,6 +136,7 @@ export class FoodCatalogueService extends BaseFoodService {
     return true;
   }
 
+  @exhaustRequest()
   public async getCatalogueEntriesSelected(): Promise<CatalogueIds> {
     try {
       const response = await firstValueFrom(this.http.get<CatalogueIds>('/api/food/user-catalogue'));

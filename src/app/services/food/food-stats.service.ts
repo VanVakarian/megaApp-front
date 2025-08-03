@@ -1,5 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { computed, Injectable, Signal, signal, WritableSignal } from '@angular/core';
+import { exhaustRequest } from '@app/shared/decorators/exhaust-request.decorator';
 import { Stats, StatsChartData } from '@app/shared/interfaces';
 import { firstValueFrom } from 'rxjs';
 import { formatDateTicks } from '../../shared/utils';
@@ -32,6 +33,7 @@ export class FoodStatsService {
     // effect(() => { console.log('SELECTED DATE IDX HIGH has been updated:', this.selectedDateIdxEnd$$()) }); // prettier-ignore
   }
 
+  @exhaustRequest()
   public async getStats(): Promise<void> {
     const cachedStats = this.loadStatsFromLocalStorage();
     if (cachedStats && Object.keys(cachedStats).length > 0) {
