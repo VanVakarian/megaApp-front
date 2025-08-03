@@ -6,7 +6,6 @@ import {
   Diary,
   DiaryEntry,
   DiaryEntryWithFullData,
-  ServerResponseBasic,
   ServerResponseWithDiaryId,
   UnifiedDiary,
 } from '@app/shared/interfaces';
@@ -18,13 +17,14 @@ import { SyncOperationType, SyncQueueService } from '../sync-queue.service';
 import { BaseFoodService } from './food-base.service';
 import { FoodCatalogueService } from './food-catalogue.service';
 import { FoodCoefficientsService } from './food-coefficients.service';
-
-const DIARY_STORAGE_KEY = 'food_diary';
+import { FoodStatsService } from './food-stats.service';
 
 @Injectable({
   providedIn: 'root',
 })
 export class FoodDiaryService extends BaseFoodService {
+  private readonly DIARY_STORAGE_KEY = 'food_diary';
+
   private diaryRaw$$: WritableSignal<Diary> = signal({});
   public diary$$: Signal<UnifiedDiary> = computed(() => this.prepUnifiedDiary());
 
@@ -40,7 +40,7 @@ export class FoodDiaryService extends BaseFoodService {
   private fetchMoreDiaryTrigger$ = new Subject<void>();
 
   protected getStorageKey(): string {
-    return DIARY_STORAGE_KEY;
+    return this.DIARY_STORAGE_KEY;
   }
 
   constructor(
@@ -50,6 +50,7 @@ export class FoodDiaryService extends BaseFoodService {
     syncQueueService: SyncQueueService,
     private catalogueService: FoodCatalogueService,
     private coefficientsService: FoodCoefficientsService,
+    private foodStatsService: FoodStatsService,
   ) {
     super(http, localStorageService, networkService, syncQueueService);
     this.loadDiaryFromLocalStorage();
@@ -102,9 +103,17 @@ export class FoodDiaryService extends BaseFoodService {
     const tempId = Date.now();
     const originalDiary = { ...this.diaryRaw$$() };
 
+    const kcalsDelta = this.calculateEntryKcals(diaryEntry);
+    const selectedDay = this.selectedDayIso$$();
+
+    const statsRollback = this.foodStatsService.createStatsRollback(selectedDay);
+
     const entryWithTempId = { ...diaryEntry, id: tempId };
+
     this.updateDiaryEntryWithNewValues(entryWithTempId);
     this.saveToLocalStorage(this.diaryRaw$$());
+
+    this.foodStatsService.updateStatsOptimistically(selectedDay, 0, kcalsDelta);
 
     const successCallback = (response: ServerResponseWithDiaryId) => {
       if (response.result && response.diaryId) {
@@ -115,6 +124,7 @@ export class FoodDiaryService extends BaseFoodService {
     const rollbackFunction = () => {
       this.diaryRaw$$.set(originalDiary);
       this.saveToLocalStorage(originalDiary);
+      statsRollback();
     };
 
     this.addSyncOperation({
@@ -143,12 +153,25 @@ export class FoodDiaryService extends BaseFoodService {
       return false;
     }
 
+    const originalKcals = this.calculateEntryKcals(originalEntry);
+    const newKcals = this.calculateEntryKcals(diaryEntry);
+    const kcalsDelta = newKcals - originalKcals;
+
+    const statsRollback = this.foodStatsService.createStatsRollback(selectedDay);
+
     this.updateDiaryEntryWithNewValues(diaryEntry);
     this.saveToLocalStorage(this.diaryRaw$$());
+
+    if (kcalsDelta !== 0) {
+      this.foodStatsService.updateStatsOptimistically(selectedDay, 0, kcalsDelta);
+    }
 
     const rollbackFunction = () => {
       this.diaryRaw$$.set(originalDiary);
       this.saveToLocalStorage(originalDiary);
+      if (kcalsDelta !== 0) {
+        statsRollback();
+      }
     };
 
     this.addSyncOperation({
@@ -176,12 +199,19 @@ export class FoodDiaryService extends BaseFoodService {
       return false;
     }
 
+    const kcalsDelta = -this.calculateEntryKcals(deletedEntry);
+
+    const statsRollback = this.foodStatsService.createStatsRollback(selectedDay);
+
     this.removeDiaryEntry(diaryEntryId);
     this.saveToLocalStorage(this.diaryRaw$$());
+
+    this.foodStatsService.updateStatsOptimistically(selectedDay, 0, kcalsDelta);
 
     const rollbackFunction = () => {
       this.diaryRaw$$.set(originalDiary);
       this.saveToLocalStorage(originalDiary);
+      statsRollback();
     };
 
     this.addSyncOperation({
@@ -195,25 +225,51 @@ export class FoodDiaryService extends BaseFoodService {
   }
 
   public async setUserBodyWeight(bodyWeight: BodyWeight): Promise<boolean> {
-    try {
-      const response = await firstValueFrom(this.http.post<ServerResponseBasic>('/api/food/body-weight', bodyWeight));
-
-      if (response.result) {
-        this.diaryRaw$$.update((diary) => {
-          return {
-            ...diary,
-            [bodyWeight.dateISO]: {
-              ...diary[bodyWeight.dateISO],
-              bodyWeight: Number(bodyWeight.bodyWeight),
-            },
-          };
-        });
-      }
-      return response.result;
-    } catch (error) {
-      console.error('Failed setting user body weight:', error);
+    if (!this.checkNetworkAvailability()) {
+      console.error('Network not available for setting body weight');
       return false;
     }
+
+    const originalDiary = { ...this.diaryRaw$$() };
+    const dateISO = bodyWeight.dateISO;
+
+    const currentWeight = originalDiary[dateISO]?.bodyWeight || 0;
+    const newWeight = Number(bodyWeight.bodyWeight);
+    const weightDelta = newWeight - currentWeight;
+
+    const statsRollback = this.foodStatsService.createStatsRollback(dateISO);
+
+    this.diaryRaw$$.update((diary) => {
+      return {
+        ...diary,
+        [dateISO]: {
+          ...diary[dateISO],
+          bodyWeight: newWeight,
+        },
+      };
+    });
+    this.saveToLocalStorage(this.diaryRaw$$());
+
+    if (weightDelta !== 0) {
+      this.foodStatsService.updateStatsOptimistically(dateISO, weightDelta, 0);
+    }
+
+    const rollbackFunction = () => {
+      this.diaryRaw$$.set(originalDiary);
+      this.saveToLocalStorage(originalDiary);
+      if (weightDelta !== 0) {
+        statsRollback();
+      }
+    };
+
+    this.addSyncOperation({
+      type: SyncOperationType.CREATE,
+      endpoint: '/api/food/body-weight',
+      data: bodyWeight,
+      rollbackCallback: rollbackFunction,
+    });
+
+    return true;
   }
 
   private prepUnifiedDiary(): UnifiedDiary {

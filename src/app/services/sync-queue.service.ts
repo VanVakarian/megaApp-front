@@ -1,12 +1,13 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { BACKGROUND_SYNC_RETRIES_MAX, BACKGROUND_SYNC_TIMEOUT_MS } from '@app/shared/const';
+import { sleep } from '@app/shared/utils';
 import { firstValueFrom, timeout } from 'rxjs';
 
 export enum SyncOperationType {
-  CREATE = 'create',
-  UPDATE = 'update',
-  DELETE = 'delete',
+  CREATE = 'create', // POST
+  UPDATE = 'update', // PUT
+  DELETE = 'delete', // DELETE
 }
 
 interface SyncOperation {
@@ -68,7 +69,7 @@ export class SyncQueueService {
           break;
         } else {
           console.warn(`Operation failed, retry ${operation.retryCount}/${BACKGROUND_SYNC_RETRIES_MAX}`);
-          await this.delay(1000 * operation.retryCount);
+          await sleep(1000 * operation.retryCount);
         }
       }
     }
@@ -85,9 +86,5 @@ export class SyncQueueService {
       case SyncOperationType.DELETE:
         return this.http.delete(operation.endpoint);
     }
-  }
-
-  private delay(ms: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 }

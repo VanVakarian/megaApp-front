@@ -241,10 +241,6 @@ export class DiaryEntryNewFormComponent implements OnChanges {
       this.projectedSelectedDaysEatenPercentPadded = '0';
       this.selectedFoodKcals = 0;
       this.diaryEntriesCoefficient = 1;
-
-      if (kcalsDelta) {
-        this.foodStatsService.updateStats(this.foodDiaryService.selectedDayIso$$(), 0, kcalsDelta);
-      }
     } else {
       this.diaryEntryForm.enable();
     }

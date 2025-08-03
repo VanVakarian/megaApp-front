@@ -8,12 +8,12 @@ import { NetworkService } from './network.service';
 import { NotificationService } from './notification.service';
 import { SyncOperationType, SyncQueueService } from './sync-queue.service';
 
-const SETTINGS_STORAGE_KEY = 'settings';
-
 @Injectable({
   providedIn: 'root',
 })
 export class SettingsService {
+  private readonly SETTINGS_STORAGE_KEY = 'settings';
+
   public settings$$: WritableSignal<Settings> = signal(DEFAULT_SETTINGS);
 
   public USE_COEFFICIENTS_TEMP = true; // TODO[067] implement sometime
@@ -31,7 +31,7 @@ export class SettingsService {
   }
 
   private initializeFromLocalStorage(): void {
-    const localSettings = this.localStorage.get<Settings>(SETTINGS_STORAGE_KEY);
+    const localSettings = this.localStorage.get<Settings>(this.SETTINGS_STORAGE_KEY);
     if (localSettings) {
       this.settings$$.set(localSettings);
       this.applyTheme(localSettings.darkTheme);
@@ -59,7 +59,7 @@ export class SettingsService {
         const hasChanges = JSON.stringify(currentSettings) !== JSON.stringify(serverSettings);
         if (hasChanges) {
           this.settings$$.set(serverSettings);
-          this.localStorage.set(SETTINGS_STORAGE_KEY, serverSettings);
+          this.localStorage.set(this.SETTINGS_STORAGE_KEY, serverSettings);
           this.applyTheme(serverSettings.darkTheme);
           this.notificationsService.showSyncSuccess('Settings updated from server');
         }
@@ -78,7 +78,7 @@ export class SettingsService {
     const newSettings = { ...currentSettings, [key]: value };
 
     this.settings$$.set(newSettings);
-    this.localStorage.set(SETTINGS_STORAGE_KEY, newSettings);
+    this.localStorage.set(this.SETTINGS_STORAGE_KEY, newSettings);
 
     if (key === 'darkTheme') {
       this.applyTheme(value as boolean);
@@ -102,7 +102,7 @@ export class SettingsService {
     const rolledBackSettings = { ...currentSettings, [key]: previousValue };
 
     this.settings$$.set(rolledBackSettings);
-    this.localStorage.set(SETTINGS_STORAGE_KEY, rolledBackSettings);
+    this.localStorage.set(this.SETTINGS_STORAGE_KEY, rolledBackSettings);
 
     if (key === 'darkTheme') {
       this.applyTheme(previousValue as boolean);

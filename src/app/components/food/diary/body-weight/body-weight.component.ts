@@ -119,8 +119,6 @@ export class BodyWeightComponent {
 
       this.previousValue = weightValue;
       this.weightFieldAnimationStateManager.toSuccess();
-
-      this.foodStatsService.updateStats(selectedDateISO, weightDelta, 0);
     } catch {
       this.weightFieldAnimationStateManager.toError();
     } finally {

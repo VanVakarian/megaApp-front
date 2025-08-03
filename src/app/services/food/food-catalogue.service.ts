@@ -8,20 +8,20 @@ import { SyncOperationType, SyncQueueService } from '../sync-queue.service';
 import { BaseFoodService } from './food-base.service';
 import { FoodCoefficientsService } from './food-coefficients.service';
 
-const CATALOGUE_STORAGE_KEY = 'food_catalogue';
-const CATALOGUE_IDS_SELECTED_STORAGE_KEY = 'food_catalogue_ids_selected';
-
 @Injectable({
   providedIn: 'root',
 })
 export class FoodCatalogueService extends BaseFoodService {
+  private readonly CATALOGUE_STORAGE_KEY = 'food_catalogue';
+  private readonly CATALOGUE_IDS_SELECTED_STORAGE_KEY = 'food_catalogue_ids_selected';
+
   public catalogue$$: WritableSignal<Catalogue> = signal({});
   public catalogueIdsSelected$$: WritableSignal<CatalogueIds> = signal([]);
   public catalogueIdsSelectedSorted$$: Signal<CatalogueEntry[]> = computed(() => this.prepCatalogueSortedListSeparate(true)); // prettier-ignore
   public catalogueIdsLeftOutSorted$$: Signal<CatalogueEntry[]> = computed(() => this.prepCatalogueSortedListSeparate(false)); // prettier-ignore
 
   protected getStorageKey(): string {
-    return CATALOGUE_STORAGE_KEY;
+    return this.CATALOGUE_STORAGE_KEY;
   }
 
   constructor(
@@ -284,11 +284,11 @@ export class FoodCatalogueService extends BaseFoodService {
   }
 
   private saveCatalogueIdsSelectedToLocalStorage(): void {
-    this.localStorageService.set(CATALOGUE_IDS_SELECTED_STORAGE_KEY, this.catalogueIdsSelected$$());
+    this.localStorageService.set(this.CATALOGUE_IDS_SELECTED_STORAGE_KEY, this.catalogueIdsSelected$$());
   }
 
   private loadCatalogueIdsSelectedFromLocalStorage(): void {
-    const savedIdsSelected = this.localStorageService.get<CatalogueIds>(CATALOGUE_IDS_SELECTED_STORAGE_KEY);
+    const savedIdsSelected = this.localStorageService.get<CatalogueIds>(this.CATALOGUE_IDS_SELECTED_STORAGE_KEY);
     if (savedIdsSelected) {
       this.catalogueIdsSelected$$.set(savedIdsSelected);
     }

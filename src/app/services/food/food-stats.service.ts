@@ -3,11 +3,14 @@ import { computed, Injectable, Signal, signal, WritableSignal } from '@angular/c
 import { Stats, StatsChartData } from '@app/shared/interfaces';
 import { firstValueFrom } from 'rxjs';
 import { formatDateTicks } from '../../shared/utils';
+import { LocalStorageService } from '../local-storage.service';
 
 @Injectable({
   providedIn: 'root',
 })
 export class FoodStatsService {
+  private readonly STATS_STORAGE_KEY = 'food_stats';
+
   public stats$$: WritableSignal<Stats> = signal({});
   public statsChartData$$: Signal<StatsChartData> = computed(() => this.prepareChartData());
   public StatsChartDataClipped$$: Signal<StatsChartData> = computed(() => this.prepareChartDataClipped());
@@ -17,7 +20,11 @@ export class FoodStatsService {
   public selectedDateIdxStart$$: WritableSignal<number> = signal(0);
   public selectedDateIdxEnd$$: WritableSignal<number> = signal(0);
 
-  constructor(private http: HttpClient) {
+  constructor(
+    private http: HttpClient,
+    private localStorageService: LocalStorageService,
+  ) {
+    this.loadStatsFromLocalStorageOnInit();
     // effect(() => { console.log('STATS has been updated:', this.stats$$(), Object.keys(this.stats$$()).length) }); // prettier-ignore
     // effect(() => { console.log('STATS CHART DATA has been updated:', this.statsChartData$$(), Object.keys(this.statsChartData$$()).length) }); // prettier-ignore
     // effect(() => { console.log('STATS CHART DATA SLICED has been updated:', this.StatsChartDataClipped$$(), Object.keys(this.StatsChartDataClipped$$()).length) }); // prettier-ignore
@@ -25,15 +32,24 @@ export class FoodStatsService {
     // effect(() => { console.log('SELECTED DATE IDX HIGH has been updated:', this.selectedDateIdxEnd$$()) }); // prettier-ignore
   }
 
-  public async getStats(): Promise<Stats> {
-    try {
-      const statsData = await firstValueFrom(this.http.get<Stats>('/api/food/stats'));
+  public async getStats(): Promise<void> {
+    const cachedStats = this.loadStatsFromLocalStorage();
+    if (cachedStats && Object.keys(cachedStats).length > 0) {
+      this.stats$$.set(cachedStats);
+    }
 
-      this.setupInitialData(statsData);
-      return statsData;
+    try {
+      const serverStats = await firstValueFrom(this.http.get<Stats>('/api/food/stats'));
+      const isLocalStatsEmpty = Object.keys(this.stats$$()).length === 0;
+
+      this.stats$$.set(serverStats);
+      this.saveStatsToLocalStorage();
+
+      if (isLocalStatsEmpty) {
+        this.setupInitialDateRange();
+      }
     } catch (error) {
-      console.error('Failed fetching stats:', error);
-      return {};
+      console.error('Failed fetching stats from server:', error);
     }
   }
 
@@ -51,14 +67,10 @@ export class FoodStatsService {
     }
   }
 
-  private setupInitialData(statsData: Stats) {
-    this.stats$$.set(statsData);
-    setTimeout(() => {
-      this.clipDateRange(91);
-    }, 0);
-    setTimeout(() => {
-      this.clipDateRange(90);
-    }, 0);
+  private setupInitialDateRange() {
+    // Hack to ensure mat slider to init in correct position
+    setTimeout(() => this.clipDateRange(91), 0);
+    setTimeout(() => this.clipDateRange(90), 1);
   }
 
   private prepareChartData(): StatsChartData {
@@ -105,5 +117,34 @@ export class FoodStatsService {
 
     this.selectedDateIdxStart$$.set(firstDayIndex);
     this.selectedDateIdxEnd$$.set(totalDaysAvailable - 1);
+  }
+
+  private saveStatsToLocalStorage(): void {
+    this.localStorageService.set(this.STATS_STORAGE_KEY, this.stats$$());
+  }
+
+  private loadStatsFromLocalStorage(): Stats | null {
+    return this.localStorageService.get<Stats>(this.STATS_STORAGE_KEY);
+  }
+
+  private loadStatsFromLocalStorageOnInit(): void {
+    const savedStats = this.loadStatsFromLocalStorage();
+    if (savedStats && Object.keys(savedStats).length > 0) {
+      this.stats$$.set(savedStats);
+      this.setupInitialDateRange();
+    }
+  }
+
+  public createStatsRollback(dateIso: string): () => void {
+    const originalStats = { ...this.stats$$() };
+    return () => {
+      this.stats$$.set(originalStats);
+      this.saveStatsToLocalStorage();
+    };
+  }
+
+  public updateStatsOptimistically(dateIso: string, weightDelta: number, kcalsDelta: number): void {
+    this.updateStats(dateIso, weightDelta, kcalsDelta);
+    this.saveStatsToLocalStorage();
   }
 }

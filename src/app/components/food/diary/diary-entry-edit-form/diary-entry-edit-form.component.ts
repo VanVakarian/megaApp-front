@@ -239,10 +239,6 @@ export class DiaryEntryEditFormComponent implements OnInit, OnChanges, OnDestroy
       this.diaryEntryForm.enable();
       this.diaryEntryForm.reset();
       this.onServerSuccessfullEditResponse.emit();
-
-      if (res && kcalsDelta) {
-        this.foodStatsService.updateStats(this.foodDiaryService.selectedDayIso$$(), 0, kcalsDelta);
-      }
     } catch {
       this.diaryEntryForm.enable();
     }
@@ -312,10 +308,6 @@ export class DiaryEntryEditFormComponent implements OnInit, OnChanges, OnDestroy
       this.diaryEntryForm.enable();
       this.diaryEntryForm.reset();
       this.onServerSuccessfullEditResponse.emit();
-
-      if (res && kcalsDelta) {
-        this.foodStatsService.updateStats(this.foodDiaryService.selectedDayIso$$(), 0, kcalsDelta);
-      }
     } catch {
       this.diaryEntryForm.enable();
     }

@@ -14,10 +14,12 @@ const COEFFICIENTS_STORAGE_KEY = 'food_coefficients';
   providedIn: 'root',
 })
 export class FoodCoefficientsService extends BaseFoodService {
+  private readonly COEFFICIENTS_STORAGE_KEY = 'food_coefficients';
+
   public coefficients$$: WritableSignal<Coefficients> = signal({});
 
   protected getStorageKey(): string {
-    return COEFFICIENTS_STORAGE_KEY;
+    return this.COEFFICIENTS_STORAGE_KEY;
   }
 
   constructor(
