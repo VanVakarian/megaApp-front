@@ -107,7 +107,20 @@ export function debounce<T extends (...args: any[]) => any>(fn: T, delay: number
   };
 }
 
-// USAGE: getRuDeclension(1, 'день', 'дня', 'дней');
+/**
+ * Returns the correct declension of a Russian word depending on the number.
+ *
+ * @param number - The number determining the word form.
+ * @param one - The form for one (e.g., "день").
+ * @param few - The form for a few (e.g., "дня").
+ * @param many - The form for many (e.g., "дней").
+ * @returns The appropriate word form.
+ *
+ * @example
+ * getRuDeclension(1, 'день', 'дня', 'дней'); // 'день'
+ * getRuDeclension(2, 'день', 'дня', 'дней'); // 'дня'
+ * getRuDeclension(5, 'день', 'дня', 'дней'); // 'дней'
+ */
 export function getRuDeclension(number: number, one: string, few: string, many: string): string {
   // Corner cases first: numbers from 11 to 14
   const numberAsString = String(number);
@@ -124,6 +137,7 @@ export function getRuDeclension(number: number, one: string, few: string, many: 
 
   if (lastDigit === '1') return one;
 
+  // Fallback in case of NaN|Infinity
   return many;
 }
 

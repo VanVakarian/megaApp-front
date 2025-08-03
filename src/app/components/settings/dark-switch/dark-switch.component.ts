@@ -1,11 +1,9 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
-
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-
 import { AuthService } from '@app/services/auth.service';
-import { RequestStatus, SettingsService } from '@app/services/settings.service';
+import { SettingsService } from '@app/services/settings.service';
 
 @Component({
   selector: 'app-dark-switch',
@@ -23,12 +21,8 @@ export class DarkSwitchComponent implements OnInit {
   public async switchTheme(): Promise<void> {
     const setting = { darkTheme: !this.settingsService.settings$$().darkTheme };
     this.settingsService.applyTheme(setting.darkTheme);
-    const requestIsSuccess = await this.settingsService.saveSelectedChapter(setting);
+    const requestIsSuccess = await this.settingsService.saveSetting(setting);
 
     if (!requestIsSuccess) this.settingsService.applyTheme(!setting.darkTheme);
-  }
-
-  public get requestInProgress(): boolean {
-    return this.settingsService.requestStatus.darkTheme() === RequestStatus.IN_PROGRESS;
   }
 }

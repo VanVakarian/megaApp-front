@@ -26,12 +26,13 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
-import { FoodStatsService } from '@app/services/food-stats.service';
-import { FoodService } from '@app/services/food.service';
+import { FoodCatalogueService } from '@app/services/food/food-catalogue.service';
+import { FoodCoefficientsService } from '@app/services/food/food-coefficients.service';
+import { FoodDiaryService } from '@app/services/food/food-diary.service';
+import { FoodStatsService } from '@app/services/food/food-stats.service';
 import { ScreenSizeWatcherService } from '@app/services/screen-size-watcher.service';
 import { CatalogueEntry, DiaryEntry, ScreenType } from '@app/shared/interfaces';
 import { UiProgressIcon } from '@app/shared/ui-kit/progress-icon/progress-icon.component';
-import { firstValueFrom } from 'rxjs';
 import { FoodSelectDropdownComponent } from './food-select-dropdown/food-select-dropdown.component';
 
 @Component({
@@ -77,7 +78,7 @@ export class DiaryEntryNewFormComponent implements OnChanges {
   public projectedSelectedDaysEatenPercentPadded = '0';
 
   private catalogueNames$$: Signal<string[]> = computed(() =>
-    this.foodService.catalogueSortedListSelected$$().map((food: CatalogueEntry) => food.name),
+    this.foodCatalogueService.catalogueIdsSelectedSorted$$().map((food: CatalogueEntry) => food.name),
   );
 
   private catalogueNameValidator(): ValidatorFn {
@@ -121,22 +122,17 @@ export class DiaryEntryNewFormComponent implements OnChanges {
   }
 
   constructor(
-    private foodService: FoodService,
+    private foodDiaryService: FoodDiaryService,
+    private foodCatalogueService: FoodCatalogueService,
+    private foodCoefficientsService: FoodCoefficientsService,
     private foodStatsService: FoodStatsService,
     private screenSizeWatcherService: ScreenSizeWatcherService,
   ) {
     effect(() => {
-      const selectedDateIso = this.foodService.selectedDayIso$$();
-      this.selectedDaysTargerKcals = this.foodService.diary$$()?.[selectedDateIso]?.['targetKcals'] ?? 0;
-    });
-
-    effect(() => {
-      const selectedDateIso = this.foodService.selectedDayIso$$();
-      const formattedDiary = this.foodService.diaryFormatted$$();
-      if (formattedDiary) {
-        this.selectedDaysEatenPercent = formattedDiary[selectedDateIso]?.['kcalsPercent'] ?? 0;
-        this.updateProjectedDaysEatenPercent(0);
-      }
+      const totals = this.foodDiaryService.selectedDayTotals$$();
+      this.selectedDaysTargerKcals = totals.targetKcals;
+      this.selectedDaysEatenPercent = totals.kcalsPercent;
+      this.updateProjectedDaysEatenPercent(0);
     });
   }
 
@@ -167,8 +163,8 @@ export class DiaryEntryNewFormComponent implements OnChanges {
       });
       this.isModalOpened = false;
 
-      this.selectedFoodKcals = this.foodService.catalogue$$()?.[food.id]?.kcals ?? 0;
-      this.diaryEntriesCoefficient = this.foodService.coefficients$$()?.[food.id] ?? 1;
+      this.selectedFoodKcals = this.foodCatalogueService.catalogue$$()?.[food.id]?.kcals ?? 0;
+      this.diaryEntriesCoefficient = this.foodCoefficientsService.coefficients$$()?.[food.id] ?? 1;
 
       const currentWeight = this.foodWeightControl.value || 0;
       this.updateProjectedDaysEatenPercent(currentWeight);
@@ -209,25 +205,25 @@ export class DiaryEntryNewFormComponent implements OnChanges {
     this.diaryEntryForm.disable();
     const { foodCatalogueId, foodWeight } = this.diaryEntryForm.value;
 
-    const catalogue = this.foodService.catalogue$$();
+    const catalogue = this.foodCatalogueService.catalogue$$();
     if (!catalogue || !foodCatalogueId) {
       this.diaryEntryForm.enable();
       return;
     }
 
     const foodKcals = catalogue[foodCatalogueId].kcals;
-    const foodCoefficient = this.foodService.coefficients$$()?.[foodCatalogueId] ?? 1;
+    const foodCoefficient = this.foodCoefficientsService.coefficients$$()?.[foodCatalogueId] ?? 1;
     const kcalsDelta = ((foodWeight || 0) / 100) * foodKcals * foodCoefficient;
 
     const entry: DiaryEntry = {
       id: 0,
-      dateISO: this.foodService.selectedDayIso$$(),
+      dateISO: this.foodDiaryService.selectedDayIso$$(),
       foodCatalogueId: foodCatalogueId,
       foodWeight: foodWeight || 0,
       history: [{ action: 'init', value: foodWeight || 0 }],
     };
 
-    const response = await firstValueFrom(this.foodService.createDiaryEntry(entry));
+    const response = await this.foodDiaryService.createDiaryEntry(entry);
 
     if (response?.result) {
       if (response.diaryId) {
@@ -245,10 +241,6 @@ export class DiaryEntryNewFormComponent implements OnChanges {
       this.projectedSelectedDaysEatenPercentPadded = '0';
       this.selectedFoodKcals = 0;
       this.diaryEntriesCoefficient = 1;
-
-      if (kcalsDelta) {
-        this.foodStatsService.updateStats(this.foodService.selectedDayIso$$(), 0, kcalsDelta);
-      }
     } else {
       this.diaryEntryForm.enable();
     }

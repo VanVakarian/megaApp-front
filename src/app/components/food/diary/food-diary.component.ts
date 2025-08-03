@@ -18,7 +18,7 @@ import { BodyWeightComponent } from '@app/components/food/diary/body-weight/body
 import { DiaryEntryEditFormComponent } from '@app/components/food/diary/diary-entry-edit-form/diary-entry-edit-form.component';
 import { DiaryEntryNewFormComponent } from '@app/components/food/diary/diary-entry-new-form/diary-entry-new-form.component';
 import { DiaryNavButtonsComponent } from '@app/components/food/diary/diary-nav/diary-nav-buttons.component';
-import { FoodService } from '@app/services/food.service';
+import { FoodDiaryService } from '@app/services/food/food-diary.service';
 import { ScreenSizeWatcherService } from '@app/services/screen-size-watcher.service';
 import { SettingsService } from '@app/services/settings.service';
 import { ScreenType } from '@app/shared/interfaces';
@@ -63,27 +63,24 @@ export class FoodDiaryComponent implements OnInit, AfterViewInit, OnDestroy {
   public percentsDivs!: QueryList<ElementRef>;
 
   public get todaysKcalsPercent() {
-    return this.foodService.diaryFormatted$$()?.[this.selectedDateIso]?.['kcalsPercent'] ?? 0;
+    return this.foodDiaryService.selectedDayTotals$$().kcalsPercent;
   }
 
   public get selectedDayFood() {
-    const selectedDay = this.foodService.selectedDayIso$$();
-    const selectedDayFood = this.foodService.diaryFormatted$$()?.[selectedDay]?.food;
-
-    if (selectedDayFood) return Object.values(selectedDayFood);
-    return [];
+    const selectedDay = this.foodDiaryService.selectedDayIso$$();
+    return this.foodDiaryService.diary$$()[selectedDay]?.food || [];
   }
 
   public get todaysKcalsEaten() {
-    return this.foodService.diaryFormatted$$()?.[this.selectedDateIso]?.['kcalsEaten'];
+    return this.foodDiaryService.selectedDayTotals$$().kcalsEaten;
   }
 
   public get todaysTargetKcals() {
-    return this.foodService.diary$$()?.[this.selectedDateIso]?.['targetKcals'];
+    return this.foodDiaryService.selectedDayTotals$$().targetKcals;
   }
 
   public get formattedSelectedDaysEatenPercent(): number {
-    return Math.round(this.foodService.diaryFormatted$$()?.[this.selectedDateIso]?.['kcalsPercent'] * 10) / 10;
+    return Math.round(this.foodDiaryService.selectedDayTotals$$().kcalsPercent * 10) / 10;
   }
 
   public get caloriesDisplayText(): string {
@@ -97,16 +94,12 @@ export class FoodDiaryComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
-  private get selectedDateIso() {
-    return this.foodService.selectedDayIso$$();
-  }
-
   public get isLiteVersionSetting(): boolean {
     return this.settingsService.settings$$()?.liteVersion ?? false;
   }
 
   constructor(
-    public foodService: FoodService,
+    public foodDiaryService: FoodDiaryService,
     private ngZone: NgZone,
     private screenSizeWatcherService: ScreenSizeWatcherService,
     private settingsService: SettingsService,
@@ -132,7 +125,7 @@ export class FoodDiaryComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   public diaryEntryExpanded(diaryEntry: MatExpansionPanel, diaryEntryId: number) {
-    this.foodService.diaryEntryClickedFocus$.next(diaryEntryId);
+    this.foodDiaryService.diaryEntryClickedFocus$.next(diaryEntryId);
 
     if (this.screenSizeWatcherService.currentScreenType === ScreenType.DESKTOP) return;
 

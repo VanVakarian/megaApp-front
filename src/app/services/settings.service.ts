@@ -1,76 +1,112 @@
-import { HttpClient, HttpResponse } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { Injectable, signal, WritableSignal } from '@angular/core';
+import { DEFAULT_SETTINGS } from '@app/shared/const';
 import { Settings } from '@app/shared/interfaces';
-import { catchError, firstValueFrom, map, Observable, of } from 'rxjs';
-import {
-  DEFAULT_CACHED_REQUEST_VALIDITY_MS,
-  DEFAULT_REQUEST_STATUS_FADE_OUT_TIMER,
-  DEFAULT_SETTINGS,
-} from '../shared/const';
-import { cached } from '../shared/decorators/cached-request.decorator';
-
-type SettingsKeysForRequestTracking =
-  | 'selectedChapterFood'
-  | 'selectedChapterMoney'
-  | 'darkTheme'
-  | 'liteVersion'
-  | 'height';
-
-const SETTINGS_LOCALSTORAGE_KEY = 'settings';
-
-export enum RequestStatus {
-  IDLE = 'Idle',
-  IN_PROGRESS = 'InProgress',
-  SUCCESS = 'Success',
-  ERROR = 'Error',
-}
+import { catchError, firstValueFrom, of } from 'rxjs';
+import { LocalStorageService } from './local-storage.service';
+import { NetworkService } from './network.service';
+import { NotificationService } from './notification.service';
+import { SyncOperationType, SyncQueueService } from './sync-queue.service';
 
 @Injectable({
   providedIn: 'root',
 })
 export class SettingsService {
-  public settings$$: WritableSignal<Settings> = signal(this.loadSettingsFromLocalStorage());
+  private readonly SETTINGS_STORAGE_KEY = 'settings';
 
-  public requestStatus: Record<SettingsKeysForRequestTracking, WritableSignal<RequestStatus>> = {
-    selectedChapterFood: signal(RequestStatus.IDLE),
-    selectedChapterMoney: signal(RequestStatus.IDLE),
-    darkTheme: signal(RequestStatus.IDLE),
-    liteVersion: signal(RequestStatus.IDLE),
-    height: signal(RequestStatus.IDLE),
-  };
-
-  private requestStatusTimeouts: Record<SettingsKeysForRequestTracking, ReturnType<typeof setTimeout> | null> = {
-    selectedChapterFood: null,
-    selectedChapterMoney: null,
-    darkTheme: null,
-    liteVersion: null,
-    height: null,
-  };
+  public settings$$: WritableSignal<Settings> = signal(DEFAULT_SETTINGS);
 
   public USE_COEFFICIENTS_TEMP = true; // TODO[067] implement sometime
 
-  constructor(private http: HttpClient) {
-    // effect(() => { console.log('settings', this.settings$$()); }); // prettier-ignore
+  constructor(
+    private http: HttpClient,
+    private localStorage: LocalStorageService,
+    private notificationsService: NotificationService,
+    private networkService: NetworkService,
+    private syncQueue: SyncQueueService,
+  ) {
+    this.initializeFromLocalStorage();
+    this.performBackgroundSync();
+    // effect(() => { console.log('settings', this.settings$$()) }); // prettier-ignore
   }
 
-  public async initLoadSettings(): Promise<Settings> {
-    const response = await this.fetchSettings();
-    this.settings$$.set(response);
-    this.saveSettingsToLocalStorage(response);
-    this.applyTheme(response.darkTheme);
-    return response;
+  private initializeFromLocalStorage(): void {
+    const localSettings = this.localStorage.get<Settings>(this.SETTINGS_STORAGE_KEY);
+    if (localSettings) {
+      this.settings$$.set(localSettings);
+      this.applyTheme(localSettings.darkTheme);
+    }
   }
 
-  @cached(DEFAULT_CACHED_REQUEST_VALIDITY_MS)
-  private fetchSettings(): Promise<Settings> {
-    return firstValueFrom(
-      this.http.get<Settings>('/api/settings/').pipe(
-        catchError((error) => {
-          console.error('Failed to fetch settings:', error);
-          return of(this.loadSettingsFromLocalStorage());
-        }),
-      ),
-    );
+  private async performBackgroundSync(): Promise<void> {
+    if (!this.networkService.isNetworkAvailable$$()) {
+      return;
+    }
+
+    try {
+      const serverSettings = await firstValueFrom(
+        this.http.get<Settings>('/api/settings/').pipe(
+          catchError((error) => {
+            console.error('Failed to fetch settings from server:', error);
+            return of(null);
+          }),
+        ),
+      );
+
+      if (serverSettings) {
+        const currentSettings = this.settings$$();
+
+        const hasChanges = JSON.stringify(currentSettings) !== JSON.stringify(serverSettings);
+        if (hasChanges) {
+          this.settings$$.set(serverSettings);
+          this.localStorage.set(this.SETTINGS_STORAGE_KEY, serverSettings);
+          this.applyTheme(serverSettings.darkTheme);
+          this.notificationsService.showSyncSuccess('Settings updated from server');
+        }
+      }
+    } catch (error) {
+      console.error('Background sync initialization failed:', error);
+    }
+  }
+
+  async updateSetting<K extends keyof Settings>(key: K, value: Settings[K]): Promise<boolean> {
+    if (!this.networkService.isNetworkAvailable$$()) {
+      return false;
+    }
+
+    const currentSettings = this.settings$$();
+    const newSettings = { ...currentSettings, [key]: value };
+
+    this.settings$$.set(newSettings);
+    this.localStorage.set(this.SETTINGS_STORAGE_KEY, newSettings);
+
+    if (key === 'darkTheme') {
+      this.applyTheme(value as boolean);
+    }
+
+    this.syncQueue.addOperation({
+      type: SyncOperationType.UPDATE,
+      endpoint: '/api/settings/',
+      data: { [key]: value },
+      rollbackCallback: () => {
+        this.rollbackSetting(key, currentSettings[key]);
+        this.notificationsService.showSyncError('Failed to save settings');
+      },
+    });
+
+    return true;
+  }
+
+  private rollbackSetting<K extends keyof Settings>(key: K, previousValue: Settings[K]): void {
+    const currentSettings = this.settings$$();
+    const rolledBackSettings = { ...currentSettings, [key]: previousValue };
+
+    this.settings$$.set(rolledBackSettings);
+    this.localStorage.set(this.SETTINGS_STORAGE_KEY, rolledBackSettings);
+
+    if (key === 'darkTheme') {
+      this.applyTheme(previousValue as boolean);
+    }
   }
 
   public applyTheme(isDarkTheme: boolean): void {
@@ -81,53 +117,14 @@ export class SettingsService {
     }
   }
 
-  public async saveSelectedChapter(setting: Partial<Settings>): Promise<boolean> {
-    return await firstValueFrom(this.putRequest(setting));
-  }
+  async saveSetting(setting: Partial<Settings>): Promise<boolean> {
+    const key = Object.keys(setting)[0] as keyof Settings;
+    const value = setting[key];
 
-  private putRequest(newSetting: Partial<Settings>): Observable<boolean> {
-    const settingKey = Object.keys(newSetting)[0] as keyof Settings;
-    if (!(settingKey in this.requestStatus)) return of(false);
+    if (value !== undefined) {
+      return await this.updateSetting(key, value);
+    }
 
-    const currentTimeout = this.requestStatusTimeouts[settingKey as SettingsKeysForRequestTracking];
-    if (currentTimeout) clearTimeout(currentTimeout);
-
-    const timeoutKey = settingKey as SettingsKeysForRequestTracking;
-    this.requestStatus[timeoutKey].set(RequestStatus.IN_PROGRESS);
-
-    return this.http.put<HttpResponse<any>>('/api/settings/', newSetting, { observe: 'response' }).pipe(
-      map((response: HttpResponse<any>) => {
-        if (response.status === 200) {
-          const updatedSettings = { ...this.settings$$(), ...newSetting };
-          this.settings$$.set(updatedSettings);
-          this.saveSettingsToLocalStorage(updatedSettings);
-          this.updateRequestStatus(timeoutKey, RequestStatus.SUCCESS);
-          return true;
-        } else {
-          this.updateRequestStatus(timeoutKey, RequestStatus.ERROR);
-          return false;
-        }
-      }),
-      catchError(() => {
-        this.updateRequestStatus(timeoutKey, RequestStatus.ERROR);
-        return of(false);
-      }),
-    );
-  }
-
-  private updateRequestStatus(settingKey: SettingsKeysForRequestTracking, status: RequestStatus): void {
-    this.requestStatus[settingKey].set(status);
-    this.requestStatusTimeouts[settingKey] = setTimeout(() => {
-      this.requestStatus[settingKey].set(RequestStatus.IDLE);
-    }, DEFAULT_REQUEST_STATUS_FADE_OUT_TIMER);
-  }
-
-  private loadSettingsFromLocalStorage(): Settings {
-    const settings = localStorage.getItem(SETTINGS_LOCALSTORAGE_KEY);
-    return settings ? JSON.parse(settings) : DEFAULT_SETTINGS;
-  }
-
-  private saveSettingsToLocalStorage(settings: Settings): void {
-    localStorage.setItem(SETTINGS_LOCALSTORAGE_KEY, JSON.stringify(settings));
+    return false;
   }
 }
