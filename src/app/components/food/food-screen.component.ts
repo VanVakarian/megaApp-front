@@ -7,7 +7,7 @@ import { FoodStatsComponent } from '@app/components/food/stats/food-stats.compon
 import { FoodCatalogueService } from '@app/services/food/food-catalogue.service';
 import { FoodCoefficientsService } from '@app/services/food/food-coefficients.service';
 import { FoodDiaryService } from '@app/services/food/food-diary.service';
-import { SettingsService } from '@app/services/settings.service';
+import { FoodStatsService } from '@app/services/food/food-stats.service';
 
 @Component({
   selector: 'app-food-screen',
@@ -24,7 +24,7 @@ export class FoodScreenComponent implements OnInit {
     private foodDiaryService: FoodDiaryService,
     private foodCatalogueService: FoodCatalogueService,
     private foodCoefficientsService: FoodCoefficientsService,
-    private settingsService: SettingsService,
+    private foodStatsService: FoodStatsService,
   ) {
     this.section = '';
     this.largeScreen = false;
@@ -36,6 +36,7 @@ export class FoodScreenComponent implements OnInit {
     this.foodCatalogueService.getCatalogueEntries();
     this.foodCatalogueService.getCatalogueEntriesSelected();
     this.foodCoefficientsService.getCoefficients();
+    this.foodStatsService.getStats();
 
     this.updateScreenSize();
     this.mediaQueryList.addEventListener('change', this.updateScreenSize.bind(this));

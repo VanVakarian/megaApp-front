@@ -1,5 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, signal, WritableSignal } from '@angular/core';
+import { exhaustRequest } from '@app/shared/decorators/exhaust-request.decorator';
 import { Coefficients, ServerResponseWithData } from '@app/shared/interfaces';
 import { firstValueFrom } from 'rxjs';
 import { LocalStorageService } from '../local-storage.service';
@@ -7,8 +8,6 @@ import { NetworkService } from '../network.service';
 import { SettingsService } from '../settings.service';
 import { SyncQueueService } from '../sync-queue.service';
 import { BaseFoodService } from './food-base.service';
-
-const COEFFICIENTS_STORAGE_KEY = 'food_coefficients';
 
 @Injectable({
   providedIn: 'root',
@@ -35,6 +34,7 @@ export class FoodCoefficientsService extends BaseFoodService {
     // effect(() => { console.log('COEFFICIENTS have been updated:', this.coefficients$$()) }); // prettier-ignore
   }
 
+  @exhaustRequest()
   public async getCoefficients(): Promise<Coefficients> {
     if (!this.settingsService.USE_COEFFICIENTS_TEMP) return {};
 
