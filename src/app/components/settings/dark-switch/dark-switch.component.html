@@ -1,7 +1,6 @@
 <div class="">
   <button class="main-menu-button-darkTheme w-9"
           mat-stroked-button
-          [disabled]="requestInProgress"
           (click)="switchTheme()">
     <mat-icon class="left-[6px] scale-125">
       {{ settingsService.settings$$().darkTheme ? "light_mode" : "dark_mode" }}

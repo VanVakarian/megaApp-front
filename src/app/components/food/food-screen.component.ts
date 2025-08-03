@@ -1,13 +1,12 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
-
-import { firstValueFrom } from 'rxjs';
-
 import { FoodCatalogueComponent } from '@app/components/food/catalogue/food-catalogue.component';
 import { FoodDiaryComponent } from '@app/components/food/diary/food-diary.component';
 import { FoodStatsComponent } from '@app/components/food/stats/food-stats.component';
-import { FoodService } from '@app/services/food.service';
+import { FoodCatalogueService } from '@app/services/food/food-catalogue.service';
+import { FoodCoefficientsService } from '@app/services/food/food-coefficients.service';
+import { FoodDiaryService } from '@app/services/food/food-diary.service';
 import { SettingsService } from '@app/services/settings.service';
 
 @Component({
@@ -22,7 +21,9 @@ export class FoodScreenComponent implements OnInit {
 
   constructor(
     private route: ActivatedRoute,
-    private foodService: FoodService,
+    private foodDiaryService: FoodDiaryService,
+    private foodCatalogueService: FoodCatalogueService,
+    private foodCoefficientsService: FoodCoefficientsService,
     private settingsService: SettingsService,
   ) {
     this.section = '';
@@ -31,13 +32,10 @@ export class FoodScreenComponent implements OnInit {
   }
 
   public ngOnInit() {
-    firstValueFrom(this.foodService.getFoodDiaryFullUpdateRange());
-    firstValueFrom(this.foodService.getCatalogueEntries());
-    firstValueFrom(this.foodService.getMyCatalogueEntries());
-
-    if (this.settingsService.USE_COEFFICIENTS_TEMP) {
-      firstValueFrom(this.foodService.getCoefficients());
-    }
+    this.foodDiaryService.getFoodDiaryFullUpdateRange();
+    this.foodCatalogueService.getCatalogueEntries();
+    this.foodCatalogueService.getCatalogueEntriesSelected();
+    this.foodCoefficientsService.getCoefficients();
 
     this.updateScreenSize();
     this.mediaQueryList.addEventListener('change', this.updateScreenSize.bind(this));

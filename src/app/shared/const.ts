@@ -3,13 +3,6 @@ import { Settings } from './interfaces';
 
 export const FETCH_DAYS_RANGE_OFFSET: number = 10; // TODO: create settings item out of this constant
 
-// export const CHART_COLORS_OLD = {
-//   primary: 'red',
-//   primaryAlpha: '#ff00004f',
-//   average: 'blue',
-//   averageAlpha: '#adadff'
-// };
-
 interface ChartColors {
   main: string;
   mainAlpha: string;
@@ -149,6 +142,7 @@ export const enToRuTransliterationRules: { [key: string]: string } = {
 export const USER_PREFERRED_MIDNIGHT_OFFSET_HOURS: number = 4;
 
 export const DEFAULT_INPUT_FIELD_PROGRESS_TIMER: number = 2000;
+
 export const DEFAULT_REQUEST_STATUS_FADE_OUT_TIMER: number = 3000;
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -160,4 +154,6 @@ export const DEFAULT_SETTINGS: Settings = {
   userName: '',
 };
 
-export const DEFAULT_CACHED_REQUEST_VALIDITY_MS: number = 1000;
+export const BACKGROUND_SYNC_RETRIES_MAX: number = 3;
+
+export const BACKGROUND_SYNC_TIMEOUT_MS: number = 8000;

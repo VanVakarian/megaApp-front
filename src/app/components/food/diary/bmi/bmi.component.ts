@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, computed, OnInit, Signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
-import { FoodService } from '@app/services/food.service';
+import { FoodDiaryService } from '@app/services/food/food-diary.service';
 import { SettingsService } from '@app/services/settings.service';
 
 interface BmiSegment {
@@ -53,7 +53,7 @@ export class BMIComponent implements OnInit {
   private selectedDateWeight$$: Signal<number> = computed(() => this.getSelectedDateWeight());
 
   constructor(
-    private foodService: FoodService,
+    private foodDiaryService: FoodDiaryService,
     private settingsService: SettingsService,
   ) {
     // effect(() => { console.log('SELECTEDDATEWEIGHT has been updated:', this.selectedDateWeight$$()) }); // prettier-ignore
@@ -75,8 +75,8 @@ export class BMIComponent implements OnInit {
   }
 
   private getSelectedDateWeight(): number {
-    const selectedDateISO = this.foodService.selectedDayIso$$();
-    return this.foodService.diary$$()?.[selectedDateISO]?.bodyWeight ?? 0;
+    const selectedDateISO = this.foodDiaryService.selectedDayIso$$();
+    return this.foodDiaryService.diary$$()?.[selectedDateISO]?.totals.bodyWeight ?? 0;
   }
 
   private calculateBmiPointerPercent(): number | null {
