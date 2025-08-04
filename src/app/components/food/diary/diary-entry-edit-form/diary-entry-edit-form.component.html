@@ -21,7 +21,7 @@
 
 <mat-expansion-panel [expanded]="showHistory">
   <div class="flex flex-col gap-2 mt-4">
-    @for (historyEntry of diaryEntry.history; track historyEntry.action) {
+    @for (historyEntry of diaryEntry.history; track $index) {
       <div class="relative">
         <mat-icon class="absolute -left-[6px] -top-[2px] scale-75">
           {{ chooseIconForHistoryEntry(historyEntry) }}

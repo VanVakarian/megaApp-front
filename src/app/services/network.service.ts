@@ -22,7 +22,7 @@ export class NetworkService implements OnDestroy {
 
   constructor(private notifications: NotificationService) {
     this.initNetworkEvents();
-    this.initWebSocket();
+    // this.initWebSocket();
   }
 
   public ngOnDestroy() {
@@ -46,7 +46,7 @@ export class NetworkService implements OnDestroy {
     if (!isOnline) {
       this.notifications.showOfflineMode();
     } else {
-      this.connect();
+      // this.connect();
     }
   }
 
