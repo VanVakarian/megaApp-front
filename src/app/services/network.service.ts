@@ -12,7 +12,7 @@ import { NotificationService } from './notification.service';
 export class NetworkService implements OnDestroy {
   public isOnline$$: WritableSignal<boolean> = signal(navigator.onLine);
   public isConnected$$: WritableSignal<boolean> = signal(false);
-  public isNetworkAvailable$$ = computed(() => this.isOnline$$() && this.isConnected$$());
+  public isNetworkAvailable$$ = computed(() => this.isOnline$$());
 
   private socket$: WebSocketSubject<any> | undefined;
   private reconnectDelaySec = 1;
