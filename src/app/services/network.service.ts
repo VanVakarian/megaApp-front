@@ -10,21 +10,21 @@ import { NotificationService } from './notification.service';
   providedIn: 'root',
 })
 export class NetworkService implements OnDestroy {
-  public isOnline$$: WritableSignal<boolean> = signal(navigator.onLine);
-  public isConnected$$: WritableSignal<boolean> = signal(false);
-  public isNetworkAvailable$$ = computed(() => this.isOnline$$());
+  public readonly isOnline$$: WritableSignal<boolean> = signal(navigator.onLine);
+  public readonly isConnected$$: WritableSignal<boolean> = signal(false);
+  public readonly isNetworkAvailable$$ = computed(() => this.isOnline$$());
 
   private socket$: WebSocketSubject<any> | undefined;
   private reconnectDelaySec = 1;
-  private messagesSubject = new Subject<IncomingMessage>();
+  private readonly messagesSubject = new Subject<IncomingMessage>();
   private readonly clientId: string;
 
-  constructor(private notifications: NotificationService) {
+  constructor(private readonly notifications: NotificationService) {
     this.clientId = Math.random().toString(36).substring(2, 10);
     this.initNetworkEvents();
   }
 
-  public ngOnDestroy() {
+  public ngOnDestroy(): void {
     this.disconnect();
     this.messagesSubject.complete();
   }

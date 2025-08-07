@@ -12,14 +12,14 @@ import { catchError, map, tap } from 'rxjs/operators';
 export class AuthService {
   private readonly ACCESS_TOKEN_KEY = 'access_token';
   private readonly REFRESH_TOKEN_KEY = 'refresh_token';
-  private authenticationStatus$$ = signal<boolean>(false);
-  private networkService = inject(NetworkService);
+  private readonly authenticationStatus$$ = signal<boolean>(false);
+  private readonly networkService = inject(NetworkService);
 
-  constructor(private readonly http: HttpClient) {}
-
-  get isAuthenticated() {
+  public get isAuthenticated(): boolean {
     return this.authenticationStatus$$();
   }
+
+  constructor(private readonly http: HttpClient) {}
 
   public login(user: UserCreds): Observable<any> {
     return this.http.post<AuthResponse>('/api/auth/login', user, { observe: 'response' }).pipe(
@@ -47,7 +47,7 @@ export class AuthService {
     );
   }
 
-  public logout() {
+  public logout(): void {
     this.removeTokens();
     this.authenticationStatus$$.set(false);
     this.networkService.disconnect();
@@ -66,16 +66,6 @@ export class AuthService {
         throw new Error('Refresh token expired or invalid');
       }),
     );
-  }
-
-  private setTokens(response: AuthResponse) {
-    localStorage.setItem(this.ACCESS_TOKEN_KEY, response.accessToken);
-    localStorage.setItem(this.REFRESH_TOKEN_KEY, response.refreshToken);
-  }
-
-  private removeTokens(): void {
-    localStorage.removeItem(this.ACCESS_TOKEN_KEY);
-    localStorage.removeItem(this.REFRESH_TOKEN_KEY);
   }
 
   public checkAuth(): Observable<boolean> {
@@ -108,6 +98,16 @@ export class AuthService {
     }
     this.authenticationStatus$$.set(false);
     return of(false);
+  }
+
+  private setTokens(response: AuthResponse): void {
+    localStorage.setItem(this.ACCESS_TOKEN_KEY, response.accessToken);
+    localStorage.setItem(this.REFRESH_TOKEN_KEY, response.refreshToken);
+  }
+
+  private removeTokens(): void {
+    localStorage.removeItem(this.ACCESS_TOKEN_KEY);
+    localStorage.removeItem(this.REFRESH_TOKEN_KEY);
   }
 }
 
