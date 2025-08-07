@@ -24,21 +24,20 @@ import { FoodStatsService } from './food-stats.service';
   providedIn: 'root',
 })
 export class FoodDiaryService extends BaseFoodService {
+  private readonly diaryRaw$$: WritableSignal<Diary> = signal({});
+
+  public readonly diary$$: Signal<UnifiedDiary> = computed(() => this.prepUnifiedDiary());
+
+  public readonly selectedDayIso$$: WritableSignal<string> = signal(calculateTodayIsoWithUserTimeShift());
+  public readonly selectedDayTotals$$: Signal<DayTotals> = computed(() => this.extractSelectedDayTotals());
+
+  public readonly diaryEntryClickedFocus$ = new Subject<number>();
+
   private readonly DIARY_STORAGE_KEY = 'food_diary';
-
-  private diaryRaw$$: WritableSignal<Diary> = signal({});
-  public diary$$: Signal<UnifiedDiary> = computed(() => this.prepUnifiedDiary());
-
-  public selectedDayIso$$: WritableSignal<string> = signal(calculateTodayIsoWithUserTimeShift());
-  public selectedDayTotals$$: Signal<DayTotals> = computed(() => this.extractSelectedDayTotals());
-
-  public diaryEntryClickedFocus$ = new Subject<number>();
-
-  private FETCH_OFFSET = 7;
-  private FETCH_THRESHOLD = 3;
-
-  private loadedRange$$: WritableSignal<{ start: string; end: string } | null> = signal(null);
-  private fetchMoreDiaryTrigger$ = new Subject<void>();
+  private readonly FETCH_OFFSET = 7;
+  private readonly FETCH_THRESHOLD = 3;
+  private readonly loadedRange$$: WritableSignal<{ start: string; end: string } | null> = signal(null);
+  private readonly fetchMoreDiaryTrigger$ = new Subject<void>();
 
   protected getStorageKey(): string {
     return this.DIARY_STORAGE_KEY;
@@ -49,9 +48,9 @@ export class FoodDiaryService extends BaseFoodService {
     localStorageService: LocalStorageService,
     networkService: NetworkService,
     syncQueueService: SyncQueueService,
-    private catalogueService: FoodCatalogueService,
-    private coefficientsService: FoodCoefficientsService,
-    private foodStatsService: FoodStatsService,
+    private readonly catalogueService: FoodCatalogueService,
+    private readonly coefficientsService: FoodCoefficientsService,
+    private readonly foodStatsService: FoodStatsService,
   ) {
     super(http, localStorageService, networkService, syncQueueService);
     this.loadDiaryFromLocalStorage();
@@ -63,12 +62,6 @@ export class FoodDiaryService extends BaseFoodService {
 
     // effect(() => { console.log('DIARY RAW has been updated:', this.diaryRaw$$()) }); // prettier-ignore
     // effect(() => { console.log('UNIFIED DIARY has been updated:', this.diary$$()) }); // prettier-ignore
-  }
-
-  private subscribe(): void {
-    this.fetchMoreDiaryTrigger$.subscribe(() => {
-      this.loadMoreData();
-    });
   }
 
   public calculateEntryKcals(entry: DiaryEntry): number {
@@ -272,6 +265,58 @@ export class FoodDiaryService extends BaseFoodService {
     });
 
     return true;
+  }
+
+  private subscribe(): void {
+    this.subscribeToRealtimeUpdates();
+
+    this.fetchMoreDiaryTrigger$.subscribe(() => {
+      this.loadMoreData();
+    });
+  }
+
+  private subscribeToRealtimeUpdates(): void {
+    this.networkService.getMessages().subscribe((message) => {
+      if (!message?.type) return;
+
+      switch (message.type) {
+        case 'DIARY_ENTRY_CREATED':
+        case 'DIARY_ENTRY_UPDATED':
+          if (message.payload?.dateISO) {
+            this.getFoodDiaryFullUpdateRange(message.payload.dateISO, 0);
+            this.foodStatsService.getStats();
+          }
+          break;
+
+        case 'DIARY_ENTRY_DELETED':
+          if (message.payload?.id) {
+            const entryDate = this.findDateByEntryId(message.payload.id);
+            if (entryDate) {
+              this.getFoodDiaryFullUpdateRange(entryDate, 0);
+              this.foodStatsService.getStats();
+            }
+          }
+          break;
+
+        case 'BODY_WEIGHT_CREATED':
+        case 'BODY_WEIGHT_UPDATED':
+          if (message.payload?.dateISO) {
+            this.getFoodDiaryFullUpdateRange(message.payload.dateISO, 0);
+            this.foodStatsService.getStats();
+          }
+          break;
+      }
+    });
+  }
+
+  private findDateByEntryId(entryId: number): string | null {
+    const diary = this.diaryRaw$$();
+    for (const [dateISO, day] of Object.entries(diary)) {
+      if (day.food[entryId]) {
+        return dateISO;
+      }
+    }
+    return null;
   }
 
   private prepUnifiedDiary(): UnifiedDiary {

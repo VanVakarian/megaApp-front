@@ -1,22 +1,25 @@
 import { HttpErrorResponse, HttpEvent, HttpHandler, HttpInterceptor, HttpRequest } from '@angular/common/http';
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
+import { AuthService } from '@app/services/auth.service';
+import { NetworkService } from '@app/services/network.service';
 import { BehaviorSubject, Observable, throwError } from 'rxjs';
 import { catchError, filter, switchMap, take } from 'rxjs/operators';
-
-import { AuthService } from '@app/services/auth.service';
 
 @Injectable()
 export class AuthInterceptor implements HttpInterceptor {
   private isRefreshing = false;
-  private refreshTokenSubject: BehaviorSubject<any> = new BehaviorSubject<any>(null);
+  private readonly refreshTokenSubject: BehaviorSubject<any> = new BehaviorSubject<any>(null);
+  private readonly networkService = inject(NetworkService);
 
-  constructor(public authService: AuthService) {}
+  constructor(public readonly authService: AuthService) {}
 
-  intercept(request: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
+  public intercept(request: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
     const accessToken = localStorage.getItem('access_token');
     if (accessToken) {
       request = this.addToken(request, accessToken);
     }
+
+    request = this.addClientId(request);
 
     return next.handle(request).pipe(
       catchError((error) => {
@@ -29,7 +32,7 @@ export class AuthInterceptor implements HttpInterceptor {
     );
   }
 
-  private addToken(request: HttpRequest<any>, token: string) {
+  private addToken(request: HttpRequest<any>, token: string): HttpRequest<any> {
     return request.clone({
       setHeaders: {
         Authorization: `Bearer ${token}`,
@@ -37,7 +40,15 @@ export class AuthInterceptor implements HttpInterceptor {
     });
   }
 
-  private handle401Error(request: HttpRequest<any>, next: HttpHandler) {
+  private addClientId(request: HttpRequest<any>): HttpRequest<any> {
+    return request.clone({
+      setHeaders: {
+        'X-Client-ID': this.networkService.getClientId(),
+      },
+    });
+  }
+
+  private handle401Error(request: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
     if (!this.isRefreshing) {
       this.isRefreshing = true;
       this.refreshTokenSubject.next(null);
