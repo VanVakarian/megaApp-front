@@ -1,8 +1,8 @@
 import { Injectable, OnDestroy, WritableSignal, computed, signal } from '@angular/core';
 import { tokenGetter } from '@app/services/auth.service';
 import { IncomingMessage } from '@app/shared/interfaces';
-import { BehaviorSubject, EMPTY, Observable, Subscription, of, timer } from 'rxjs';
-import { catchError, retry, switchMap } from 'rxjs/operators';
+import { EMPTY, Observable, Subject, timer } from 'rxjs';
+import { catchError, retry, tap } from 'rxjs/operators';
 import { WebSocketSubject, webSocket } from 'rxjs/webSocket';
 import { NotificationService } from './notification.service';
 
@@ -16,21 +16,77 @@ export class NetworkService implements OnDestroy {
 
   private socket$: WebSocketSubject<any> | undefined;
   private reconnectDelaySec = 1;
-  private connectionStatus: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(false);
-  private connectionStatusSubscription!: Subscription;
-  private isConnected: boolean = false;
+  private messagesSubject = new Subject<IncomingMessage>();
+  private readonly clientId: string;
 
   constructor(private notifications: NotificationService) {
+    this.clientId = Math.random().toString(36).substring(2, 10);
     this.initNetworkEvents();
-    // this.initWebSocket();
   }
 
   public ngOnDestroy() {
-    this.connectionStatusSubscription.unsubscribe();
+    this.disconnect();
+    this.messagesSubject.complete();
+  }
 
+  public getClientId(): string {
+    return this.clientId;
+  }
+
+  public connect(): void {
+    if (this.socket$ && !this.socket$.closed) {
+      return;
+    }
+
+    const token = tokenGetter();
+    if (!token) {
+      console.warn('Cannot connect WebSocket: no auth token');
+      return;
+    }
+
+    this.socket$ = this.createWebSocket(token);
+
+    this.socket$
+      .pipe(
+        tap(() => {
+          this.isConnected$$.set(true);
+        }),
+        retry({
+          delay: (error, retryCount) => {
+            console.log(`WebSocket reconnecting, attempt #${retryCount}`);
+            this.isConnected$$.set(false);
+            return timer(this.reconnectDelaySec * 1000);
+          },
+        }),
+        catchError((error) => {
+          console.error('WebSocket connection failed:', error);
+          this.isConnected$$.set(false);
+          return EMPTY;
+        }),
+      )
+      .subscribe({
+        next: (message) => this.handleIncomingMessage(message),
+        error: (error) => {
+          console.error('WebSocket error:', error);
+          this.isConnected$$.set(false);
+        },
+        complete: () => {
+          console.warn('WebSocket connection closed');
+          this.isConnected$$.set(false);
+        },
+      });
+  }
+
+  public disconnect(): void {
     if (this.socket$) {
       this.socket$.complete();
+      this.socket$ = undefined;
     }
+    this.isConnected$$.set(false);
+  }
+
+  public getMessages(): Observable<IncomingMessage> {
+    return this.messagesSubject.asObservable();
   }
 
   private initNetworkEvents(): void {
@@ -45,113 +101,32 @@ export class NetworkService implements OnDestroy {
 
     if (!isOnline) {
       this.notifications.showOfflineMode();
-    } else {
-      // this.connect();
     }
   }
 
-  private initWebSocket(): void {
-    this.connectionStatusSubscription = this.connectionStatus
-      .pipe(
-        switchMap((isConnected) => {
-          if (!isConnected) {
-            return timer(this.reconnectDelaySec * 1000).pipe(
-              switchMap(() => {
-                console.log('Reconnecting...');
-                this.connect();
-                return of(false);
-              }),
-            );
-          } else {
-            return of(true);
-          }
-        }),
-      )
-      .subscribe();
-
-    this.connect();
+  private createWebSocket(token: string): WebSocketSubject<any> {
+    const encodedToken = encodeURIComponent(token);
+    const encodedClientId = encodeURIComponent(this.clientId);
+    const wsUrl = `ws://127.0.0.1:3000/api/ws?token=${encodedToken}&clientId=${encodedClientId}`;
+    return webSocket(wsUrl);
   }
 
-  private connect() {
-    if (!this.socket$ || !this.isConnected) {
-      this.socket$ = this.getNewWebSocket();
-
-      this.socket$
-        .pipe(
-          retry({
-            delay: (error, retryCount) => {
-              console.log(`Retry attempt #${retryCount}`);
-              return timer(this.reconnectDelaySec * 1000);
-            },
-          }),
-          catchError((error) => {
-            console.error('WebSocket error:', error);
-            this.connectionStatus.next(false);
-            this.isConnected = false;
-            this.isConnected$$.set(false);
-            return EMPTY;
-          }),
-        )
-        .subscribe({
-          next: (payload) => this.handleMessage(payload),
-          error: (err) => {
-            console.error('WebSocket connection error:', err);
-            this.connectionStatus.next(false);
-            this.isConnected = false;
-            this.isConnected$$.set(false);
-          },
-          complete: () => {
-            console.warn('WebSocket connection closed');
-            this.connectionStatus.next(false);
-            this.isConnected = false;
-            this.isConnected$$.set(false);
-          },
-        });
-
-      this.connectionStatus.next(true);
-      this.isConnected = true;
-      this.isConnected$$.set(true);
-      this.sendTokenOnWebSocket();
-    }
-  }
-
-  private sendTokenOnWebSocket() {
-    const token = tokenGetter();
-    if (token && this.socket$ && !this.socket$.closed) {
-      this.socket$.next({ auth: token });
-    }
-  }
-
-  private getNewWebSocket() {
-    return webSocket('ws://127.0.0.1:3000/api/ws');
-  }
-
-  private handleMessage(data: IncomingMessage) {
-    const key = Object.keys(data).length === 1 ? Object.keys(data)[0] : null;
-    if (key) {
-      if (data[key] === 'pong') {
-        console.log('Received pong');
-      } else if (data[key] === 'token-needed') {
-        console.log('Received auth demand');
-        this.sendTokenOnWebSocket();
-      } else {
-        console.log('Received SSE update:', data);
+  private handleIncomingMessage(data: any): void {
+    if (data?.type === 'ping') {
+      if (this.socket$ && !this.socket$.closed) {
+        this.socket$.next({ type: 'pong' });
       }
+      return;
     }
-  }
 
-  private subscribeToUpdates(entityType: string): Observable<any> {
-    return new Observable((observer) => {
-      if (this.socket$) {
-        this.socket$.subscribe({
-          next: (data) => {
-            if (data[entityType]) {
-              observer.next(data[entityType]);
-            }
-          },
-          error: (err) => observer.error(err),
-        });
-      }
-    });
+    if (data?.type === 'pong') {
+      console.log('Received pong');
+      return;
+    }
+
+    if (data?.type) {
+      console.log('Received realtime update:', data);
+      this.messagesSubject.next(data);
+    }
   }
 }

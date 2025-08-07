@@ -20,7 +20,9 @@ export interface AuthResponse {
 //                                                                            WS
 
 export interface IncomingMessage {
-  [key: string]: string;
+  type?: string;
+  payload?: any;
+  [key: string]: any;
 }
 
 //                                                                        SERVER

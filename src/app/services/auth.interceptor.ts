@@ -1,14 +1,15 @@
 import { HttpErrorResponse, HttpEvent, HttpHandler, HttpInterceptor, HttpRequest } from '@angular/common/http';
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
+import { AuthService } from '@app/services/auth.service';
+import { NetworkService } from '@app/services/network.service';
 import { BehaviorSubject, Observable, throwError } from 'rxjs';
 import { catchError, filter, switchMap, take } from 'rxjs/operators';
-
-import { AuthService } from '@app/services/auth.service';
 
 @Injectable()
 export class AuthInterceptor implements HttpInterceptor {
   private isRefreshing = false;
   private refreshTokenSubject: BehaviorSubject<any> = new BehaviorSubject<any>(null);
+  private networkService = inject(NetworkService);
 
   constructor(public authService: AuthService) {}
 
@@ -17,6 +18,8 @@ export class AuthInterceptor implements HttpInterceptor {
     if (accessToken) {
       request = this.addToken(request, accessToken);
     }
+
+    request = this.addClientId(request);
 
     return next.handle(request).pipe(
       catchError((error) => {
@@ -33,6 +36,14 @@ export class AuthInterceptor implements HttpInterceptor {
     return request.clone({
       setHeaders: {
         Authorization: `Bearer ${token}`,
+      },
+    });
+  }
+
+  private addClientId(request: HttpRequest<any>) {
+    return request.clone({
+      setHeaders: {
+        'X-Client-ID': this.networkService.getClientId(),
       },
     });
   }

@@ -1,13 +1,10 @@
 import { HttpClient, HttpResponse } from '@angular/common/http';
-import { Injectable, signal } from '@angular/core';
-import { Router } from '@angular/router';
-
+import { inject, Injectable, signal } from '@angular/core';
+import { NetworkService } from '@app/services/network.service';
+import { AuthResponse, UserCreds } from '@app/shared/interfaces';
+import jwt_decode from 'jwt-decode';
 import { Observable, of } from 'rxjs';
 import { catchError, map, tap } from 'rxjs/operators';
-
-import jwt_decode from 'jwt-decode';
-
-import { AuthResponse, UserCreds } from '@app/shared/interfaces';
 
 @Injectable({
   providedIn: 'root',
@@ -16,11 +13,9 @@ export class AuthService {
   private readonly ACCESS_TOKEN_KEY = 'access_token';
   private readonly REFRESH_TOKEN_KEY = 'refresh_token';
   private authenticationStatus$$ = signal<boolean>(false);
+  private networkService = inject(NetworkService);
 
-  constructor(
-    private readonly http: HttpClient,
-    private router: Router,
-  ) {}
+  constructor(private readonly http: HttpClient) {}
 
   get isAuthenticated() {
     return this.authenticationStatus$$();
@@ -32,6 +27,7 @@ export class AuthService {
         if (response.body?.accessToken && response.body?.refreshToken) {
           this.setTokens(response.body);
           this.authenticationStatus$$.set(true);
+          this.networkService.connect();
         } else {
           throw new Error('Auth failed');
         }
@@ -54,6 +50,7 @@ export class AuthService {
   public logout() {
     this.removeTokens();
     this.authenticationStatus$$.set(false);
+    this.networkService.disconnect();
   }
 
   public refreshToken(): Observable<any> {
@@ -89,6 +86,7 @@ export class AuthService {
 
       if (decodedToken.exp > currentTime) {
         this.authenticationStatus$$.set(true);
+        this.networkService.connect();
         return of(true);
       } else {
         return this.refreshToken().pipe(
@@ -96,6 +94,7 @@ export class AuthService {
             if (response.accessToken) {
               this.setTokens(response);
               this.authenticationStatus$$.set(true);
+              this.networkService.connect();
               return true;
             }
             return false;

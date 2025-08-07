@@ -66,9 +66,55 @@ export class FoodDiaryService extends BaseFoodService {
   }
 
   private subscribe(): void {
+    this.subscribeToRealtimeUpdates();
+
     this.fetchMoreDiaryTrigger$.subscribe(() => {
       this.loadMoreData();
     });
+  }
+
+  private subscribeToRealtimeUpdates(): void {
+    this.networkService.getMessages().subscribe((message) => {
+      if (!message?.type) return;
+
+      switch (message.type) {
+        case 'DIARY_ENTRY_CREATED':
+        case 'DIARY_ENTRY_UPDATED':
+          if (message.payload?.dateISO) {
+            this.getFoodDiaryFullUpdateRange(message.payload.dateISO, 0);
+            this.foodStatsService.getStats();
+          }
+          break;
+
+        case 'DIARY_ENTRY_DELETED':
+          if (message.payload?.id) {
+            const entryDate = this.findDateByEntryId(message.payload.id);
+            if (entryDate) {
+              this.getFoodDiaryFullUpdateRange(entryDate, 0);
+              this.foodStatsService.getStats();
+            }
+          }
+          break;
+
+        case 'BODY_WEIGHT_CREATED':
+        case 'BODY_WEIGHT_UPDATED':
+          if (message.payload?.dateISO) {
+            this.getFoodDiaryFullUpdateRange(message.payload.dateISO, 0);
+            this.foodStatsService.getStats();
+          }
+          break;
+      }
+    });
+  }
+
+  private findDateByEntryId(entryId: number): string | null {
+    const diary = this.diaryRaw$$();
+    for (const [dateISO, day] of Object.entries(diary)) {
+      if (day.food[entryId]) {
+        return dateISO;
+      }
+    }
+    return null;
   }
 
   public calculateEntryKcals(entry: DiaryEntry): number {
