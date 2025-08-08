@@ -9,7 +9,7 @@ jobs:
   deploy:
     uses: ./.github/workflows/build-and-deploy.yml
     with:
-      build-config: 'production'
+      build-config: 'prod'
       server-path: '/var/www/megaapp'
     secrets:
       HOST: ${{ secrets.HOST }}
