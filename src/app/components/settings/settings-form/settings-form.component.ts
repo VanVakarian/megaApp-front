@@ -1,6 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { HttpClient } from '@angular/common/http';
-import { ChangeDetectorRef, Component, effect, OnInit } from '@angular/core';
+import { Component, OnInit, effect } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
@@ -8,7 +7,7 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
-import { RequestStatus, SettingsService } from '@app/services/settings.service';
+import { SettingsService } from '@app/services/settings.service';
 import { DEFAULT_INPUT_FIELD_PROGRESS_TIMER } from '@app/shared/const';
 import {
   AnimationState,
@@ -83,13 +82,9 @@ export class SettingsFormComponent implements OnInit {
     this.heightFieldState = state;
   });
 
-  constructor(
-    private settingsService: SettingsService,
-    private cdr: ChangeDetectorRef,
-    private http: HttpClient,
-  ) {
+  constructor(private settingsService: SettingsService) {
     effect(() => {
-      this.blockFieldsOnRequestsStatusChanges();
+      this.applySettingsToForm();
     });
   }
 
@@ -104,7 +99,7 @@ export class SettingsFormComponent implements OnInit {
 
     this.settingsForm.patchValue({ [chapterName]: newValue }, { emitEvent: false });
 
-    const requestIsSuccess = await this.settingsService.saveSelectedChapter(setting);
+    const requestIsSuccess = await this.settingsService.saveSetting(setting);
     if (!requestIsSuccess) {
       this.settingsForm.patchValue({ [chapterName]: currentValue }, { emitEvent: false });
     }
@@ -118,7 +113,7 @@ export class SettingsFormComponent implements OnInit {
     this.settingsForm.patchValue({ darkTheme: newValue }, { emitEvent: false });
     this.settingsService.applyTheme(newValue);
 
-    const requestIsSuccess = await this.settingsService.saveSelectedChapter(setting);
+    const requestIsSuccess = await this.settingsService.saveSetting(setting);
     if (!requestIsSuccess) {
       this.settingsForm.patchValue({ darkTheme: currentValue }, { emitEvent: false });
       this.settingsService.applyTheme(currentValue);
@@ -132,7 +127,7 @@ export class SettingsFormComponent implements OnInit {
 
     this.settingsForm.patchValue({ liteVersion: newValue }, { emitEvent: false });
 
-    const requestIsSuccess = await this.settingsService.saveSelectedChapter(setting);
+    const requestIsSuccess = await this.settingsService.saveSetting(setting);
     if (!requestIsSuccess) {
       this.settingsForm.patchValue({ liteVersion: currentValue }, { emitEvent: false });
     }
@@ -176,7 +171,7 @@ export class SettingsFormComponent implements OnInit {
     const height = this.settingsForm.controls.height.value;
     const setting = { height: Number(height) };
 
-    const isSuccess = await this.settingsService.saveSelectedChapter(setting);
+    const isSuccess = await this.settingsService.saveSetting(setting);
     if (isSuccess) {
       this.heightPreviousValue = Number(height);
     } else {
@@ -184,8 +179,8 @@ export class SettingsFormComponent implements OnInit {
     }
   }
 
-  private async applySettingsToForm(): Promise<void> {
-    const settings = await this.settingsService.initLoadSettings();
+  private applySettingsToForm(): void {
+    const settings = this.settingsService.settings$$();
     this.applySettingstoForm(settings);
     this.heightPreviousValue = Number(settings.height);
   }
@@ -201,47 +196,5 @@ export class SettingsFormComponent implements OnInit {
       },
       { emitEvent: false },
     );
-  }
-
-  private blockFieldsOnRequestsStatusChanges(): void {
-    const selectedChapterFoodRequestStatus = this.settingsService.requestStatus.selectedChapterFood();
-    if (selectedChapterFoodRequestStatus === RequestStatus.IN_PROGRESS) {
-      this.settingsForm.controls.selectedChapterFood.disable();
-    } else {
-      this.settingsForm.controls.selectedChapterFood.enable();
-    }
-
-    const selectedChapterMoneyRequestStatus = this.settingsService.requestStatus.selectedChapterMoney();
-    if (selectedChapterMoneyRequestStatus === RequestStatus.IN_PROGRESS) {
-      this.settingsForm.controls.selectedChapterMoney.disable();
-    } else {
-      this.settingsForm.controls.selectedChapterMoney.enable();
-    }
-
-    const darkThemeRequestStatus = this.settingsService.requestStatus.darkTheme();
-    if (darkThemeRequestStatus === RequestStatus.IN_PROGRESS) {
-      this.settingsForm.controls.darkTheme.disable();
-    } else {
-      this.settingsForm.controls.darkTheme.enable();
-    }
-
-    const liteVersionRequestStatus = this.settingsService.requestStatus.liteVersion();
-    if (liteVersionRequestStatus === RequestStatus.IN_PROGRESS) {
-      this.settingsForm.controls.liteVersion.disable();
-    } else {
-      this.settingsForm.controls.liteVersion.enable();
-    }
-
-    const heightRequestStatus = this.settingsService.requestStatus.height();
-    if (heightRequestStatus === RequestStatus.IN_PROGRESS) {
-      this.settingsForm.controls.height.disable();
-      this.heightFieldAnimationStateManager.toSubmitting();
-    } else if (heightRequestStatus === RequestStatus.SUCCESS) {
-      this.settingsForm.controls.height.enable();
-      this.heightFieldAnimationStateManager.toSuccess();
-    } else if (heightRequestStatus === RequestStatus.ERROR) {
-      this.settingsForm.controls.height.enable();
-      this.heightFieldAnimationStateManager.toError();
-    }
   }
 }

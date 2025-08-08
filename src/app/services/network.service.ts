@@ -1,133 +1,143 @@
-import { HttpClient } from '@angular/common/http';
-import { Injectable, OnDestroy } from '@angular/core';
-
-import { BehaviorSubject, EMPTY, Subscription, of, timer } from 'rxjs';
-import { catchError, retry, switchMap } from 'rxjs/operators';
-import { WebSocketSubject, webSocket } from 'rxjs/webSocket';
-
+import { Injectable, OnDestroy, WritableSignal, computed, signal } from '@angular/core';
 import { tokenGetter } from '@app/services/auth.service';
 import { IncomingMessage } from '@app/shared/interfaces';
+import { EMPTY, Observable, Subject, timer } from 'rxjs';
+import { catchError, retry, tap } from 'rxjs/operators';
+import { WebSocketSubject, webSocket } from 'rxjs/webSocket';
+import { environment } from 'src/environments/environment.dev';
+import { NotificationService } from './notification.service';
 
 @Injectable({
   providedIn: 'root',
 })
 export class NetworkService implements OnDestroy {
-  private socket$: WebSocketSubject<any> | undefined;
-  private reconnectDelaySec = 1; // время задержки между попытками переподключения в случае потери соединения с сервером
-  private connectionStatus: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(false);
-  private connectionStatusSubscription: Subscription;
-  // private pingInterval: any;
-  // private pingIntervalSec: number = 50;
-  private isConnected: boolean = false;
+  public readonly isOnline$$: WritableSignal<boolean> = signal(navigator.onLine);
+  public readonly isConnected$$: WritableSignal<boolean> = signal(false);
+  public readonly isNetworkAvailable$$ = computed(() => this.isOnline$$());
 
-  constructor(private http: HttpClient) {
-    this.connectionStatusSubscription = this.connectionStatus
+  private socket$: WebSocketSubject<any> | undefined;
+  private reconnectDelaySec = 1;
+  private readonly messagesSubject = new Subject<IncomingMessage>();
+  private readonly clientId: string;
+
+  constructor(private readonly notifications: NotificationService) {
+    this.clientId = Math.random().toString(36).substring(2, 10);
+    this.initNetworkEvents();
+  }
+
+  public ngOnDestroy(): void {
+    this.disconnect();
+    this.messagesSubject.complete();
+  }
+
+  public getClientId(): string {
+    return this.clientId;
+  }
+
+  public connect(): void {
+    if (this.socket$ && !this.socket$.closed) {
+      return;
+    }
+
+    const token = tokenGetter();
+    if (!token) {
+      console.warn('Cannot connect WebSocket: no auth token');
+      return;
+    }
+
+    this.socket$ = this.createWebSocket(token);
+
+    this.socket$
       .pipe(
-        switchMap((isConnected) => {
-          if (!isConnected) {
-            return timer(this.reconnectDelaySec * 1000).pipe(
-              switchMap(() => {
-                console.log('Reconnecting...');
-                this.connect();
-                return of(false);
-              }),
-            );
-          } else {
-            return of(true);
-          }
+        tap(() => {
+          this.isConnected$$.set(true);
+        }),
+        retry({
+          delay: (error, retryCount) => {
+            console.log(`WebSocket reconnecting, attempt #${retryCount}`);
+            this.isConnected$$.set(false);
+            return timer(this.reconnectDelaySec * 1000);
+          },
+        }),
+        catchError((error) => {
+          console.error('WebSocket connection failed:', error);
+          this.isConnected$$.set(false);
+          return EMPTY;
         }),
       )
-      .subscribe();
-
-    this.connect();
+      .subscribe({
+        next: (message) => this.handleIncomingMessage(message),
+        error: (error) => {
+          console.error('WebSocket error:', error);
+          this.isConnected$$.set(false);
+        },
+        complete: () => {
+          console.warn('WebSocket connection closed');
+          this.isConnected$$.set(false);
+        },
+      });
   }
 
-  private connect() {
-    if (!this.socket$ || !this.isConnected) {
-      console.log('Connecting...');
-      this.socket$ = this.getNewWebSocket();
-
-      this.socket$
-        .pipe(
-          retry({
-            delay: (error, retryCount) => {
-              console.log(`Retry attempt #${retryCount}`);
-              return timer(this.reconnectDelaySec * 1000);
-            },
-          }),
-          catchError((error) => {
-            console.error('WebSocket error:', error);
-            this.connectionStatus.next(false);
-            this.isConnected = false;
-            return EMPTY;
-          }),
-        )
-        .subscribe({
-          next: (payload) => this.handleMessage(payload),
-          error: (err) => {
-            console.error('WebSocket connection error:', err);
-            this.connectionStatus.next(false);
-            this.isConnected = false;
-          },
-          complete: () => {
-            console.warn('WebSocket connection closed');
-            this.connectionStatus.next(false);
-            this.isConnected = false;
-          },
-        });
-
-      this.connectionStatus.next(true);
-      this.isConnected = true;
-      // this.initWsPingPong(); // TODO: See if I need this to keep ws connection live
-      this.sendTokenOnWebSocket();
-    }
-  }
-
-  // public initWsPingPong() {
-  //   if (this.pingInterval) {
-  //     clearInterval(this.pingInterval);
-  //   }
-  //   this.pingInterval = setInterval(() => {
-  //     if (this.socket$ && !this.socket$.closed) {
-  //       this.socket$.next({ message: 'ping' });
-  //     }
-  //   }, this.pingIntervalSec * 1000);
-  // }
-
-  private sendTokenOnWebSocket() {
-    const token = tokenGetter();
-    // console.log('Sending token:', token);
-    if (token && this.socket$ && !this.socket$.closed) {
-      this.socket$.next({ auth: token });
-    }
-  }
-
-  private getNewWebSocket() {
-    return webSocket('ws://127.0.0.1:3000/api/ws');
-  }
-
-  private handleMessage(data: IncomingMessage) {
-    // console.log('Received message:', data);
-    const key = Object.keys(data).length === 1 ? Object.keys(data)[0] : null;
-    if (key) {
-      if (data[key] === 'pong') {
-        console.log('Received pong');
-      } else if (data[key] === 'token-needed') {
-        console.log('Received auth demand');
-        this.sendTokenOnWebSocket();
-      }
-    }
-  }
-
-  ngOnDestroy() {
-    this.connectionStatusSubscription.unsubscribe();
-
-    // if (this.pingInterval) {
-    //   clearInterval(this.pingInterval);
-    // }
-
+  public disconnect(): void {
     if (this.socket$) {
       this.socket$.complete();
+      this.socket$ = undefined;
+    }
+    this.isConnected$$.set(false);
+  }
+
+  public getMessages(): Observable<IncomingMessage> {
+    return this.messagesSubject.asObservable();
+  }
+
+  private initNetworkEvents(): void {
+    window.addEventListener('online', () => this.updateOnlineStatus(true));
+    window.addEventListener('offline', () => this.updateOnlineStatus(false));
+
+    this.isOnline$$.set(navigator.onLine);
+  }
+
+  private updateOnlineStatus(isOnline: boolean): void {
+    this.isOnline$$.set(isOnline);
+
+    if (!isOnline) {
+      this.notifications.showOfflineMode();
+    }
+  }
+
+  private createWebSocket(token: string): WebSocketSubject<any> {
+    const encodedToken = encodeURIComponent(token);
+    const encodedClientId = encodeURIComponent(this.clientId);
+
+    let wsUrl: string;
+
+    if (environment.wsUrl) {
+      wsUrl = `${environment.wsUrl}?token=${encodedToken}&clientId=${encodedClientId}`;
+    } else {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const host = window.location.host;
+      wsUrl = `${protocol}//${host}/api/ws?token=${encodedToken}&clientId=${encodedClientId}`;
+    }
+
+    return webSocket(wsUrl);
+  }
+
+  private handleIncomingMessage(data: any): void {
+    if (data?.type === 'ping') {
+      if (this.socket$ && !this.socket$.closed) {
+        this.socket$.next({ type: 'pong' });
+      }
+      return;
+    }
+
+    if (data?.type === 'pong') {
+      console.log('Received pong');
+      return;
+    }
+
+    if (data?.type) {
+      console.log('Received realtime update:', data);
+      this.messagesSubject.next(data);
     }
   }
 }

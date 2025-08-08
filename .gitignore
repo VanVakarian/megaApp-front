@@ -47,4 +47,4 @@ build-info.js
 .qodo
 .vscode
 GEMINI.md
-copilot-instructions.md
+*.instructions.md

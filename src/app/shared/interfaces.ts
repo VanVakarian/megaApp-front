@@ -20,7 +20,9 @@ export interface AuthResponse {
 //                                                                            WS
 
 export interface IncomingMessage {
-  [key: string]: string;
+  type?: string;
+  payload?: any;
+  [key: string]: any;
 }
 
 //                                                                        SERVER
@@ -90,38 +92,35 @@ export interface Diary {
     ['food']: {
       [id: number]: DiaryEntry;
     };
-    ['bodyWeight']: number | null;
-    ['targetKcals']: number;
+    ['bodyWeight']: number | null; // TODO[116]: Extract to a separate interface/signal
+    ['targetKcals']: number; // TODO[116]: This too? 🤔
   };
 }
 
-export interface FormattedDiaryEntry {
-  id: number;
-  dateISO: string;
-  foodCatalogueId: number;
-  foodWeight: number;
-  history: HistoryEntry[];
+export interface DiaryEntryWithFullData extends DiaryEntry {
   foodName: string;
   foodKcals: number;
   foodPercent: string;
   foodKcalPercentageOfDaysNorm: number;
 }
 
-export interface HistoryEntry {
-  action: 'init' | 'set' | 'add' | 'subtract';
-  value: number;
+export interface DayTotals {
+  kcalsEaten: number;
+  kcalsPercent: number;
+  bodyWeight: number | null;
+  targetKcals: number;
 }
 
-export interface FormattedDiary {
-  [date: string]: {
-    ['food']: {
-      [id: number]: FormattedDiaryEntry;
-    };
-    ['bodyWeight']: number | null;
-    ['targetKcals']: number;
-    ['kcalsEaten']: number;
-    ['kcalsPercent']: number;
+export interface UnifiedDiary {
+  [dateISO: string]: {
+    food: DiaryEntryWithFullData[];
+    totals: DayTotals;
   };
+}
+
+export interface HistoryEntry {
+  action: 'init' | 'set' | 'add' | 'subtract'; // TODO[115]: Enumify
+  value: number;
 }
 
 export type CatalogueId = number;

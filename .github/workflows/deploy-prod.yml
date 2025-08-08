@@ -1,0 +1,17 @@
+name: Deploy to PROD
+
+on:
+  push:
+    branches:
+      - release
+
+jobs:
+  deploy:
+    uses: ./.github/workflows/build-and-deploy.yml
+    with:
+      build-config: 'prod'
+      server-path: '/var/www/megaapp'
+    secrets:
+      HOST: ${{ secrets.HOST }}
+      USER: ${{ secrets.USER }}
+      SSH_KEY: ${{ secrets.SSH_KEY }}

@@ -4,7 +4,6 @@ import { Injectable, WritableSignal, signal } from '@angular/core';
   providedIn: 'root',
 })
 export class NetworkMonitor {
-  // public onlineSubject: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(navigator.onLine);
   public isOnline$$: WritableSignal<boolean> = signal(true);
 
   constructor() {
@@ -17,7 +16,6 @@ export class NetworkMonitor {
   }
 
   private updateOnlineStatus(isOnline: boolean): void {
-    console.log('Network status changed:', isOnline ? 'online' : 'offline');
     this.isOnline$$.set(isOnline);
   }
 }

@@ -1,0 +1,17 @@
+name: Deploy to TEST
+
+on:
+  push:
+    branches:
+      - develop
+
+jobs:
+  deploy:
+    uses: ./.github/workflows/build-and-deploy.yml
+    with:
+      build-config: 'test'
+      server-path: '/var/www/megatest'
+    secrets:
+      HOST: ${{ secrets.HOST }}
+      USER: ${{ secrets.USER }}
+      SSH_KEY: ${{ secrets.SSH_KEY }}
