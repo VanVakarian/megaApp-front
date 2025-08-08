@@ -41,7 +41,21 @@
             }
           },
           "configurations": {
-            "production": {
+            "dev": {
+              "optimization": false,
+              "extractLicenses": false,
+              "sourceMap": true,
+              "namedChunks": true
+            },
+            "test": {
+              "fileReplacements": [
+                {
+                  "replace": "src/environments/environment.dev.ts",
+                  "with": "src/environments/environment.test.ts"
+                }
+              ]
+            },
+            "prod": {
               "budgets": [
                 {
                   "type": "initial",
@@ -54,32 +68,35 @@
                   "maximumError": "4kb"
                 }
               ],
-              "outputHashing": "all"
-            },
-            "development": {
-              "optimization": false,
-              "extractLicenses": false,
-              "sourceMap": true,
-              "namedChunks": true
+              "outputHashing": "all",
+              "fileReplacements": [
+                {
+                  "replace": "src/environments/environment.dev.ts",
+                  "with": "src/environments/environment.prod.ts"
+                }
+              ]
             }
           },
-          "defaultConfiguration": "production"
+          "defaultConfiguration": "prod"
         },
         "serve": {
           "builder": "@angular/build:dev-server",
           "options": {
-            "buildTarget": "megaapp:build:development",
+            "buildTarget": "megaapp:build:dev",
             "proxyConfig": "proxy.conf.json"
           },
           "configurations": {
-            "production": {
-              "buildTarget": "megaapp:build:production"
+            "prod": {
+              "buildTarget": "megaapp:build:prod"
             },
-            "development": {
-              "buildTarget": "megaapp:build:development"
+            "test": {
+              "buildTarget": "megaapp:build:test"
+            },
+            "dev": {
+              "buildTarget": "megaapp:build:dev"
             }
           },
-          "defaultConfiguration": "development"
+          "defaultConfiguration": "dev"
         },
         "extract-i18n": {
           "builder": "@angular/build:extract-i18n",

@@ -4,6 +4,7 @@ import { IncomingMessage } from '@app/shared/interfaces';
 import { EMPTY, Observable, Subject, timer } from 'rxjs';
 import { catchError, retry, tap } from 'rxjs/operators';
 import { WebSocketSubject, webSocket } from 'rxjs/webSocket';
+import { environment } from 'src/environments/environment.dev';
 import { NotificationService } from './notification.service';
 
 @Injectable({
@@ -107,7 +108,17 @@ export class NetworkService implements OnDestroy {
   private createWebSocket(token: string): WebSocketSubject<any> {
     const encodedToken = encodeURIComponent(token);
     const encodedClientId = encodeURIComponent(this.clientId);
-    const wsUrl = `ws://127.0.0.1:3000/api/ws?token=${encodedToken}&clientId=${encodedClientId}`;
+
+    let wsUrl: string;
+
+    if (environment.wsUrl) {
+      wsUrl = `${environment.wsUrl}?token=${encodedToken}&clientId=${encodedClientId}`;
+    } else {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const host = window.location.host;
+      wsUrl = `${protocol}//${host}/api/ws?token=${encodedToken}&clientId=${encodedClientId}`;
+    }
+
     return webSocket(wsUrl);
   }
 
