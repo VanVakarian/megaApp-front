@@ -23,7 +23,7 @@ jobs:
   build-and-deploy:
     name: Build and Deploy Angular App
     runs-on: ubuntu-latest
-    environment: front
+    environment: VPS_31
 
     steps:
       - name: Checkout code

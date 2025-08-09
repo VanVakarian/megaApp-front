@@ -1,4 +1,4 @@
-name: Deploy to DEV
+name: Deploy to TEST
 
 on:
   push:
@@ -9,7 +9,7 @@ jobs:
   deploy:
     uses: ./.github/workflows/build-and-deploy.yml
     with:
-      build-config: 'development'
+      build-config: 'test'
       server-path: '/var/www/megatest'
     secrets:
       HOST: ${{ secrets.HOST }}
