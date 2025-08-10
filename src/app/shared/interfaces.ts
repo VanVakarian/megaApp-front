@@ -20,10 +20,25 @@ export interface AuthResponse {
 //                                                                            WS
 
 export enum WebSocketMessageType {
+  PING = 'PING',
+  SYNC_STATUS = 'SYNC_STATUS',
   DIARY_ENTRY_CREATED = 'DIARY_ENTRY_CREATED',
   DIARY_ENTRY_UPDATED = 'DIARY_ENTRY_UPDATED',
   DIARY_ENTRY_DELETED = 'DIARY_ENTRY_DELETED',
   BODY_WEIGHT_UPDATED = 'BODY_WEIGHT_UPDATED',
+}
+
+export interface PingWsMessage {
+  type: WebSocketMessageType.PING;
+}
+
+export interface UserDataLastModifiedTs {
+  userDataLastModifiedTs: number;
+}
+
+export interface SyncStatusWsMessage {
+  type: WebSocketMessageType.SYNC_STATUS;
+  payload: UserDataLastModifiedTs;
 }
 
 export interface DiaryEntryToCreate extends DiaryEntry {}
@@ -64,6 +79,8 @@ export interface BodyWeightUpdatedWsMessage {
 }
 
 export type IncomingWsMessage =
+  | PingWsMessage
+  | SyncStatusWsMessage
   | DiaryEntryCreatedWsMessage
   | DiaryEntryUpdatedWsMessage
   | DiaryEntryDeletedWsMessage

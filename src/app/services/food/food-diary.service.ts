@@ -15,6 +15,7 @@ import {
   IncomingWsMessage,
   ServerResponseWithDiaryId,
   UnifiedDiary,
+  UserDataLastModifiedTs,
   WebSocketMessageType,
 } from '@app/shared/interfaces';
 import { calculateTodayIsoWithUserTimeShift } from '@app/shared/utils';
@@ -45,6 +46,8 @@ export class FoodDiaryService extends BaseFoodService {
   private readonly FETCH_THRESHOLD = 3;
   private readonly loadedRange$$: WritableSignal<{ start: string; end: string } | null> = signal(null);
   private readonly fetchMoreDiaryTrigger$ = new Subject<void>();
+
+  private lastSyncTs = 0;
 
   protected getStorageKey(): string {
     return this.DIARY_STORAGE_KEY;
@@ -481,6 +484,12 @@ export class FoodDiaryService extends BaseFoodService {
       if (!message?.type) return;
 
       switch (message.type) {
+        case WebSocketMessageType.SYNC_STATUS:
+          if (this.isValidSyncStatusPayload(message.payload)) {
+            this.handleSyncStatus(message.payload);
+          }
+          break;
+
         case WebSocketMessageType.DIARY_ENTRY_CREATED:
           if (this.isValidNewDiaryEntryPayload(message.payload)) {
             this.handleDiaryEntryCreated(message.payload);
@@ -506,6 +515,33 @@ export class FoodDiaryService extends BaseFoodService {
           break;
       }
     });
+  }
+
+  private isValidSyncStatusPayload(payload: UserDataLastModifiedTs): payload is UserDataLastModifiedTs {
+    return payload && typeof payload.userDataLastModifiedTs === 'number';
+  }
+
+  private async handleSyncStatus(payload: UserDataLastModifiedTs): Promise<void> {
+    try {
+      const serverUserDataTs = payload.userDataLastModifiedTs;
+
+      if (serverUserDataTs > this.lastSyncTs) {
+        await this.loadAllFoodData();
+        this.lastSyncTs = Date.now();
+      }
+    } catch (error) {
+      console.error('Failed to handle sync status:', error);
+    }
+  }
+
+  public async loadAllFoodData(): Promise<void> {
+    await Promise.all([
+      this.getFoodDiaryFullUpdateRange(),
+      this.catalogueService.getCatalogueEntries(),
+      this.catalogueService.getCatalogueEntriesSelected(),
+      this.coefficientsService.getCoefficients(),
+      this.foodStatsService.getStats(),
+    ]);
   }
 
   private isValidNewDiaryEntryPayload(payload: DiaryEntryToCreate): payload is DiaryEntryToCreate {

@@ -1,6 +1,6 @@
 import { Injectable, WritableSignal, computed, signal } from '@angular/core';
 import { tokenGetter } from '@app/services/auth.service';
-import { IncomingWsMessage } from '@app/shared/interfaces';
+import { IncomingWsMessage, WebSocketMessageType } from '@app/shared/interfaces';
 import { EMPTY, Subject, timer } from 'rxjs';
 import { catchError, retry, tap } from 'rxjs/operators';
 import { WebSocketSubject, webSocket } from 'rxjs/webSocket';
@@ -113,20 +113,14 @@ export class NetworkService {
     return webSocket(wsUrl);
   }
 
-  private handleIncomingMessage(data: any): void {
-    if (data?.type === 'ping') {
+  private handleIncomingMessage(data: IncomingWsMessage): void {
+    if (data.type === WebSocketMessageType.PING) {
       if (this.socket$ && !this.socket$.closed) {
-        this.socket$.next({ type: 'pong' });
+        this.socket$.next({ type: 'PONG' });
       }
       return;
     }
 
-    if (data?.type === 'pong') {
-      return;
-    }
-
-    if (data?.type) {
-      this.wsMessages$.next(data);
-    }
+    this.wsMessages$.next(data);
   }
 }
