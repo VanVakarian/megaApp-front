@@ -1,7 +1,7 @@
-import { Injectable, OnDestroy, WritableSignal, computed, signal } from '@angular/core';
+import { Injectable, WritableSignal, computed, signal } from '@angular/core';
 import { tokenGetter } from '@app/services/auth.service';
-import { IncomingMessage } from '@app/shared/interfaces';
-import { EMPTY, Observable, Subject, timer } from 'rxjs';
+import { IncomingWsMessage } from '@app/shared/interfaces';
+import { EMPTY, Subject, timer } from 'rxjs';
 import { catchError, retry, tap } from 'rxjs/operators';
 import { WebSocketSubject, webSocket } from 'rxjs/webSocket';
 import { environment } from 'src/environments/environment.dev';
@@ -10,24 +10,19 @@ import { NotificationService } from './notification.service';
 @Injectable({
   providedIn: 'root',
 })
-export class NetworkService implements OnDestroy {
+export class NetworkService {
   public readonly isOnline$$: WritableSignal<boolean> = signal(navigator.onLine);
   public readonly isConnected$$: WritableSignal<boolean> = signal(false);
   public readonly isNetworkAvailable$$ = computed(() => this.isOnline$$());
 
   private socket$: WebSocketSubject<any> | undefined;
   private reconnectDelaySec = 1;
-  private readonly messagesSubject = new Subject<IncomingMessage>();
+  public readonly wsMessages$ = new Subject<IncomingWsMessage>();
   private readonly clientId: string;
 
   constructor(private readonly notifications: NotificationService) {
     this.clientId = Math.random().toString(36).substring(2, 10);
     this.initNetworkEvents();
-  }
-
-  public ngOnDestroy(): void {
-    this.disconnect();
-    this.messagesSubject.complete();
   }
 
   public getClientId(): string {
@@ -86,10 +81,6 @@ export class NetworkService implements OnDestroy {
     this.isConnected$$.set(false);
   }
 
-  public getMessages(): Observable<IncomingMessage> {
-    return this.messagesSubject.asObservable();
-  }
-
   private initNetworkEvents(): void {
     window.addEventListener('online', () => this.updateOnlineStatus(true));
     window.addEventListener('offline', () => this.updateOnlineStatus(false));
@@ -131,13 +122,11 @@ export class NetworkService implements OnDestroy {
     }
 
     if (data?.type === 'pong') {
-      console.log('Received pong');
       return;
     }
 
     if (data?.type) {
-      console.log('Received realtime update:', data);
-      this.messagesSubject.next(data);
+      this.wsMessages$.next(data);
     }
   }
 }
