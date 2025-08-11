@@ -31,7 +31,7 @@ import { FoodCoefficientsService } from '@app/services/food/food-coefficients.se
 import { FoodDiaryService } from '@app/services/food/food-diary.service';
 import { FoodStatsService } from '@app/services/food/food-stats.service';
 import { ScreenSizeWatcherService } from '@app/services/screen-size-watcher.service';
-import { CatalogueEntry, DiaryEntry, ScreenType } from '@app/shared/interfaces';
+import { CatalogueEntry, DiaryEntry, HistoryEntryAction, ScreenType } from '@app/shared/interfaces';
 import { UiProgressIcon } from '@app/shared/ui-kit/progress-icon/progress-icon.component';
 import { FoodSelectDropdownComponent } from './food-select-dropdown/food-select-dropdown.component';
 
@@ -220,7 +220,7 @@ export class DiaryEntryNewFormComponent implements OnChanges {
       dateISO: this.foodDiaryService.selectedDayIso$$(),
       foodCatalogueId: foodCatalogueId,
       foodWeight: foodWeight || 0,
-      history: [{ action: 'init', value: foodWeight || 0 }],
+      history: [{ action: HistoryEntryAction.INIT, value: foodWeight || 0 }],
     };
 
     const response = await this.foodDiaryService.createDiaryEntry(entry);
