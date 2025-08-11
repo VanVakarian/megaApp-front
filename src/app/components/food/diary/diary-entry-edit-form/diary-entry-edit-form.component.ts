@@ -31,7 +31,7 @@ import { FoodDiaryService } from '@app/services/food/food-diary.service';
 import { FoodStatsService } from '@app/services/food/food-stats.service';
 import { ScreenSizeWatcherService } from '@app/services/screen-size-watcher.service';
 import { ConfirmationDialogModalService } from '@app/shared/components/dialog-modal/mat-dialog-modal.service';
-import { DiaryEntry, HistoryEntry } from '@app/shared/interfaces';
+import { DiaryEntry, HistoryEntry, HistoryEntryAction } from '@app/shared/interfaces';
 import { UiProgressIcon } from '@app/shared/ui-kit/progress-icon/progress-icon.component';
 import { delay, filter, Subscription, take } from 'rxjs';
 
@@ -66,7 +66,7 @@ export class DiaryEntryEditFormComponent implements OnInit, OnChanges, OnDestroy
   public foodWeightChangeElem!: ElementRef;
 
   public showHistory: boolean = false;
-  private historyAction: 'set' | 'add' | 'subtract' = 'set';
+  private historyAction: HistoryEntryAction = HistoryEntryAction.SET;
 
   private selectedDaysTargerKcals = 0;
   private selectedDaysEatenPercent = 0;
@@ -216,9 +216,9 @@ export class DiaryEntryEditFormComponent implements OnInit, OnChanges, OnDestroy
     const historyValue = weightIfChange ? Math.abs(foodWeight) : (weightIfSet ?? 0);
 
     if (weightIfChange === null) {
-      this.historyAction = 'set';
+      this.historyAction = HistoryEntryAction.SET;
     } else {
-      this.historyAction = String(weightIfChange).includes('-') ? 'subtract' : 'add';
+      this.historyAction = String(weightIfChange).includes('-') ? HistoryEntryAction.SUBTRACT : HistoryEntryAction.ADD;
     }
 
     const history: HistoryEntry = { action: this.historyAction, value: historyValue };
@@ -261,26 +261,26 @@ export class DiaryEntryEditFormComponent implements OnInit, OnChanges, OnDestroy
 
   public formHistoryEntry(historyEntry: HistoryEntry) {
     switch (historyEntry.action) {
-      case 'init':
+      case HistoryEntryAction.INIT:
         return `Запись создана с весом ${historyEntry.value} г.`;
-      case 'set':
+      case HistoryEntryAction.SET:
         return `Задан новый вес: ${historyEntry.value} г.`;
-      case 'add':
+      case HistoryEntryAction.ADD:
         return `Добавлено ${historyEntry.value} г.`;
-      case 'subtract':
+      case HistoryEntryAction.SUBTRACT:
         return `Убрано ${historyEntry.value} г.`;
     }
   }
 
   public chooseIconForHistoryEntry(historyEntry: HistoryEntry) {
     switch (historyEntry.action) {
-      case 'init':
+      case HistoryEntryAction.INIT:
         return 'grade';
-      case 'set':
+      case HistoryEntryAction.SET:
         return 'create';
-      case 'add':
+      case HistoryEntryAction.ADD:
         return 'add';
-      case 'subtract':
+      case HistoryEntryAction.SUBTRACT:
         return 'remove';
     }
   }

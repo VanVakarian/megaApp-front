@@ -19,11 +19,72 @@ export interface AuthResponse {
 
 //                                                                            WS
 
-export interface IncomingMessage {
-  type?: string;
-  payload?: any;
-  [key: string]: any;
+export enum WebSocketMessageType {
+  PING = 'PING',
+  SYNC_STATUS = 'SYNC_STATUS',
+  DIARY_ENTRY_CREATED = 'DIARY_ENTRY_CREATED',
+  DIARY_ENTRY_UPDATED = 'DIARY_ENTRY_UPDATED',
+  DIARY_ENTRY_DELETED = 'DIARY_ENTRY_DELETED',
+  BODY_WEIGHT_UPDATED = 'BODY_WEIGHT_UPDATED',
 }
+
+export interface PingWsMessage {
+  type: WebSocketMessageType.PING;
+}
+
+export interface UserDataLastModifiedTs {
+  userDataLastModifiedTs: number;
+}
+
+export interface SyncStatusWsMessage {
+  type: WebSocketMessageType.SYNC_STATUS;
+  payload: UserDataLastModifiedTs;
+}
+
+export interface DiaryEntryToCreate extends DiaryEntry {}
+
+export interface DiaryEntryCreatedWsMessage {
+  type: WebSocketMessageType.DIARY_ENTRY_CREATED;
+  payload: DiaryEntryToCreate;
+}
+
+export interface DiaryEntryToUpdate {
+  id: number;
+  newFoodWeight: number;
+  newHistoryEntry: HistoryEntry;
+}
+
+export interface DiaryEntryUpdatedWsMessage {
+  type: WebSocketMessageType.DIARY_ENTRY_UPDATED;
+  payload: DiaryEntryToUpdate;
+}
+
+export interface DiaryEntryToDelete {
+  deletedDiaryEntryId: number;
+}
+
+export interface DiaryEntryDeletedWsMessage {
+  type: WebSocketMessageType.DIARY_ENTRY_DELETED;
+  payload: DiaryEntryToDelete;
+}
+
+export interface BodyWeightToUpdate {
+  dateISO: string;
+  newBodyWeight: number;
+}
+
+export interface BodyWeightUpdatedWsMessage {
+  type: WebSocketMessageType.BODY_WEIGHT_UPDATED;
+  payload: BodyWeightToUpdate;
+}
+
+export type IncomingWsMessage =
+  | PingWsMessage
+  | SyncStatusWsMessage
+  | DiaryEntryCreatedWsMessage
+  | DiaryEntryUpdatedWsMessage
+  | DiaryEntryDeletedWsMessage
+  | BodyWeightUpdatedWsMessage;
 
 //                                                                        SERVER
 
@@ -118,8 +179,15 @@ export interface UnifiedDiary {
   };
 }
 
+export enum HistoryEntryAction {
+  INIT = 'init',
+  SET = 'set',
+  ADD = 'add',
+  SUBTRACT = 'subtract',
+}
+
 export interface HistoryEntry {
-  action: 'init' | 'set' | 'add' | 'subtract'; // TODO[115]: Enumify
+  action: HistoryEntryAction;
   value: number;
 }
 
