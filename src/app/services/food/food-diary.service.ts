@@ -3,12 +3,20 @@ import { computed, effect, Injectable, signal, Signal, WritableSignal } from '@a
 import { exhaustRequest } from '@app/shared/decorators/exhaust-request.decorator';
 import {
   BodyWeight,
+  BodyWeightToUpdate,
   DayTotals,
   Diary,
   DiaryEntry,
+  DiaryEntryToCreate,
+  DiaryEntryToDelete,
+  DiaryEntryToUpdate,
   DiaryEntryWithFullData,
+  HistoryEntry,
+  IncomingWsMessage,
   ServerResponseWithDiaryId,
   UnifiedDiary,
+  UserDataLastModifiedTs,
+  WebSocketMessageType,
 } from '@app/shared/interfaces';
 import { calculateTodayIsoWithUserTimeShift } from '@app/shared/utils';
 import { firstValueFrom, Subject } from 'rxjs';
@@ -38,6 +46,8 @@ export class FoodDiaryService extends BaseFoodService {
   private readonly FETCH_THRESHOLD = 3;
   private readonly loadedRange$$: WritableSignal<{ start: string; end: string } | null> = signal(null);
   private readonly fetchMoreDiaryTrigger$ = new Subject<void>();
+
+  private lastSyncTs = 0;
 
   protected getStorageKey(): string {
     return this.DIARY_STORAGE_KEY;
@@ -275,50 +285,6 @@ export class FoodDiaryService extends BaseFoodService {
     });
   }
 
-  private subscribeToRealtimeUpdates(): void {
-    this.networkService.getMessages().subscribe((message) => {
-      if (!message?.type) return;
-
-      switch (message.type) {
-        case 'DIARY_ENTRY_CREATED':
-        case 'DIARY_ENTRY_UPDATED':
-          if (message.payload?.dateISO) {
-            this.getFoodDiaryFullUpdateRange(message.payload.dateISO, 0);
-            this.foodStatsService.getStats();
-          }
-          break;
-
-        case 'DIARY_ENTRY_DELETED':
-          if (message.payload?.id) {
-            const entryDate = this.findDateByEntryId(message.payload.id);
-            if (entryDate) {
-              this.getFoodDiaryFullUpdateRange(entryDate, 0);
-              this.foodStatsService.getStats();
-            }
-          }
-          break;
-
-        case 'BODY_WEIGHT_CREATED':
-        case 'BODY_WEIGHT_UPDATED':
-          if (message.payload?.dateISO) {
-            this.getFoodDiaryFullUpdateRange(message.payload.dateISO, 0);
-            this.foodStatsService.getStats();
-          }
-          break;
-      }
-    });
-  }
-
-  private findDateByEntryId(entryId: number): string | null {
-    const diary = this.diaryRaw$$();
-    for (const [dateISO, day] of Object.entries(diary)) {
-      if (day.food[entryId]) {
-        return dateISO;
-      }
-    }
-    return null;
-  }
-
   private prepUnifiedDiary(): UnifiedDiary {
     const rawDiary = this.diaryRaw$$();
     const catalogue = this.catalogueService.catalogue$$();
@@ -511,5 +477,238 @@ export class FoodDiaryService extends BaseFoodService {
     if (savedDiary) {
       this.diaryRaw$$.set(savedDiary);
     }
+  }
+
+  private subscribeToRealtimeUpdates(): void {
+    this.networkService.wsMessages$.subscribe((message: IncomingWsMessage) => {
+      if (!message?.type) return;
+
+      switch (message.type) {
+        case WebSocketMessageType.SYNC_STATUS:
+          if (this.isValidSyncStatusPayload(message.payload)) {
+            this.handleSyncStatus(message.payload);
+          }
+          break;
+
+        case WebSocketMessageType.DIARY_ENTRY_CREATED:
+          if (this.isValidNewDiaryEntryPayload(message.payload)) {
+            this.handleDiaryEntryCreated(message.payload);
+          }
+          break;
+
+        case WebSocketMessageType.DIARY_ENTRY_UPDATED:
+          if (this.isValidUpdatedDiaryEntryPayload(message.payload)) {
+            this.handleDiaryEntryUpdated(message.payload);
+          }
+          break;
+
+        case WebSocketMessageType.DIARY_ENTRY_DELETED:
+          if (this.isValidDeletedDiaryEntryPayload(message.payload)) {
+            this.handleDiaryEntryDeleted(message.payload.deletedDiaryEntryId);
+          }
+          break;
+
+        case WebSocketMessageType.BODY_WEIGHT_UPDATED:
+          if (this.isValidBodyWeightUpdatePayload(message.payload)) {
+            this.handleBodyWeightUpdated(message.payload);
+          }
+          break;
+      }
+    });
+  }
+
+  private isValidSyncStatusPayload(payload: UserDataLastModifiedTs): payload is UserDataLastModifiedTs {
+    return payload && typeof payload.userDataLastModifiedTs === 'number';
+  }
+
+  private async handleSyncStatus(payload: UserDataLastModifiedTs): Promise<void> {
+    try {
+      const serverUserDataTs = payload.userDataLastModifiedTs;
+
+      if (serverUserDataTs > this.lastSyncTs) {
+        await this.loadAllFoodData();
+        this.lastSyncTs = Date.now();
+      }
+    } catch (error) {
+      console.error('Failed to handle sync status:', error);
+    }
+  }
+
+  public async loadAllFoodData(): Promise<void> {
+    await Promise.all([
+      this.getFoodDiaryFullUpdateRange(),
+      this.catalogueService.getCatalogueEntries(),
+      this.catalogueService.getCatalogueEntriesSelected(),
+      this.coefficientsService.getCoefficients(),
+      this.foodStatsService.getStats(),
+    ]);
+  }
+
+  private isValidNewDiaryEntryPayload(payload: DiaryEntryToCreate): payload is DiaryEntryToCreate {
+    return (
+      payload &&
+      typeof payload.id === 'number' &&
+      typeof payload.dateISO === 'string' &&
+      typeof payload.foodCatalogueId === 'number' &&
+      typeof payload.foodWeight === 'number' &&
+      Array.isArray(payload.history)
+    );
+  }
+
+  private handleDiaryEntryCreated(diaryEntry: DiaryEntryToCreate): void {
+    const dateISO = diaryEntry.dateISO;
+
+    this.diaryRaw$$.update((diary) => {
+      const updatedDiary = { ...diary };
+      const dayData = updatedDiary[dateISO] || { food: {}, bodyWeight: null, targetKcals: 2000 };
+
+      updatedDiary[dateISO] = {
+        ...dayData,
+        food: {
+          ...dayData.food,
+          [diaryEntry.id]: diaryEntry,
+        },
+      };
+
+      return updatedDiary;
+    });
+
+    this.saveToLocalStorage(this.diaryRaw$$());
+
+    const kcalsDelta = this.calculateEntryKcals(diaryEntry);
+    if (kcalsDelta !== 0) {
+      this.foodStatsService.updateStatsOptimistically(dateISO, 0, kcalsDelta);
+    }
+  }
+
+  private isValidUpdatedDiaryEntryPayload(payload: DiaryEntryToUpdate): payload is DiaryEntryToUpdate {
+    return (
+      payload &&
+      typeof payload.id === 'number' &&
+      typeof payload.newFoodWeight === 'number' &&
+      this.isValidHistoryEntry(payload.newHistoryEntry)
+    );
+  }
+
+  private isValidHistoryEntry(historyEntry: HistoryEntry): historyEntry is HistoryEntry {
+    return historyEntry && typeof historyEntry.action === 'string' && typeof historyEntry.value === 'number';
+  }
+
+  private handleDiaryEntryUpdated(updatedDiaryEntry: DiaryEntryToUpdate): void {
+    const originalDiary = this.diaryRaw$$();
+    let originalEntry: DiaryEntry | null = null;
+    let dateISO: string | null = null;
+
+    for (const [date, dayData] of Object.entries(originalDiary)) {
+      if (dayData.food[updatedDiaryEntry.id]) {
+        originalEntry = dayData.food[updatedDiaryEntry.id];
+        dateISO = date;
+        break;
+      }
+    }
+
+    if (!originalEntry || !dateISO) {
+      console.warn('Cannot update diary entry: original entry not found', updatedDiaryEntry.id);
+      return;
+    }
+
+    const originalKcals = this.calculateEntryKcals(originalEntry);
+
+    const updatedEntry: DiaryEntry = {
+      ...originalEntry,
+      foodWeight: updatedDiaryEntry.newFoodWeight,
+      history: [...originalEntry.history, updatedDiaryEntry.newHistoryEntry],
+    };
+
+    this.diaryRaw$$.update((diary) => {
+      const updatedDiary = { ...diary };
+      const dayData = updatedDiary[dateISO!];
+
+      if (dayData) {
+        updatedDiary[dateISO!] = {
+          ...dayData,
+          food: {
+            ...dayData.food,
+            [updatedDiaryEntry.id]: updatedEntry,
+          },
+        };
+      }
+
+      return updatedDiary;
+    });
+
+    this.saveToLocalStorage(this.diaryRaw$$());
+
+    const newKcals = this.calculateEntryKcals(updatedEntry);
+    const kcalsDelta = newKcals - originalKcals;
+
+    if (kcalsDelta !== 0) {
+      this.foodStatsService.updateStatsOptimistically(dateISO, 0, kcalsDelta);
+    }
+  }
+
+  private isValidDeletedDiaryEntryPayload(payload: DiaryEntryToDelete): payload is DiaryEntryToDelete {
+    return payload && typeof payload.deletedDiaryEntryId === 'number';
+  }
+
+  private handleDiaryEntryDeleted(deletedDiaryEntryId: number): void {
+    const originalDiary = this.diaryRaw$$();
+    let deletedEntry: DiaryEntry | null = null;
+    let dateISO: string | null = null;
+
+    for (const [date, dayData] of Object.entries(originalDiary)) {
+      if (dayData.food[deletedDiaryEntryId]) {
+        deletedEntry = dayData.food[deletedDiaryEntryId];
+        dateISO = date;
+        break;
+      }
+    }
+
+    if (!deletedEntry || !dateISO) {
+      console.warn('Cannot delete diary entry: entry not found', deletedDiaryEntryId);
+      return;
+    }
+
+    const deletedKcals = this.calculateEntryKcals(deletedEntry);
+
+    this.diaryRaw$$.update((diary) => {
+      const updatedDiary = { ...diary };
+      const dayData = updatedDiary[dateISO!];
+
+      if (dayData) {
+        const updatedFood = { ...dayData.food };
+        delete updatedFood[deletedDiaryEntryId];
+
+        updatedDiary[dateISO!] = {
+          ...dayData,
+          food: updatedFood,
+        };
+      }
+
+      return updatedDiary;
+    });
+
+    this.saveToLocalStorage(this.diaryRaw$$());
+    this.foodStatsService.updateStatsOptimistically(dateISO, 0, -deletedKcals);
+  }
+
+  private isValidBodyWeightUpdatePayload(payload: BodyWeightToUpdate): payload is BodyWeightToUpdate {
+    return payload && typeof payload.dateISO === 'string' && typeof payload.newBodyWeight === 'number';
+  }
+
+  private handleBodyWeightUpdated(bodyWeightToUpdate: BodyWeightToUpdate): void {
+    this.diaryRaw$$.update((diary) => {
+      const updatedDiary = { ...diary };
+      const dayData = updatedDiary[bodyWeightToUpdate.dateISO] || { food: {}, bodyWeight: null, targetKcals: 0 };
+
+      updatedDiary[bodyWeightToUpdate.dateISO] = {
+        ...dayData,
+        bodyWeight: bodyWeightToUpdate.newBodyWeight,
+      };
+
+      return updatedDiary;
+    });
+
+    this.saveToLocalStorage(this.diaryRaw$$());
   }
 }
