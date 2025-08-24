@@ -1,0 +1,35 @@
+@if (isOpen()) {
+  <div class="modal-container"
+       [vBackdrop]="isOpen()"
+       (backdropClick)="closeModal()"
+       (click)="$event.stopPropagation()">
+    <div class="modal-content">
+      @if (isCloseButtonVisible()) {
+        <v-button flat
+                  class="close-button"
+                  [pY]="1"
+                  [pX]="1"
+                  (onClick)="closeModal()">
+          <svg width="12"
+               height="12"
+               viewBox="0 0 12 12"
+               fill="none">
+            <path d="M9 3L3 9M3 3L9 9"
+                  stroke="currentColor"
+                  stroke-width="1"
+                  stroke-linecap="round"
+                  stroke-linejoin="round" />
+          </svg>
+        </v-button>
+      }
+
+      <ng-content select="[v-header]" />
+
+      <div class="modal-body">
+        <ng-content />
+      </div>
+
+      <ng-content select="[v-footer]" />
+    </div>
+  </div>
+}
