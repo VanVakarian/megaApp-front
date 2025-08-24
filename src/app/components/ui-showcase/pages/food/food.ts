@@ -1,10 +1,13 @@
-import { NgStyle } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { BMIComponent } from '@app/components/food/diary/bmi/bmi.component';
-import { InnerShadowDirective, OuterShadowDirective } from '@app/shared/ui-kit/shadow.directive';
+import {
+  InnerShadowRoundedDirective,
+  OuterShadowDirective,
+  OuterShadowRoundedDirective,
+} from '@app/shared/ui-kit/shadow.directive';
 import { VCard } from '@app/shared/ui-kit/v-card/v-card';
-import { DropdownItem, VDropdown } from '@app/shared/ui-kit/v-dropdown/v-dropdown';
+import { ddExpandDirection, DropdownItem, VDropdown } from '@app/shared/ui-kit/v-dropdown/v-dropdown';
 import { AccordionDirective } from '@app/shared/ui-kit/v-expand/accordion.directive';
 import { VExpand } from '@app/shared/ui-kit/v-expand/v-expand';
 import { VInput } from '@app/shared/ui-kit/v-input/v-input';
@@ -15,7 +18,6 @@ import { weightValidator } from '@app/shared/ui-kit/v-input/validators';
   templateUrl: './food.html',
   styleUrl: './food.scss',
   imports: [
-    NgStyle,
     ReactiveFormsModule,
     VCard,
     VExpand,
@@ -23,7 +25,8 @@ import { weightValidator } from '@app/shared/ui-kit/v-input/validators';
     VInput,
     BMIComponent,
     OuterShadowDirective,
-    InnerShadowDirective,
+    OuterShadowRoundedDirective,
+    InnerShadowRoundedDirective,
     AccordionDirective,
   ],
 })
@@ -38,11 +41,10 @@ export class Food implements OnInit {
     { label: 'Beverage', value: 'beverage' },
   ];
 
-  protected selectedFoodItem: string = '';
-
+  protected readonly ddExpandDirection = ddExpandDirection;
   protected readonly todaysKcalsPercent = 80.6;
-
-  protected form = new FormGroup({
+  protected selectedFoodItem: string = '';
+  protected readonly form = new FormGroup({
     weight: new FormControl<number | null>(null, [Validators.required, weightValidator()]),
     test01: new FormControl(''),
     // test02: new FormControl(''),
@@ -62,10 +64,8 @@ export class Food implements OnInit {
     }
   }
 
-  protected setBackgroundStyle(percent: number) {
+  protected setBackgroundStyle(percent: number): string {
     const percentCapped = percent <= 100 ? percent : 100;
-    return {
-      background: `linear-gradient(to right, var(--gradient-color) ${percentCapped}%, var(--gradient-bg) ${percentCapped}%)`,
-    };
+    return `linear-gradient(to right, var(--gradient-color) ${percentCapped}%, var(--gradient-bg) ${percentCapped}%)`;
   }
 }

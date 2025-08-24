@@ -103,6 +103,21 @@ Set the button width:
 <v-button raised [width]="'100%'">Full Width</v-button>
 ```
 
+### `paddingY` и `paddingX`
+Настройка внутренних отступов кнопки с использованием системы unit-значений:
+```html
+<!-- Компактная кнопка -->
+<v-button flat [paddingY]="1" [paddingX]="2">Compact</v-button>
+
+<!-- Увеличенная кнопка -->
+<v-button raised [paddingY]="3" [paddingX]="6">Large</v-button>
+
+<!-- По умолчанию: paddingY=2 (8px), paddingX=4 (16px) -->
+<v-button primary>Default Padding</v-button>
+```
+
+**Доступные значения**: любые значения из `CssUnitValue` (1-96), соответствующие CSS переменным `--unit-{число}` из `vars.css`.
+
 ## Usage with Content Projection
 
 ```html
@@ -179,6 +194,22 @@ The button automatically handles the following visual states:
 - Uses modern Angular signals with `input()` and `output()` for all properties and events
 - Supports prefix/postfix content projection with `v-prefix` and `v-postfix` selectors
 - Width can be controlled via input property or CSS styling
+
+## API
+
+### Inputs
+- **buttonStyle**: `ButtonStyle` - Стиль кнопки (Flat, Raised, Primary)
+- **width**: `string` - Ширина кнопки
+- **paddingY**: `CssUnitValue` - Вертикальный padding (по умолчанию: 2 = 8px)
+- **paddingX**: `CssUnitValue` - Горизонтальный padding (по умолчанию: 4 = 16px)
+
+### Outputs
+- **onClick**: `MouseEvent` - Событие клика
+
+### Directive Attributes
+- **flat**: Плоская кнопка с hover-эффектами
+- **raised**: Приподнятая кнопка с постоянными тенями
+- **primary**: Основная кнопка с градиентным фоном
 
 ## Event Handling
 

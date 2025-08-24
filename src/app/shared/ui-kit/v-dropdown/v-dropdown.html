@@ -1,6 +1,8 @@
 <div class="dropdown-wrapper"
      [class.open]="isOpen"
-     [formGroup]="internalForm">
+     [formGroup]="internalForm"
+     [vBackdrop]="isOpen"
+     (backdropClick)="closeDropdown()">
 
   <v-input #inputComponent
            [label]="label()"
