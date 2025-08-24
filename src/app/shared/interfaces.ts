@@ -199,6 +199,11 @@ export interface CatalogueEntry {
   id: number;
   name: string;
   kcals: number;
+  protein?: number;
+  fat?: number;
+  carbs?: number;
+  fiber?: number | null;
+  descriptionForEmbedding?: string | null;
 }
 
 export interface Catalogue {

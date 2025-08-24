@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { computed, Injectable, signal, Signal, WritableSignal } from '@angular/core';
 import { exhaustRequest } from '@app/shared/decorators/exhaust-request.decorator';
-import { Catalogue, CatalogueEntry, CatalogueIds } from '@app/shared/interfaces';
+import { Catalogue, CatalogueEntry, CatalogueIds, ServerResponseWithData } from '@app/shared/interfaces';
 import { firstValueFrom } from 'rxjs';
 import { LocalStorageService } from '../local-storage.service';
 import { NetworkService } from '../network.service';
@@ -139,11 +139,19 @@ export class FoodCatalogueService extends BaseFoodService {
   @exhaustRequest()
   public async getCatalogueEntriesSelected(): Promise<CatalogueIds> {
     try {
-      const response = await firstValueFrom(this.http.get<CatalogueIds>('/api/food/user-catalogue'));
+      const response = await firstValueFrom(
+        this.http.get<ServerResponseWithData<CatalogueEntry[]>>('/api/food/user-catalogue'),
+      );
 
-      this.catalogueIdsSelected$$.set(response);
-      this.saveCatalogueIdsSelectedToLocalStorage();
-      return response;
+      if (response.result && response.data) {
+        const catalogueIds = response.data.map((entry: CatalogueEntry) => entry.id);
+        this.catalogueIdsSelected$$.set(catalogueIds);
+        this.saveCatalogueIdsSelectedToLocalStorage();
+        return catalogueIds;
+      } else {
+        console.error('Failed getting user catalogue entries: Invalid response');
+        return [];
+      }
     } catch (error) {
       console.error('Failed getting user catalogue entries:', error);
       return [];
