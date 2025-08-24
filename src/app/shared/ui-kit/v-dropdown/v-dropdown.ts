@@ -1,7 +1,25 @@
 import { CommonModule } from '@angular/common';
-import { Component, ElementRef, forwardRef, input, output, ViewChild } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  forwardRef,
+  Inject,
+  input,
+  OnDestroy,
+  OnInit,
+  Optional,
+  output,
+  ViewChild,
+} from '@angular/core';
 import { ControlValueAccessor, FormControl, FormGroup, NG_VALUE_ACCESSOR, ReactiveFormsModule } from '@angular/forms';
-import { VInput } from '../v-input/v-input';
+import { VBackdropDirective } from '@app/shared/ui-kit/backdrop.directive';
+import { VInput } from '@app/shared/ui-kit/v-input/v-input';
+import { LayerController, PARENT_LAYER_ID, ZLayerService } from '@app/shared/ui-kit/z-layer.service';
+
+export enum ddExpandDirection {
+  Left = 'left',
+  Right = 'right',
+}
 
 export interface DropdownItem {
   value: string;
@@ -12,7 +30,7 @@ export interface DropdownItem {
   selector: 'v-dropdown',
   templateUrl: './v-dropdown.html',
   styleUrl: './v-dropdown.css',
-  imports: [CommonModule, VInput, ReactiveFormsModule],
+  imports: [CommonModule, VInput, ReactiveFormsModule, VBackdropDirective],
   providers: [
     {
       provide: NG_VALUE_ACCESSOR,
@@ -20,11 +38,12 @@ export interface DropdownItem {
       multi: true,
     },
   ],
+  host: {
+    '[style.--v-dropdown-z-index]': 'zIndex',
+    '[style.--v-dropdown-backdrop-z-index]': 'backdropZIndex',
+  },
 })
-export class VDropdown implements ControlValueAccessor {
-  @ViewChild('inputComponent')
-  protected readonly inputComponent!: VInput;
-
+export class VDropdown implements ControlValueAccessor, OnInit, OnDestroy {
   public readonly label = input<string>('');
   public readonly placeholder = input<string>('');
   public readonly isDisabled = input<boolean>(false);
@@ -32,29 +51,49 @@ export class VDropdown implements ControlValueAccessor {
   public readonly errorMessage = input<string>('');
   public readonly items = input<DropdownItem[]>([]);
   public readonly minDropdownWidth = input<string>('');
-  public readonly expandDirection = input<'left' | 'right'>('left');
+  public readonly expandDirection = input<ddExpandDirection>(ddExpandDirection.Left);
 
   public readonly onSelectionChanged = output<DropdownItem | null>();
+
+  @ViewChild('inputComponent')
+  protected readonly inputComponent!: VInput;
 
   protected value: string = '';
   protected isOpen = false;
   protected filteredItems: DropdownItem[] = [];
   protected validationError: string = '';
   protected dropdownWidth = 0;
-  protected internalForm = new FormGroup({
+  protected zIndex = 100;
+  protected backdropZIndex = 90;
+  protected readonly internalForm = new FormGroup({
     search: new FormControl(''),
   });
 
   private onChange = (value: string) => {};
   private onTouched = () => {};
+  private layerController?: LayerController;
 
-  constructor(private elementRef: ElementRef) {
+  constructor(
+    private readonly elementRef: ElementRef,
+    private readonly zLayerService: ZLayerService,
+    @Optional()
+    @Inject(PARENT_LAYER_ID)
+    private readonly parentLayerId?: string,
+  ) {
     this.internalForm.get('search')?.valueChanges.subscribe((value) => {
       this.value = value || '';
       this.onChange(this.value);
       this.updateFilteredItems();
       this.isOpen = true;
     });
+  }
+
+  public ngOnInit(): void {
+    this.registerLayer();
+  }
+
+  public ngOnDestroy(): void {
+    this.layerController?.destroy();
   }
 
   protected get computedErrorMessage(): string {
@@ -101,9 +140,7 @@ export class VDropdown implements ControlValueAccessor {
 
   protected onBlur(): void {
     setTimeout(() => {
-      this.isOpen = false;
-      this.validateInput();
-      this.onTouched();
+      this.closeDropdown();
     }, 150);
   }
 
@@ -114,9 +151,7 @@ export class VDropdown implements ControlValueAccessor {
     this.onChange(item.value);
     this.onSelectionChanged.emit(item);
     this.isOpen = false;
-    if (this.inputComponent) {
-      this.inputComponent.inputElement.nativeElement.blur();
-    }
+    this.inputComponent?.inputElement.nativeElement.blur();
   }
 
   protected clearInput(): void {
@@ -126,6 +161,12 @@ export class VDropdown implements ControlValueAccessor {
     this.onChange('');
     this.onSelectionChanged.emit(null);
     this.updateFilteredItems();
+  }
+
+  protected closeDropdown(): void {
+    this.isOpen = false;
+    this.validateInput();
+    this.onTouched();
   }
 
   private updateFilteredItems(): void {
@@ -162,5 +203,11 @@ export class VDropdown implements ControlValueAccessor {
       const minWidthValue = this.minDropdownWidth() ? parseInt(this.minDropdownWidth().replace(/[^\d]/g, '')) || 0 : 0;
       this.dropdownWidth = Math.max(hostRect.width, minWidthValue);
     }, 0);
+  }
+
+  private registerLayer(): void {
+    this.layerController = this.zLayerService.registerLayer('dropdown', this.parentLayerId);
+    this.zIndex = this.layerController.zIndex;
+    this.backdropZIndex = this.layerController.getBackdropZIndex();
   }
 }

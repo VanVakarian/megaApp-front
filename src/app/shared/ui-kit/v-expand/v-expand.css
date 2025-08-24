@@ -17,13 +17,10 @@
 }
 
 .header:hover {
-  background-color: var(--color-bg-hover, rgba(0, 0, 0, 0.05));
 }
 
-/* .header-content {
-  margin: var(--v-expand-padding, var(--unit-2));
-  width: 100%;
-} */
+.header-content {
+}
 
 /* .toggle-icon {
   transition: transform 0.3s ease;
@@ -43,7 +40,3 @@
 .body.expanded {
   height: auto;
 }
-
-/* .body-content {
-  padding: var(--v-expand-padding, var(--unit-2));
-} */

@@ -1,9 +1,9 @@
 <v-expand accordion
-          outer-shadow
+          outer-shadow-rounded
           class="BMI">
   <div v-header
        class="v-header w-full p-2 text-center"
-       [ngStyle]="setBackgroundStyle(todaysKcalsPercent)">
+       [style.background]="setBackgroundStyle(todaysKcalsPercent)">
     Съедено 80.6% от дневной нормы
   </div>
   <div v-body
@@ -27,7 +27,7 @@
 </v-card>
 
 <v-expand accordion
-          outer-shadow>
+          outer-shadow-rounded>
   <h3 v-header
       class="p-2">🍕 Pizza Menu</h3>
   <div v-body
@@ -39,7 +39,7 @@
 </v-expand>
 
 <v-expand accordion
-          inner-shadow>
+          inner-shadow-rounded>
   <h3 v-header
       class="p-2">🥗 Daily Specials</h3>
   <div v-body
@@ -72,7 +72,8 @@
 </div>
 
 <div class="flex gap-4">
-  <div [formGroup]="form">
+  <div class="w-1/2"
+       [formGroup]="form">
     <v-input label="random input"
              placeholder="Введите что-нибудь"
              formControlName="test01" />
@@ -80,9 +81,10 @@
 
   <v-dropdown label="Select Food Item"
               placeholder="Search food items"
+              class="w-1/2"
               [items]="foodItems"
               [minDropdownWidth]="'300px'"
-              [expandDirection]="'left'"
+              [expandDirection]="ddExpandDirection.Left"
               (onSelectionChanged)="onFoodItemChange($event)">
   </v-dropdown>
 </div>

@@ -1,14 +1,16 @@
 <button type="button"
         (click)="onButtonClick($event)">
 
-  <div class="prefix">
-    <ng-content select="[v-prefix]" />
-  </div>
+  <ng-content select="[v-prefix]"
+              class="prefix" />
 
-  <ng-content />
+  @if (!isLabelHidden()) {
+    <div class="btn-text">
+      <ng-content />
+    </div>
+  }
 
-  <div class="postfix">
-    <ng-content select="[v-postfix]" />
-  </div>
+  <ng-content select="[v-postfix]"
+              class="postfix" />
 
 </button>

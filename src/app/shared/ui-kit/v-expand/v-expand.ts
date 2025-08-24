@@ -1,5 +1,5 @@
 import { Component, effect, input, signal } from '@angular/core';
-import { CssUnitValue } from '../types';
+import { CssUnitValue } from '@app/shared/ui-kit/types';
 
 @Component({
   selector: 'v-expand',

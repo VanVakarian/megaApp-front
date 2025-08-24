@@ -13,6 +13,11 @@
       <v-button primary>
         Кнопка
       </v-button>
+
+      <v-button raised
+                (onClick)="openModal()">
+        Открыть модальное окно
+      </v-button>
     </div>
   </v-card>
 
@@ -59,3 +64,44 @@
              formControlName="error" />
   </form>
 </div>
+
+<v-modal [isOpen]="isModalOpen"
+         width="500px"
+         [borderRadius]="3"
+         (onClose)="closeModal()">
+  <v-dropdown label="Select Food Item"
+              placeholder="Search food items"
+              class="w-[56%]"
+              [items]="foodItems"
+              [minDropdownWidth]="'300px'"
+              [expandDirection]="ddExpandDirection.Left"
+              (onSelectionChanged)="onFoodItemChange($event)">
+  </v-dropdown>
+
+  <div v-header>
+    <h3 class="m-0">
+      Заголовок модального окна
+    </h3>
+  </div>
+
+  <div class="">
+    <v-button raised
+              (onClick)="isShowLongContent = !isShowLongContent">
+      {{isShowLongContent ? 'Скрыть' : 'Показать'}} длинный контент
+    </v-button>
+  </div>
+
+  @if (isShowLongContent) {
+    <div class="h-[999px] flex flex-col justify-end">
+      Really loooooong content
+    </div>
+  }
+
+  <div v-footer
+       class="flex justify-end">
+    <v-button primary
+              (onClick)="closeModal()">
+      Закрыть
+    </v-button>
+  </div>
+</v-modal>
