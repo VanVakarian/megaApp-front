@@ -25,6 +25,7 @@
   flex-direction: column;
   min-height: 0;
   overflow: visible; /* TODO[121]: fix cutting out of the dropdown list popup */
+  padding: var(--v-modal-padding-y, var(--unit-2)) var(--v-modal-padding-x, var(--unit-2));
 }
 
 .modal-content::before {
@@ -50,7 +51,6 @@
 
 .modal-body {
   flex: 1;
-  padding: var(--unit-4);
   overflow-y: auto;
   position: relative;
   z-index: 1;
@@ -58,7 +58,6 @@
 }
 
 ::ng-deep [v-header] {
-  padding: var(--unit-2) var(--unit-2) var(--unit-2) var(--unit-2);
   border-bottom: 1px solid var(--shadow-dark-light);
   font-weight: 600;
   color: var(--color-text-default);
@@ -68,7 +67,6 @@
 }
 
 ::ng-deep [v-footer] {
-  padding: var(--unit-2) var(--unit-2) var(--unit-2) var(--unit-2);
   border-top: 1px solid var(--shadow-dark-light);
   flex-shrink: 0;
   position: relative;

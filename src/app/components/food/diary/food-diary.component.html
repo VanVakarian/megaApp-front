@@ -1,4 +1,4 @@
-<div class="hidden mb-4 lg:block">
+<div class="lg:block hidden mb-4">
   <mat-card>
     <div class="w-full my-2 text-xl font-semibold text-center">Дневник</div>
   </mat-card>
@@ -15,7 +15,7 @@
                        class="sub-expansion-panel-38px-50px expansion-panel-rounded panel-body-weight">
     <mat-expansion-panel-header class="expansion-panel-arrow-indiactor-remove mat-expansion-panel-header-margins-decrease"
                                 [ngStyle]="setBackgroundStyle(todaysKcalsPercent)">
-      <div class="overflow-hidden text-center whitespace-nowrap">
+      <div class="whitespace-nowrap overflow-hidden text-center">
         {{ caloriesDisplayText }}
       </div>
     </mat-expansion-panel-header>
@@ -28,9 +28,9 @@
   <div class="mb-1"></div>
 
   <div #foodCont
-       class="flex w-full gap-1 overflow-hidden text-base font-normal tw-bg-color whitespace-nowrap">
+       class="tw-bg-color whitespace-nowrap flex w-full gap-1 overflow-hidden text-base font-normal">
     <div #foodName
-         class="overflow-hidden text-center tw-card-food-entry grow whitespace-nowrap">
+         class="tw-card-food-entry grow whitespace-nowrap overflow-hidden text-center">
       Блюдо:
     </div>
 
@@ -61,9 +61,9 @@
                                   [ngStyle]="setBackgroundStyle(food.foodKcalPercentageOfDaysNorm)">
         <mat-panel-title class="mat-panel-title-margin-remove">
           <div #foodCont
-               class="flex w-full gap-1 overflow-hidden text-base font-normal whitespace-nowrap">
+               class="whitespace-nowrap flex w-full gap-1 overflow-hidden text-base font-normal">
             <div #foodName
-                 class="overflow-hidden tw-card-food-entry grow whitespace-nowrap">
+                 class="tw-card-food-entry grow whitespace-nowrap overflow-hidden">
               {{ food.foodName }}
             </div>
 
@@ -113,4 +113,52 @@
   </mat-expansion-panel>
 </mat-accordion>
 
+<v-button primary
+          class="w-full pt-2"
+          [width]="'100%'"
+          (onClick)="isAddFoodModalOpen = true">
+  Добавить запись
+</v-button>
+
 <div class="h-[50vh]"></div>
+
+<v-modal [isOpen]="isAddFoodModalOpen"
+         [borderRadius]="3"
+         [class.camera-fullscreen]="isCameraPreviewOpen"
+         [paddingX]="0"
+         [paddingY]="0"
+         (onClose)="closeModal()">
+  @if (isCameraPreviewOpen) {
+    <camera-preview (photoTaken)="onPhotoTaken($event)"
+                    (cancelled)="onCameraPreviewCancelled()" />
+  } @else {
+    <div class="flex justify-center gap-4 p-8">
+      @if (isRecording) {
+        <v-button raised
+                  class="flex items-center justify-center w-16 h-16 rounded-full"
+                  (onClick)="toggleVoiceRecording()">
+          <mat-icon class="animate-spin text-2xl">refresh</mat-icon>
+        </v-button>
+      } @else {
+        <v-button primary
+                  class="flex items-center justify-center w-16 h-16 rounded-full"
+                  (onClick)="toggleVoiceRecording()">
+          <mat-icon class="text-2xl">mic</mat-icon>
+        </v-button>
+      }
+
+      <v-button raised
+                class="flex items-center justify-center w-16 h-16 rounded-full"
+                (onClick)="takePhoto()">
+        <mat-icon class="text-2xl">photo_camera</mat-icon>
+      </v-button>
+    </div>
+
+    <div class="flex justify-end mx-4 mb-4">
+      <v-button raised
+                (onClick)="closeModal()">
+        Закрыть
+      </v-button>
+    </div>
+  }
+</v-modal>

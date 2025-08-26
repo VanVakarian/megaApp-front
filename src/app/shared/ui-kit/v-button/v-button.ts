@@ -1,4 +1,4 @@
-import { Component, ElementRef, inject, input, output } from '@angular/core';
+import { Component, computed, ElementRef, inject, input, output } from '@angular/core';
 import { ButtonStyle, CssUnitValue } from '@app/shared/ui-kit/types';
 
 @Component({
@@ -12,29 +12,25 @@ import { ButtonStyle, CssUnitValue } from '@app/shared/ui-kit/types';
   styleUrl: './v-button.css',
   host: {
     '[style.width]': 'width() ? width() : null',
-    '[style.--v-btn-p-y]': 'btnPY',
-    '[style.--v-btn-p-x]': 'btnPX',
     '[attr.flat]': 'isFlat ? "" : null',
     '[attr.raised]': 'isRaised ? "" : null',
     '[attr.primary]': 'isPrimary ? "" : null',
+    '[style.--v-btn-p-y]': 'paddingYString()',
+    '[style.--v-btn-p-x]': 'paddingXString()',
   },
 })
 export class VButton {
   public readonly buttonStyle = input<ButtonStyle>();
   public readonly width = input<string>();
-  public readonly pY = input<CssUnitValue>(2);
-  public readonly pX = input<CssUnitValue>(4);
   public readonly isLabelHidden = input<boolean>(false);
+
+  public readonly paddingY = input<CssUnitValue>(2);
+  public readonly paddingX = input<CssUnitValue>(4);
 
   public readonly onClick = output<MouseEvent>();
 
-  public get btnPY(): string {
-    return `var(--unit-${this.pY()})`;
-  }
-
-  public get btnPX(): string {
-    return `var(--unit-${this.pX()})`;
-  }
+  protected readonly paddingYString = computed(() => `var(--unit-${this.paddingY()})`);
+  protected readonly paddingXString = computed(() => `var(--unit-${this.paddingX()})`);
 
   public get isFlat(): boolean {
     return this.getActiveStyle() === ButtonStyle.Flat;

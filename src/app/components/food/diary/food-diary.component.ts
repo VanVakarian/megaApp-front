@@ -15,13 +15,18 @@ import { MatAccordion, MatExpansionModule, MatExpansionPanel } from '@angular/ma
 import { MatIconModule } from '@angular/material/icon';
 import { BMIComponent } from '@app/components/food/diary/bmi/bmi.component';
 import { BodyWeightComponent } from '@app/components/food/diary/body-weight/body-weight.component';
+import { CameraPreviewComponent } from '@app/components/food/diary/camera-preview/camera-preview.component';
 import { DiaryEntryEditFormComponent } from '@app/components/food/diary/diary-entry-edit-form/diary-entry-edit-form.component';
 import { DiaryEntryNewFormComponent } from '@app/components/food/diary/diary-entry-new-form/diary-entry-new-form.component';
 import { DiaryNavButtonsComponent } from '@app/components/food/diary/diary-nav/diary-nav-buttons.component';
 import { FoodDiaryService } from '@app/services/food/food-diary.service';
+import { PhotoCaptureService } from '@app/services/photo-capture.service';
 import { ScreenSizeWatcherService } from '@app/services/screen-size-watcher.service';
 import { SettingsService } from '@app/services/settings.service';
-import { ScreenType } from '@app/shared/interfaces';
+import { VoiceRecordingService } from '@app/services/voice-recording.service';
+import { CapturedPhoto, ScreenType } from '@app/shared/interfaces';
+import { VButton } from '@app/shared/ui-kit/v-button/v-button';
+import { VModal } from '@app/shared/ui-kit/v-modal/v-modal';
 import { combineLatest } from 'rxjs';
 
 @Component({
@@ -38,52 +43,58 @@ import { combineLatest } from 'rxjs';
     DiaryEntryNewFormComponent,
     BodyWeightComponent,
     BMIComponent,
+    VButton,
+    VModal,
+    CameraPreviewComponent,
   ],
 })
 export class FoodDiaryComponent implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild(MatAccordion)
-  public foodAccordion!: MatAccordion;
+  protected foodAccordion!: MatAccordion;
 
   @ViewChild('newDiaryEntryPanel')
-  public newDiaryEntryPanel!: MatExpansionPanel;
+  protected newDiaryEntryPanel!: MatExpansionPanel;
 
   @ViewChild('foodCont')
-  public contDiv!: ElementRef;
+  protected contDiv!: ElementRef;
 
   @ViewChildren('foodName')
-  public nameDivs!: QueryList<ElementRef>;
+  protected nameDivs!: QueryList<ElementRef>;
 
   @ViewChildren('foodWeight')
-  public weightsDivs!: QueryList<ElementRef>;
+  protected weightsDivs!: QueryList<ElementRef>;
 
   @ViewChildren('foodKcals')
-  public kcalsDivs!: QueryList<ElementRef>;
+  protected kcalsDivs!: QueryList<ElementRef>;
 
   @ViewChildren('foodPercent')
-  public percentsDivs!: QueryList<ElementRef>;
+  protected percentsDivs!: QueryList<ElementRef>;
 
-  public get todaysKcalsPercent() {
+  protected isAddFoodModalOpen = false;
+  protected isCameraPreviewOpen = false;
+
+  protected get todaysKcalsPercent() {
     return this.foodDiaryService.selectedDayTotals$$().kcalsPercent;
   }
 
-  public get selectedDayFood() {
+  protected get selectedDayFood() {
     const selectedDay = this.foodDiaryService.selectedDayIso$$();
     return this.foodDiaryService.diary$$()[selectedDay]?.food || [];
   }
 
-  public get todaysKcalsEaten() {
+  protected get todaysKcalsEaten() {
     return this.foodDiaryService.selectedDayTotals$$().kcalsEaten;
   }
 
-  public get todaysTargetKcals() {
+  protected get todaysTargetKcals() {
     return this.foodDiaryService.selectedDayTotals$$().targetKcals;
   }
 
-  public get formattedSelectedDaysEatenPercent(): number {
+  protected get formattedSelectedDaysEatenPercent(): number {
     return Math.round(this.foodDiaryService.selectedDayTotals$$().kcalsPercent * 10) / 10;
   }
 
-  public get caloriesDisplayText(): string {
+  protected get caloriesDisplayText(): string {
     const percent = this.formattedSelectedDaysEatenPercent;
     if (Number.isNaN(percent)) return '';
 
@@ -94,8 +105,12 @@ export class FoodDiaryComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
-  public get isLiteVersionSetting(): boolean {
+  protected get isLiteVersionSetting(): boolean {
     return this.settingsService.settings$$()?.liteVersion ?? false;
+  }
+
+  protected get isRecording(): boolean {
+    return this.voiceRecordingService.isRecording$$();
   }
 
   constructor(
@@ -103,6 +118,8 @@ export class FoodDiaryComponent implements OnInit, AfterViewInit, OnDestroy {
     private ngZone: NgZone,
     private screenSizeWatcherService: ScreenSizeWatcherService,
     private settingsService: SettingsService,
+    private voiceRecordingService: VoiceRecordingService,
+    private photoCaptureService: PhotoCaptureService,
   ) {}
 
   public ngOnInit(): void {}
@@ -117,14 +134,14 @@ export class FoodDiaryComponent implements OnInit, AfterViewInit, OnDestroy {
 
   public ngOnDestroy(): void {}
 
-  public setBackgroundStyle(percent: number) {
+  protected setBackgroundStyle(percent: number) {
     const percentCapped = percent <= 100 ? percent : 100;
     return {
       background: `linear-gradient(to right, var(--gradient-color) ${percentCapped}%, var(--gradient-bg) ${percentCapped}%)`,
     };
   }
 
-  public diaryEntryExpanded(diaryEntry: MatExpansionPanel, diaryEntryId: number) {
+  protected diaryEntryExpanded(diaryEntry: MatExpansionPanel, diaryEntryId: number) {
     this.foodDiaryService.diaryEntryClickedFocus$.next(diaryEntryId);
 
     if (this.screenSizeWatcherService.currentScreenType === ScreenType.DESKTOP) return;
@@ -137,7 +154,7 @@ export class FoodDiaryComponent implements OnInit, AfterViewInit, OnDestroy {
     }, 170);
   }
 
-  public newDiaryEntryExpanded() {
+  protected newDiaryEntryExpanded() {
     if (this.screenSizeWatcherService.currentScreenType === ScreenType.DESKTOP) return;
 
     setTimeout(() => {
@@ -148,8 +165,55 @@ export class FoodDiaryComponent implements OnInit, AfterViewInit, OnDestroy {
     }, 170);
   }
 
-  public accordionCollapse() {
+  protected accordionCollapse() {
     this.foodAccordion.closeAll();
+  }
+
+  protected closeModal() {
+    this.isAddFoodModalOpen = false;
+  }
+
+  protected async toggleVoiceRecording() {
+    if (this.isRecording) {
+      this.voiceRecordingService.stopRecording();
+    } else {
+      try {
+        await this.voiceRecordingService.startRecording();
+      } catch (error) {
+        console.error('Failed to start voice recording:', error);
+        alert('Failed to access microphone. Please check permissions.');
+      }
+    }
+  }
+
+  protected async takePhoto() {
+    this.isCameraPreviewOpen = true;
+  }
+
+  protected async onPhotoTaken(capturedPhoto: CapturedPhoto) {
+    this.isCameraPreviewOpen = false;
+
+    try {
+      const result = await this.photoCaptureService.analyzeImage(capturedPhoto.file);
+
+      if (result?.result && result.data) {
+        console.log('Photo analysis result:', result.data);
+        this.closeModal();
+      } else if (result?.error) {
+        console.error('Photo analysis failed:', result.error);
+        alert('Не удалось проанализировать фото. Попробуйте еще раз.');
+      } else {
+        console.error('Photo analysis returned no results');
+        alert('Продукт на фото не распознан. Попробуйте другое фото.');
+      }
+    } catch (error) {
+      console.error('Error during photo analysis:', error);
+      alert('Ошибка при анализе фото. Попробуйте еще раз.');
+    }
+  }
+
+  protected onCameraPreviewCancelled() {
+    this.isCameraPreviewOpen = false;
   }
 
   private adjustWidths(): void {

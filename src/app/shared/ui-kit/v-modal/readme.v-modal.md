@@ -1,6 +1,6 @@
 # V-Modal Component
 
-Simple and flexible modal window component with customizable width, border radius, and close button support.
+Simple and flexible modal window component with customizable width, border radius, padding, and close button support.
 
 ## Usage
 
@@ -24,13 +24,15 @@ Simple and flexible modal window component with customizable width, border radiu
 </v-modal>
 ```
 
-### With close button and custom width
+### With close button, custom width and padding
 
 ```html
 <v-modal [isOpen]="isModalOpen"
          [isCloseButtonVisible]="true"
          width="600px"
          [borderRadius]="3"
+         [paddingY]="3"
+         [paddingX]="4"
          (onClose)="closeModal()">
   <div>Modal window content</div>
 </v-modal>
@@ -46,6 +48,8 @@ Simple and flexible modal window component with customizable width, border radiu
 | `isCloseButtonVisible` | `boolean` | `false` | Whether to show the close button |
 | `width` | `string` | `'400px'` | Modal window width |
 | `borderRadius` | `CssUnitValue` | `2` | Corner border radius |
+| `paddingY` | `CssUnitValue` | `2` | Vertical padding inside modal content |
+| `paddingX` | `CssUnitValue` | `2` | Horizontal padding inside modal content |
 
 ### Outputs
 
@@ -62,6 +66,7 @@ Simple and flexible modal window component with customizable width, border radiu
 - **Content slots**: Supports `v-header` and `v-footer` slots with automatic styling
 - **Z-index management**: Uses `ZLayerService` for proper layering
 - **Scroll**: Content body scrolls when overflowing
+- **Customizable spacing**: Configurable padding around modal content
 
 ## Examples
 
@@ -71,6 +76,8 @@ Simple and flexible modal window component with customizable width, border radiu
 <v-modal [isOpen]="showForm"
          [isCloseButtonVisible]="true"
          width="500px"
+         [paddingY]="3"
+         [paddingX]="3"
          (onClose)="hideForm()">
   <h3 v-header>Create new entry</h3>
 
@@ -95,6 +102,8 @@ Simple and flexible modal window component with customizable width, border radiu
 <v-modal [isOpen]="showConfirmation"
          width="350px"
          [borderRadius]="3"
+         [paddingY]="2"
+         [paddingX]="3"
          (onClose)="cancelAction()">
   <h4 v-header>Confirm action</h4>
 
@@ -103,6 +112,22 @@ Simple and flexible modal window component with customizable width, border radiu
   <div v-footer>
     <v-button danger (onClick)="confirmDelete()">Delete</v-button>
     <v-button flat (onClick)="cancelAction()">Cancel</v-button>
+  </div>
+</v-modal>
+```
+
+### Compact modal with no padding
+
+```html
+<v-modal [isOpen]="showInfo"
+         width="300px"
+         [paddingY]="0"
+         [paddingX]="0"
+         (onClose)="closeInfo()">
+  <div v-header>Quick Info</div>
+  <p>This is a compact modal with minimal spacing.</p>
+  <div v-footer>
+    <v-button flat (onClick)="closeInfo()">OK</v-button>
   </div>
 </v-modal>
 ```

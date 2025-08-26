@@ -26,6 +26,9 @@ export enum WebSocketMessageType {
   DIARY_ENTRY_UPDATED = 'DIARY_ENTRY_UPDATED',
   DIARY_ENTRY_DELETED = 'DIARY_ENTRY_DELETED',
   BODY_WEIGHT_UPDATED = 'BODY_WEIGHT_UPDATED',
+  START_VOICE_RECORDING = 'START_VOICE_RECORDING',
+  AUDIO_CHUNK = 'AUDIO_CHUNK',
+  STOP_VOICE_RECORDING = 'STOP_VOICE_RECORDING',
 }
 
 export interface PingWsMessage {
@@ -78,6 +81,20 @@ export interface BodyWeightUpdatedWsMessage {
   payload: BodyWeightToUpdate;
 }
 
+export interface StartVoiceRecordingWsMessage {
+  type: WebSocketMessageType.START_VOICE_RECORDING;
+}
+
+export interface AudioChunkWsMessage {
+  type: WebSocketMessageType.AUDIO_CHUNK;
+  data: string;
+  sequence: number;
+}
+
+export interface StopVoiceRecordingWsMessage {
+  type: WebSocketMessageType.STOP_VOICE_RECORDING;
+}
+
 export type IncomingWsMessage =
   | PingWsMessage
   | SyncStatusWsMessage
@@ -85,6 +102,8 @@ export type IncomingWsMessage =
   | DiaryEntryUpdatedWsMessage
   | DiaryEntryDeletedWsMessage
   | BodyWeightUpdatedWsMessage;
+
+export type OutgoingWsMessage = StartVoiceRecordingWsMessage | AudioChunkWsMessage | StopVoiceRecordingWsMessage;
 
 //                                                                        SERVER
 
@@ -327,6 +346,11 @@ export interface Transaction {
 // }
 
 //                                                                            UI
+
+export interface CapturedPhoto {
+  file: File;
+  dataUrl: string;
+}
 
 // export interface InputWithProgressSubmitData {
 //   value: string;

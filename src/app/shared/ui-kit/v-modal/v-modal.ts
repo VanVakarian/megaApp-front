@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnDestroy, OnInit, input, output } from '@angular/core';
+import { Component, OnDestroy, OnInit, computed, input, output } from '@angular/core';
 import { VBackdropDirective } from '@app/shared/ui-kit/backdrop.directive';
 import { CssUnitValue } from '@app/shared/ui-kit/types';
 import { VButton } from '@app/shared/ui-kit/v-button/v-button';
@@ -21,6 +21,8 @@ import { LayerController, PARENT_LAYER_ID, ZLayerService } from '@app/shared/ui-
     '[style.--v-modal-width]': 'width()',
     '[style.--v-modal-border-radius]': 'getBorderRadius()',
     '[style.--v-modal-z-index]': 'zIndex',
+    '[style.--v-modal-padding-y]': 'paddingYString()',
+    '[style.--v-modal-padding-x]': 'paddingXString()',
   },
 })
 export class VModal implements OnInit, OnDestroy {
@@ -29,7 +31,13 @@ export class VModal implements OnInit, OnDestroy {
   public readonly width = input<string>('400px');
   public readonly borderRadius = input<CssUnitValue>(2);
 
+  public readonly paddingY = input<CssUnitValue>(2);
+  public readonly paddingX = input<CssUnitValue>(2);
+
   public readonly onClose = output<void>();
+
+  protected readonly paddingYString = computed(() => `var(--unit-${this.paddingY()})`);
+  protected readonly paddingXString = computed(() => `var(--unit-${this.paddingX()})`);
 
   protected zIndex = 100;
   private layerController?: LayerController;

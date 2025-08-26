@@ -99,8 +99,25 @@ buttonStyle = ButtonStyle.Primary;
 ### `width`
 Set the button width:
 ```html
-<v-button flat [width]="'200px'">Fixed Width</v-button>
-<v-button raised [width]="'100%'">Full Width</v-button>
+<v-button flat width="200px">Fixed Width</v-button>
+<v-button raised width="100%">Full Width</v-button>
+```
+
+### `isLabelHidden`
+Hide the main button text while keeping prefix/postfix content:
+```html
+<!-- Icon-only button with hidden label -->
+<v-button flat [isLabelHidden]="true">
+  <span v-prefix>🔍</span>
+  Search <!-- This text will be hidden -->
+  <span v-postfix>→</span>
+</v-button>
+
+<!-- Toggle label visibility -->
+<v-button raised [isLabelHidden]="hideLabel">
+  <span v-prefix>💾</span>
+  Save Document
+</v-button>
 ```
 
 ### `paddingY` и `paddingX`
@@ -153,6 +170,19 @@ Set the button width:
   Save Document
   <div v-postfix class="badge">Ctrl+S</div>
 </v-button>
+
+<!-- Icon-only button using isLabelHidden -->
+<v-button flat [isLabelHidden]="true">
+  <span v-prefix>⚙️</span>
+  Settings <!-- Hidden label for accessibility -->
+</v-button>
+
+<!-- Button with conditional label visibility -->
+<v-button raised [isLabelHidden]="isCompactMode">
+  <span v-prefix>📊</span>
+  Statistics
+  <span v-postfix class="count">42</span>
+</v-button>
 ```
 
 ## Visual States
@@ -194,12 +224,15 @@ The button automatically handles the following visual states:
 - Uses modern Angular signals with `input()` and `output()` for all properties and events
 - Supports prefix/postfix content projection with `v-prefix` and `v-postfix` selectors
 - Width can be controlled via input property or CSS styling
+- Main button text can be hidden using `isLabelHidden` while preserving prefix/postfix content
+- Button text is wrapped in `.btn-text` div when visible for better styling control
 
 ## API
 
 ### Inputs
 - **buttonStyle**: `ButtonStyle` - Стиль кнопки (Flat, Raised, Primary)
 - **width**: `string` - Ширина кнопки
+- **isLabelHidden**: `boolean` - Скрывает основной текст кнопки (по умолчанию: false)
 - **paddingY**: `CssUnitValue` - Вертикальный padding (по умолчанию: 2 = 8px)
 - **paddingX**: `CssUnitValue` - Горизонтальный padding (по умолчанию: 4 = 16px)
 

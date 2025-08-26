@@ -1,0 +1,95 @@
+<div class="camera-preview-container">
+
+  @if (error$$()) {
+
+    <div class="error-message">
+      <p class="mb-4 text-center text-red-500">{{ error$$() }}</p>
+
+      <div class="flex justify-center gap-2">
+        <button mat-raised-button
+                color="primary"
+                (click)="startCamera()">
+          <mat-icon class="mr-2">refresh</mat-icon>
+          Попробовать снова
+        </button>
+
+        <button mat-raised-button
+                (click)="cancel()">
+          Отмена
+        </button>
+      </div>
+    </div>
+
+  } @else if (hasPhoto$$()) {
+
+    <div class="photo-preview">
+      <img [src]="photoDataUrl$$()"
+           class="captured-photo">
+
+      <div class="photo-actions">
+        <button mat-raised-button
+                color="primary"
+                (click)="confirmPhoto()"
+                class="action-button">
+          <mat-icon class="mr-2">check</mat-icon>
+          Отправить
+        </button>
+
+        <button mat-raised-button
+                color="accent"
+                (click)="retakePhoto()"
+                class="action-button">
+          <mat-icon class="mr-2">camera_alt</mat-icon>
+          Переснять
+        </button>
+
+        <button mat-raised-button
+                (click)="cancel()"
+                class="action-button">
+          <mat-icon class="mr-2">close</mat-icon>
+          Отмена
+        </button>
+      </div>
+    </div>
+
+  } @else {
+
+    <div class="camera-container">
+      @if (isLoading$$()) {
+        <div class="loading-overlay">
+          <mat-icon class="animate-spin text-4xl">hourglass_empty</mat-icon>
+          <p>Подключение к камере...</p>
+        </div>
+      }
+
+      <video #video
+             autoplay
+             playsinline
+             muted
+             class="camera-video">
+      </video>
+
+      <canvas #canvas
+              class="hidden"></canvas>
+
+      <div class="camera-controls">
+        <button mat-fab
+                color="primary"
+                (click)="takePhoto()"
+                [disabled]="isLoading$$()"
+                class="capture-button">
+          <mat-icon class="text-2xl">camera_alt</mat-icon>
+        </button>
+
+        <button mat-raised-button
+                (click)="cancel()"
+                class="cancel-button">
+          <mat-icon class="mr-2">close</mat-icon>
+          Отмена
+        </button>
+      </div>
+    </div>
+
+  }
+
+</div>

@@ -6,7 +6,7 @@
   <div class="main-chapters-block">
     <v-button [buttonStyle]="foodButtonStyle()"
               [width]="'100%'"
-              [pX]="2"
+              [paddingX]="2"
               [isLabelHidden]="isMenuCollapsed"
               class="menu-item"
               (click)="navigateToFood()">
@@ -17,7 +17,7 @@
 
     <v-button [buttonStyle]="moneyButtonStyle()"
               [width]="'100%'"
-              [pX]="2"
+              [paddingX]="2"
               [isLabelHidden]="isMenuCollapsed"
               class="menu-item"
               (click)="navigateToMoney()">
@@ -28,7 +28,7 @@
 
     <v-button [buttonStyle]="otherButtonStyle()"
               [width]="'100%'"
-              [pX]="2"
+              [paddingX]="2"
               [isLabelHidden]="isMenuCollapsed"
               class="menu-item"
               (click)="navigateToOther()">
@@ -40,7 +40,7 @@
 
   <div class="tools-block">
     <v-button [buttonStyle]="ButtonStyle.Flat"
-              [pX]="2"
+              [paddingX]="2"
               [isLabelHidden]="true"
               class="menu-item"
               (click)="toggleMenuCollapse()">
@@ -51,7 +51,7 @@
 
     <v-button [buttonStyle]="settingsButtonStyle()"
               [width]="'100%'"
-              [pX]="2"
+              [paddingX]="2"
               [isLabelHidden]="isMenuCollapsed"
               class="menu-item"
               (click)="navigateToSettings()">
