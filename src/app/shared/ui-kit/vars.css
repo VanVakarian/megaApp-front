@@ -39,9 +39,19 @@
   --unit--12: -48px;
   --unit--16: -64px;
 
+  --color-primary: #3f51b5;
+  --color-primary-gradient-lighter: #717dc1;
+  --color-primary-gradient-darker: #3f51b5;
+
+  --color-danger: #ef4444;
+  --color-danger-gradient-lighter: #f87171;
+  --color-danger-gradient-darker: #ef4444;
+  /* --color-danger-gradient-darker: #dc2626; */
+
   --color-text-default: #374151;
   --color-text-muted: #6b7280;
   --color-text-error: #ef4444;
+  --color-text-on-dark: #ffffff;
 
   --color-bg-default: #ebf3fa;
   --color-bg-accent: #c7d2fe;

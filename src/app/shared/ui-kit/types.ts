@@ -38,16 +38,23 @@ export enum ButtonStyle {
   Flat = 'flat',
   Raised = 'raised',
   Primary = 'primary',
+  Danger = 'danger',
 }
 
 export enum IconName {
   Restaurant = 'restaurant',
   Paid = 'paid',
   Settings = 'settings',
-  Person_add = 'person_add',
+  PersonAdd = 'person_add',
   Login = 'login',
   Logout = 'logout',
   Article = 'article',
   LeftPanelOpen = 'left_panel_open',
   LeftPanelClose = 'left_panel_close',
+  Mic = 'mic',
+  PhotoCamera = 'photo_camera',
+  Refresh = 'refresh',
+  Cached = 'cached',
+  Check = 'check',
+  Close = 'close',
 }

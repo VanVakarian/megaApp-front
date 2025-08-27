@@ -17,7 +17,7 @@ button {
   font-size: 1rem;
   font-weight: 500;
 
-  padding: var(--v-btn-p-y, var(--unit-2)) var(--v-btn-p-x, var(--unit-4));
+  padding: var(--v-button-padding-y, var(--unit-2)) var(--v-button-padding-x, var(--unit-4));
   border-radius: var(--unit-1);
 
   background: var(--color-bg-default);
@@ -89,7 +89,7 @@ button > :not(.prefix):not(.postfix) {
 
 /* Primary directive */
 :host([primary]) button {
-  color: var(--color-on-primary, white);
+  color: var(--color-text-on-dark, white);
   box-shadow:
     3px 3px 6px var(--shadow-dark-light),
     -3px -3px 6px var(--shadow-light-strong);
@@ -97,15 +97,48 @@ button > :not(.prefix):not(.postfix) {
   --angle: 155deg;
   --start-pos: -50%;
   --end-pos: 150%;
-  --lighter-color: #3f51b5;
-  --darker-color: #717dc1;
-  background: linear-gradient(var(--angle), var(--darker-color) var(--start-pos), var(--lighter-color) var(--end-pos));
+  background: linear-gradient(
+    var(--angle),
+    var(--color-primary-gradient-lighter) var(--start-pos),
+    var(--color-primary-gradient-darker) var(--end-pos)
+  );
 
   &:active {
     background: linear-gradient(
       var(--angle),
-      var(--lighter-color) var(--start-pos),
-      var(--darker-color) var(--end-pos)
+      var(--color-primary-gradient-darker) var(--start-pos),
+      var(--color-primary-gradient-lighter) var(--end-pos)
+    );
+  }
+
+  &:hover {
+    box-shadow:
+      4px 4px 8px var(--shadow-dark-light),
+      -4px -4px 8px var(--shadow-light-strong);
+  }
+}
+
+/* Danger directive */
+:host([danger]) button {
+  color: var(--color-text-on-dark, white);
+  box-shadow:
+    3px 3px 6px var(--shadow-dark-light),
+    -3px -3px 6px var(--shadow-light-strong);
+
+  --angle: 155deg;
+  --start-pos: -50%;
+  --end-pos: 150%;
+  background: linear-gradient(
+    var(--angle),
+    var(--color-danger-gradient-lighter) var(--start-pos),
+    var(--color-danger-gradient-darker) var(--end-pos)
+  );
+
+  &:active {
+    background: linear-gradient(
+      var(--angle),
+      var(--color-danger-gradient-darker) var(--start-pos),
+      var(--color-danger-gradient-lighter) var(--end-pos)
     );
   }
 

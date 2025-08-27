@@ -267,3 +267,9 @@ Prefix and postfix can contain interactive elements:
 - They replace input padding, ensuring minimum 8px spacing (var(--unit-2)) even when empty
 - Input field takes all remaining space (flex: 1)
 - Both are included within the neumorphic frame
+
+## Troubleshooting
+
+### NG0201: No provider for NgControl
+**Problem**: Component requires NgControl but is used without forms.
+**Solution**: Use of `[formControl]` or `formControlName` is required.

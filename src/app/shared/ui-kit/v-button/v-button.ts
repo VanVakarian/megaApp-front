@@ -6,6 +6,7 @@ import { ButtonStyle, CssUnitValue } from '@app/shared/ui-kit/types';
     v-button[flat],
     v-button[raised],
     v-button[primary],
+    v-button[danger],
     v-button[buttonStyle]
   `,
   templateUrl: './v-button.html',
@@ -15,8 +16,9 @@ import { ButtonStyle, CssUnitValue } from '@app/shared/ui-kit/types';
     '[attr.flat]': 'isFlat ? "" : null',
     '[attr.raised]': 'isRaised ? "" : null',
     '[attr.primary]': 'isPrimary ? "" : null',
-    '[style.--v-btn-p-y]': 'paddingYString()',
-    '[style.--v-btn-p-x]': 'paddingXString()',
+    '[attr.danger]': 'isDanger ? "" : null',
+    '[style.--v-button-padding-y]': 'paddingYString()',
+    '[style.--v-button-padding-x]': 'paddingXString()',
   },
 })
 export class VButton {
@@ -44,6 +46,10 @@ export class VButton {
     return this.getActiveStyle() === ButtonStyle.Primary;
   }
 
+  public get isDanger(): boolean {
+    return this.getActiveStyle() === ButtonStyle.Danger;
+  }
+
   private readonly elementRef = inject(ElementRef);
 
   constructor() {}
@@ -60,6 +66,7 @@ export class VButton {
     if (element.hasAttribute('flat')) return ButtonStyle.Flat;
     if (element.hasAttribute('raised')) return ButtonStyle.Raised;
     if (element.hasAttribute('primary')) return ButtonStyle.Primary;
+    if (element.hasAttribute('danger')) return ButtonStyle.Danger;
 
     return null;
   }

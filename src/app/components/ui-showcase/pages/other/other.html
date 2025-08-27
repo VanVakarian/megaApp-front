@@ -1,7 +1,7 @@
 <div class="col col-01">
   <v-card>
     Карточка по умолчанию (borderRadius=2, padding=2)
-    <div class="buttons-row">
+    <div class="buttons-row mb-3">
       <v-button flat>
         Кнопка
       </v-button>
@@ -12,6 +12,22 @@
 
       <v-button primary>
         Кнопка
+      </v-button>
+    </div>
+
+    <div class="buttons-row">
+      <v-button primary
+                [isLabelHidden]="true"
+                [paddingX]="2">
+        <v-icon v-prefix
+                [name]="IconName.Mic" />
+      </v-button>
+
+      <v-button danger
+                [isLabelHidden]="true"
+                [paddingX]="2">
+        <v-icon v-prefix
+                [name]="IconName.Close" />
       </v-button>
 
       <v-button raised
@@ -99,7 +115,7 @@
 
   <div v-footer
        class="flex justify-end">
-    <v-button primary
+    <v-button danger
               (onClick)="closeModal()">
       Закрыть
     </v-button>
