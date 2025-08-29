@@ -7,7 +7,7 @@ import { ButtonStyle, CssUnitValue } from '@app/shared/ui-kit/types';
     v-button[raised],
     v-button[primary],
     v-button[danger],
-    v-button[buttonStyle]
+    v-button[buttonStyle],
   `,
   templateUrl: './v-button.html',
   styleUrl: './v-button.css',
@@ -17,6 +17,8 @@ import { ButtonStyle, CssUnitValue } from '@app/shared/ui-kit/types';
     '[attr.raised]': 'isRaised ? "" : null',
     '[attr.primary]': 'isPrimary ? "" : null',
     '[attr.danger]': 'isDanger ? "" : null',
+    '[attr.no-shadow]': 'noShadow() ? "" : null',
+    '[attr.aria-disabled]': 'isDisabled() ? "true" : "false"',
     '[style.--v-button-padding-y]': 'paddingYString()',
     '[style.--v-button-padding-x]': 'paddingXString()',
   },
@@ -28,8 +30,10 @@ export class VButton {
 
   public readonly paddingY = input<CssUnitValue>(2);
   public readonly paddingX = input<CssUnitValue>(4);
+  public readonly noShadow = input<boolean>(false);
+  public readonly isDisabled = input<boolean>(false);
 
-  public readonly onClick = output<MouseEvent>();
+  protected readonly onClick = output<MouseEvent>();
 
   protected readonly paddingYString = computed(() => `var(--unit-${this.paddingY()})`);
   protected readonly paddingXString = computed(() => `var(--unit-${this.paddingX()})`);
@@ -55,6 +59,11 @@ export class VButton {
   constructor() {}
 
   protected onButtonClick(event: MouseEvent): void {
+    if (this.isDisabled()) {
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
     this.onClick.emit(event);
   }
 

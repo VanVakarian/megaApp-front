@@ -11,7 +11,7 @@ The component has the following structure:
 
 **Key Features**:
 - The neumorphic styling is applied to the button element, creating different visual appearances
-- Uses directive attributes (`flat`, `raised`, `primary`) like Angular Material
+- Uses directive attributes (`flat`, `raised`, `primary`, `danger`) like Angular Material
 - **Requires** one of the directive attributes to function - plain `<v-button>` won't work
 - The button responds to interactions with visual state changes (hover, active, disabled)
 - Each directive provides distinct styling behavior
@@ -34,13 +34,18 @@ The component has the following structure:
   Primary Button
 </v-button>
 
+<!-- Danger button for destructive actions -->
+<v-button danger>
+  Delete
+</v-button>
+
 <!-- Using buttonStyle input (alternative approach) -->
 <v-button [buttonStyle]="ButtonStyle.Primary">
   Primary via Input
 </v-button>
 ```
 
-**Important**: You must use either one of the directive attributes (`flat`, `raised`, or `primary`) OR the `buttonStyle` input. The component requires at least one styling approach to function properly.
+**Important**: You must use either one of the directive attributes (`flat`, `raised`, `primary`, or `danger`) OR the `buttonStyle` input. The component requires at least one styling approach to function properly.
 
 ## Usage with Click Handler
 
@@ -79,6 +84,12 @@ Applies primary color scheme with gradient background and permanent shadows:
 <v-button primary>Primary Button</v-button>
 ```
 
+### `danger`
+Applies danger/destructive action styling:
+```html
+<v-button danger>Delete Item</v-button>
+```
+
 **Note**: Directives are mutually exclusive - use only one per button instance.
 
 ## Input Properties
@@ -94,6 +105,7 @@ buttonStyle = ButtonStyle.Primary;
 ```html
 <v-button [buttonStyle]="buttonStyle">Dynamic Style</v-button>
 <v-button [buttonStyle]="ButtonStyle.Flat">Static Style</v-button>
+<v-button [buttonStyle]="ButtonStyle.Danger">Danger Style</v-button>
 ```
 
 ### `width`
@@ -120,20 +132,47 @@ Hide the main button text while keeping prefix/postfix content:
 </v-button>
 ```
 
-### `paddingY` и `paddingX`
-Настройка внутренних отступов кнопки с использованием системы unit-значений:
+### `paddingY` and `paddingX`
+Configure button internal padding using the unit-value system:
 ```html
-<!-- Компактная кнопка -->
+<!-- Compact button -->
 <v-button flat [paddingY]="1" [paddingX]="2">Compact</v-button>
 
-<!-- Увеличенная кнопка -->
+<!-- Large button -->
 <v-button raised [paddingY]="3" [paddingX]="6">Large</v-button>
 
-<!-- По умолчанию: paddingY=2 (8px), paddingX=4 (16px) -->
+<!-- Default: paddingY=2 (8px), paddingX=4 (16px) -->
 <v-button primary>Default Padding</v-button>
 ```
 
-**Доступные значения**: любые значения из `CssUnitValue` (1-96), соответствующие CSS переменным `--unit-{число}` из `vars.css`.
+**Available values**: any values from `CssUnitValue` (1-96), corresponding to CSS variables `--unit-{number}` from `vars.css`.
+
+### `noShadow`
+Disable all button shadows:
+```html
+<!-- Button without shadows -->
+<v-button raised [noShadow]="true">No Shadows</v-button>
+
+<!-- Dynamic shadow toggle -->
+<v-button primary [noShadow]="disableShadows">Toggle Shadows</v-button>
+
+<!-- Flat button without hover shadows -->
+<v-button flat [noShadow]="true">Clean Flat</v-button>
+```
+
+This parameter completely disables all shadows (including hover and active states) regardless of the selected button style.
+
+### `isDisabled`
+Disable the button:
+```html
+<!-- Disabled button -->
+<v-button primary [isDisabled]="true">Disabled</v-button>
+
+<!-- Dynamic disable -->
+<v-button raised [isDisabled]="isProcessing">Submit</v-button>
+```
+
+Disabled button doesn't respond to clicks and has reduced opacity.
 
 ## Usage with Content Projection
 
@@ -204,6 +243,11 @@ The button automatically handles the following visual states:
 - **Hover**: Enhanced shadows for depth feedback
 - **Active/Pressed**: Inverted gradient creating visual feedback
 
+### Danger:
+- **Normal**: Danger color scheme for destructive actions
+- **Hover**: Enhanced shadows for depth feedback
+- **Active/Pressed**: Visual feedback for destructive action confirmation
+
 ## Styling Features
 
 - Inherits font family and respects parent font settings
@@ -216,7 +260,7 @@ The button automatically handles the following visual states:
 ## Technical Notes
 
 - Standalone component, no additional imports needed
-- **Requires directive attributes OR buttonStyle input** - selector: `'v-button[flat], v-button[raised], v-button[primary], v-button[buttonStyle]'`
+- **Requires directive attributes OR buttonStyle input** - selector: `'v-button[flat], v-button[raised], v-button[primary], v-button[danger], v-button[buttonStyle]'`
 - Emits `onClick` event with native MouseEvent
 - Uses semantic HTML button element for accessibility
 - Cursor automatically changes to pointer on hover
@@ -230,19 +274,22 @@ The button automatically handles the following visual states:
 ## API
 
 ### Inputs
-- **buttonStyle**: `ButtonStyle` - Стиль кнопки (Flat, Raised, Primary)
-- **width**: `string` - Ширина кнопки
-- **isLabelHidden**: `boolean` - Скрывает основной текст кнопки (по умолчанию: false)
-- **paddingY**: `CssUnitValue` - Вертикальный padding (по умолчанию: 2 = 8px)
-- **paddingX**: `CssUnitValue` - Горизонтальный padding (по умолчанию: 4 = 16px)
+- **buttonStyle**: `ButtonStyle` - Button style (Flat, Raised, Primary, Danger)
+- **width**: `string` - Button width
+- **isLabelHidden**: `boolean` - Hides main button text (default: false)
+- **paddingY**: `CssUnitValue` - Vertical padding (default: 2 = 8px)
+- **paddingX**: `CssUnitValue` - Horizontal padding (default: 4 = 16px)
+- **noShadow**: `boolean` - Disables all shadows (default: false)
+- **isDisabled**: `boolean` - Disables button (default: false)
 
 ### Outputs
-- **onClick**: `MouseEvent` - Событие клика
+- **onClick**: `MouseEvent` - Click event
 
 ### Directive Attributes
-- **flat**: Плоская кнопка с hover-эффектами
-- **raised**: Приподнятая кнопка с постоянными тенями
-- **primary**: Основная кнопка с градиентным фоном
+- **flat**: Flat button with hover effects
+- **raised**: Raised button with permanent shadows
+- **primary**: Primary button with gradient background
+- **danger**: Button for destructive actions
 
 ## Event Handling
 
@@ -263,6 +310,8 @@ handleButtonClick(event: MouseEvent) {
 <!-- With dynamic styling -->
 <v-button [buttonStyle]="ButtonStyle.Raised"
           [width]="'250px'"
+          [noShadow]="disableShadows"
+          [isDisabled]="isProcessing"
           (onClick)="handleDynamicClick($event)">
   Dynamic Button
 </v-button>

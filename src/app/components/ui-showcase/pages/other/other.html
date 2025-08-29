@@ -1,21 +1,50 @@
 <div class="col col-01">
-  <v-card>
-    Карточка по умолчанию (borderRadius=2, padding=2)
-    <div class="buttons-row mb-3">
+  <v-card class="flex flex-col gap-3">
+    <div class="row">
+      Карточка по умолчанию (borderRadius=2, padding=2)
+    </div>
+
+    <div class="flex gap-3">
       <v-button flat>
-        Кнопка
+        flat
       </v-button>
 
       <v-button raised>
-        Кнопка
+        raised
       </v-button>
 
       <v-button primary>
-        Кнопка
+        primary
+      </v-button>
+
+      <v-button danger>
+        danger
       </v-button>
     </div>
 
-    <div class="buttons-row">
+    <div class="flex gap-3">
+      <v-button flat
+                [isDisabled]="true">
+        flat
+      </v-button>
+
+      <v-button raised
+                [isDisabled]="true">
+        raised
+      </v-button>
+
+      <v-button primary
+                [isDisabled]="true">
+        primary
+      </v-button>
+
+      <v-button danger
+                [isDisabled]="true">
+        danger
+      </v-button>
+    </div>
+
+    <div class="flex gap-3">
       <v-button primary
                 [isLabelHidden]="true"
                 [paddingX]="2">
@@ -29,7 +58,9 @@
         <v-icon v-prefix
                 [name]="IconName.Close" />
       </v-button>
+    </div>
 
+    <div class="flex gap-3">
       <v-button raised
                 (onClick)="openModal()">
         Открыть модальное окно

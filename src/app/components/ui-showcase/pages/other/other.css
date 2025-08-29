@@ -2,7 +2,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: var(--unit-4);
-  width: var(--unit-96);
+  width: 450px;
 }
 
 .prefix {
@@ -12,10 +12,4 @@
 .postfix {
   width: var(--unit-7);
   height: var(--unit-7);
-}
-
-.buttons-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--unit-3);
 }

@@ -15,4 +15,7 @@
   height: 100%;
   background-color: currentColor;
   mask-image: var(--v-icon-background);
+  mask-size: contain;
+  mask-repeat: no-repeat;
+  mask-position: center;
 }
