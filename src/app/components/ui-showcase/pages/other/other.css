@@ -2,7 +2,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: var(--unit-4);
-  width: 450px;
+  width: var(--unit-100);
 }
 
 .prefix {

@@ -114,7 +114,7 @@
 </mat-accordion>
 
 <v-button primary
-          class="w-full pt-2"
+          class="inline-block w-full pt-4"
           [width]="'100%'"
           (onClick)="isAddFoodModalOpen = true">
   Добавить запись
@@ -124,33 +124,51 @@
 
 <v-modal [isOpen]="isAddFoodModalOpen"
          [borderRadius]="3"
-         [class.camera-fullscreen]="isCameraPreviewOpen"
+         [class.camera-fullscreen]="isCameraPreviewOpen()"
          [paddingX]="0"
          [paddingY]="0"
          (onClose)="closeModal()">
-  @if (isCameraPreviewOpen) {
+  @if (isCameraPreviewOpen()) {
     <camera-preview (photoTaken)="onPhotoTaken($event)"
                     (cancelled)="onCameraPreviewCancelled()" />
   } @else {
-    <div class="flex justify-center gap-4 p-8">
+    <div class="flex justify-center gap-4 p-4">
+      <v-input type="text"
+               [formControl]="foodNameControl"
+               class="w-full" />
+
       @if (isRecording) {
-        <v-button raised
-                  class="flex items-center justify-center w-16 h-16 rounded-full"
-                  (onClick)="toggleVoiceRecording()">
-          <mat-icon class="animate-spin text-2xl">refresh</mat-icon>
+        <v-button primary
+                  [noShadow]="true"
+                  [isLabelHidden]="true"
+                  [paddingX]="2"
+                  (click)="toggleVoiceRecording()">
+          <v-icon v-prefix
+                  class="animate-pulse"
+                  [name]="IconName.Mic"
+                  [size]="7" />
         </v-button>
       } @else {
         <v-button primary
-                  class="flex items-center justify-center w-16 h-16 rounded-full"
-                  (onClick)="toggleVoiceRecording()">
-          <mat-icon class="text-2xl">mic</mat-icon>
+                  [noShadow]="true"
+                  [isLabelHidden]="true"
+                  [paddingX]="2"
+                  (click)="toggleVoiceRecording()">
+          <v-icon v-prefix
+                  [name]="IconName.Mic"
+                  [size]="7" />
         </v-button>
       }
 
-      <v-button raised
-                class="flex items-center justify-center w-16 h-16 rounded-full"
-                (onClick)="takePhoto()">
-        <mat-icon class="text-2xl">photo_camera</mat-icon>
+      <v-button primary
+                class="md:hidden inline-block"
+                [noShadow]="true"
+                [isLabelHidden]="true"
+                [paddingX]="2"
+                (click)="takePhoto()">
+        <v-icon v-prefix
+                [name]="IconName.PhotoCamera"
+                [size]="7" />
       </v-button>
     </div>
 

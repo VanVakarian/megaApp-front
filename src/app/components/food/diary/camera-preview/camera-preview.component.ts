@@ -9,13 +9,14 @@ import {
   computed,
   signal,
 } from '@angular/core';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
 import { CapturedPhoto } from '@app/shared/interfaces';
+import { IconName } from '@app/shared/ui-kit/types';
+import { VButton } from '@app/shared/ui-kit/v-button/v-button';
+import { VIcon } from '@app/shared/ui-kit/v-icon/v-icon';
 
 @Component({
   selector: 'camera-preview',
-  imports: [MatButtonModule, MatIconModule],
+  imports: [VIcon, VButton],
   templateUrl: './camera-preview.component.html',
   styleUrl: './camera-preview.component.scss',
 })
@@ -38,6 +39,8 @@ export class CameraPreviewComponent implements AfterViewInit, OnDestroy {
 
   private readonly capturedFile$$ = signal<File | null>(null);
   protected readonly hasPhoto$$ = computed(() => this.capturedFile$$() !== null);
+
+  protected readonly IconName = IconName;
 
   private cameraStream: MediaStream | null = null;
 

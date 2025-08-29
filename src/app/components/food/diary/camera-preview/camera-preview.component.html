@@ -1,63 +1,84 @@
-<div class="camera-preview-container">
+<div class="flex flex-col h-[100dvh] w-full relative bg-black rounded-none overflow-hidden">
 
   @if (error$$()) {
 
-    <div class="error-message">
-      <p class="mb-4 text-center text-red-500">{{ error$$() }}</p>
+    <div class="background-black flex flex-col justify-end h-full p-4 text-xl text-center">
+      <p class="text-red-500">{{ error$$() }}</p>
 
-      <div class="flex justify-center gap-2">
-        <button mat-raised-button
-                color="primary"
-                (click)="startCamera()">
-          <mat-icon class="mr-2">refresh</mat-icon>
-          Попробовать снова
-        </button>
+      <p class="mb-4 text-white">Попробовать снова?</p>
 
-        <button mat-raised-button
-                (click)="cancel()">
-          Отмена
-        </button>
+      <div class="flex justify-center w-full gap-2">
+        <v-button danger
+                  class="mr-auto"
+                  [noShadow]="true"
+                  [isLabelHidden]="true"
+                  [paddingX]="2"
+                  (click)="cancel()">
+          <v-icon v-prefix
+                  [name]="IconName.Close"
+                  [size]="10" />
+        </v-button>
+
+        <v-button primary
+                  [noShadow]="true"
+                  [isLabelHidden]="true"
+                  [paddingX]="2"
+                  (click)="startCamera()">
+          <v-icon v-prefix
+                  [name]="IconName.Refresh"
+                  [size]="10" />
+        </v-button>
       </div>
     </div>
 
   } @else if (hasPhoto$$()) {
 
-    <div class="photo-preview">
+    <div class="flex h-full">
       <img [src]="photoDataUrl$$()"
-           class="captured-photo">
+           class="background-black flex object-contain" />
 
-      <div class="photo-actions">
-        <button mat-raised-button
-                color="primary"
-                (click)="confirmPhoto()"
-                class="action-button">
-          <mat-icon class="mr-2">check</mat-icon>
-          Отправить
-        </button>
+      <div class="absolute bottom-0 flex justify-center w-full gap-4 p-4">
+        <v-button danger
+                  class="mr-auto"
+                  [noShadow]="true"
+                  [isLabelHidden]="true"
+                  [paddingX]="2"
+                  (click)="cancel()">
+          <v-icon v-prefix
+                  [name]="IconName.Close"
+                  [size]="10" />
+        </v-button>
 
-        <button mat-raised-button
-                color="accent"
-                (click)="retakePhoto()"
-                class="action-button">
-          <mat-icon class="mr-2">camera_alt</mat-icon>
-          Переснять
-        </button>
+        <v-button primary
+                  [noShadow]="true"
+                  [isLabelHidden]="true"
+                  [paddingX]="2"
+                  (click)="retakePhoto()">
+          <v-icon v-prefix
+                  [name]="IconName.Refresh"
+                  [size]="10" />
+        </v-button>
 
-        <button mat-raised-button
-                (click)="cancel()"
-                class="action-button">
-          <mat-icon class="mr-2">close</mat-icon>
-          Отмена
-        </button>
+        <v-button primary
+                  [noShadow]="true"
+                  [isLabelHidden]="true"
+                  [paddingX]="2"
+                  (click)="confirmPhoto()">
+          <v-icon v-prefix
+                  [name]="IconName.Check"
+                  [size]="10" />
+        </v-button>
       </div>
     </div>
 
   } @else {
 
-    <div class="camera-container">
+    <div class="relative flex flex-col h-full">
       @if (isLoading$$()) {
-        <div class="loading-overlay">
-          <mat-icon class="animate-spin text-4xl">hourglass_empty</mat-icon>
+        <div class="bg-black/70 absolute inset-0 z-10 flex flex-col items-center justify-center text-white">
+          <v-icon class="animate-spin"
+                  [name]="IconName.Cached"
+                  [size]="10" />
           <p>Подключение к камере...</p>
         </div>
       }
@@ -66,27 +87,34 @@
              autoplay
              playsinline
              muted
-             class="camera-video">
+             class="w-full h-full">
       </video>
 
       <canvas #canvas
               class="hidden"></canvas>
 
-      <div class="camera-controls">
-        <button mat-fab
-                color="primary"
-                (click)="takePhoto()"
-                [disabled]="isLoading$$()"
-                class="capture-button">
-          <mat-icon class="text-2xl">camera_alt</mat-icon>
-        </button>
+      <div class="absolute bottom-0 flex items-center w-full p-4">
+        <v-button danger
+                  class="mr-auto"
+                  [noShadow]="true"
+                  [isLabelHidden]="true"
+                  [paddingX]="2"
+                  (click)="cancel()">
+          <v-icon v-prefix
+                  [name]="IconName.Close"
+                  [size]="10" />
+        </v-button>
 
-        <button mat-raised-button
-                (click)="cancel()"
-                class="cancel-button">
-          <mat-icon class="mr-2">close</mat-icon>
-          Отмена
-        </button>
+        <v-button primary
+                  [noShadow]="true"
+                  [isLabelHidden]="true"
+                  [paddingX]="2"
+                  [isDisabled]="isLoading$$()"
+                  (click)="takePhoto()">
+          <v-icon v-prefix
+                  [name]="IconName.PhotoCamera"
+                  [size]="10" />
+        </v-button>
       </div>
     </div>
 

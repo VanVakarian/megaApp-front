@@ -27,22 +27,7 @@
   width: 0 !important;
 }
 
-/* Camera fullscreen mode */
-::ng-deep .camera-fullscreen {
-  .v-modal-content {
-    @media (max-width: 768px) {
-      width: 100vw !important;
-      height: 100vh !important;
-      max-width: 100vw !important;
-      max-height: 100vh !important;
-      margin: 0 !important;
-      border-radius: 0 !important;
-    }
-  }
-}
-
-::ng-deep .camera-fullscreen .v-modal-overlay {
-  @media (max-width: 768px) {
-    padding: 0 !important;
-  }
+/* Make camera preview in a modal fullscreen */
+::ng-deep .modal-container:has(camera-preview) {
+  width: 100vw !important;
 }

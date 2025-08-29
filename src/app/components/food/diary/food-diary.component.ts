@@ -7,9 +7,12 @@ import {
   OnDestroy,
   OnInit,
   QueryList,
+  signal,
   ViewChild,
   ViewChildren,
+  WritableSignal,
 } from '@angular/core';
+import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
 import { MatAccordion, MatExpansionModule, MatExpansionPanel } from '@angular/material/expansion';
 import { MatIconModule } from '@angular/material/icon';
@@ -25,7 +28,10 @@ import { ScreenSizeWatcherService } from '@app/services/screen-size-watcher.serv
 import { SettingsService } from '@app/services/settings.service';
 import { VoiceRecordingService } from '@app/services/voice-recording.service';
 import { CapturedPhoto, ScreenType } from '@app/shared/interfaces';
+import { IconName } from '@app/shared/ui-kit/types';
 import { VButton } from '@app/shared/ui-kit/v-button/v-button';
+import { VIcon } from '@app/shared/ui-kit/v-icon/v-icon';
+import { VInput } from '@app/shared/ui-kit/v-input/v-input';
 import { VModal } from '@app/shared/ui-kit/v-modal/v-modal';
 import { combineLatest } from 'rxjs';
 
@@ -35,6 +41,7 @@ import { combineLatest } from 'rxjs';
   styleUrl: './food-diary.component.scss',
   imports: [
     NgStyle,
+    ReactiveFormsModule,
     MatExpansionModule,
     MatCardModule,
     MatIconModule,
@@ -45,7 +52,9 @@ import { combineLatest } from 'rxjs';
     BMIComponent,
     VButton,
     VModal,
+    VIcon,
     CameraPreviewComponent,
+    VInput,
   ],
 })
 export class FoodDiaryComponent implements OnInit, AfterViewInit, OnDestroy {
@@ -71,7 +80,10 @@ export class FoodDiaryComponent implements OnInit, AfterViewInit, OnDestroy {
   protected percentsDivs!: QueryList<ElementRef>;
 
   protected isAddFoodModalOpen = false;
-  protected isCameraPreviewOpen = false;
+  protected readonly isCameraPreviewOpen: WritableSignal<boolean> = signal(false);
+  protected readonly foodNameControl = new FormControl('');
+
+  protected readonly IconName = IconName;
 
   protected get todaysKcalsPercent() {
     return this.foodDiaryService.selectedDayTotals$$().kcalsPercent;
@@ -187,11 +199,11 @@ export class FoodDiaryComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   protected async takePhoto() {
-    this.isCameraPreviewOpen = true;
+    this.isCameraPreviewOpen.set(true);
   }
 
   protected async onPhotoTaken(capturedPhoto: CapturedPhoto) {
-    this.isCameraPreviewOpen = false;
+    this.isCameraPreviewOpen.set(false);
 
     try {
       const result = await this.photoCaptureService.analyzeImage(capturedPhoto.file);
@@ -213,7 +225,7 @@ export class FoodDiaryComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   protected onCameraPreviewCancelled() {
-    this.isCameraPreviewOpen = false;
+    this.isCameraPreviewOpen.set(false);
   }
 
   private adjustWidths(): void {
