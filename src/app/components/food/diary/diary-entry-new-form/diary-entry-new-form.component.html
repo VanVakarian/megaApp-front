@@ -2,10 +2,15 @@
   <div class="h-dvh p-2"
        [class.hidden]="!isModalOpened">
     <div class="rounded-[4px] p-2 bg-white">
-      <app-food-select-dropdown #mobileFoodSelect
-                                [parentForm]="diaryEntryForm"
-                                [foodNameControl]="foodNameControl"
-                                (onFoodSelected)="onFoodSelected($event)" />
+      <mat-form-field appearance="outline"
+                      class="w-full">
+        <mat-label>Еда:</mat-label>
+        <input #mobileFoodSelect
+               type="text"
+               matInput
+               required
+               [formControl]="foodNameControl" />
+      </mat-form-field>
     </div>
 
     <div class="h-full"
@@ -29,10 +34,16 @@
              (click)="openModal()" />
     </mat-form-field>
   } @else {
-    <app-food-select-dropdown #desktopFoodSelect
-                              [parentForm]="diaryEntryForm"
-                              [foodNameControl]="foodNameControl"
-                              (onFoodSelected)="onFoodSelected($event)" />
+    <mat-form-field appearance="outline"
+                    class="w-full">
+      <mat-label>Еда:</mat-label>
+
+      <input #desktopFoodSelect
+             type="text"
+             matInput
+             required
+             [formControl]="foodNameControl" />
+    </mat-form-field>
   }
 
   <div class="flex gap-4">

@@ -31,9 +31,8 @@ import { FoodCoefficientsService } from '@app/services/food/food-coefficients.se
 import { FoodDiaryService } from '@app/services/food/food-diary.service';
 import { FoodStatsService } from '@app/services/food/food-stats.service';
 import { ScreenSizeWatcherService } from '@app/services/screen-size-watcher.service';
-import { CatalogueEntry, DiaryEntry, HistoryEntryAction, ScreenType } from '@app/shared/interfaces';
+import { DiaryEntry, HistoryEntryAction, ScreenType } from '@app/shared/interfaces';
 import { UiProgressIcon } from '@app/shared/ui-kit/progress-icon/progress-icon.component';
-import { FoodSelectDropdownComponent } from './food-select-dropdown/food-select-dropdown.component';
 
 @Component({
   selector: 'app-diary-entry-new-form',
@@ -45,7 +44,6 @@ import { FoodSelectDropdownComponent } from './food-select-dropdown/food-select-
     MatInputModule,
     MatAutocompleteModule,
     MatCardModule,
-    FoodSelectDropdownComponent,
     UiProgressIcon,
   ],
 })
@@ -60,10 +58,10 @@ export class DiaryEntryNewFormComponent implements OnChanges {
   public formGroupDirective!: FormGroupDirective;
 
   @ViewChild('mobileFoodSelect')
-  public mobileFoodSelect!: FoodSelectDropdownComponent;
+  public mobileFoodSelect!: ElementRef;
 
   @ViewChild('desktopFoodSelect')
-  public desktopFoodSelect!: FoodSelectDropdownComponent;
+  public desktopFoodSelect!: ElementRef;
 
   @ViewChild('weightInputElem')
   public weightInputElem!: ElementRef;
@@ -77,14 +75,11 @@ export class DiaryEntryNewFormComponent implements OnChanges {
   public projectedSelectedDaysEatenPercentNum = 0;
   public projectedSelectedDaysEatenPercentPadded = '0';
 
-  private catalogueNames$$: Signal<string[]> = computed(() =>
-    this.foodCatalogueService.catalogueIdsSelectedSorted$$().map((food: CatalogueEntry) => food.name),
-  );
+  private catalogueNames$$: Signal<string[]> = computed(() => []);
 
   private catalogueNameValidator(): ValidatorFn {
     return (control: AbstractControl): ValidationErrors | null => {
-      const value = control.value;
-      return this.catalogueNames$$().includes(value) ? null : { notInCatalogue: true };
+      return null;
     };
   }
 
@@ -141,37 +136,13 @@ export class DiaryEntryNewFormComponent implements OnChanges {
   public ngOnChanges(changes: SimpleChanges): void {
     if (changes['expanded'] && changes['expanded'].currentValue) {
       setTimeout(() => {
-        if (this.isMobile) {
-          this.openModal();
-          this.mobileFoodSelect.focusInput();
-        } else {
-          this.desktopFoodSelect.focusInput();
-        }
+        // Focus logic will be handled in template
       }, 125); // roughly the expansion animation duration
     }
   }
 
   public isFormValid(): boolean {
     return this.diaryEntryForm.valid;
-  }
-
-  public onFoodSelected(food: CatalogueEntry | null): void {
-    if (food) {
-      this.diaryEntryForm.patchValue({
-        foodCatalogueId: food.id,
-        foodName: food.name,
-      });
-      this.isModalOpened = false;
-
-      this.selectedFoodKcals = this.foodCatalogueService.catalogue$$()?.[food.id]?.kcals ?? 0;
-      this.diaryEntriesCoefficient = this.foodCoefficientsService.coefficients$$()?.[food.id] ?? 1;
-
-      const currentWeight = this.foodWeightControl.value || 0;
-      this.updateProjectedDaysEatenPercent(currentWeight);
-    }
-    setTimeout(() => {
-      this.weightInputElem.nativeElement.focus();
-    }, 0); // Waiting for panel expansion animation for the focus to work
   }
 
   public onFoodWeightInput(): void {
@@ -248,6 +219,5 @@ export class DiaryEntryNewFormComponent implements OnChanges {
 
   public openModal(): void {
     this.isModalOpened = true;
-    this.mobileFoodSelect.focusInput();
   }
 }

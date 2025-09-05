@@ -212,8 +212,6 @@ export interface HistoryEntry {
 
 export type CatalogueId = number;
 
-export type CatalogueIds = CatalogueId[];
-
 export interface CatalogueEntry {
   id: number;
   name: string;
@@ -223,6 +221,7 @@ export interface CatalogueEntry {
   carbs?: number;
   fiber?: number | null;
   descriptionForEmbedding?: string | null;
+  relevanceScore?: number;
 }
 
 export interface Catalogue {

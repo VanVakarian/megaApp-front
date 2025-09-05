@@ -27,7 +27,7 @@
   width: 0 !important;
 }
 
-/* Make camera preview in a modal fullscreen */
+/* Stretch camera preview to fill the entire screen */
 ::ng-deep .modal-container:has(camera-preview) {
   width: 100vw !important;
 }

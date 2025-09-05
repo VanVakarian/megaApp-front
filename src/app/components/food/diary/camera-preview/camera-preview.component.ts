@@ -7,6 +7,7 @@ import {
   Output,
   ViewChild,
   computed,
+  effect,
   signal,
 } from '@angular/core';
 import { CapturedPhoto } from '@app/shared/interfaces';
@@ -16,9 +17,9 @@ import { VIcon } from '@app/shared/ui-kit/v-icon/v-icon';
 
 @Component({
   selector: 'camera-preview',
-  imports: [VIcon, VButton],
   templateUrl: './camera-preview.component.html',
   styleUrl: './camera-preview.component.scss',
+  imports: [VIcon, VButton],
 })
 export class CameraPreviewComponent implements AfterViewInit, OnDestroy {
   @ViewChild('video')
@@ -36,6 +37,7 @@ export class CameraPreviewComponent implements AfterViewInit, OnDestroy {
   protected readonly isLoading$$ = signal(false);
   protected readonly photoDataUrl$$ = signal<string>('');
   protected readonly error$$ = signal<string>('');
+  protected readonly isConfirmPhotoTemporarilyDisabled$$ = signal(false);
 
   private readonly capturedFile$$ = signal<File | null>(null);
   protected readonly hasPhoto$$ = computed(() => this.capturedFile$$() !== null);
@@ -43,6 +45,18 @@ export class CameraPreviewComponent implements AfterViewInit, OnDestroy {
   protected readonly IconName = IconName;
 
   private cameraStream: MediaStream | null = null;
+
+  constructor() {
+    effect(() => {
+      if (this.hasPhoto$$()) {
+        this.isConfirmPhotoTemporarilyDisabled$$.set(true);
+        setTimeout(() => this.isConfirmPhotoTemporarilyDisabled$$.set(false), 1000);
+      }
+    });
+
+    // effect(() => { console.log('isConfirmTemporarilyDisabled$$ has been updated:', this.isConfirmTemporarilyDisabled$$()) }); // prettier-ignore
+    // effect(() => { console.log('hasPhoto$$ has been updated:', this.hasPhoto$$()) }); // prettier-ignore
+  }
 
   public async ngAfterViewInit(): Promise<void> {
     await this.startCamera();
@@ -112,6 +126,7 @@ export class CameraPreviewComponent implements AfterViewInit, OnDestroy {
   }
 
   public confirmPhoto(): void {
+    console.log('Confirm photo clicked');
     const capturedFile = this.capturedFile$$();
     if (capturedFile && this.photoDataUrl$$()) {
       this.photoTaken.emit({

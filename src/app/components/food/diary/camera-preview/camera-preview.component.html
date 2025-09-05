@@ -63,7 +63,8 @@
                   [noShadow]="true"
                   [isLabelHidden]="true"
                   [paddingX]="2"
-                  (click)="confirmPhoto()">
+                  [isDisabled]="isConfirmPhotoTemporarilyDisabled$$()"
+                  (onClick)="confirmPhoto()">
           <v-icon v-prefix
                   [name]="IconName.Check"
                   [size]="10" />

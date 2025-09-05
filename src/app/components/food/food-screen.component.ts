@@ -1,7 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
-import { FoodCatalogueComponent } from '@app/components/food/catalogue/food-catalogue.component';
 import { FoodDiaryComponent } from '@app/components/food/diary/food-diary.component';
 import { FoodStatsComponent } from '@app/components/food/stats/food-stats.component';
 import { FoodDiaryService } from '@app/services/food/food-diary.service';
@@ -9,7 +8,7 @@ import { FoodDiaryService } from '@app/services/food/food-diary.service';
 @Component({
   selector: 'app-food-screen',
   templateUrl: './food-screen.component.html',
-  imports: [CommonModule, FoodStatsComponent, FoodDiaryComponent, FoodCatalogueComponent],
+  imports: [CommonModule, FoodStatsComponent, FoodDiaryComponent],
 })
 export class FoodScreenComponent implements OnInit {
   public section: string;

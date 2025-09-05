@@ -538,7 +538,6 @@ export class FoodDiaryService extends BaseFoodService {
     await Promise.all([
       this.getFoodDiaryFullUpdateRange(),
       this.catalogueService.getCatalogueEntries(),
-      this.catalogueService.getCatalogueEntriesSelected(),
       this.coefficientsService.getCoefficients(),
       this.foodStatsService.getStats(),
     ]);
