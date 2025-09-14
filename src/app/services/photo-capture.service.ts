@@ -1,5 +1,5 @@
 import { HttpClient } from '@angular/common/http';
-import { Injectable } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 
 export interface PhotoAnalysisResult {
@@ -8,10 +8,11 @@ export interface PhotoAnalysisResult {
     id: number;
     name: string;
     kcals: number;
-    protein?: number;
-    fat?: number;
-    carbs?: number;
-    fiber?: number;
+    protein: number;
+    fat: number;
+    carbs: number;
+    fiber: number;
+    description: string;
   } | null;
   error?: string;
 }
@@ -20,7 +21,7 @@ export interface PhotoAnalysisResult {
   providedIn: 'root',
 })
 export class PhotoCaptureService {
-  constructor(private http: HttpClient) {}
+  private readonly http: HttpClient = inject(HttpClient);
 
   public async analyzeImage(file: File): Promise<PhotoAnalysisResult> {
     try {

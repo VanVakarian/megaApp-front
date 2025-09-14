@@ -116,7 +116,7 @@
 <v-button primary
           class="inline-block w-full pt-4"
           [width]="'100%'"
-          (onClick)="isAddFoodModalOpen = true">
+          (onClick)="openAddFoodModal()">
   Добавить запись
 </v-button>
 
@@ -124,10 +124,12 @@
 
 <v-modal [isOpen]="isAddFoodModalOpen"
          [borderRadius]="3"
-         [class.camera-fullscreen]="isCameraPreviewOpen()"
          [paddingX]="0"
          [paddingY]="0"
-         (onClose)="closeModal()">
+         [class.is-mobile]="deviceDetectorService.isMobile$$()"
+         [class.is-desktop]="deviceDetectorService.isDesktop$$()"
+         (onClose)="closeModal()"
+         (onOpen)="onModalOpened()">
   @if (isCameraPreviewOpen()) {
     <camera-preview (photoTaken)="onPhotoTaken($event)"
                     (cancelled)="onCameraPreviewCancelled()" />
@@ -135,7 +137,7 @@
     <div class="flex justify-center gap-4 p-4">
       <v-input type="text"
                [formControl]="foodNameControl"
-               class="w-full" />
+               class="catalogue-entry-name-input w-full" />
 
       @if (isRecording) {
         <v-button primary
@@ -160,17 +162,30 @@
         </v-button>
       }
 
-      <v-button primary
-                class="md:hidden inline-block"
-                [noShadow]="true"
-                [isLabelHidden]="true"
-                [paddingX]="2"
-                (click)="takePhoto()">
-        <v-icon v-prefix
-                [name]="IconName.PhotoCamera"
-                [size]="7" />
-      </v-button>
+      @if (shouldShowCameraButton) {
+        <v-button primary
+                  class="md:hidden inline-block"
+                  [noShadow]="true"
+                  [isLabelHidden]="true"
+                  [paddingX]="2"
+                  (click)="takePhoto()">
+          <v-icon v-prefix
+                  [name]="IconName.PhotoCamera"
+                  [size]="7" />
+        </v-button>
+      }
     </div>
+
+    @if (searchResults$$.length > 0) {
+      <div class="grid-auto-fit gap-2 p-2 pb-2 pl-4 overflow-y-auto rounded-lg">
+        @for (catalogueEntry of searchResults$$; track catalogueEntry.id) {
+          <v-card class="p-2 rounded cursor-pointer"
+                  (click)="selectProduct(catalogueEntry)">
+            <div class="catalogue-entry-name">{{ catalogueEntry.name }}</div>
+          </v-card>
+        }
+      </div>
+    }
 
     <div class="flex justify-end mx-4 mb-4">
       <v-button raised

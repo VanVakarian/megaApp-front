@@ -29,6 +29,8 @@ export enum WebSocketMessageType {
   START_VOICE_RECORDING = 'START_VOICE_RECORDING',
   AUDIO_CHUNK = 'AUDIO_CHUNK',
   STOP_VOICE_RECORDING = 'STOP_VOICE_RECORDING',
+  SEARCH_QUERY = 'SEARCH_QUERY',
+  SEARCH_RESULTS = 'SEARCH_RESULTS',
 }
 
 export interface PingWsMessage {
@@ -95,15 +97,34 @@ export interface StopVoiceRecordingWsMessage {
   type: WebSocketMessageType.STOP_VOICE_RECORDING;
 }
 
+export interface SearchQueryWsMessage {
+  type: WebSocketMessageType.SEARCH_QUERY;
+  query: string;
+}
+
+export interface SearchResultsWsMessage {
+  type: WebSocketMessageType.SEARCH_RESULTS;
+  payload: {
+    query: string;
+    catalogueIds: number[];
+    timestamp: number;
+  };
+}
+
 export type IncomingWsMessage =
   | PingWsMessage
   | SyncStatusWsMessage
   | DiaryEntryCreatedWsMessage
   | DiaryEntryUpdatedWsMessage
   | DiaryEntryDeletedWsMessage
-  | BodyWeightUpdatedWsMessage;
+  | BodyWeightUpdatedWsMessage
+  | SearchResultsWsMessage;
 
-export type OutgoingWsMessage = StartVoiceRecordingWsMessage | AudioChunkWsMessage | StopVoiceRecordingWsMessage;
+export type OutgoingWsMessage =
+  | StartVoiceRecordingWsMessage
+  | AudioChunkWsMessage
+  | StopVoiceRecordingWsMessage
+  | SearchQueryWsMessage;
 
 //                                                                        SERVER
 
@@ -216,12 +237,11 @@ export interface CatalogueEntry {
   id: number;
   name: string;
   kcals: number;
-  protein?: number;
-  fat?: number;
-  carbs?: number;
-  fiber?: number | null;
-  descriptionForEmbedding?: string | null;
-  relevanceScore?: number;
+  protein: number;
+  fat: number;
+  carbs: number;
+  fiber: number;
+  description: string;
 }
 
 export interface Catalogue {

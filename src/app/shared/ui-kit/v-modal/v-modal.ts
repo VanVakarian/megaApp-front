@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnDestroy, OnInit, computed, input, output } from '@angular/core';
+import { Component, computed, effect, inject, input, OnDestroy, OnInit, output } from '@angular/core';
 import { VBackdropDirective } from '@app/shared/ui-kit/backdrop.directive';
 import { CssUnitValue } from '@app/shared/ui-kit/types';
 import { VButton } from '@app/shared/ui-kit/v-button/v-button';
@@ -35,14 +35,22 @@ export class VModal implements OnInit, OnDestroy {
   public readonly paddingX = input<CssUnitValue>(2);
 
   public readonly onClose = output<void>();
+  public readonly onOpen = output<void>();
 
   protected readonly paddingYString = computed(() => `var(--unit-${this.paddingY()})`);
   protected readonly paddingXString = computed(() => `var(--unit-${this.paddingX()})`);
 
+  private readonly onIsOpenChanged = effect(() => {
+    const isOpen = this.isOpen();
+    if (isOpen) this.onOpen.emit();
+  });
+
   protected zIndex = 100;
   private layerController?: LayerController;
 
-  constructor(private readonly zLayerService: ZLayerService) {}
+  private readonly zLayerService: ZLayerService = inject(ZLayerService);
+
+  constructor() {}
 
   public get layerId(): string | undefined {
     return this.layerController?.id;
