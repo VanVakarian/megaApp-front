@@ -236,6 +236,7 @@ export type CatalogueId = number;
 export interface CatalogueEntry {
   id: number;
   name: string;
+  legacyName?: string;
   kcals: number;
   protein: number;
   fat: number;

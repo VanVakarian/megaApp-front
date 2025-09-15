@@ -8,6 +8,7 @@ import {
   SearchResultsWsMessage,
   WebSocketMessageType,
 } from '@app/shared/interfaces';
+import { transliterateEnToRu } from '@app/shared/utils';
 import { firstValueFrom } from 'rxjs';
 import { filter } from 'rxjs/operators';
 import { LocalStorageService } from '../local-storage.service';
@@ -27,6 +28,8 @@ export class FoodCatalogueService extends BaseFoodService {
   public searchResults$$: WritableSignal<CatalogueEntry[]> = signal([]);
   public isSearching$$: WritableSignal<boolean> = signal(false);
 
+  public legacySearchResults$$: WritableSignal<CatalogueEntry[]> = signal([]);
+
   private searchCache: Record<string, number[]> = {};
 
   protected getStorageKey(): string {
@@ -43,6 +46,9 @@ export class FoodCatalogueService extends BaseFoodService {
     this.loadCatalogueFromLocalStorage();
     this.loadSearchCacheFromLocalStorage();
     this.setupSearchWebSocketListener();
+
+    // effect(() => console.log('SIGNAL searchResults$$:', this.searchResults$$())) // prettier-ignore
+    // effect(() => console.log('SIGNAL legacySearchResults$$:', this.legacySearchResults$$())) // prettier-ignore
   }
 
   @exhaustRequest()
@@ -78,6 +84,36 @@ export class FoodCatalogueService extends BaseFoodService {
     }
 
     this.sendSearchQuery(query);
+  }
+
+  public legacySearchProducts(query: string): void {
+    if (!query.trim()) {
+      this.legacySearchResults$$.set([]);
+      return;
+    }
+
+    const searchTerms = query
+      .toLowerCase()
+      .split(' ')
+      .filter((term) => term.length > 0);
+
+    const transliteratedTerms = query
+      .split(' ')
+      .filter((term) => term.length > 0)
+      .map(transliterateEnToRu);
+
+    const catalogue = this.catalogue$$();
+    const allEntries = Object.values(catalogue);
+
+    const results = allEntries.filter((food) => {
+      const legacyNameLower = food.legacyName?.toLowerCase() || '';
+      return (
+        searchTerms.every((term) => legacyNameLower.includes(term)) ||
+        transliteratedTerms.every((term) => legacyNameLower.includes(term))
+      );
+    });
+
+    this.legacySearchResults$$.set(results);
   }
 
   private getSearchCachedResults(query: string): number[] | null {

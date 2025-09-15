@@ -130,14 +130,28 @@
          [class.is-desktop]="deviceDetectorService.isDesktop$$()"
          (onClose)="closeModal()"
          (onOpen)="onModalOpened()">
-  @if (isCameraPreviewOpen()) {
+  @if (isCameraPreviewOpen$$()) {
     <camera-preview (photoTaken)="onPhotoTaken($event)"
                     (cancelled)="onCameraPreviewCancelled()" />
   } @else {
     <div class="flex justify-center gap-4 p-4">
       <v-input type="text"
                [formControl]="foodNameControl"
-               class="catalogue-entry-name-input w-full" />
+               class="catalogue-entry-name-input w-full">
+        <v-button flat
+                  v-prefix
+                  [noShadow]="true"
+                  [paddingX]="0"
+                  [paddingY]="0"
+                  (mousedown)="$event.preventDefault()"
+                  (onClick)="toggleLegacySearch()"
+                  class="ml-2 mr-1"
+                  tabindex="-1">
+          <v-icon [name]="IconName.SwapHoriz"
+                  [size]="7"
+                  class="m-0" />
+        </v-button>
+      </v-input>
 
       @if (isRecording) {
         <v-button primary
@@ -176,22 +190,37 @@
       }
     </div>
 
-    @if (searchResults$$.length > 0) {
-      <div class="grid-auto-fit gap-2 p-2 pb-2 pl-4 overflow-y-auto rounded-lg">
-        @for (catalogueEntry of searchResults$$; track catalogueEntry.id) {
-          <v-card class="p-2 rounded cursor-pointer"
-                  (click)="selectProduct(catalogueEntry)">
-            <div class="catalogue-entry-name">{{ catalogueEntry.name }}</div>
-          </v-card>
-        }
+    @if (isLegacySearch$$()) {
+      <div
+           class="shadow-orange-500/30 flex items-center gap-2 px-2 py-1 mx-4 mb-4 font-medium text-white origin-top bg-orange-500 rounded-lg shadow-lg">
+        <v-icon [name]="IconName.Warning"
+                [size]="5" />
+        <span>Используется устаревший поиск</span>
       </div>
     }
 
-    <div class="flex justify-end mx-4 mb-4">
-      <v-button raised
-                (onClick)="closeModal()">
-        Закрыть
+    @if (searchResults$$.length > 0) {
+      <div flipAnimate
+           class="grid-auto-fill gap-2 px-2 pb-2 pl-4 overflow-y-auto rounded-lg">
+        @for (catalogueEntry of searchResults$$; track catalogueEntry.id) {
+          <v-card class="pb-2 rounded cursor-pointer"
+                  [attr.data-flip-key]="'catalogue-' + catalogueEntry.id"
+                  (click)="selectProduct(catalogueEntry)">
+            <div class="catalogue-entry-name">{{ getDisplayName(catalogueEntry) }}</div>
+          </v-card>
+        }
+      </div>
+
+      <v-button danger
+                class="absolute bottom-0 pb-4 pl-4 mr-auto"
+                [noShadow]="true"
+                [isLabelHidden]="true"
+                [paddingX]="2"
+                (click)="closeModal()">
+        <v-icon v-prefix
+                [name]="IconName.Close"
+                [size]="10" />
       </v-button>
-    </div>
+    }
   }
 </v-modal>

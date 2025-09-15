@@ -2,6 +2,7 @@ import { NgStyle } from '@angular/common';
 import {
   AfterViewInit,
   Component,
+  effect,
   ElementRef,
   NgZone,
   OnDestroy,
@@ -28,6 +29,7 @@ import { PhotoCaptureService } from '@app/services/photo-capture.service';
 import { ScreenSizeWatcherService } from '@app/services/screen-size-watcher.service';
 import { SettingsService } from '@app/services/settings.service';
 import { VoiceRecordingService } from '@app/services/voice-recording.service';
+import { FlipAnimateDirective } from '@app/shared/directives/flip-animate.directive';
 import { CapturedPhoto, CatalogueEntry, ScreenType } from '@app/shared/interfaces';
 import { IconName } from '@app/shared/ui-kit/types';
 import { VButton } from '@app/shared/ui-kit/v-button/v-button';
@@ -58,6 +60,7 @@ import { Subscription } from 'rxjs';
     CameraPreviewComponent,
     VInput,
     VCard,
+    FlipAnimateDirective,
   ],
 })
 export class FoodDiaryComponent implements OnInit, AfterViewInit, OnDestroy {
@@ -70,8 +73,9 @@ export class FoodDiaryComponent implements OnInit, AfterViewInit, OnDestroy {
   protected readonly percentsDivs = viewChildren<ElementRef>('foodPercent');
 
   protected isAddFoodModalOpen = false;
+  protected readonly isLegacySearch$$ = signal(false);
 
-  protected readonly isCameraPreviewOpen: WritableSignal<boolean> = signal(false);
+  protected readonly isCameraPreviewOpen$$: WritableSignal<boolean> = signal(false);
 
   protected get shouldShowCameraButton(): boolean {
     return this.deviceDetectorService.shouldShowCameraButtonSync();
@@ -82,6 +86,19 @@ export class FoodDiaryComponent implements OnInit, AfterViewInit, OnDestroy {
   private searchSubscription?: Subscription;
 
   protected readonly IconName = IconName;
+
+  private readonly searchTypeSwitchEffect = effect(() => {
+    const isLegacy = this.isLegacySearch$$();
+    const currentValue = this.foodNameControl.value;
+
+    if (currentValue && currentValue.trim()) {
+      if (isLegacy) {
+        this.foodCatalogueService.legacySearchProducts(currentValue);
+      } else {
+        this.foodCatalogueService.searchProducts(currentValue);
+      }
+    }
+  });
 
   protected get todaysKcalsPercent() {
     return this.foodDiaryService.selectedDayTotals$$().kcalsPercent;
@@ -124,7 +141,11 @@ export class FoodDiaryComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   protected get searchResults$$(): CatalogueEntry[] {
-    return this.foodCatalogueService.searchResults$$();
+    if (this.isLegacySearch$$()) {
+      return this.foodCatalogueService.legacySearchResults$$();
+    } else {
+      return this.foodCatalogueService.searchResults$$();
+    }
   }
 
   constructor(
@@ -136,13 +157,19 @@ export class FoodDiaryComponent implements OnInit, AfterViewInit, OnDestroy {
     private photoCaptureService: PhotoCaptureService,
     private foodCatalogueService: FoodCatalogueService,
     protected deviceDetectorService: DeviceDetectorService,
-  ) {}
+  ) {
+    // effect(() => console.log('SIGNAL isLegacySearch:', this.isLegacySearch$$())); // prettier-ignore
+  }
 
   public ngOnInit(): void {
     this.deviceDetectorService.logDeviceInfo();
 
     this.searchSubscription = this.foodNameControl.valueChanges.subscribe((value) => {
-      if (value !== null) {
+      if (value === null) return;
+
+      if (this.isLegacySearch$$()) {
+        this.foodCatalogueService.legacySearchProducts(value);
+      } else {
         this.foodCatalogueService.searchProducts(value);
       }
     });
@@ -198,12 +225,14 @@ export class FoodDiaryComponent implements OnInit, AfterViewInit, OnDestroy {
     this.isAddFoodModalOpen = false;
     this.foodNameControl.setValue('');
     this.foodCatalogueService.searchResults$$.set([]);
+    this.foodCatalogueService.legacySearchResults$$.set([]);
   }
 
   protected openAddFoodModal() {
     this.isAddFoodModalOpen = true;
     this.foodNameControl.setValue('');
     this.foodCatalogueService.searchResults$$.set([]);
+    this.foodCatalogueService.legacySearchResults$$.set([]);
   }
 
   protected onModalOpened() {
@@ -229,11 +258,11 @@ export class FoodDiaryComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   protected async takePhoto() {
-    this.isCameraPreviewOpen.set(true);
+    this.isCameraPreviewOpen$$.set(true);
   }
 
   protected async onPhotoTaken(capturedPhoto: CapturedPhoto) {
-    this.isCameraPreviewOpen.set(false);
+    this.isCameraPreviewOpen$$.set(false);
 
     try {
       const result = await this.photoCaptureService.analyzeImage(capturedPhoto.file);
@@ -255,7 +284,7 @@ export class FoodDiaryComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   protected onCameraPreviewCancelled() {
-    this.isCameraPreviewOpen.set(false);
+    this.isCameraPreviewOpen$$.set(false);
   }
 
   protected selectProduct(product: CatalogueEntry) {
@@ -303,5 +332,16 @@ export class FoodDiaryComponent implements OnInit, AfterViewInit, OnDestroy {
     elems.forEach((elem) => {
       elem.nativeElement.style.width = width === undefined ? 'auto' : `${width}px`;
     });
+  }
+
+  protected toggleLegacySearch() {
+    this.isLegacySearch$$.update((val) => !val);
+  }
+
+  protected getDisplayName(catalogueEntry: CatalogueEntry): string {
+    if (this.isLegacySearch$$()) {
+      return catalogueEntry.legacyName || catalogueEntry.name;
+    }
+    return catalogueEntry.name;
   }
 }

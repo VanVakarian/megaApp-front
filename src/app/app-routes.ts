@@ -5,6 +5,7 @@ import { SettingsPageComponent } from '@app/components/settings/settings-page.co
 import { authResolver } from '@app/services/auth.resolver';
 import { isChapterSelected } from '@app/services/is-chapter-selected.guard';
 import { Food } from './components/ui-showcase/pages/food/food';
+import { Icons } from './components/ui-showcase/pages/icons/icons';
 import { Money } from './components/ui-showcase/pages/money/money';
 import { Other } from './components/ui-showcase/pages/other/other';
 import { Settings } from './components/ui-showcase/pages/settings/settings';
@@ -42,6 +43,7 @@ export const routes: Routes = [
     children: [
       { path: 'food', component: Food },
       { path: 'money', component: Money },
+      { path: 'icons', component: Icons },
       { path: 'other', component: Other },
       { path: 'settings', component: Settings },
       { path: '', redirectTo: 'other', pathMatch: 'full' },

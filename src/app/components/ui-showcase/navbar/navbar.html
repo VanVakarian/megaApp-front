@@ -26,6 +26,17 @@
       Money
     </v-button>
 
+    <v-button [buttonStyle]="iconsButtonStyle()"
+              [width]="'100%'"
+              [paddingX]="2"
+              [isLabelHidden]="isMenuCollapsed"
+              class="menu-item"
+              (click)="navigateToIcons()">
+      <v-icon v-prefix
+              [name]="IconName.ViewCozy" />
+      Icons
+    </v-button>
+
     <v-button [buttonStyle]="otherButtonStyle()"
               [width]="'100%'"
               [paddingX]="2"
@@ -46,7 +57,6 @@
               (click)="toggleMenuCollapse()">
       <v-icon v-prefix
               [name]="getMenuSizeControlIconName()" />
-      Settings
     </v-button>
 
     <v-button [buttonStyle]="settingsButtonStyle()"

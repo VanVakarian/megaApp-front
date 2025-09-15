@@ -1,0 +1,16 @@
+<div class="icons">
+  <div class="col col-01">
+    <v-card class="card-container">
+      <div class="row">
+        Иконки
+      </div>
+
+      <div class="icons-grid">
+        @for (iconName of iconNames; track iconName) {
+          <v-icon [name]="iconName"
+                  [size]="8" />
+        }
+      </div>
+    </v-card>
+  </div>
+</div>

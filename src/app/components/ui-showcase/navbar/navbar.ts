@@ -10,6 +10,7 @@ enum SelectedPage {
   Food = 'food',
   Money = 'money',
   Other = 'other',
+  Icons = 'icons',
   Settings = 'settings',
 }
 
@@ -44,6 +45,10 @@ export class Navbar implements OnInit {
     this.router.navigate(['/ui-showcase/money']);
   }
 
+  protected navigateToIcons(): void {
+    this.router.navigate(['/ui-showcase/icons']);
+  }
+
   protected navigateToOther(): void {
     this.router.navigate(['/ui-showcase/other']);
   }
@@ -66,6 +71,10 @@ export class Navbar implements OnInit {
 
   protected settingsButtonStyle(): ButtonStyle {
     return this.selectedPage === SelectedPage.Settings ? ButtonStyle.Raised : ButtonStyle.Flat;
+  }
+
+  protected iconsButtonStyle(): ButtonStyle {
+    return this.selectedPage === SelectedPage.Icons ? ButtonStyle.Raised : ButtonStyle.Flat;
   }
 
   protected toggleMenuCollapse(): void {
@@ -94,6 +103,8 @@ export class Navbar implements OnInit {
       this.selectedPage = SelectedPage.Money;
     } else if (url.includes('/ui-showcase/settings')) {
       this.selectedPage = SelectedPage.Settings;
+    } else if (url.includes('/ui-showcase/icons')) {
+      this.selectedPage = SelectedPage.Icons;
     } else {
       this.selectedPage = SelectedPage.Other;
     }
