@@ -34,6 +34,7 @@ import { ScreenSizeWatcherService } from '@app/services/screen-size-watcher.serv
 import { DiaryEntry, HistoryEntryAction, ScreenType } from '@app/shared/interfaces';
 import { UiProgressIcon } from '@app/shared/ui-kit/progress-icon/progress-icon.component';
 
+// TODO[120]: Cleanup
 @Component({
   selector: 'app-diary-entry-new-form',
   templateUrl: './diary-entry-new-form.component.html',

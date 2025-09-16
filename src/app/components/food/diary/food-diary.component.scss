@@ -4,16 +4,6 @@
   }
 }
 
-.mat-expansion-panel-header .add-icon-container {
-  transition: 0.2s cubic-bezier(0, 0, 0, 1);
-  margin-left: auto;
-  margin-right: calc(50% - 12px);
-}
-
-.mat-expansion-panel-header.mat-expanded .add-icon-container {
-  margin-right: 5px;
-}
-
 .mat-expansion-panel-header .add-icon {
   transition: 0.2s linear;
 }
@@ -27,27 +17,9 @@
   width: 0 !important;
 }
 
-.grid-auto-fill {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-}
-
-.catalogue-entry-name {
-  --lines: 4;
-  display: -webkit-box;
-  min-height: calc(var(--lines) * 1.5em);
-  line-clamp: var(--lines);
-  -webkit-line-clamp: var(--lines);
-  overflow: hidden;
-}
-
 ::ng-deep {
-  v-input.catalogue-entry-name-input div.input-wrapper div.prefix {
-    line-height: 12px;
-  }
-
-  /* Stretch camera preview to fill the entire screen */
   .modal-container:has(camera-preview) {
+    /* Stretch camera preview to fill the entire screen */
     width: 100vw !important;
   }
 

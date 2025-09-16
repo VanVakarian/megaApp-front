@@ -26,7 +26,8 @@ export class FoodCatalogueService extends BaseFoodService {
   public catalogue$$: WritableSignal<Catalogue> = signal({});
 
   public searchResults$$: WritableSignal<CatalogueEntry[]> = signal([]);
-  public isSearching$$: WritableSignal<boolean> = signal(false);
+  public searchQuery$$: WritableSignal<string> = signal('');
+  public isLegacySearch$$: WritableSignal<boolean> = signal(false);
 
   public legacySearchResults$$: WritableSignal<CatalogueEntry[]> = signal([]);
 
@@ -73,6 +74,8 @@ export class FoodCatalogueService extends BaseFoodService {
   }
 
   public searchProducts(query: string): void {
+    this.searchQuery$$.set(query);
+
     if (!query.trim()) {
       this.searchResults$$.set([]);
       return;
@@ -87,6 +90,8 @@ export class FoodCatalogueService extends BaseFoodService {
   }
 
   public legacySearchProducts(query: string): void {
+    this.searchQuery$$.set(query);
+
     if (!query.trim()) {
       this.legacySearchResults$$.set([]);
       return;
@@ -126,7 +131,6 @@ export class FoodCatalogueService extends BaseFoodService {
   }
 
   private sendSearchQuery(query: string): void {
-    this.isSearching$$.set(true);
     const message: SearchQueryWsMessage = {
       type: WebSocketMessageType.SEARCH_QUERY,
       query: query,
@@ -143,8 +147,6 @@ export class FoodCatalogueService extends BaseFoodService {
   }
 
   private handleSearchResults(msg: SearchResultsWsMessage): void {
-    this.isSearching$$.set(false);
-
     const query = msg.payload.query;
     const results = msg.payload.catalogueIds;
 
@@ -190,5 +192,12 @@ export class FoodCatalogueService extends BaseFoodService {
     } catch (error) {
       console.error('Failed to save search cache to localStorage:', error);
     }
+  }
+
+  public clearSearch(): void {
+    this.searchQuery$$.set('');
+    this.searchResults$$.set([]);
+    this.legacySearchResults$$.set([]);
+    this.isLegacySearch$$.set(false);
   }
 }

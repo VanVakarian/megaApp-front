@@ -92,29 +92,10 @@
       }
     </mat-expansion-panel>
   }
-
-  <div class="mb-2"></div>
-
-  <mat-expansion-panel #newDiaryEntryPanel
-                       color="primary"
-                       class="sub-expansion-panel-38px-50px expansion-panel-rounded"
-                       (opened)="newDiaryEntryExpanded()">
-    <mat-expansion-panel-header
-                                class="expansion-panel-arrow-indiactor-remove mat-expansion-panel-header-margins-decrease add-panel-header">
-      <!-- TODO: Think of a way to put text here upon panel expanding -->
-      <div class="add-icon-container w-fit">
-        <!-- <div class="mb-4 text-xl font-medium text-center">Добавление записи</div> -->
-        <mat-icon class="add-icon relative top-[2px] scale-150">add</mat-icon>
-      </div>
-    </mat-expansion-panel-header>
-
-    <app-diary-entry-new-form [expanded]="newDiaryEntryPanel.expanded"
-                              (onServerSuccessfullResponse)="accordionCollapse()" />
-  </mat-expansion-panel>
 </mat-accordion>
 
 <v-button primary
-          class="inline-block w-full pt-4"
+          class="pt-4"
           [width]="'100%'"
           (onClick)="openAddFoodModal()">
   Добавить запись
@@ -130,97 +111,24 @@
          [class.is-desktop]="deviceDetectorService.isDesktop$$()"
          (onClose)="closeModal()"
          (onOpen)="onModalOpened()">
-  @if (isCameraPreviewOpen$$()) {
-    <camera-preview (photoTaken)="onPhotoTaken($event)"
-                    (cancelled)="onCameraPreviewCancelled()" />
-  } @else {
-    <div class="flex justify-center gap-4 p-4">
-      <v-input type="text"
-               [formControl]="foodNameControl"
-               class="catalogue-entry-name-input w-full">
-        <v-button flat
-                  v-prefix
-                  [noShadow]="true"
-                  [paddingX]="0"
-                  [paddingY]="0"
-                  (mousedown)="$event.preventDefault()"
-                  (onClick)="toggleLegacySearch()"
-                  class="ml-2 mr-1"
-                  tabindex="-1">
-          <v-icon [name]="IconName.SwapHoriz"
-                  [size]="7"
-                  class="m-0" />
-        </v-button>
-      </v-input>
-
-      @if (isRecording) {
-        <v-button primary
-                  [noShadow]="true"
-                  [isLabelHidden]="true"
-                  [paddingX]="2"
-                  (click)="toggleVoiceRecording()">
-          <v-icon v-prefix
-                  class="animate-pulse"
-                  [name]="IconName.Mic"
-                  [size]="7" />
-        </v-button>
-      } @else {
-        <v-button primary
-                  [noShadow]="true"
-                  [isLabelHidden]="true"
-                  [paddingX]="2"
-                  (click)="toggleVoiceRecording()">
-          <v-icon v-prefix
-                  [name]="IconName.Mic"
-                  [size]="7" />
-        </v-button>
-      }
-
-      @if (shouldShowCameraButton) {
-        <v-button primary
-                  class="md:hidden inline-block"
-                  [noShadow]="true"
-                  [isLabelHidden]="true"
-                  [paddingX]="2"
-                  (click)="takePhoto()">
-          <v-icon v-prefix
-                  [name]="IconName.PhotoCamera"
-                  [size]="7" />
-        </v-button>
-      }
-    </div>
-
-    @if (isLegacySearch$$()) {
-      <div
-           class="shadow-orange-500/30 flex items-center gap-2 px-2 py-1 mx-4 mb-4 font-medium text-white origin-top bg-orange-500 rounded-lg shadow-lg">
-        <v-icon [name]="IconName.Warning"
-                [size]="5" />
-        <span>Используется устаревший поиск</span>
-      </div>
+  @switch (currentViewMode$$()) {
+    @case (ModalViewMode.CAMERA_PREVIEW) {
+      <camera-preview (onPhotoTaken)="onPhotoTaken($event)"
+                      (onCancel)="onCameraPreviewCancelled()" />
     }
 
-    @if (searchResults$$.length > 0) {
-      <div flipAnimate
-           class="grid-auto-fill gap-2 px-2 pb-2 pl-4 overflow-y-auto rounded-lg">
-        @for (catalogueEntry of searchResults$$; track catalogueEntry.id) {
-          <v-card class="pb-2 rounded cursor-pointer"
-                  [attr.data-flip-key]="'catalogue-' + catalogueEntry.id"
-                  (click)="selectProduct(catalogueEntry)">
-            <div class="catalogue-entry-name">{{ getDisplayName(catalogueEntry) }}</div>
-          </v-card>
-        }
-      </div>
-
-      <v-button danger
-                class="absolute bottom-0 pb-4 pl-4 mr-auto"
-                [noShadow]="true"
-                [isLabelHidden]="true"
-                [paddingX]="2"
-                (click)="closeModal()">
-        <v-icon v-prefix
-                [name]="IconName.Close"
-                [size]="10" />
-      </v-button>
+    @case (ModalViewMode.SEARCH) {
+      <food-search [isSearchMode]="isAddFoodModalOpen"
+                   (onSelectProduct)="selectProduct($event)"
+                   (onTakePhoto)="takePhoto()"
+                   (onClose)="closeModal()" />
     }
+
+    @case (ModalViewMode.ADD_DIARY_ENTRY) {
+      <diary-entry-add-form [selectedProduct]="selectedProduct$$()!"
+                            (onGoBack)="goBackToSearch()"
+                            (onSubmit)="closeModal()" />
+    }
+
   }
 </v-modal>

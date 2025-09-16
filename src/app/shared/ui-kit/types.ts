@@ -47,6 +47,7 @@ export enum IconName {
   Article = 'article',
   Cached = 'cached',
   Check = 'check',
+  ChevronLeft = 'chevron_left',
   Close = 'close',
   LeftPanelClose = 'left_panel_close',
   LeftPanelOpen = 'left_panel_open',

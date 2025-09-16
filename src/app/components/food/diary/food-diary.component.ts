@@ -2,7 +2,7 @@ import { NgStyle } from '@angular/common';
 import {
   AfterViewInit,
   Component,
-  effect,
+  computed,
   ElementRef,
   NgZone,
   OnDestroy,
@@ -12,32 +12,30 @@ import {
   viewChildren,
   WritableSignal,
 } from '@angular/core';
-import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
 import { MatAccordion, MatExpansionModule, MatExpansionPanel } from '@angular/material/expansion';
-import { MatIconModule } from '@angular/material/icon';
 import { BMIComponent } from '@app/components/food/diary/bmi/bmi.component';
 import { BodyWeightComponent } from '@app/components/food/diary/body-weight/body-weight.component';
 import { CameraPreviewComponent } from '@app/components/food/diary/camera-preview/camera-preview.component';
+import { DiaryEntryAddFormComponent } from '@app/components/food/diary/diary-entry-add-form/diary-entry-add-form.component';
 import { DiaryEntryEditFormComponent } from '@app/components/food/diary/diary-entry-edit-form/diary-entry-edit-form.component';
-import { DiaryEntryNewFormComponent } from '@app/components/food/diary/diary-entry-new-form/diary-entry-new-form.component';
 import { DiaryNavButtonsComponent } from '@app/components/food/diary/diary-nav/diary-nav-buttons.component';
+import { FoodSearchComponent } from '@app/components/food/diary/food-search/food-search.component';
 import { DeviceDetectorService } from '@app/services/device-detector.service';
 import { FoodCatalogueService } from '@app/services/food/food-catalogue.service';
 import { FoodDiaryService } from '@app/services/food/food-diary.service';
 import { PhotoCaptureService } from '@app/services/photo-capture.service';
 import { ScreenSizeWatcherService } from '@app/services/screen-size-watcher.service';
 import { SettingsService } from '@app/services/settings.service';
-import { VoiceRecordingService } from '@app/services/voice-recording.service';
-import { FlipAnimateDirective } from '@app/shared/directives/flip-animate.directive';
 import { CapturedPhoto, CatalogueEntry, ScreenType } from '@app/shared/interfaces';
-import { IconName } from '@app/shared/ui-kit/types';
 import { VButton } from '@app/shared/ui-kit/v-button/v-button';
-import { VCard } from '@app/shared/ui-kit/v-card/v-card';
-import { VIcon } from '@app/shared/ui-kit/v-icon/v-icon';
-import { VInput } from '@app/shared/ui-kit/v-input/v-input';
 import { VModal } from '@app/shared/ui-kit/v-modal/v-modal';
-import { Subscription } from 'rxjs';
+
+enum ModalViewMode {
+  CAMERA_PREVIEW,
+  SEARCH,
+  ADD_DIARY_ENTRY,
+}
 
 @Component({
   selector: 'app-food-diary',
@@ -45,27 +43,21 @@ import { Subscription } from 'rxjs';
   styleUrl: './food-diary.component.scss',
   imports: [
     NgStyle,
-    ReactiveFormsModule,
     MatExpansionModule,
     MatCardModule,
-    MatIconModule,
     DiaryNavButtonsComponent,
     DiaryEntryEditFormComponent,
-    DiaryEntryNewFormComponent,
+    DiaryEntryAddFormComponent,
     BodyWeightComponent,
     BMIComponent,
     VButton,
     VModal,
-    VIcon,
     CameraPreviewComponent,
-    VInput,
-    VCard,
-    FlipAnimateDirective,
+    FoodSearchComponent,
   ],
 })
 export class FoodDiaryComponent implements OnInit, AfterViewInit, OnDestroy {
   protected readonly foodAccordion = viewChild.required(MatAccordion);
-  protected readonly newDiaryEntryPanel = viewChild.required<MatExpansionPanel>('newDiaryEntryPanel');
   protected readonly contDiv = viewChild.required<ElementRef>('foodCont');
   protected readonly nameDivs = viewChildren<ElementRef>('foodName');
   protected readonly weightsDivs = viewChildren<ElementRef>('foodWeight');
@@ -73,32 +65,21 @@ export class FoodDiaryComponent implements OnInit, AfterViewInit, OnDestroy {
   protected readonly percentsDivs = viewChildren<ElementRef>('foodPercent');
 
   protected isAddFoodModalOpen = false;
-  protected readonly isLegacySearch$$ = signal(false);
 
   protected readonly isCameraPreviewOpen$$: WritableSignal<boolean> = signal(false);
+  protected readonly selectedProduct$$: WritableSignal<CatalogueEntry | null> = signal(null);
 
-  protected get shouldShowCameraButton(): boolean {
-    return this.deviceDetectorService.shouldShowCameraButtonSync();
-  }
-
-  protected readonly foodNameControl = new FormControl('');
-
-  private searchSubscription?: Subscription;
-
-  protected readonly IconName = IconName;
-
-  private readonly searchTypeSwitchEffect = effect(() => {
-    const isLegacy = this.isLegacySearch$$();
-    const currentValue = this.foodNameControl.value;
-
-    if (currentValue && currentValue.trim()) {
-      if (isLegacy) {
-        this.foodCatalogueService.legacySearchProducts(currentValue);
-      } else {
-        this.foodCatalogueService.searchProducts(currentValue);
-      }
+  protected readonly currentViewMode$$ = computed(() => {
+    if (this.isCameraPreviewOpen$$()) {
+      return ModalViewMode.CAMERA_PREVIEW;
     }
+    if (this.selectedProduct$$()) {
+      return ModalViewMode.ADD_DIARY_ENTRY;
+    }
+    return ModalViewMode.SEARCH;
   });
+
+  protected readonly ModalViewMode = ModalViewMode;
 
   protected get todaysKcalsPercent() {
     return this.foodDiaryService.selectedDayTotals$$().kcalsPercent;
@@ -136,24 +117,11 @@ export class FoodDiaryComponent implements OnInit, AfterViewInit, OnDestroy {
     return this.settingsService.settings$$()?.liteVersion ?? false;
   }
 
-  protected get isRecording(): boolean {
-    return this.voiceRecordingService.isRecording$$();
-  }
-
-  protected get searchResults$$(): CatalogueEntry[] {
-    if (this.isLegacySearch$$()) {
-      return this.foodCatalogueService.legacySearchResults$$();
-    } else {
-      return this.foodCatalogueService.searchResults$$();
-    }
-  }
-
   constructor(
     public foodDiaryService: FoodDiaryService,
     private ngZone: NgZone,
     private screenSizeWatcherService: ScreenSizeWatcherService,
     private settingsService: SettingsService,
-    private voiceRecordingService: VoiceRecordingService,
     private photoCaptureService: PhotoCaptureService,
     private foodCatalogueService: FoodCatalogueService,
     protected deviceDetectorService: DeviceDetectorService,
@@ -163,16 +131,6 @@ export class FoodDiaryComponent implements OnInit, AfterViewInit, OnDestroy {
 
   public ngOnInit(): void {
     this.deviceDetectorService.logDeviceInfo();
-
-    this.searchSubscription = this.foodNameControl.valueChanges.subscribe((value) => {
-      if (value === null) return;
-
-      if (this.isLegacySearch$$()) {
-        this.foodCatalogueService.legacySearchProducts(value);
-      } else {
-        this.foodCatalogueService.searchProducts(value);
-      }
-    });
   }
 
   public ngAfterViewInit(): void {
@@ -180,7 +138,7 @@ export class FoodDiaryComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   public ngOnDestroy(): void {
-    this.searchSubscription?.unsubscribe();
+    // Cleanup if needed
   }
 
   protected setBackgroundStyle(percent: number) {
@@ -203,58 +161,22 @@ export class FoodDiaryComponent implements OnInit, AfterViewInit, OnDestroy {
     }, 170);
   }
 
-  protected newDiaryEntryExpanded() {
-    if (this.screenSizeWatcherService.currentScreenType === ScreenType.DESKTOP) return;
-
-    setTimeout(() => {
-      const panelEl = this.newDiaryEntryPanel();
-      if (panelEl?._body?.nativeElement) {
-        window.scrollTo({
-          top: panelEl._body.nativeElement.getBoundingClientRect().top + window.scrollY - 70,
-          behavior: 'smooth',
-        });
-      }
-    }, 170);
-  }
-
   protected accordionCollapse() {
     this.foodAccordion().closeAll();
   }
 
   protected closeModal() {
     this.isAddFoodModalOpen = false;
-    this.foodNameControl.setValue('');
-    this.foodCatalogueService.searchResults$$.set([]);
-    this.foodCatalogueService.legacySearchResults$$.set([]);
+    this.selectedProduct$$.set(null);
+    this.foodCatalogueService.clearSearch();
   }
 
   protected openAddFoodModal() {
     this.isAddFoodModalOpen = true;
-    this.foodNameControl.setValue('');
-    this.foodCatalogueService.searchResults$$.set([]);
-    this.foodCatalogueService.legacySearchResults$$.set([]);
   }
 
   protected onModalOpened() {
-    setTimeout(() => {
-      const inputEl = document.querySelector(
-        'v-modal v-input.catalogue-entry-name-input input.input-field',
-      ) as HTMLInputElement;
-      if (inputEl) inputEl.focus();
-    }, 0);
-  }
-
-  protected async toggleVoiceRecording() {
-    if (this.isRecording) {
-      this.voiceRecordingService.stopRecording();
-    } else {
-      try {
-        await this.voiceRecordingService.startRecording();
-      } catch (error) {
-        console.error('Failed to start voice recording:', error);
-        alert('Failed to access microphone. Please check permissions.');
-      }
-    }
+    // Логика фокуса теперь в FoodSearchComponent.ngAfterViewInit()
   }
 
   protected async takePhoto() {
@@ -288,8 +210,11 @@ export class FoodDiaryComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   protected selectProduct(product: CatalogueEntry) {
-    // this.foodNameControl.setValue(product.name);
-    // this.foodCatalogueService.searchResults$$.set([]);
+    this.selectedProduct$$.set(product);
+  }
+
+  protected goBackToSearch() {
+    this.selectedProduct$$.set(null);
   }
 
   private adjustWidths(): void {
@@ -332,16 +257,5 @@ export class FoodDiaryComponent implements OnInit, AfterViewInit, OnDestroy {
     elems.forEach((elem) => {
       elem.nativeElement.style.width = width === undefined ? 'auto' : `${width}px`;
     });
-  }
-
-  protected toggleLegacySearch() {
-    this.isLegacySearch$$.update((val) => !val);
-  }
-
-  protected getDisplayName(catalogueEntry: CatalogueEntry): string {
-    if (this.isLegacySearch$$()) {
-      return catalogueEntry.legacyName || catalogueEntry.name;
-    }
-    return catalogueEntry.name;
   }
 }

@@ -1,0 +1,18 @@
+.grid-auto-fill {
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+}
+
+.catalogue-entry-name {
+  --lines: 4;
+  display: -webkit-box;
+  min-height: calc(var(--lines) * 1.5em);
+  line-clamp: var(--lines);
+  -webkit-line-clamp: var(--lines);
+  overflow: hidden;
+}
+
+::ng-deep {
+  v-input.catalogue-entry-name-input div.input-wrapper div.prefix {
+    line-height: 12px;
+  }
+}

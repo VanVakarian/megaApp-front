@@ -29,10 +29,10 @@ export class CameraPreviewComponent implements AfterViewInit, OnDestroy {
   private canvas!: ElementRef<HTMLCanvasElement>;
 
   @Output()
-  public photoTaken = new EventEmitter<CapturedPhoto>();
+  public onPhotoTaken = new EventEmitter<CapturedPhoto>();
 
   @Output()
-  public cancelled = new EventEmitter<void>();
+  public onCancel = new EventEmitter<void>();
 
   protected readonly isLoading$$ = signal(false);
   protected readonly photoDataUrl$$ = signal<string>('');
@@ -50,7 +50,7 @@ export class CameraPreviewComponent implements AfterViewInit, OnDestroy {
     effect(() => {
       if (this.hasPhoto$$()) {
         this.isConfirmPhotoTemporarilyDisabled$$.set(true);
-        setTimeout(() => this.isConfirmPhotoTemporarilyDisabled$$.set(false), 1000);
+        setTimeout(() => this.isConfirmPhotoTemporarilyDisabled$$.set(false), 500);
       }
     });
 
@@ -129,7 +129,7 @@ export class CameraPreviewComponent implements AfterViewInit, OnDestroy {
     console.log('Confirm photo clicked');
     const capturedFile = this.capturedFile$$();
     if (capturedFile && this.photoDataUrl$$()) {
-      this.photoTaken.emit({
+      this.onPhotoTaken.emit({
         file: capturedFile,
         dataUrl: this.photoDataUrl$$(),
       });
@@ -143,7 +143,7 @@ export class CameraPreviewComponent implements AfterViewInit, OnDestroy {
   }
 
   public cancel(): void {
-    this.cancelled.emit();
+    this.onCancel.emit();
   }
 
   private stopCamera(): void {
