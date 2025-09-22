@@ -1,14 +1,25 @@
 <div class="icons">
   <div class="col col-01">
-    <v-card class="card-container">
-      <div class="row">
+    <v-card class="flex flex-col gap-3">
+      <div class="row text-lg">
         Иконки
       </div>
 
-      <div class="icons-grid">
+      <div class="row">
+        Клик на иконку - копирует имя в буфер обмена
+      </div>
+
+      <div class="flex flex-wrap gap-3">
         @for (iconName of iconNames; track iconName) {
-          <v-icon [name]="iconName"
-                  [size]="8" />
+          <div (click)="copyIconName(iconName)"
+               class="text-center cursor-pointer">
+            <v-icon [name]="iconName"
+                    [size]="8"
+                    class="icon-img" />
+            <div class="text-xs">
+              {{ getIconKey(iconName) }}
+            </div>
+          </div>
         }
       </div>
     </v-card>

@@ -1,17 +1,15 @@
 import { AfterViewInit, Component, OnInit, ViewChild } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { IconName } from '@app/shared/ui-kit/types';
 import { VButton } from '@app/shared/ui-kit/v-button/v-button';
 import { VCard } from '@app/shared/ui-kit/v-card/v-card';
 import { ddExpandDirection, DropdownItem, VDropdown } from '@app/shared/ui-kit/v-dropdown/v-dropdown';
-import { VIcon } from '@app/shared/ui-kit/v-icon/v-icon';
+import { IconName, VIcon } from '@app/shared/ui-kit/v-icon/v-icon';
 import { InputType, VInput } from '@app/shared/ui-kit/v-input/v-input';
 import { VModal } from '@app/shared/ui-kit/v-modal/v-modal';
 
 @Component({
   selector: 'other',
   templateUrl: './other.html',
-  styleUrl: './other.css',
   imports: [VCard, VInput, VButton, VModal, VDropdown, VIcon, ReactiveFormsModule],
 })
 export class Other implements AfterViewInit, OnInit {
@@ -41,7 +39,7 @@ export class Other implements AfterViewInit, OnInit {
   protected readonly ddExpandDirection = ddExpandDirection;
   protected isShowLongContent = false;
 
-  protected readonly IconName = IconName;
+  protected readonly Icon = IconName;
 
   constructor() {}
 

@@ -13,7 +13,7 @@ import { CssUnitValue } from '@app/shared/ui-kit/types';
 export class VExpand {
   public readonly borderRadius = input<CssUnitValue>(2);
   public readonly padding = input<CssUnitValue>(2);
-  public readonly expanded = input<boolean>(false);
+  public readonly isExpanded = input<boolean>(false);
 
   private readonly _isExpanded = signal(false);
 
@@ -25,7 +25,7 @@ export class VExpand {
     return `var(--unit-${this.padding()})`;
   }
 
-  public isExpanded(): boolean {
+  public isPanelExpanded(): boolean {
     return this._isExpanded();
   }
 
@@ -39,7 +39,8 @@ export class VExpand {
 
   constructor() {
     effect(() => {
-      this._isExpanded.set(this.expanded());
+      const isPanelExpanded = this.isExpanded();
+      this._isExpanded.set(isPanelExpanded);
     });
   }
 }

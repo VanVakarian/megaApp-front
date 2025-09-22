@@ -20,10 +20,27 @@
   </div>
 </v-expand>
 
-<v-card>
+<v-card class="flex flex-col gap-4">
   <h2>Food UI Components</h2>
   <p>Here will be food-related UI components showcase</p>
   <p><strong>Note:</strong> Food menu items are in "food-menu" group, items below are in "items-group"</p>
+
+  <v-button primary
+            (click)="toggleHiddenPanel()">
+    @if (isHiddenPanelExpanded) {
+      Hide Hidden Panel
+    } @else {
+      Show Hidden Panel
+    }
+  </v-button>
+
+  <v-expand outer-shadow-rounded
+            [isExpanded]="isHiddenPanelExpanded">
+    <div v-body
+         class="p-2">
+      <p>Hidden expansion panel content</p>
+    </div>
+  </v-expand>
 </v-card>
 
 <v-expand accordion
@@ -54,7 +71,7 @@
   </div>
 </v-expand>
 
-<div outer-shadow
+<div outer-shadow-rounded
      class="items">
   @for (i of [0,1,2]; track i) {
     <v-expand accordion="test-group"

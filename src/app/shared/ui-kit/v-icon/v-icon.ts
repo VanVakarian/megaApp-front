@@ -1,5 +1,36 @@
 import { Component, computed, input } from '@angular/core';
-import { CssUnitValue, IconName } from '@app/shared/ui-kit/types';
+import { CssUnitValue } from '@app/shared/ui-kit/types';
+
+export enum IconName {
+  Add = 'add',
+  Article = 'article',
+  Cached = 'cached',
+  Check = 'check',
+  ChevronLeft = 'chevron_left',
+  Close = 'close',
+  Delete = 'delete',
+  Edit = 'edit',
+  KeyboardArrowDown = 'keyboard_arrow_down',
+  KeyboardArrowLeft = 'keyboard_arrow_left',
+  KeyboardArrowRight = 'keyboard_arrow_right',
+  KeyboardArrowUp = 'keyboard_arrow_up',
+  LeftPanelClose = 'left_panel_close',
+  LeftPanelOpen = 'left_panel_open',
+  Login = 'login',
+  Logout = 'logout',
+  Mic = 'mic',
+  Paid = 'paid',
+  PersonAdd = 'person_add',
+  PhotoCamera = 'photo_camera',
+  Refresh = 'refresh',
+  Remove = 'remove',
+  Restaurant = 'restaurant',
+  Settings = 'settings',
+  Star = 'star',
+  SwapHoriz = 'swap_horiz',
+  ViewCozy = 'view_cozy',
+  Warning = 'warning',
+}
 
 @Component({
   selector: 'v-icon',

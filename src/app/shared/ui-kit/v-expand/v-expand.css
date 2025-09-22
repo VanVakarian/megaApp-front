@@ -9,9 +9,9 @@
   /* padding: var(--v-expand-padding, var(--unit-2)); */
   border-radius: var(--v-expand-border-radius);
   cursor: pointer;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+  /* display: flex; */
+  /* justify-content: space-between; */
+  /* align-items: center; */
   user-select: none;
   transition: background-color 0.2s ease;
 }

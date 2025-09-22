@@ -42,25 +42,3 @@ export enum ButtonStyle {
   Primary = 'primary',
   Danger = 'danger',
 }
-
-export enum IconName {
-  Article = 'article',
-  Cached = 'cached',
-  Check = 'check',
-  ChevronLeft = 'chevron_left',
-  Close = 'close',
-  LeftPanelClose = 'left_panel_close',
-  LeftPanelOpen = 'left_panel_open',
-  Login = 'login',
-  Logout = 'logout',
-  Mic = 'mic',
-  Paid = 'paid',
-  PersonAdd = 'person_add',
-  PhotoCamera = 'photo_camera',
-  Refresh = 'refresh',
-  Restaurant = 'restaurant',
-  Settings = 'settings',
-  SwapHoriz = 'swap_horiz',
-  ViewCozy = 'view_cozy',
-  Warning = 'warning',
-}

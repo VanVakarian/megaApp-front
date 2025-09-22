@@ -1,9 +1,9 @@
 import { Component, DestroyRef, OnInit } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router } from '@angular/router';
-import { ButtonStyle, IconName } from '@app/shared/ui-kit/types';
+import { ButtonStyle } from '@app/shared/ui-kit/types';
 import { VButton } from '@app/shared/ui-kit/v-button/v-button';
-import { VIcon } from '@app/shared/ui-kit/v-icon/v-icon';
+import { IconName, VIcon } from '@app/shared/ui-kit/v-icon/v-icon';
 import { filter } from 'rxjs';
 
 enum SelectedPage {
@@ -17,12 +17,11 @@ enum SelectedPage {
 @Component({
   selector: 'navbar',
   templateUrl: './navbar.html',
-  styleUrl: './navbar.css',
   imports: [VButton, VIcon],
 })
 export class Navbar implements OnInit {
   protected selectedPage: SelectedPage = SelectedPage.Other;
-  protected readonly IconName = IconName;
+  protected readonly Icon = IconName;
   protected isMenuCollapsed = true; // TODO: move to settings
 
   protected readonly ButtonStyle = ButtonStyle;

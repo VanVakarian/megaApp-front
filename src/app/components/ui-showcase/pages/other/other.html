@@ -1,4 +1,4 @@
-<div class="col col-01">
+<div class="flex flex-wrap gap-4 w-[400px]">
   <v-card class="flex flex-col gap-3">
     <div class="row">
       Карточка по умолчанию (borderRadius=2, padding=2)
@@ -49,14 +49,14 @@
                 [isLabelHidden]="true"
                 [paddingX]="2">
         <v-icon v-prefix
-                [name]="IconName.Mic" />
+                [name]="Icon.Mic" />
       </v-button>
 
       <v-button danger
                 [isLabelHidden]="true"
                 [paddingX]="2">
         <v-icon v-prefix
-                [name]="IconName.Close" />
+                [name]="Icon.Close" />
       </v-button>
     </div>
 
@@ -79,10 +79,10 @@
       <v-input #testInput
                formControlName="testInput">
         <span v-prefix
-              class="prefix">$</span>
+              class="px-2">$</span>
         <button v-postfix
                 type="button"
-                class="postfix">🔍</button>
+                class="w-7 h-7">🔍</button>
       </v-input>
     </div>
   </v-card>

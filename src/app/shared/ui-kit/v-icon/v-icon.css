@@ -7,7 +7,7 @@
   width: var(--v-icon-size, var(--unit-4));
   height: var(--v-icon-size, var(--unit-4));
   color: var(--v-icon-color, currentColor);
-  transition: all 0.2s ease;
+  /* transition: all 0.2s ease; */
 }
 
 .icon-svg {
