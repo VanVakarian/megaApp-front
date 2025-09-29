@@ -14,7 +14,7 @@
   <mat-expansion-panel color="primary"
                        class="sub-expansion-panel-38px-50px expansion-panel-rounded panel-body-weight">
     <mat-expansion-panel-header class="expansion-panel-arrow-indiactor-remove mat-expansion-panel-header-margins-decrease"
-                                [ngStyle]="setBackgroundStyle(todaysKcalsPercent)">
+                                [ngStyle]="setBackgroundStyle(todaysKcalsPercent, false, false)">
       <div class="whitespace-nowrap overflow-hidden text-center">
         {{ caloriesDisplayText }}
       </div>
@@ -28,7 +28,7 @@
   <div class="mb-1"></div>
 
   <div #foodCont
-       class="tw-bg-color whitespace-nowrap flex w-full gap-1 overflow-hidden text-base font-normal">
+       class="tw-bg-color whitespace-nowrap flex w-full gap-1 px-2 overflow-hidden text-base font-normal">
     <div #foodName
          class="tw-card-food-entry grow whitespace-nowrap overflow-hidden text-center">
       Блюдо:
@@ -39,18 +39,13 @@
       г.
     </div>
 
-    <div #foodKcals
-         class="text-center"
-         [class.hidden-if-isLiteVersion]="isLiteVersionSetting">
-      kcal
-    </div>
-
     <div #foodPercent
          class="text-center">
       %
     </div>
   </div>
 
+  <!--
   @for (food of selectedDayFood; track food.id; let first = $first; let last = $last) {
     <mat-expansion-panel #diaryEntry
                          class="sub-expansion-panel-38px-50px"
@@ -58,7 +53,7 @@
                          [class.last-in-group]="last"
                          (opened)="diaryEntryExpanded(diaryEntry, food.id)">
       <mat-expansion-panel-header class="expansion-panel-arrow-indiactor-remove mat-expansion-panel-header-margins-decrease"
-                                  [ngStyle]="setBackgroundStyle(food.foodKcalPercentageOfDaysNorm)">
+                                  [ngStyle]="setBackgroundStyle(todaysKcalsPercent, false, false)">
         <mat-panel-title class="mat-panel-title-margin-remove">
           <div #foodCont
                class="whitespace-nowrap flex w-full gap-1 overflow-hidden text-base font-normal">
@@ -73,8 +68,7 @@
             </div>
 
             <div #foodKcals
-                 class="text-right"
-                 [class.hidden-if-isLiteVersion]="isLiteVersionSetting">
+                 class="text-right">
               {{ food.foodKcals }}
             </div>
 
@@ -92,11 +86,54 @@
       }
     </mat-expansion-panel>
   }
+  -->
+
 </mat-accordion>
+
+<!-- <div class="mb-4"></div> -->
+
+<div outer-shadow-rounded
+     class="">
+  @for (food of selectedDayFood; track food.id; let isFirst = $first; let isLast = $last) {
+    <v-expand accordion="food-group"
+              (onOpened)="onVExpandOpened($event, food.id)"
+              class="item">
+      <div v-header
+           [ngStyle]="setBackgroundStyle(food.foodKcalPercentageOfDaysNorm, isFirst, isLast)"
+           class="p-2 font-extrabold bg-red-500">
+        <div #foodCont
+             class="whitespace-nowrap flex w-full gap-0 overflow-hidden text-base font-normal">
+          <div #foodName
+               class="tw-card-food-entry grow whitespace-nowrap overflow-hidden">
+            {{ food.foodName }}
+          </div>
+
+          <div #foodWeight
+               class="text-right">
+            {{ food.foodWeight }} <span class="text-xs"> Г.</span>
+          </div>
+
+          <div #foodPercent
+               class="pl-2 text-right">
+            {{ food.foodPercent }} <span class="text-xs">%</span>
+          </div>
+        </div>
+      </div>
+
+      <div v-body
+           class="p-4">
+        @defer (on timer(300)) {
+          <app-diary-entry-edit-form [diaryEntry]="food"
+                                     (onServerSuccessfullEditResponse)="accordionCollapse()" />
+        }
+      </div>
+    </v-expand>
+  }
+</div>
 
 <v-button primary
           class="pt-4"
-          [width]="'100%'"
+          [config]="{ width: '100%' }"
           (onClick)="openAddFoodModal()">
   Добавить запись
 </v-button>

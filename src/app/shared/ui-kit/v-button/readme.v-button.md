@@ -1,318 +1,133 @@
-# V-Button Component Usage Examples
+# V-Button
 
-## Component Architecture
+Neumorphic button with attribute-based style modes and a single typed config for all settings.
 
-The component has the following structure:
+## Overview
+
+- Two ways to select style: attribute (`flat`, `raised`, `primary`, `danger`) or `config.buttonStyle`.
+- All other settings (size, width, behavior, states) are configured via a single `[config]` object.
+- Prefix/postfix content via `v-prefix` / `v-postfix` for icons and badges.
+- Built with modern Angular signals.
+
+## Anatomy
+
 ```
-:host (inline-block container with optional directive attributes)
-└── button (neumorphic button)
-    └── ng-content (projected content)
-```
-
-**Key Features**:
-- The neumorphic styling is applied to the button element, creating different visual appearances
-- Uses directive attributes (`flat`, `raised`, `primary`, `danger`) like Angular Material
-- **Requires** one of the directive attributes to function - plain `<v-button>` won't work
-- The button responds to interactions with visual state changes (hover, active, disabled)
-- Each directive provides distinct styling behavior
-
-## Basic Usage
-
-```html
-<!-- Flat button with hover effects -->
-<v-button flat>
-  Click me
-</v-button>
-
-<!-- Raised button with permanent shadows -->
-<v-button raised>
-  Raised Button
-</v-button>
-
-<!-- Primary color button with gradient background -->
-<v-button primary>
-  Primary Button
-</v-button>
-
-<!-- Danger button for destructive actions -->
-<v-button danger>
-  Delete
-</v-button>
-
-<!-- Using buttonStyle input (alternative approach) -->
-<v-button [buttonStyle]="ButtonStyle.Primary">
-  Primary via Input
+<v-button ...>
+  <button>
+    <ng-content select="[v-prefix]" />
+    <div class="btn-text"><ng-content /></div>
+    <ng-content select="[v-postfix]" />
+  </button>
 </v-button>
 ```
 
-**Important**: You must use either one of the directive attributes (`flat`, `raised`, `primary`, or `danger`) OR the `buttonStyle` input. The component requires at least one styling approach to function properly.
+## Styling modes
 
-## Usage with Click Handler
+- `flat` — clean flat look with subtle hover effects
+- `raised` — elevated with permanent shadows
+- `primary` — gradient primary button
+- `danger` — destructive/alert action
+
+Choose a mode either by attribute or with `config.buttonStyle` (enum `ButtonStyle`). Use only one approach per button.
+
+## Quick start
 
 ```html
-<v-button flat (onClick)="handleClick($event)">
-  Submit
+<!-- Attribute-based style -->
+<v-button primary>Primary</v-button>
+
+<!-- Programmatic style via config -->
+<v-button [config]="{ buttonStyle: ButtonStyle.Raised }">Raised</v-button>
+```
+
+## Config API
+
+```ts
+interface VButtonConfig {
+  type?: 'button' | 'submit' | 'reset';
+  buttonStyle?: ButtonStyle;           // Primary | Raised | Flat | Danger
+  width?: string;                      // '100%', '240px', etc.
+  isLabelHidden?: boolean;             // hides main label text
+  paddingY?: CssUnitValue;             // vertical padding (unit system)
+  paddingX?: CssUnitValue;             // horizontal padding
+  isDisabled?: boolean;                // disabled state
+  isWithoutShadow?: boolean;           // removes all shadows
+  bgOpacity?: '0' | '1' | `0.${number}`; // background opacity
+}
+```
+
+Defaults: `type='button'`, `paddingY=2`, `paddingX=4`, `isDisabled=false`, `isWithoutShadow=false`, `bgOpacity='1'`.
+
+## Usage patterns (minimal but diverse)
+
+```html
+<!-- 1) Icon-only: hide label, no shadows, compact paddings -->
+<v-button flat [config]="{ isLabelHidden: true, isWithoutShadow: true, paddingX: 2 }">
+  <span v-prefix>⚙️</span>
+  Settings
 </v-button>
 
-<v-button primary (onClick)="handleImportantAction($event)">
-  Important Action
+<!-- 2) Destructive action with custom paddings -->
+<v-button danger [config]="{ paddingY: 1, paddingX: 6 }">Delete</v-button>
+
+<!-- 3) Full width + programmatic style -->
+<v-button [config]="{ buttonStyle: ButtonStyle.Primary, width: '100%' }">Continue</v-button>
+
+<!-- 4) Transparent background (bgOpacity=0), e.g. prefix button near input -->
+<v-button flat [config]="{ bgOpacity: '0', paddingX: 0, paddingY: 0 }">
+  <span v-prefix>✕</span>
 </v-button>
 
-<!-- Using buttonStyle input -->
-<v-button [buttonStyle]="ButtonStyle.Raised" (onClick)="handleAction($event)">
-  Programmatic Style
-</v-button>
+<!-- 5) Disabled state -->
+<v-button primary [config]="{ isDisabled: true }">Disabled</v-button>
 ```
 
-## Directive Attributes (Material-like)
+## Content projection
 
-### `flat`
-Creates a clean button with no shadows by default, adding subtle shadows on hover:
-```html
-<v-button flat>Flat Button</v-button>
-```
+- Prefix: `[v-prefix]` — rendered to the left of the label (icon, indicator)
+- Main label: projected content, can be hidden via `isLabelHidden`
+- Postfix: `[v-postfix]` — rendered to the right (badge, arrow, hotkey)
 
-### `raised`
-Adds neumorphic raised appearance with permanent shadows:
-```html
-<v-button raised>Raised Button</v-button>
-```
-
-### `primary`
-Applies primary color scheme with gradient background and permanent shadows:
-```html
-<v-button primary>Primary Button</v-button>
-```
-
-### `danger`
-Applies danger/destructive action styling:
-```html
-<v-button danger>Delete Item</v-button>
-```
-
-**Note**: Directives are mutually exclusive - use only one per button instance.
-
-## Input Properties
-
-### `buttonStyle`
-Programmatically set the button style using the ButtonStyle enum:
-```typescript
-import { ButtonStyle } from './v-button';
-
-// In your component
-buttonStyle = ButtonStyle.Primary;
-```
-```html
-<v-button [buttonStyle]="buttonStyle">Dynamic Style</v-button>
-<v-button [buttonStyle]="ButtonStyle.Flat">Static Style</v-button>
-<v-button [buttonStyle]="ButtonStyle.Danger">Danger Style</v-button>
-```
-
-### `width`
-Set the button width:
-```html
-<v-button flat width="200px">Fixed Width</v-button>
-<v-button raised width="100%">Full Width</v-button>
-```
-
-### `isLabelHidden`
-Hide the main button text while keeping prefix/postfix content:
-```html
-<!-- Icon-only button with hidden label -->
-<v-button flat [isLabelHidden]="true">
-  <span v-prefix>🔍</span>
-  Search <!-- This text will be hidden -->
-  <span v-postfix>→</span>
-</v-button>
-
-<!-- Toggle label visibility -->
-<v-button raised [isLabelHidden]="hideLabel">
-  <span v-prefix>💾</span>
-  Save Document
-</v-button>
-```
-
-### `paddingY` and `paddingX`
-Configure button internal padding using the unit-value system:
-```html
-<!-- Compact button -->
-<v-button flat [paddingY]="1" [paddingX]="2">Compact</v-button>
-
-<!-- Large button -->
-<v-button raised [paddingY]="3" [paddingX]="6">Large</v-button>
-
-<!-- Default: paddingY=2 (8px), paddingX=4 (16px) -->
-<v-button primary>Default Padding</v-button>
-```
-
-**Available values**: any values from `CssUnitValue` (1-96), corresponding to CSS variables `--unit-{number}` from `vars.css`.
-
-### `noShadow`
-Disable all button shadows:
-```html
-<!-- Button without shadows -->
-<v-button raised [noShadow]="true">No Shadows</v-button>
-
-<!-- Dynamic shadow toggle -->
-<v-button primary [noShadow]="disableShadows">Toggle Shadows</v-button>
-
-<!-- Flat button without hover shadows -->
-<v-button flat [noShadow]="true">Clean Flat</v-button>
-```
-
-This parameter completely disables all shadows (including hover and active states) regardless of the selected button style.
-
-### `isDisabled`
-Disable the button:
-```html
-<!-- Disabled button -->
-<v-button primary [isDisabled]="true">Disabled</v-button>
-
-<!-- Dynamic disable -->
-<v-button raised [isDisabled]="isProcessing">Submit</v-button>
-```
-
-Disabled button doesn't respond to clicks and has reduced opacity.
-
-## Usage with Content Projection
+Example:
 
 ```html
-<!-- Button with icon and text -->
-<v-button raised>
-  <span>🚀</span>
-  Launch
-</v-button>
-
-<!-- Button with complex content -->
-<v-button primary>
-  <div style="display: flex; align-items: center; gap: 8px;">
-    <span>📊</span>
-    <span>View Stats</span>
-  </div>
-</v-button>
-
-<!-- Button with only icon -->
-<v-button flat>
-  ⚙️
-</v-button>
-
-<!-- Button with prefix and postfix content -->
 <v-button raised>
   <span v-prefix>🔍</span>
   Search
   <span v-postfix>→</span>
 </v-button>
-
-<!-- Complex layout with prefix/postfix -->
-<v-button primary>
-  <div v-prefix class="icon">💾</div>
-  Save Document
-  <div v-postfix class="badge">Ctrl+S</div>
-</v-button>
-
-<!-- Icon-only button using isLabelHidden -->
-<v-button flat [isLabelHidden]="true">
-  <span v-prefix>⚙️</span>
-  Settings <!-- Hidden label for accessibility -->
-</v-button>
-
-<!-- Button with conditional label visibility -->
-<v-button raised [isLabelHidden]="isCompactMode">
-  <span v-prefix>📊</span>
-  Statistics
-  <span v-postfix class="count">42</span>
-</v-button>
 ```
 
-## Visual States
+## Accessibility
 
-The button automatically handles the following visual states:
+- Semantic `<button>` with `type` and `disabled` support.
+- `aria-disabled` is set automatically.
+- Provide meaningful text or an `aria-label` when using `isLabelHidden`.
 
-### Flat:
-- **Normal**: Clean flat appearance with no shadows
-- **Hover**: Subtle neumorphic shadows appear on hover
-- **Active/Pressed**: Inset shadows creating "pressed" effect
+## Theming & CSS vars
 
-### Raised:
-- **Normal**: Raised appearance with permanent neumorphic shadows
-- **Hover**: Enhanced shadows for increased depth feedback
-- **Active/Pressed**: Inset shadows creating "pressed" effect
+- Paddings use unit system: `--unit-N` (see `vars.css`).
+- Background opacity is controlled via `--v-button-bg-opacity` by `config.bgOpacity`.
+- Colors are driven by theme variables (`--color-*`).
 
-### Primary:
-- **Normal**: Gradient background (indigo shades) with permanent shadows and white text
-- **Hover**: Enhanced shadows for depth feedback
-- **Active/Pressed**: Inverted gradient creating visual feedback
+## Sizing & layout
 
-### Danger:
-- **Normal**: Danger color scheme for destructive actions
-- **Hover**: Enhanced shadows for depth feedback
-- **Active/Pressed**: Visual feedback for destructive action confirmation
+- Width: use `config.width` or plain CSS classes/styles on `v-button`.
+- Label text is wrapped in `.btn-text` for predictable layout.
 
-## Styling Features
+## Behavior & states
 
-- Inherits font family and respects parent font settings
-- Uses neumorphic design consistent with other v-components
-- Smooth transitions for all state changes
-- Uses CSS custom properties from vars.css for theming
-- Responsive to theme changes (light/dark mode support)
-- Directive-based styling like Angular Material
+- Hover/active visuals depend on the selected style.
+- `isWithoutShadow` disables all shadows, including hover/active.
+- Disabled blocks pointer events and reduces opacity.
 
-## Technical Notes
+## Events
 
-- Standalone component, no additional imports needed
-- **Requires directive attributes OR buttonStyle input** - selector: `'v-button[flat], v-button[raised], v-button[primary], v-button[danger], v-button[buttonStyle]'`
-- Emits `onClick` event with native MouseEvent
-- Uses semantic HTML button element for accessibility
-- Cursor automatically changes to pointer on hover
-- Disabled state prevents all pointer events and reduces opacity
-- Uses modern Angular signals with `input()` and `output()` for all properties and events
-- Supports prefix/postfix content projection with `v-prefix` and `v-postfix` selectors
-- Width can be controlled via input property or CSS styling
-- Main button text can be hidden using `isLabelHidden` while preserving prefix/postfix content
-- Button text is wrapped in `.btn-text` div when visible for better styling control
+- `onClick: MouseEvent` — emitted on click (when not disabled).
 
-## API
+## Best practices
 
-### Inputs
-- **buttonStyle**: `ButtonStyle` - Button style (Flat, Raised, Primary, Danger)
-- **width**: `string` - Button width
-- **isLabelHidden**: `boolean` - Hides main button text (default: false)
-- **paddingY**: `CssUnitValue` - Vertical padding (default: 2 = 8px)
-- **paddingX**: `CssUnitValue` - Horizontal padding (default: 4 = 16px)
-- **noShadow**: `boolean` - Disables all shadows (default: false)
-- **isDisabled**: `boolean` - Disables button (default: false)
-
-### Outputs
-- **onClick**: `MouseEvent` - Click event
-
-### Directive Attributes
-- **flat**: Flat button with hover effects
-- **raised**: Raised button with permanent shadows
-- **primary**: Primary button with gradient background
-- **danger**: Button for destructive actions
-
-## Event Handling
-
-```typescript
-// In your component
-handleButtonClick(event: MouseEvent) {
-  console.log('Button clicked:', event);
-  // Your click logic here
-}
-```
-
-```html
-<!-- In your template -->
-<v-button primary (onClick)="handleButtonClick($event)">
-  Handle Click
-</v-button>
-
-<!-- With dynamic styling -->
-<v-button [buttonStyle]="ButtonStyle.Raised"
-          [width]="'250px'"
-          [noShadow]="disableShadows"
-          [isDisabled]="isProcessing"
-          (onClick)="handleDynamicClick($event)">
-  Dynamic Button
-</v-button>
-```
+- Choose either attribute style or `config.buttonStyle`, not both.
+- When hiding the label, set an accessible `aria-label` if needed.
+- Prefer unit values for paddings to keep consistent spacing.
+- Keep buttons concise; use postfix/prefix for icons and badges.

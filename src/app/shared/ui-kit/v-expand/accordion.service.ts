@@ -5,24 +5,7 @@ import { Injectable, signal } from '@angular/core';
 })
 export class AccordionService {
   private readonly openedIds = signal<Map<string, string | null>>(new Map());
-  private readonly registry = new Map<string, Map<string, () => void>>(new Map());
-
-  public register(groupId: string, id: string, closeFn: () => void) {
-    if (!this.registry.has(groupId)) {
-      this.registry.set(groupId, new Map());
-    }
-    this.registry.get(groupId)!.set(id, closeFn);
-  }
-
-  public unregister(groupId: string, id: string) {
-    const group = this.registry.get(groupId);
-    if (group) {
-      group.delete(id);
-      if (group.size === 0) {
-        this.registry.delete(groupId);
-      }
-    }
-  }
+  public readonly openedIds$$ = this.openedIds.asReadonly();
 
   public toggle(groupId: string, id: string) {
     const openedIds = this.openedIds();
@@ -32,12 +15,6 @@ export class AccordionService {
       openedIds.set(groupId, null);
     } else {
       openedIds.set(groupId, id);
-      const group = this.registry.get(groupId);
-      if (group) {
-        for (const [key, closeFn] of group.entries()) {
-          if (key !== id) closeFn();
-        }
-      }
     }
     this.openedIds.set(new Map(openedIds));
   }

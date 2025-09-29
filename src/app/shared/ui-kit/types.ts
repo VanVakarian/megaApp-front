@@ -37,8 +37,8 @@ export type CssUnitValue =
   | 128; // 512px
 
 export enum ButtonStyle {
-  Flat = 'flat',
-  Raised = 'raised',
   Primary = 'primary',
+  Raised = 'raised',
+  Flat = 'flat',
   Danger = 'danger',
 }

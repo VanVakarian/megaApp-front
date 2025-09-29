@@ -11,9 +11,8 @@ import {
   signal,
 } from '@angular/core';
 import { CapturedPhoto } from '@app/shared/interfaces';
-import { IconName } from '@app/shared/ui-kit/types';
 import { VButton } from '@app/shared/ui-kit/v-button/v-button';
-import { VIcon } from '@app/shared/ui-kit/v-icon/v-icon';
+import { IconName, VIcon } from '@app/shared/ui-kit/v-icon/v-icon';
 
 @Component({
   selector: 'camera-preview',
@@ -42,7 +41,7 @@ export class CameraPreviewComponent implements AfterViewInit, OnDestroy {
   private readonly capturedFile$$ = signal<File | null>(null);
   protected readonly hasPhoto$$ = computed(() => this.capturedFile$$() !== null);
 
-  protected readonly IconName = IconName;
+  protected readonly Icon = IconName;
 
   private cameraStream: MediaStream | null = null;
 

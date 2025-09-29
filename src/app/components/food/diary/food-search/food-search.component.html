@@ -1,17 +1,15 @@
 <div class="flex justify-center gap-4 p-4">
-  <v-input type="text"
-           [formControl]="foodNameControl"
+  <v-input [formControl]="foodNameControl"
+           [config]="{ type: 'text' }"
            class="catalogue-entry-name-input w-full">
     <v-button flat
               v-prefix
-              [noShadow]="true"
-              [paddingX]="0"
-              [paddingY]="0"
+              [config]="{ isWithoutShadow: true, paddingX: 0, paddingY: 0 }"
               (mousedown)="$event.preventDefault()"
               (onClick)="toggleLegacySearch()"
               class="ml-2 mr-1"
               tabindex="-1">
-      <v-icon [name]="IconName.SwapHoriz"
+      <v-icon [name]="Icon.SwapHoriz"
               [size]="7"
               class="m-0" />
     </v-button>
@@ -19,23 +17,19 @@
 
   @if (isRecording) {
     <v-button primary
-              [noShadow]="true"
-              [isLabelHidden]="true"
-              [paddingX]="2"
+              [config]="{ isWithoutShadow: true, isLabelHidden: true, paddingX: 2 }"
               (click)="toggleVoiceRecording()">
       <v-icon v-prefix
               class="animate-pulse"
-              [name]="IconName.Mic"
+              [name]="Icon.Mic"
               [size]="7" />
     </v-button>
   } @else {
     <v-button primary
-              [noShadow]="true"
-              [isLabelHidden]="true"
-              [paddingX]="2"
+              [config]="{ isWithoutShadow: true, isLabelHidden: true, paddingX: 2 }"
               (click)="toggleVoiceRecording()">
       <v-icon v-prefix
-              [name]="IconName.Mic"
+              [name]="Icon.Mic"
               [size]="7" />
     </v-button>
   }
@@ -43,12 +37,10 @@
   @if (shouldShowCameraButton) {
     <v-button primary
               class="md:hidden inline-block"
-              [noShadow]="true"
-              [isLabelHidden]="true"
-              [paddingX]="2"
+              [config]="{ isWithoutShadow: true, isLabelHidden: true, paddingX: 2 }"
               (click)="takePhoto()">
       <v-icon v-prefix
-              [name]="IconName.PhotoCamera"
+              [name]="Icon.PhotoCamera"
               [size]="7" />
     </v-button>
   }
@@ -57,7 +49,7 @@
 @if (isLegacySearch$$()) {
   <div
        class="shadow-orange-500/30 flex items-center gap-2 px-2 py-1 mx-4 mb-4 font-medium text-white origin-top bg-orange-500 rounded-lg shadow-lg">
-    <v-icon [name]="IconName.Warning"
+    <v-icon [name]="Icon.Warning"
             [size]="5" />
     <span>Используется устаревший поиск</span>
   </div>
@@ -77,12 +69,10 @@
 
   <v-button danger
             class="absolute bottom-0 pb-4 pl-4 mr-auto"
-            [noShadow]="true"
-            [isLabelHidden]="true"
-            [paddingX]="2"
+            [config]="{ isWithoutShadow: true, isLabelHidden: true, paddingX: 2 }"
             (click)="closeModal()">
     <v-icon v-prefix
-            [name]="IconName.Close"
+            [name]="Icon.Close"
             [size]="10" />
   </v-button>
 }

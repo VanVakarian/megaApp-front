@@ -1,28 +1,34 @@
 # V-Input
 
-Neumorphic input component with form integration and content projection.
+Neumorphic input component with unified configuration API, form integration and content projection.
 
 ## Basic Usage
 
 ```html
 <v-input
-  label="Username"
-  placeholder="Enter your name"
+  [config]="{ label: 'Username', placeholder: 'Enter your name' }"
   formControlName="username"
 />
 ```
 
-## Properties
+## Configuration API
 
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `label` | `string` | `''` | Label text |
-| `placeholder` | `string` | `''` | Placeholder text |
-| `type` | `string` | `'text'` | Input type |
-| `isDisabled` | `boolean` | `false` | Disable component |
-| `isReadonly` | `boolean` | `false` | Read-only mode |
-| `errorMessage` | `string` | `''` | Error message |
-| `name` | `string` | `''` | Input name attribute |
+All component settings are unified in a single `config` object:
+
+```typescript
+interface VInputConfig {
+  isDisabled?: boolean;
+  isReadonly?: boolean;
+  type?: 'text' | 'password' | 'email' | 'number' | 'tel' | 'url';
+  label?: string;
+  placeholder?: string;
+  errorMessage?: string;
+  name?: string;
+  fontSize?: string; // e.g. '1rem', '16px', '1.2em'
+  fontWeight?: number; // 100-900
+  textAlign?: 'left' | 'right' | 'center';
+}
+```
 
 ## Events
 
@@ -32,159 +38,100 @@ Neumorphic input component with form integration and content projection.
 | `onFocused` | `Event` | Input focused |
 | `onBlurred` | `Event` | Input blurred |
 
-## Content Projection
+## Examples
 
-### Prefix & Postfix
+### Simple Form with Various Types
 ```html
-<v-input label="Price">
+<form [formGroup]="form">
+  <!-- Basic text input -->
+  <v-input
+    formControlName="username"
+    [config]="{
+      label: 'Username',
+      placeholder: 'Enter your name'
+    }" />
+
+  <!-- Email with validation -->
+  <v-input
+    formControlName="email"
+    [config]="{
+      type: 'email',
+      label: 'Email Address',
+      placeholder: 'user@example.com'
+    }" />
+
+  <!-- Password with custom styling -->
+  <v-input
+    formControlName="password"
+    [config]="{
+      type: 'password',
+      label: 'Password',
+      placeholder: 'Enter password',
+      fontSize: '1.1rem',
+      fontWeight: 500
+    }" />
+</form>
+```
+
+### Advanced Configuration with Content Projection
+```html
+<!-- Number input with custom styling and currency -->
+<v-input
+  formControlName="price"
+  [config]="{
+    type: 'number',
+    label: 'Product Price',
+    placeholder: '0.00',
+    textAlign: 'right',
+    fontSize: '18px',
+    fontWeight: 600
+  }">
   <span v-prefix>$</span>
-  <button v-postfix type="button">🔍</button>
+  <select v-postfix>
+    <option>USD</option>
+    <option>EUR</option>
+  </select>
+</v-input>
+
+<!-- Search with interactive elements -->
+<v-input
+  formControlName="search"
+  [config]="{
+    type: 'text',
+    label: 'Search Products',
+    placeholder: 'Type to search...',
+    fontSize: '1rem'
+  }">
+  <button v-prefix type="button" (click)="clearSearch()">✕</button>
+  <button v-postfix type="button" (click)="performSearch()">�</button>
 </v-input>
 ```
 
-## Examples
-
-### With Forms
+### Dynamic Configuration with State Management
 ```typescript
 // Component
-form = new FormGroup({
-  username: new FormControl('', Validators.required),
-  email: new FormControl('', [Validators.required, Validators.email]),
-  password: new FormControl('', Validators.required)
-});
+protected readonly inputConfig = computed<VInputConfig>(() => ({
+  type: 'tel',
+  label: 'Phone Number',
+  placeholder: this.isInternational() ? '+1 (555) 000-0000' : '(555) 000-0000',
+  isDisabled: this.isLoading(),
+  errorMessage: this.hasError() ? 'Invalid phone format' : '',
+  fontSize: this.isMobile() ? '16px' : '14px',
+  fontWeight: this.isImportant() ? 600 : 400
+}));
 ```
 
 ```html
 <!-- Template -->
-<form [formGroup]="form">
-  <v-input
-    label="Username"
-    placeholder="Enter name"
-    formControlName="username"
-  />
-
-  <v-input
-    label="Email"
-    type="email"
-    placeholder="user@example.com"
-    formControlName="email"
-  />
-
-  <v-input
-    label="Password"
-    type="password"
-    placeholder="Enter password"
-    formControlName="password"
-  />
-</form>
-```
-
-### Input Types
-```html
-<!-- Text input -->
-<v-input type="text" label="Name" />
-
-<!-- Email input -->
-<v-input type="email" label="Email" />
-
-<!-- Password input -->
-<v-input type="password" label="Password" />
-
-<!-- Number input -->
-<v-input type="number" label="Age" />
-```
-
-### With Prefix/Postfix
-```html
-<!-- Currency input -->
-<v-input label="Price">
-  <span v-prefix>$</span>
-  <span v-postfix>USD</span>
-</v-input>
-
-<!-- Search input -->
-<v-input label="Search" placeholder="Type to search...">
-  <button v-postfix type="button">🔍</button>
-</v-input>
-
-<!-- Phone input -->
-<v-input label="Phone">
-  <span v-prefix>+1</span>
-</v-input>
-```
-
-### States
-```html
-<!-- Disabled -->
 <v-input
-  label="Loading"
-  placeholder="Please wait..."
-  [isDisabled]="true"
-/>
-
-<!-- Read-only -->
-<v-input
-  label="ID"
-  value="USER_12345"
-  [isReadonly]="true"
-/>
-
-<!-- With error -->
-<v-input
-  label="Required Field"
-  formControlName="field"
-  errorMessage="This field is required"
-/>
-```
-  label="Password"
-  type="password"
-  placeholder="Enter password">
-  <button v-postfix type="button">👁️</button>
-</v-input>
-
-<!-- Currency input with prefix and postfix -->
-<v-input
-  label="Price"
-  type="number"
-  placeholder="0.00">
-  <span v-prefix>$</span>
-  <span v-postfix>USD</span>
-</v-input>
-
-<!-- Search input with icon postfix -->
-<v-input
-  label="Search"
-  placeholder="Search products...">
-  <button v-postfix type="button" class="search-btn">
-    <svg width="16" height="16" viewBox="0 0 24 24">
-      <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
-    </svg>
+  formControlName="phone"
+  [config]="inputConfig()">
+  <span v-prefix>{{ countryCode() }}</span>
+  <button v-postfix
+          type="button"
+          (click)="toggleCountrySelector()">
+    🌍
   </button>
-</v-input>
-
-<!-- Disabled field with prefix -->
-<v-input
-  label="Account Balance"
-  placeholder="Loading..."
-  [disabled]="true">
-  <span v-prefix>$</span>
-</v-input>
-
-<!-- Field with error and postfix -->
-<v-input
-  label="Phone Number"
-  placeholder="Enter phone"
-  errorMessage="Invalid phone number format">
-  <span v-prefix>+1</span>
-  <button v-postfix type="button">📱</button>
-</v-input>
-
-<!-- Read-only field with prefix -->
-<v-input
-  label="ID"
-  [readonly]="true"
-  value="USER_12345">
-  <span v-prefix>#</span>
 </v-input>
 ```
 

@@ -5,22 +5,21 @@ import { FoodDiaryService } from '@app/services/food/food-diary.service';
 import { FoodStatsService } from '@app/services/food/food-stats.service';
 import { CatalogueEntry, DiaryEntry, HistoryEntryAction } from '@app/shared/interfaces';
 import { UiProgressIcon } from '@app/shared/ui-kit/progress-icon/progress-icon.component';
-import { IconName } from '@app/shared/ui-kit/types';
 import { VButton } from '@app/shared/ui-kit/v-button/v-button';
-import { VIcon } from '@app/shared/ui-kit/v-icon/v-icon';
+import { IconName, VIcon } from '@app/shared/ui-kit/v-icon/v-icon';
+import { VInput } from '@app/shared/ui-kit/v-input/v-input';
 
 @Component({
   selector: 'diary-entry-add-form',
   templateUrl: './diary-entry-add-form.component.html',
-  styleUrl: './diary-entry-add-form.component.scss',
-  imports: [VButton, VIcon, ReactiveFormsModule, UiProgressIcon],
+  imports: [VButton, VIcon, ReactiveFormsModule, UiProgressIcon, VInput],
 })
 export class DiaryEntryAddFormComponent {
   readonly onGoBack = output<void>();
   readonly onSubmit = output<void>();
   readonly selectedProduct = input.required<CatalogueEntry>();
 
-  protected readonly IconName = IconName;
+  protected readonly Icon = IconName;
 
   private selectedDaysTargerKcals = 0;
   private selectedDaysEatenPercent = 0;

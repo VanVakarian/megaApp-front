@@ -41,6 +41,7 @@
 
   .prefix,
   .postfix {
+    display: flex;
     min-width: var(--unit-2);
   }
 }
@@ -49,10 +50,11 @@
   background: transparent;
   border: none;
   outline: none;
-  font-size: 1rem;
+  font-size: var(--v-input-font-size, 1rem);
   color: var(--color-text-default);
   flex: 1;
   font-family: inherit;
+  font-weight: var(--v-input-font-weight, 400);
 
   &::placeholder {
     font-style: italic;

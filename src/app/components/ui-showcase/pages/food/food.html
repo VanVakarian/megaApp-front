@@ -11,10 +11,12 @@
     <app-bmi />
     <form [formGroup]="form"
           class="flex justify-end">
-      <v-input type="text"
-               label="Вес"
-               placeholder="Введите вес"
-               formControlName="weight"
+      <v-input formControlName="weight"
+               [config]="{
+                 type: 'text',
+                 label: 'Вес',
+                 placeholder: 'Введите вес'
+               }"
                class="weight-input w-1/2" />
     </form>
   </div>
@@ -91,9 +93,11 @@
 <div class="flex gap-4">
   <div class="w-1/2"
        [formGroup]="form">
-    <v-input label="random input"
-             placeholder="Введите что-нибудь"
-             formControlName="test01" />
+    <v-input formControlName="test01"
+             [config]="{
+               label: 'random input',
+               placeholder: 'Введите что-нибудь'
+             }" />
   </div>
 
   <v-dropdown label="Select Food Item"

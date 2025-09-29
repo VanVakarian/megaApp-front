@@ -39,7 +39,8 @@ export class FoodDiaryService extends BaseFoodService {
   public readonly selectedDayIso$$: WritableSignal<string> = signal(calculateTodayIsoWithUserTimeShift());
   public readonly selectedDayTotals$$: Signal<DayTotals> = computed(() => this.extractSelectedDayTotals());
 
-  public readonly diaryEntryClickedFocus$ = new Subject<number>();
+  public readonly diaryEntryFocusId$$: WritableSignal<number | null> = signal(null);
+  public readonly diaryEntryResetId$$: WritableSignal<number | null> = signal(null);
 
   private readonly DIARY_STORAGE_KEY = 'food_diary';
   private readonly FETCH_OFFSET = 7;
@@ -79,6 +80,18 @@ export class FoodDiaryService extends BaseFoodService {
     const catalogueKcals = this.catalogueService.catalogue$$()[entry.foodCatalogueId]?.kcals ?? 0;
     const coefficient = this.coefficientsService.coefficients$$()[entry.foodCatalogueId] || 1;
     return Math.round(entryWeight * catalogueKcals * coefficient);
+  }
+
+  public focusDiaryEntry(diaryEntryId: number): void {
+    this.diaryEntryFocusId$$.set(diaryEntryId);
+    // Очищаем сигнал через небольшую задержку
+    setTimeout(() => this.diaryEntryFocusId$$.set(null), 100);
+  }
+
+  public resetDiaryEntryForm(diaryEntryId: number): void {
+    this.diaryEntryResetId$$.set(diaryEntryId);
+    // Очищаем сигнал через небольшую задержку
+    setTimeout(() => this.diaryEntryResetId$$.set(null), 100);
   }
 
   @exhaustRequest()

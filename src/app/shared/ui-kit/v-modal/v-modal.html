@@ -7,8 +7,7 @@
       @if (isCloseButtonVisible()) {
         <v-button flat
                   class="close-button"
-                  [paddingY]="1"
-                  [paddingX]="1"
+                  [config]="{ paddingY: 1, paddingX: 1 }"
                   (onClick)="closeModal()">
           <svg width="12"
                height="12"

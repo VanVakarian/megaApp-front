@@ -5,10 +5,9 @@ import { FoodCatalogueService } from '@app/services/food/food-catalogue.service'
 import { VoiceRecordingService } from '@app/services/voice-recording.service';
 import { FlipAnimateDirective } from '@app/shared/directives/flip-animate.directive';
 import { CatalogueEntry } from '@app/shared/interfaces';
-import { IconName } from '@app/shared/ui-kit/types';
 import { VButton } from '@app/shared/ui-kit/v-button/v-button';
 import { VCard } from '@app/shared/ui-kit/v-card/v-card';
-import { VIcon } from '@app/shared/ui-kit/v-icon/v-icon';
+import { IconName, VIcon } from '@app/shared/ui-kit/v-icon/v-icon';
 import { VInput } from '@app/shared/ui-kit/v-input/v-input';
 import { Subscription } from 'rxjs';
 
@@ -26,7 +25,7 @@ export class FoodSearchComponent implements OnInit, OnDestroy, AfterViewInit {
   readonly onClose = output<void>();
 
   protected readonly foodNameControl = new FormControl('');
-  protected readonly IconName = IconName;
+  protected readonly Icon = IconName;
 
   private searchSubscription?: Subscription;
 

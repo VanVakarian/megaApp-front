@@ -1,8 +1,8 @@
 import {
   Component,
   effect,
-  ElementRef,
   EventEmitter,
+  inject,
   Input,
   OnChanges,
   OnDestroy,
@@ -28,12 +28,14 @@ import { MatInputModule } from '@angular/material/input';
 import { FoodCatalogueService } from '@app/services/food/food-catalogue.service';
 import { FoodCoefficientsService } from '@app/services/food/food-coefficients.service';
 import { FoodDiaryService } from '@app/services/food/food-diary.service';
-import { FoodStatsService } from '@app/services/food/food-stats.service';
-import { ScreenSizeWatcherService } from '@app/services/screen-size-watcher.service';
 import { ConfirmationDialogModalService } from '@app/shared/components/dialog-modal/mat-dialog-modal.service';
 import { DiaryEntry, HistoryEntry, HistoryEntryAction } from '@app/shared/interfaces';
 import { UiProgressIcon } from '@app/shared/ui-kit/progress-icon/progress-icon.component';
-import { delay, filter, Subscription, take } from 'rxjs';
+import { VButton } from '@app/shared/ui-kit/v-button/v-button';
+import { VExpand } from '@app/shared/ui-kit/v-expand/v-expand';
+import { IconName, VIcon } from '@app/shared/ui-kit/v-icon/v-icon';
+import { VInput } from '@app/shared/ui-kit/v-input/v-input';
+import { take } from 'rxjs';
 
 interface DiaryEntryFormModel {
   id: FormControl<number>;
@@ -52,6 +54,10 @@ interface DiaryEntryFormModel {
     MatFormFieldModule,
     MatInputModule,
     UiProgressIcon,
+    VButton,
+    VIcon,
+    VExpand,
+    VInput,
   ],
   templateUrl: './diary-entry-edit-form.component.html',
 })
@@ -63,9 +69,10 @@ export class DiaryEntryEditFormComponent implements OnInit, OnChanges, OnDestroy
   public onServerSuccessfullEditResponse = new EventEmitter<void>();
 
   @ViewChild('foodWeightChangeElem')
-  public foodWeightChangeElem!: ElementRef;
+  public foodWeightChangeElem!: VInput;
 
-  public showHistory: boolean = false;
+  public isHistoryExpanded: boolean = false;
+  public disableHistoryAnimationTemporaroly: boolean = false;
   private historyAction: HistoryEntryAction = HistoryEntryAction.SET;
 
   private selectedDaysTargerKcals = 0;
@@ -77,6 +84,8 @@ export class DiaryEntryEditFormComponent implements OnInit, OnChanges, OnDestroy
 
   public foodWeightInitial: number = 0;
   public foodWeightFinal: number = 0;
+
+  protected readonly Icon = IconName;
 
   private newWeightPattern = /^(?!0+$)\d+$/; // Digits only, but not zero
   private editWeightPattern = /^[-+]?\d+$/; // Digits only with or without a plus or a minus
@@ -106,33 +115,44 @@ export class DiaryEntryEditFormComponent implements OnInit, OnChanges, OnDestroy
     return this.diaryEntryForm.controls.foodWeightChange;
   }
 
-  private subs = new Subscription();
+  private inputFocusEffect = effect(() => {
+    const focusId = this.foodDiaryService.diaryEntryFocusId$$();
+    if (focusId === this.diaryEntryForm.value.id && this.foodWeightChangeElem) {
+      setTimeout(() => {
+        if (this.foodWeightChangeElem) {
+          this.foodWeightChangeElem.focus();
+        }
+      }, 100);
+    }
+  });
+
+  private formResetEffect = effect(() => {
+    const resetId = this.foodDiaryService.diaryEntryResetId$$();
+    if (resetId === this.diaryEntryForm.value.id) {
+      this.resetForm();
+      this.collapseHistory();
+    }
+  });
+
+  private totalsUpdateEffect = effect(() => {
+    const totals = this.foodDiaryService.selectedDayTotals$$();
+    this.selectedDaysEatenPercent = totals.kcalsPercent;
+    this.selectedDaysTargerKcals = totals.targetKcals;
+    this.selectedFoodKcals = this.foodCatalogueService.catalogue$$()?.[this.diaryEntry.foodCatalogueId]?.kcals ?? 0;
+    this.diaryEntriesCoefficient =
+      this.foodCoefficientsService.coefficients$$()?.[this.diaryEntry.foodCatalogueId] ?? 1;
+  });
 
   public get selectedFoodName() {
     return this.foodCatalogueService.catalogue$$()?.[this.diaryEntry.foodCatalogueId]?.name;
   }
 
-  constructor(
-    private foodDiaryService: FoodDiaryService,
-    private foodCatalogueService: FoodCatalogueService,
-    private foodCoefficientsService: FoodCoefficientsService,
-    private foodStatsService: FoodStatsService,
-    private confirmModal: ConfirmationDialogModalService,
-    private screenSizeWatcherService: ScreenSizeWatcherService,
-  ) {
-    effect(() => {
-      const totals = this.foodDiaryService.selectedDayTotals$$();
-      this.selectedDaysEatenPercent = totals.kcalsPercent;
-      this.selectedDaysTargerKcals = totals.targetKcals;
-      this.selectedFoodKcals = this.foodCatalogueService.catalogue$$()?.[this.diaryEntry.foodCatalogueId]?.kcals ?? 0;
-      this.diaryEntriesCoefficient =
-        this.foodCoefficientsService.coefficients$$()?.[this.diaryEntry.foodCatalogueId] ?? 1;
-    });
-  }
+  private readonly foodDiaryService = inject(FoodDiaryService);
+  private readonly foodCatalogueService = inject(FoodCatalogueService);
+  private readonly foodCoefficientsService = inject(FoodCoefficientsService);
+  private readonly confirmModal = inject(ConfirmationDialogModalService);
 
-  public ngOnInit(): void {
-    this.subscribe();
-  }
+  public ngOnInit(): void {}
 
   public ngOnChanges(): void {
     if (this.diaryEntry) {
@@ -148,12 +168,12 @@ export class DiaryEntryEditFormComponent implements OnInit, OnChanges, OnDestroy
     }
   }
 
-  public ngOnDestroy(): void {
-    this.subs.unsubscribe();
-  }
+  public ngOnDestroy(): void {}
 
   public isFormValid(): boolean {
     if (!this.diaryEntryForm.valid) return false;
+    if ((this.foodWeightNewControl.value as any) === '') return false;
+    if ((this.foodWeightChangeControl.value as any) === '') return false;
 
     const weightIfNew = this.foodWeightNewControl.value;
     const weightIfChange = this.foodWeightChangeControl.value;
@@ -203,7 +223,7 @@ export class DiaryEntryEditFormComponent implements OnInit, OnChanges, OnDestroy
     this.updateProjectedDaysEatenPercent();
   }
 
-  public onWeightChangeResetClick(): void {
+  protected onWeightChangeResetClick(): void {
     this.foodWeightChangeControl.setValue(null);
     this.foodWeightFinal = this.foodWeightInitial;
     this.updateProjectedDaysEatenPercent();
@@ -256,7 +276,7 @@ export class DiaryEntryEditFormComponent implements OnInit, OnChanges, OnDestroy
   }
 
   public toggleHistory() {
-    this.showHistory = !this.showHistory;
+    this.isHistoryExpanded = !this.isHistoryExpanded;
   }
 
   public formHistoryEntry(historyEntry: HistoryEntry) {
@@ -275,33 +295,17 @@ export class DiaryEntryEditFormComponent implements OnInit, OnChanges, OnDestroy
   public chooseIconForHistoryEntry(historyEntry: HistoryEntry) {
     switch (historyEntry.action) {
       case HistoryEntryAction.INIT:
-        return 'grade';
+        return this.Icon.Star;
       case HistoryEntryAction.SET:
-        return 'create';
+        return this.Icon.Edit;
       case HistoryEntryAction.ADD:
-        return 'add';
+        return this.Icon.Add;
       case HistoryEntryAction.SUBTRACT:
-        return 'remove';
+        return this.Icon.Remove;
     }
   }
 
-  private subscribe(): void {
-    this.subs.add(
-      this.foodDiaryService.diaryEntryClickedFocus$
-        .pipe(
-          filter((diaryEntryId) => this.diaryEntryForm.value.id === diaryEntryId),
-          delay(100), // delay is the duration of the panel expansion animation, otherwise focus messes with it.
-        )
-        .subscribe(() => {
-          // if (this.screenSizeWatcherService.currentScreenType === ScreenType.MOBILE) return;
-          this.foodWeightChangeElem.nativeElement.focus();
-        }),
-    );
-  }
-
   private async deleteDiaryEntry(): Promise<void> {
-    const kcalsDelta = this.calculateKcalsDelta(-this.diaryEntry.foodWeight);
-
     this.diaryEntryForm.disable();
     try {
       const res = await this.foodDiaryService.deleteDiaryEntry(this.diaryEntryForm.getRawValue().id);
@@ -336,5 +340,20 @@ export class DiaryEntryEditFormComponent implements OnInit, OnChanges, OnDestroy
       this.projectedSelectedDaysEatenPercentNum = totalPercent;
       this.projectedSelectedDaysEatenPercentPadded = totalPercent.toFixed(1);
     }
+  }
+
+  private resetForm(): void {
+    this.foodWeightNewControl.setValue(null);
+    this.foodWeightChangeControl.setValue(null);
+    this.foodWeightFinal = this.foodWeightInitial;
+    this.updateProjectedDaysEatenPercent();
+  }
+
+  private collapseHistory(): void {
+    this.disableHistoryAnimationTemporaroly = true;
+    this.isHistoryExpanded = false;
+    setTimeout(() => {
+      this.disableHistoryAnimationTemporaroly = false;
+    }, 100);
   }
 }

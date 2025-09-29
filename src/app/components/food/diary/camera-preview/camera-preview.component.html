@@ -10,22 +10,18 @@
       <div class="flex justify-center w-full gap-2">
         <v-button danger
                   class="mr-auto"
-                  [noShadow]="true"
-                  [isLabelHidden]="true"
-                  [paddingX]="2"
+                  [config]="{ isWithoutShadow: true, isLabelHidden: true, paddingX: 2 }"
                   (click)="cancel()">
           <v-icon v-prefix
-                  [name]="IconName.Close"
+                  [name]="Icon.Close"
                   [size]="10" />
         </v-button>
 
         <v-button primary
-                  [noShadow]="true"
-                  [isLabelHidden]="true"
-                  [paddingX]="2"
+                  [config]="{ isWithoutShadow: true, isLabelHidden: true, paddingX: 2 }"
                   (click)="startCamera()">
           <v-icon v-prefix
-                  [name]="IconName.Refresh"
+                  [name]="Icon.Refresh"
                   [size]="10" />
         </v-button>
       </div>
@@ -40,33 +36,26 @@
       <div class="absolute bottom-0 flex justify-center w-full gap-4 p-4">
         <v-button danger
                   class="mr-auto"
-                  [noShadow]="true"
-                  [isLabelHidden]="true"
-                  [paddingX]="2"
+                  [config]="{ isWithoutShadow: true, isLabelHidden: true, paddingX: 2 }"
                   (click)="cancel()">
           <v-icon v-prefix
-                  [name]="IconName.Close"
+                  [name]="Icon.Close"
                   [size]="10" />
         </v-button>
 
         <v-button primary
-                  [noShadow]="true"
-                  [isLabelHidden]="true"
-                  [paddingX]="2"
+                  [config]="{ isWithoutShadow: true, isLabelHidden: true, paddingX: 2 }"
                   (click)="retakePhoto()">
           <v-icon v-prefix
-                  [name]="IconName.Refresh"
+                  [name]="Icon.Refresh"
                   [size]="10" />
         </v-button>
 
         <v-button primary
-                  [noShadow]="true"
-                  [isLabelHidden]="true"
-                  [paddingX]="2"
-                  [isDisabled]="isConfirmPhotoTemporarilyDisabled$$()"
+                  [config]="{ isWithoutShadow: true, isLabelHidden: true, paddingX: 2, isDisabled: isConfirmPhotoTemporarilyDisabled$$() }"
                   (onClick)="confirmPhoto()">
           <v-icon v-prefix
-                  [name]="IconName.Check"
+                  [name]="Icon.Check"
                   [size]="10" />
         </v-button>
       </div>
@@ -78,7 +67,7 @@
       @if (isLoading$$()) {
         <div class="bg-black/70 absolute inset-0 z-10 flex flex-col items-center justify-center text-white">
           <v-icon class="animate-spin"
-                  [name]="IconName.Cached"
+                  [name]="Icon.Cached"
                   [size]="10" />
           <p>Подключение к камере...</p>
         </div>
@@ -97,23 +86,18 @@
       <div class="absolute bottom-0 flex items-center w-full p-4">
         <v-button danger
                   class="mr-auto"
-                  [noShadow]="true"
-                  [isLabelHidden]="true"
-                  [paddingX]="2"
+                  [config]="{ isWithoutShadow: true, isLabelHidden: true, paddingX: 2 }"
                   (click)="cancel()">
           <v-icon v-prefix
-                  [name]="IconName.Close"
+                  [name]="Icon.Close"
                   [size]="10" />
         </v-button>
 
         <v-button primary
-                  [noShadow]="true"
-                  [isLabelHidden]="true"
-                  [paddingX]="2"
-                  [isDisabled]="isLoading$$()"
+                  [config]="{ isWithoutShadow: true, isLabelHidden: true, paddingX: 2, isDisabled: isLoading$$() }"
                   (click)="takePhoto()">
           <v-icon v-prefix
-                  [name]="IconName.PhotoCamera"
+                  [name]="Icon.PhotoCamera"
                   [size]="10" />
         </v-button>
       </div>

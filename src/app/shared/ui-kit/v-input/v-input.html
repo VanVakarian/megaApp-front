@@ -1,11 +1,11 @@
-@if (label()) {
+@if (settings().label) {
   <label class="label"
-         [for]="inputId">{{ label() }}</label>
+         [for]="inputId">{{ settings().label }}</label>
 }
 
 <div class="input-wrapper"
      [class.focused]="isFocused"
-     [class.disabled]="isDisabled()">
+     [class.disabled]="settings().isDisabled">
 
   <div class="prefix">
     <ng-content select="[v-prefix]" />
@@ -13,12 +13,15 @@
 
   <input #inputElement
          [id]="inputId"
-         [name]="name() || inputId"
-         [type]="type()"
-         [placeholder]="placeholder()"
          [value]="value"
-         [disabled]="isDisabled()"
-         [readonly]="isReadonly()"
+         [name]="settings().name || inputId"
+         [type]="settings().type"
+         [placeholder]="settings().placeholder"
+         [disabled]="settings().isDisabled"
+         [readonly]="settings().isReadonly"
+         [style.text-align]="settings().textAlign"
+         [style.--v-input-font-weight]="cssFontWeight()"
+         [style.--v-input-font-size]="cssFontSize()"
          (input)="onInputChange($event)"
          (focus)="onFocus()"
          (blur)="onBlur()"

@@ -24,37 +24,35 @@
 
     <div class="flex gap-3">
       <v-button flat
-                [isDisabled]="true">
+                [config]="{ isDisabled: true }">
         flat
       </v-button>
 
       <v-button raised
-                [isDisabled]="true">
+                [config]="{ isDisabled: true }">
         raised
       </v-button>
 
       <v-button primary
-                [isDisabled]="true">
+                [config]="{ isDisabled: true }">
         primary
       </v-button>
 
       <v-button danger
-                [isDisabled]="true">
+                [config]="{ isDisabled: true }">
         danger
       </v-button>
     </div>
 
     <div class="flex gap-3">
       <v-button primary
-                [isLabelHidden]="true"
-                [paddingX]="2">
+                [config]="{ isLabelHidden: true, paddingX: 2 }">
         <v-icon v-prefix
                 [name]="Icon.Mic" />
       </v-button>
 
       <v-button danger
-                [isLabelHidden]="true"
-                [paddingX]="2">
+                [config]="{ isLabelHidden: true, paddingX: 2 }">
         <v-icon v-prefix
                 [name]="Icon.Close" />
       </v-button>
@@ -73,8 +71,10 @@
     Компактная карточка (маленькие значения)
   </v-card>
 
-  <v-card [borderRadius]="0">
+  <v-card [borderRadius]="0"
+          class="flex flex-col gap-2">
     Карточка без скругления
+
     <div [formGroup]="form">
       <v-input #testInput
                formControlName="testInput">
@@ -85,30 +85,58 @@
                 class="w-7 h-7">🔍</button>
       </v-input>
     </div>
+
+    <div [formGroup]="form">
+      <v-input #testInput
+               formControlName="testInput">
+        <v-button flat
+                  v-prefix
+                  [config]="{ isWithoutShadow: true, bgOpacity: '0.5', paddingX: 0, paddingY: 0 }"
+                  (click)="consoleLogFormValue()"
+                  class="mr-2">
+          <v-icon [name]="Icon.Close"
+                  [size]="8" />
+        </v-button>
+
+        <button v-postfix
+                type="button"
+                class="w-7 h-7">🔍</button>
+      </v-input>
+    </div>
   </v-card>
 
   <form [formGroup]="form">
-    <v-input label="Имя пользователя"
-             placeholder="Введите ваше имя"
-             formControlName="username" />
+    <v-input formControlName="username"
+             [config]="{
+               label: 'Имя пользователя',
+               placeholder: 'Введите ваше имя'
+             }" />
 
-    <v-input label="Email"
-             placeholder="example@email.com"
-             [type]="InputType.Email"
-             formControlName="email" />
+    <v-input formControlName="email"
+             [config]="{
+               label: 'Email',
+               placeholder: 'example@email.com',
+               type: 'email'
+             }" />
 
-    <v-input label="Пароль"
-             placeholder="Введите пароль"
-             [type]="InputType.Password"
-             formControlName="password" />
+    <v-input formControlName="password"
+             [config]="{
+               label: 'Пароль',
+               placeholder: 'Введите пароль',
+               type: 'password'
+             }" />
 
-    <v-input label="Отключенное поле"
-             placeholder="Это поле отключено"
-             formControlName="disabled" />
+    <v-input formControlName="disabled"
+             [config]="{
+               label: 'Отключенное поле',
+               placeholder: 'Это поле отключено'
+             }" />
 
-    <v-input label="Поле с ошибкой"
-             placeholder="Введите что-то"
-             formControlName="error" />
+    <v-input formControlName="error"
+             [config]="{
+               label: 'Поле с ошибкой',
+               placeholder: 'Введите что-то'
+             }" />
   </form>
 </div>
 

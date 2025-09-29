@@ -1,41 +1,121 @@
 <div class="relative">
-  <div class="my-3 mr-3 text-xl text-center">
+  <div (click)="toggleHistory()"
+       class="my-0 mb-4 mr-3 text-xl text-center cursor-pointer select-none">
     {{ selectedFoodName }}
   </div>
 
-  <div class="absolute -bottom-[7px] -right-[20px]">
-    <button mat-mini-fab
-            class="food-diary-entry-history-btn scale-75"
-            style="background-color: white"
-            (click)="toggleHistory()">
-
-      @if (showHistory) {
-        <mat-icon>expand_less</mat-icon>
+  <div class="absolute -bottom-[9px] -right-[8px]">
+    <v-button flat
+              [config]="{ isWithoutShadow: true, isLabelHidden: true, bgOpacity: '0.75', paddingX: 0, paddingY: 0 }"
+              (click)="toggleHistory()">
+      @if (isHistoryExpanded) {
+        <v-icon v-prefix
+                [name]="Icon.KeyboardArrowUp"
+                [size]="8" />
       } @else {
-        <mat-icon>expand_more</mat-icon>
+        <v-icon v-prefix
+                [name]="Icon.KeyboardArrowDown"
+                [size]="8" />
       }
-
-    </button>
+    </v-button>
   </div>
 </div>
 
-<mat-expansion-panel [expanded]="showHistory">
-  <div class="flex flex-col gap-2 mt-4">
+<v-expand [isExpanded]="isHistoryExpanded"
+          [isWithoutAnimation]="disableHistoryAnimationTemporaroly"
+          class="">
+  <div v-body
+       class="flex flex-col gap-2 mb-4 ml-2">
     @for (historyEntry of diaryEntry.history; track $index) {
       <div class="relative">
-        <mat-icon class="absolute -left-[6px] -top-[2px] scale-75">
-          {{ chooseIconForHistoryEntry(historyEntry) }}
-        </mat-icon>
-
-        <div class="ml-5">{{ formHistoryEntry(historyEntry) }}</div>
+        <v-icon [name]="chooseIconForHistoryEntry(historyEntry)"
+                [size]="7"
+                class="absolute -left-[6px] -top-[2px] scale-75" />
+        <div class="ml-6">{{ formHistoryEntry(historyEntry) }}</div>
       </div>
     }
   </div>
-</mat-expansion-panel>
+</v-expand>
+
+<div class="flex gap-4 mb-2 *:w-1/2">
+  <div class="whitespace-nowrap inline-flex items-center justify-center gap-2 text-xl text-center">
+    <ui-progress-icon circleStyle
+                      [progressNum]="projectedSelectedDaysEatenPercentNum"
+                      [diameter]="24"
+                      class="mb-[3.7px] w-1/3 text-right place-content-end" />
+
+    <span class="w-2/3 font-bold text-left"> {{ projectedSelectedDaysEatenPercentPadded }}% </span>
+  </div>
+
+  <div class="whitespace-nowrap overflow-hidden text-xl text-center">
+    <v-icon [name]="Icon.Scale"
+            [size]="7"
+            class="-mb-[5px]" />
+
+    <span class="font-bold"> {{ foodWeightFinal }}г. </span>
+  </div>
+</div>
 
 <form [formGroup]="diaryEntryForm"
-      (submit)="onSubmit()">
-  <div class="flex w-full gap-4 mt-2 mb-[-15px]">
+      (submit)="onSubmit()"
+      class="flex flex-col gap-4">
+  <div class="flex w-full gap-4 mt-0">
+    <v-input formControlName="foodWeightNew"
+             [config]="{
+               type: 'number',
+               label: 'Новый вес',
+               fontSize: '20px',
+               fontWeight: 500,
+               textAlign: 'right',
+             }"
+             (input)="onNewWeightInput()"
+             class="food-name-input w-1/2">
+      @if (foodWeightNewControl.value !== null) {
+        <v-button flat
+                  v-prefix
+                  [config]="{ isWithoutShadow: true, bgOpacity: '0', paddingX: 2, paddingY: 0 }"
+                  (click)="onWeightNewResetClick()">
+          <v-icon [name]="Icon.Close"
+                  [size]="6" />
+        </v-button>
+      }
+
+      @if (foodWeightNewControl.value !== null) {
+        <span v-postfix
+              class="ml-0 mr-3"> г. </span>
+      }
+    </v-input>
+
+    <v-input #foodWeightChangeElem
+             formControlName="foodWeightChange"
+             [config]="{
+               type: 'number',
+               label: 'Изменить вес',
+               fontSize: '20px',
+               fontWeight: 500,
+               textAlign: 'right'
+             }"
+             (input)="onChangeWeightInput()"
+             class="food-name-input w-1/2">
+      @if (foodWeightChangeControl.value !== null) {
+        <v-button flat
+                  v-prefix
+                  [config]="{ isWithoutShadow: true, bgOpacity: '0', paddingX: 2, paddingY: 0 }"
+                  (click)="onWeightChangeResetClick()">
+          <v-icon [name]="Icon.Close"
+                  [size]="6" />
+        </v-button>
+      }
+
+      @if (foodWeightChangeControl.value !== null) {
+        <span v-postfix
+              class="ml-0 mr-3"> г. </span>
+      }
+    </v-input>
+  </div>
+
+  <!--
+  <div class="flex w-full gap-4 mt-0 mb-[-15px]">
     <mat-form-field class="w-1/2"
                     appearance="outline">
       <mat-label>Ввести новый вес:</mat-label>
@@ -78,7 +158,6 @@
       }
 
       <input matInput
-             #foodWeightChangeElem
              type="number"
              class="text-right"
              formControlName="foodWeightChange"
@@ -90,29 +169,9 @@
       }
     </mat-form-field>
   </div>
+  -->
 
-  <div class="flex gap-4 mb-4">
-    <mat-card class="w-full h-10 p-2">
-      <div class="whitespace-nowrap inline-flex items-center justify-center gap-2 text-xl text-center">
-        <ui-progress-icon circleStyle
-                          [progressNum]="projectedSelectedDaysEatenPercentNum"
-                          [diameter]="24"
-                          class="mb-[3.7px] w-1/3 text-right place-content-end" />
-
-        <span class="w-2/3 font-bold text-left"> {{ projectedSelectedDaysEatenPercentPadded }}% </span>
-      </div>
-    </mat-card>
-
-    <mat-card class="w-full h-10 p-2">
-      <div class="whitespace-nowrap overflow-hidden text-xl text-center">
-        <mat-icon class="-mb-[3px]">scale</mat-icon>
-
-        <span class="font-bold"> {{ foodWeightFinal }}г. </span>
-      </div>
-    </mat-card>
-  </div>
-
-  <div class="flex w-full gap-4 mb-2">
+  <!-- <div class="flex w-full gap-4 mb-2">
     <button mat-raised-button
             type="button"
             color="warn"
@@ -128,5 +187,20 @@
             [disabled]="!isFormValid()">
       Сохранить
     </button>
+  </div> -->
+
+  <div class="flex w-full gap-4">
+    <v-button danger
+              [config]="{ type: 'button' }"
+              (click)="openConfirmationModal('Вы уверены, что хотите удалить эту запись?')"
+              class="text-lg">
+      Удалить
+    </v-button>
+
+    <v-button primary
+              [config]="{ type: 'submit', isDisabled: !isFormValid() }"
+              class="grow w-full text-lg">
+      Сохранить
+    </v-button>
   </div>
 </form>

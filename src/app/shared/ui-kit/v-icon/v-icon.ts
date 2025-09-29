@@ -25,6 +25,7 @@ export enum IconName {
   Refresh = 'refresh',
   Remove = 'remove',
   Restaurant = 'restaurant',
+  Scale = 'scale',
   Settings = 'settings',
   Star = 'star',
   SwapHoriz = 'swap_horiz',
