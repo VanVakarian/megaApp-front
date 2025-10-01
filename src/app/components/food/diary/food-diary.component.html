@@ -1,98 +1,52 @@
 <div class="lg:block hidden mb-4">
-  <mat-card>
+  <v-card [borderRadius]="2"
+          [padding]="0">
     <div class="w-full my-2 text-xl font-semibold text-center">Дневник</div>
-  </mat-card>
+  </v-card>
 </div>
 
-<mat-accordion>
-  <div class="flex gap-2">
-    <div class="w-full mb-2">
-      <app-diary-nav-buttons />
-    </div>
+<div class="flex gap-2">
+  <div class="w-full mb-2">
+    <app-diary-nav-buttons />
   </div>
+</div>
 
-  <mat-expansion-panel color="primary"
-                       class="sub-expansion-panel-38px-50px expansion-panel-rounded panel-body-weight">
-    <mat-expansion-panel-header class="expansion-panel-arrow-indiactor-remove mat-expansion-panel-header-margins-decrease"
-                                [ngStyle]="setBackgroundStyle(todaysKcalsPercent, false, false)">
-      <div class="whitespace-nowrap overflow-hidden text-center">
-        {{ caloriesDisplayText }}
-      </div>
-    </mat-expansion-panel-header>
+<v-expand accordion="food-group"
+          outer-shadow-rounded
+          class="BMI mb-2">
+  <div v-header
+       class="v-header w-full p-2 text-center"
+       [ngStyle]="setBackgroundStyle(todaysKcalsPercent, true, true)">
+    <span class=" font-normal">{{ caloriesDisplayText }}</span>
 
+  </div>
+  <div v-body
+       class="flex flex-col gap-2 p-4">
     <app-bmi />
-
     <app-body-weight />
-  </mat-expansion-panel>
+  </div>
+</v-expand>
 
-  <div class="mb-1"></div>
-
-  <div #foodCont
-       class="tw-bg-color whitespace-nowrap flex w-full gap-1 px-2 overflow-hidden text-base font-normal">
-    <div #foodName
-         class="tw-card-food-entry grow whitespace-nowrap overflow-hidden text-center">
-      Блюдо:
-    </div>
-
-    <div #foodWeight
-         class="text-center">
-      г.
-    </div>
-
-    <div #foodPercent
-         class="text-center">
-      %
-    </div>
+<div #foodCont
+     class="whitespace-nowrap flex w-full gap-1 px-2 overflow-hidden text-base font-normal">
+  <div #foodName
+       class="tw-card-food-entry grow whitespace-nowrap overflow-hidden text-center">
+    Блюдо:
   </div>
 
-  <!--
-  @for (food of selectedDayFood; track food.id; let first = $first; let last = $last) {
-    <mat-expansion-panel #diaryEntry
-                         class="sub-expansion-panel-38px-50px"
-                         [class.first-in-group]="first"
-                         [class.last-in-group]="last"
-                         (opened)="diaryEntryExpanded(diaryEntry, food.id)">
-      <mat-expansion-panel-header class="expansion-panel-arrow-indiactor-remove mat-expansion-panel-header-margins-decrease"
-                                  [ngStyle]="setBackgroundStyle(todaysKcalsPercent, false, false)">
-        <mat-panel-title class="mat-panel-title-margin-remove">
-          <div #foodCont
-               class="whitespace-nowrap flex w-full gap-1 overflow-hidden text-base font-normal">
-            <div #foodName
-                 class="tw-card-food-entry grow whitespace-nowrap overflow-hidden">
-              {{ food.foodName }}
-            </div>
+  <div #foodWeight
+       class="text-center">
+    г.
+  </div>
 
-            <div #foodWeight
-                 class="text-right">
-              {{ food.foodWeight }}<span class="text-xs"> Г.</span>
-            </div>
-
-            <div #foodKcals
-                 class="text-right">
-              {{ food.foodKcals }}
-            </div>
-
-            <div #foodPercent
-                 class="text-right">
-              {{ food.foodPercent }}<span class="text-xs">%</span>
-            </div>
-          </div>
-        </mat-panel-title>
-      </mat-expansion-panel-header>
-
-      @defer (on timer(500)) {
-        <app-diary-entry-edit-form [diaryEntry]="food"
-                                   (onServerSuccessfullEditResponse)="accordionCollapse()" />
-      }
-    </mat-expansion-panel>
-  }
-  -->
-
-</mat-accordion>
-
-<!-- <div class="mb-4"></div> -->
+  <div #foodPercent
+       class="text-center">
+    %
+  </div>
+</div>
 
 <div outer-shadow-rounded
+     [shadowBorderRadius]="2"
      class="">
   @for (food of selectedDayFood; track food.id; let isFirst = $first; let isLast = $last) {
     <v-expand accordion="food-group"
@@ -100,9 +54,9 @@
               class="item">
       <div v-header
            [ngStyle]="setBackgroundStyle(food.foodKcalPercentageOfDaysNorm, isFirst, isLast)"
-           class="p-2 font-extrabold bg-red-500">
+           class="p-2">
         <div #foodCont
-             class="whitespace-nowrap flex w-full gap-0 overflow-hidden text-base font-normal">
+             class="whitespace-nowrap flex overflow-hidden font-normal">
           <div #foodName
                class="tw-card-food-entry grow whitespace-nowrap overflow-hidden">
             {{ food.foodName }}
@@ -133,7 +87,9 @@
 
 <v-button primary
           class="pt-4"
-          [config]="{ width: '100%' }"
+          [config]="{
+            width: '100%',
+          }"
           (onClick)="openAddFoodModal()">
   Добавить запись
 </v-button>
@@ -146,8 +102,7 @@
          [paddingY]="0"
          [class.is-mobile]="deviceDetectorService.isMobile$$()"
          [class.is-desktop]="deviceDetectorService.isDesktop$$()"
-         (onClose)="closeModal()"
-         (onOpen)="onModalOpened()">
+         (onClose)="closeModal()">
   @switch (currentViewMode$$()) {
     @case (ModalViewMode.CAMERA_PREVIEW) {
       <camera-preview (onPhotoTaken)="onPhotoTaken($event)"

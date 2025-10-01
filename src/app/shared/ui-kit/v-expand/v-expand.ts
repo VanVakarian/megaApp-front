@@ -5,14 +5,14 @@ import { CssUnitValue } from '@app/shared/ui-kit/types';
   selector: 'v-expand',
   templateUrl: './v-expand.html',
   styleUrl: './v-expand.css',
+  // '[style.--v-expand-border-radius]': 'getExpandBorderRadius()',
   host: {
-    '[style.--v-expand-border-radius]': 'getExpandBorderRadius()',
     '[style.--v-expand-padding]': 'getExpandPadding()',
     '[class.no-transition]': 'isWithoutAnimation()',
   },
 })
 export class VExpand {
-  public readonly borderRadius = input<CssUnitValue>(2);
+  // public readonly borderRadius = input<CssUnitValue>(2);
   public readonly padding = input<CssUnitValue>(2);
   public readonly isExpanded = input<boolean>(false);
   public readonly onOpened = output<CustomEvent<boolean>>();
@@ -30,9 +30,9 @@ export class VExpand {
     this._isExpanded.set(external);
   });
 
-  public getExpandBorderRadius(): string {
-    return `var(--unit-${this.borderRadius()})`;
-  }
+  // public getExpandBorderRadius(): string {
+  //   return `var(--unit-${this.borderRadius()})`;
+  // }
 
   public getExpandPadding(): string {
     return `var(--unit-${this.padding()})`;

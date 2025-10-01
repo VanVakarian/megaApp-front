@@ -36,14 +36,21 @@
 
     <div class="flex justify-between">
       <v-button primary
-                [config]="{ isLabelHidden: true, paddingX: 0, paddingY: 0 }"
+                [config]="{
+                  isLabelHidden: true,
+                  paddingX: 0,
+                  paddingY: 0,
+                }"
                 (click)="goBack()">
         <v-icon v-prefix
                 [name]="Icon.ChevronLeft"
                 [size]="10" />
       </v-button>
 
-      <v-button [config]="{ type: 'submit', isDisabled: !isFormValid() }">
+      <v-button [config]="{
+                  type: 'submit',
+                  isDisabled: !isFormValid(),
+                }">
         Добавить
       </v-button>
     </div>

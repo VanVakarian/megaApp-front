@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, computed, ElementRef, input, output, Self, viewChild } from '@angular/core';
 import { ControlValueAccessor, NgControl } from '@angular/forms';
+import { CssUnitValue } from '@app/shared/ui-kit/types';
 import { getValidationErrorMessage } from '@app/shared/ui-kit/v-input/validators';
 
 type InputValue = string | number | null;
@@ -24,6 +25,7 @@ export interface VInputConfig {
   fontSize?: FontSize;
   fontWeight?: FontWeight;
   textAlign?: TextAlign;
+  borderRadius?: CssUnitValue;
 }
 
 const DEFAULT_V_INPUT_CONFIG: Required<VInputConfig> = {
@@ -37,6 +39,7 @@ const DEFAULT_V_INPUT_CONFIG: Required<VInputConfig> = {
   fontSize: '1rem',
   fontWeight: 400,
   textAlign: 'left',
+  borderRadius: 2,
 };
 
 let uniqueId = 0;
@@ -45,6 +48,10 @@ let uniqueId = 0;
   selector: 'v-input',
   templateUrl: './v-input.html',
   styleUrl: './v-input.css',
+  host: {
+    '[style.--v-input-border-radius]': 'borderRadiusString()',
+    '[class]': '"v-input"',
+  },
   imports: [CommonModule],
 })
 export class VInput implements ControlValueAccessor {
@@ -55,6 +62,7 @@ export class VInput implements ControlValueAccessor {
   public readonly onInputChanged = output<Event>();
   public readonly onFocused = output<Event>();
   public readonly onBlurred = output<Event>();
+  public readonly onEnterPressed = output<Event>();
 
   protected readonly settings = computed(() => ({
     ...DEFAULT_V_INPUT_CONFIG,
@@ -63,6 +71,7 @@ export class VInput implements ControlValueAccessor {
 
   protected readonly cssFontWeight = computed(() => String(this.settings().fontWeight));
   protected readonly cssFontSize = computed(() => String(this.settings().fontSize));
+  protected readonly borderRadiusString = computed(() => `var(--unit-${this.settings().borderRadius})`);
 
   protected value: string = '';
   protected isFocused = false;
@@ -139,6 +148,12 @@ export class VInput implements ControlValueAccessor {
     this.onTouched();
     const event = new Event('blur');
     this.onBlurred.emit(event);
+  }
+
+  protected onKeydown(event: KeyboardEvent): void {
+    if (event.key === 'Enter') {
+      this.onEnterPressed.emit(event);
+    }
   }
 
   public focus(): void {

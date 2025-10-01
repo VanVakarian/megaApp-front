@@ -8,7 +8,7 @@ import {
   OnDestroy,
   OnInit,
   Output,
-  ViewChild,
+  viewChild,
 } from '@angular/core';
 import {
   AbstractControl,
@@ -19,23 +19,16 @@ import {
   ValidatorFn,
   Validators,
 } from '@angular/forms';
-import { MatButtonModule } from '@angular/material/button';
-import { MatCardModule } from '@angular/material/card';
-import { MatExpansionModule } from '@angular/material/expansion';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
 import { FoodCatalogueService } from '@app/services/food/food-catalogue.service';
 import { FoodCoefficientsService } from '@app/services/food/food-coefficients.service';
 import { FoodDiaryService } from '@app/services/food/food-diary.service';
-import { ConfirmationDialogModalService } from '@app/shared/components/dialog-modal/mat-dialog-modal.service';
 import { DiaryEntry, HistoryEntry, HistoryEntryAction } from '@app/shared/interfaces';
 import { UiProgressIcon } from '@app/shared/ui-kit/progress-icon/progress-icon.component';
 import { VButton } from '@app/shared/ui-kit/v-button/v-button';
 import { VExpand } from '@app/shared/ui-kit/v-expand/v-expand';
 import { IconName, VIcon } from '@app/shared/ui-kit/v-icon/v-icon';
 import { VInput } from '@app/shared/ui-kit/v-input/v-input';
-import { take } from 'rxjs';
+import { VModal } from '@app/shared/ui-kit/v-modal/v-modal';
 
 interface DiaryEntryFormModel {
   id: FormControl<number>;
@@ -45,20 +38,7 @@ interface DiaryEntryFormModel {
 
 @Component({
   selector: 'app-diary-entry-edit-form',
-  imports: [
-    ReactiveFormsModule,
-    MatButtonModule,
-    MatExpansionModule,
-    MatIconModule,
-    MatCardModule,
-    MatFormFieldModule,
-    MatInputModule,
-    UiProgressIcon,
-    VButton,
-    VIcon,
-    VExpand,
-    VInput,
-  ],
+  imports: [ReactiveFormsModule, UiProgressIcon, VButton, VIcon, VExpand, VInput, VModal],
   templateUrl: './diary-entry-edit-form.component.html',
 })
 export class DiaryEntryEditFormComponent implements OnInit, OnChanges, OnDestroy {
@@ -68,9 +48,9 @@ export class DiaryEntryEditFormComponent implements OnInit, OnChanges, OnDestroy
   @Output()
   public onServerSuccessfullEditResponse = new EventEmitter<void>();
 
-  @ViewChild('foodWeightChangeElem')
-  public foodWeightChangeElem!: VInput;
+  protected readonly foodWeightChangeElem = viewChild.required<VInput>('foodWeightChangeElem');
 
+  protected isDeleteConfirmOpen = false;
   public isHistoryExpanded: boolean = false;
   public disableHistoryAnimationTemporaroly: boolean = false;
   private historyAction: HistoryEntryAction = HistoryEntryAction.SET;
@@ -117,11 +97,9 @@ export class DiaryEntryEditFormComponent implements OnInit, OnChanges, OnDestroy
 
   private inputFocusEffect = effect(() => {
     const focusId = this.foodDiaryService.diaryEntryFocusId$$();
-    if (focusId === this.diaryEntryForm.value.id && this.foodWeightChangeElem) {
+    if (focusId === this.diaryEntryForm.value.id) {
       setTimeout(() => {
-        if (this.foodWeightChangeElem) {
-          this.foodWeightChangeElem.focus();
-        }
+        this.foodWeightChangeElem().focus();
       }, 100);
     }
   });
@@ -150,7 +128,6 @@ export class DiaryEntryEditFormComponent implements OnInit, OnChanges, OnDestroy
   private readonly foodDiaryService = inject(FoodDiaryService);
   private readonly foodCatalogueService = inject(FoodCatalogueService);
   private readonly foodCoefficientsService = inject(FoodCoefficientsService);
-  private readonly confirmModal = inject(ConfirmationDialogModalService);
 
   public ngOnInit(): void {}
 
@@ -264,15 +241,17 @@ export class DiaryEntryEditFormComponent implements OnInit, OnChanges, OnDestroy
     }
   }
 
-  public openConfirmationModal(actionQuestion: string): void {
-    this.confirmModal
-      .openModal(actionQuestion)
-      .pipe(take(1))
-      .subscribe((result) => {
-        if (result) {
-          this.deleteDiaryEntry();
-        }
-      });
+  protected openConfirmationModal(): void {
+    this.isDeleteConfirmOpen = true;
+  }
+
+  protected closeConfirmationModal(): void {
+    this.isDeleteConfirmOpen = false;
+  }
+
+  protected onDeleteConfirmed(): void {
+    this.deleteDiaryEntry();
+    this.isDeleteConfirmOpen = false;
   }
 
   public toggleHistory() {

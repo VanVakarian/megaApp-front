@@ -1,9 +1,6 @@
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, effect } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
 import { FoodDiaryService } from '@app/services/food/food-diary.service';
-import { FoodStatsService } from '@app/services/food/food-stats.service';
 import { DEFAULT_INPUT_FIELD_PROGRESS_TIMER } from '@app/shared/const';
 import {
   AnimationState,
@@ -11,6 +8,7 @@ import {
   FieldStateAnimationsDirective,
 } from '@app/shared/directives/field-state-animations.directive';
 import { BodyWeight } from '@app/shared/interfaces';
+import { VInput } from '@app/shared/ui-kit/v-input/v-input';
 
 interface BodyWeightForm {
   bodyWeight: FormControl<string | null>;
@@ -30,7 +28,7 @@ enum FormErrors {
   templateUrl: './body-weight.component.html',
   styleUrl: './body-weight.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule, MatFormFieldModule, MatInputModule, FieldStateAnimationsDirective],
+  imports: [ReactiveFormsModule, FieldStateAnimationsDirective, VInput],
 })
 export class BodyWeightComponent {
   public FormLabels = FormLabels;
@@ -55,7 +53,6 @@ export class BodyWeightComponent {
 
   constructor(
     private foodDiaryService: FoodDiaryService,
-    private foodStatsService: FoodStatsService,
     private cdRef: ChangeDetectorRef,
   ) {
     effect(() => {

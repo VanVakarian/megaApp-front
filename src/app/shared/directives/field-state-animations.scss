@@ -1,8 +1,9 @@
 ::ng-deep {
 
-  // mdc-notched-outline element is a perfect fit for this animations
   .countdown-state {
-    .mdc-notched-outline {
+
+    .mdc-notched-outline,
+    .input-wrapper {
       &::before {
         content: '';
         position: absolute;
@@ -11,12 +12,15 @@
         opacity: 0.1;
         animation: fill-background 2s linear forwards;
         border-radius: 5px;
+        pointer-events: none;
       }
     }
   }
 
   .submitting-state {
-    .mdc-notched-outline {
+
+    .mdc-notched-outline,
+    .input-wrapper {
       &::before {
         content: '';
         position: absolute;
@@ -24,6 +28,7 @@
         background: #3F51B5;
         opacity: 0.1;
         border-radius: 5px;
+        pointer-events: none;
       }
 
       &::after {
@@ -35,13 +40,16 @@
         animation: slide-pattern 7s infinite linear;
         border-radius: 5px;
         animation-play-state: running;
+        pointer-events: none;
       }
     }
   }
 
   .success-state,
   .error-state {
-    .mdc-notched-outline {
+
+    .mdc-notched-outline,
+    .input-wrapper {
       &::after {
         animation-play-state: paused;
       }
@@ -49,7 +57,9 @@
   }
 
   .success-state {
-    .mdc-notched-outline {
+
+    .mdc-notched-outline,
+    .input-wrapper {
       &::before {
         content: '';
         position: absolute;
@@ -57,12 +67,15 @@
         background-color: #00FF00;
         border-radius: 5px;
         animation: fade-out 3s linear forwards;
+        pointer-events: none;
       }
     }
   }
 
   .error-state {
-    .mdc-notched-outline {
+
+    .mdc-notched-outline,
+    .input-wrapper {
       &::before {
         content: '';
         position: absolute;
@@ -70,6 +83,7 @@
         background-color: #FF0000;
         border-radius: 5px;
         animation: fade-out 3s linear forwards;
+        pointer-events: none;
       }
     }
   }

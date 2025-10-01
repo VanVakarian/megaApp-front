@@ -6,7 +6,13 @@
 
   <div class="absolute -bottom-[9px] -right-[8px]">
     <v-button flat
-              [config]="{ isWithoutShadow: true, isLabelHidden: true, bgOpacity: '0.75', paddingX: 0, paddingY: 0 }"
+              [config]="{
+                isWithoutShadow: true,
+                isLabelHidden: true,
+                bgOpacity: '0.75',
+                paddingX: 0,
+                paddingY: 0,
+              }"
               (click)="toggleHistory()">
       @if (isHistoryExpanded) {
         <v-icon v-prefix
@@ -73,7 +79,12 @@
       @if (foodWeightNewControl.value !== null) {
         <v-button flat
                   v-prefix
-                  [config]="{ isWithoutShadow: true, bgOpacity: '0', paddingX: 2, paddingY: 0 }"
+                  [config]="{
+                    isWithoutShadow: true,
+                    bgOpacity: '0',
+                    paddingX: 2,
+                    paddingY: 0,
+                  }"
                   (click)="onWeightNewResetClick()">
           <v-icon [name]="Icon.Close"
                   [size]="6" />
@@ -100,7 +111,12 @@
       @if (foodWeightChangeControl.value !== null) {
         <v-button flat
                   v-prefix
-                  [config]="{ isWithoutShadow: true, bgOpacity: '0', paddingX: 2, paddingY: 0 }"
+                  [config]="{
+                    isWithoutShadow: true,
+                    bgOpacity: '0',
+                    paddingX: 2,
+                    paddingY: 0,
+                  }"
                   (click)="onWeightChangeResetClick()">
           <v-icon [name]="Icon.Close"
                   [size]="6" />
@@ -114,93 +130,46 @@
     </v-input>
   </div>
 
-  <!--
-  <div class="flex w-full gap-4 mt-0 mb-[-15px]">
-    <mat-form-field class="w-1/2"
-                    appearance="outline">
-      <mat-label>Ввести новый вес:</mat-label>
-
-      @if (foodWeightNewControl.value !== null) {
-        <button matPrefix
-                type="button"
-                mat-icon-button
-                aria-label="Очистить"
-                (click)="onWeightNewResetClick()">
-          <mat-icon>close</mat-icon>
-        </button>
-      }
-
-      <input matInput
-             type="number"
-             class="text-right"
-             formControlName="foodWeightNew"
-             (input)="onNewWeightInput()" />
-
-      @if (foodWeightNewControl.value !== null) {
-        <span matSuffix
-              class="mx-2"> г. </span>
-      }
-
-    </mat-form-field>
-
-    <mat-form-field class="w-1/2"
-                    appearance="outline">
-      <mat-label>Изменить на:</mat-label>
-
-      @if (foodWeightChangeControl.value !== null) {
-        <button matPrefix
-                type="button"
-                mat-icon-button
-                aria-label="Очистить"
-                (click)="onWeightChangeResetClick()">
-          <mat-icon>close</mat-icon>
-        </button>
-      }
-
-      <input matInput
-             type="number"
-             class="text-right"
-             formControlName="foodWeightChange"
-             (input)="onChangeWeightInput()" />
-
-      @if (foodWeightChangeControl.value !== null) {
-        <span matSuffix
-              class="mx-2"> г. </span>
-      }
-    </mat-form-field>
-  </div>
-  -->
-
-  <!-- <div class="flex w-full gap-4 mb-2">
-    <button mat-raised-button
-            type="button"
-            color="warn"
-            class="mat-button-enlarged-45-px text-lg"
-            (click)="openConfirmationModal('Вы уверены, что хотите удалить эту запись?')">
-      Удалить
-    </button>
-
-    <button mat-raised-button
-            type="submit"
-            color="primary"
-            class="mat-button-enlarged-45-px grow text-lg"
-            [disabled]="!isFormValid()">
-      Сохранить
-    </button>
-  </div> -->
-
   <div class="flex w-full gap-4">
     <v-button danger
               [config]="{ type: 'button' }"
-              (click)="openConfirmationModal('Вы уверены, что хотите удалить эту запись?')"
+              (click)="openConfirmationModal()"
               class="text-lg">
       Удалить
     </v-button>
 
     <v-button primary
-              [config]="{ type: 'submit', isDisabled: !isFormValid() }"
+              [config]="{
+                type: 'submit',
+                isDisabled: !isFormValid(),
+              }"
               class="grow w-full text-lg">
       Сохранить
     </v-button>
   </div>
 </form>
+
+<v-modal [isOpen]="isDeleteConfirmOpen"
+         [borderRadius]="3"
+         [paddingX]="4"
+         [paddingY]="4"
+         (onClose)="closeConfirmationModal()">
+  <div class="flex flex-col gap-4">
+    <div class="text-xl font-semibold text-center">
+      Вы уверены, что хотите удалить эту запись?
+    </div>
+
+    <div class="flex gap-4">
+      <v-button [config]="{ width: '100%' }"
+                (onClick)="closeConfirmationModal()">
+        Нет
+      </v-button>
+
+      <v-button danger
+                [config]="{ width: '100%' }"
+                (onClick)="onDeleteConfirmed()">
+        Да
+      </v-button>
+    </div>
+  </div>
+</v-modal>

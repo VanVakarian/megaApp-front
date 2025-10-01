@@ -1,4 +1,4 @@
-import { Directive, ElementRef, OnInit, Renderer2 } from '@angular/core';
+import { Directive, ElementRef, OnInit, Renderer2, input } from '@angular/core';
 
 @Directive({
   selector: '[outer-shadow]',
@@ -25,6 +25,8 @@ export class OuterShadowDirective implements OnInit {
   selector: '[outer-shadow-rounded]',
 })
 export class OuterShadowRoundedDirective implements OnInit {
+  readonly shadowBorderRadius = input<number>(2);
+
   constructor(
     private el: ElementRef,
     private renderer: Renderer2,
@@ -39,7 +41,7 @@ export class OuterShadowRoundedDirective implements OnInit {
       ` 3px 3px 6px var(--shadow-dark-light),
         -3px -3px 6px var(--shadow-light-strong) `,
     );
-    this.renderer.setStyle(element, 'border-radius', 'var(--unit-2)');
+    this.renderer.setStyle(element, 'border-radius', `var(--unit-${this.shadowBorderRadius()})`);
   }
 }
 
@@ -68,6 +70,8 @@ export class InnerShadowDirective implements OnInit {
   selector: '[inner-shadow-rounded]',
 })
 export class InnerShadowRoundedDirective implements OnInit {
+  readonly shadowBorderRadius = input<number>(2);
+
   constructor(
     private el: ElementRef,
     private renderer: Renderer2,
@@ -82,6 +86,6 @@ export class InnerShadowRoundedDirective implements OnInit {
       ` inset 3px 3px 3px var(--shadow-dark-light),
         inset -3px -3px 3px var(--shadow-light-strong) `,
     );
-    this.renderer.setStyle(element, 'border-radius', 'var(--unit-2)');
+    this.renderer.setStyle(element, 'border-radius', `var(--unit-${this.shadowBorderRadius()})`);
   }
 }

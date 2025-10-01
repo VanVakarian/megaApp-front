@@ -1,4 +1,4 @@
-import { Component, effect, input, output } from '@angular/core';
+import { AfterViewInit, Component, effect, input, output, viewChild } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { FoodCoefficientsService } from '@app/services/food/food-coefficients.service';
 import { FoodDiaryService } from '@app/services/food/food-diary.service';
@@ -12,9 +12,9 @@ import { VInput } from '@app/shared/ui-kit/v-input/v-input';
 @Component({
   selector: 'diary-entry-add-form',
   templateUrl: './diary-entry-add-form.component.html',
-  imports: [VButton, VIcon, ReactiveFormsModule, UiProgressIcon, VInput],
+  imports: [ReactiveFormsModule, UiProgressIcon, VButton, VIcon, VInput],
 })
-export class DiaryEntryAddFormComponent {
+export class DiaryEntryAddFormComponent implements AfterViewInit {
   readonly onGoBack = output<void>();
   readonly onSubmit = output<void>();
   readonly selectedProduct = input.required<CatalogueEntry>();
@@ -27,6 +27,8 @@ export class DiaryEntryAddFormComponent {
   private diaryEntriesCoefficient = 1;
   protected projectedSelectedDaysEatenPercentNum = 0;
   protected projectedSelectedDaysEatenPercentPadded = '0';
+
+  protected readonly foodWeightInput = viewChild.required(VInput);
 
   protected diaryEntryForm: FormGroup = new FormGroup({
     foodWeight: new FormControl<number | null>(null, [Validators.required, Validators.pattern(/^\d+$/)]),
@@ -54,6 +56,12 @@ export class DiaryEntryAddFormComponent {
       this.diaryEntriesCoefficient = this.foodCoefficientsService.coefficients$$()?.[product.id] ?? 1;
       this.updateProjectedDaysEatenPercent(this.foodWeightControl.value || 0);
     });
+  }
+
+  public ngAfterViewInit(): void {
+    setTimeout(() => {
+      this.foodWeightInput().focus();
+    }, 100);
   }
 
   protected isFormValid(): boolean {

@@ -1,33 +1,18 @@
-<div class="flex gap-2 pt-2">
-  <div class="w-1/2">
-  </div>
-
-  <div class="relative w-1/2">
-
-    <form [formGroup]="form">
-      <mat-form-field fieldStateAnimations
-                      appearance="outline"
-                      class="field-with-progress-animations"
-                      [state]="currentState">
-
-        <mat-label>{{ FormLabels.WEIGHT }}</mat-label>
-
-        <input matInput
-               type="number"
-               formControlName="bodyWeight"
-               (keydown.enter)="onEnter()"
-               (input)="onInput()" />
-
-        <span matTextSuffix
-              class="ml-2 font-medium"
-              [class.invalid-suffix]="!isFormValid"> {{ FormLabels.KG }} </span>
-
-        @if (!isFormValid) {
-          <mat-error> {{ FormErrors.WEIGHT }} </mat-error>
-        }
-
-      </mat-form-field>
-    </form>
-
-  </div>
+<div class="flex justify-end">
+  <v-input fieldStateAnimations
+           [state]="currentState"
+           [formControl]="form.controls.bodyWeight"
+           [config]="{
+               type: 'number',
+               label: FormLabels.WEIGHT,
+               fontSize: '20px',
+               fontWeight: 500,
+               textAlign: 'right',
+             }"
+           (onInputChanged)="onInput()"
+           (onEnterPressed)="onEnter()"
+           class="w-1/3">
+    <span v-postfix
+          class="mr-3">кг</span>
+  </v-input>
 </div>

@@ -7,12 +7,13 @@ export interface VButtonConfig {
   type?: ButtonType;
   buttonStyle?: ButtonStyle;
   width?: string;
-  isLabelHidden?: boolean;
+  borderRadius?: CssUnitValue;
   paddingY?: CssUnitValue;
   paddingX?: CssUnitValue;
   isDisabled?: boolean;
   isWithoutShadow?: boolean;
   bgOpacity?: '0' | '1' | `0.${number}`;
+  isLabelHidden?: boolean;
   textAlign?: 'left' | 'center' | 'right';
 }
 
@@ -20,12 +21,13 @@ const DEFAULT_V_BUTTON_CONFIG: Required<VButtonConfig> = {
   type: 'button',
   buttonStyle: undefined as unknown as ButtonStyle,
   width: undefined as unknown as string,
-  isLabelHidden: false,
+  borderRadius: 2,
   paddingY: 2,
   paddingX: 4,
   isDisabled: false,
   isWithoutShadow: false,
   bgOpacity: '1',
+  isLabelHidden: false,
   textAlign: undefined as unknown as 'left' | 'center' | 'right',
 };
 
@@ -47,6 +49,7 @@ const DEFAULT_V_BUTTON_CONFIG: Required<VButtonConfig> = {
     '[attr.flat]': 'isFlat ? "" : null',
     '[attr.danger]': 'isDanger ? "" : null',
     '[attr.no-shadow]': 'isWithoutShadow() ? "" : null',
+    '[style.--v-button-border-radius]': 'borderRadiusString()',
     '[style.--v-button-bg-opacity]': 'bgOpacity()',
     '[style.--v-button-padding-y]': 'paddingYString()',
     '[style.--v-button-padding-x]': 'paddingXString()',
@@ -66,6 +69,7 @@ export class VButton {
   protected readonly width = computed(() => this.settings().width);
   protected readonly isLabelHidden = computed(() => this.settings().isLabelHidden);
 
+  protected readonly borderRadius = computed(() => this.settings().borderRadius);
   protected readonly paddingY = computed(() => this.settings().paddingY);
   protected readonly paddingX = computed(() => this.settings().paddingX);
   protected readonly isDisabled = computed(() => this.settings().isDisabled);
@@ -75,6 +79,7 @@ export class VButton {
 
   protected readonly onClick = output<MouseEvent>();
 
+  protected readonly borderRadiusString = computed(() => `var(--unit-${this.borderRadius()})`);
   protected readonly paddingYString = computed(() => `var(--unit-${this.paddingY()})`);
   protected readonly paddingXString = computed(() => `var(--unit-${this.paddingX()})`);
 

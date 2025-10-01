@@ -7,7 +7,7 @@ import { CssUnitValue } from '@app/shared/ui-kit/types';
   styleUrl: './v-card.css',
 })
 export class VCard {
-  public readonly borderRadius = input<CssUnitValue>(2);
+  public readonly borderRadius = input<CssUnitValue>(4);
   public readonly padding = input<CssUnitValue>(2);
 
   public readonly onCardclick = output<MouseEvent>();

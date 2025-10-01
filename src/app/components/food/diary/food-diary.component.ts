@@ -9,12 +9,10 @@ import {
   OnDestroy,
   OnInit,
   signal,
-  viewChild,
   viewChildren,
   WritableSignal,
 } from '@angular/core';
-import { MatCardModule } from '@angular/material/card';
-import { MatExpansionModule, MatExpansionPanel } from '@angular/material/expansion';
+import { MatExpansionPanel } from '@angular/material/expansion';
 import { BMIComponent } from '@app/components/food/diary/bmi/bmi.component';
 import { BodyWeightComponent } from '@app/components/food/diary/body-weight/body-weight.component';
 import { CameraPreviewComponent } from '@app/components/food/diary/camera-preview/camera-preview.component';
@@ -31,6 +29,7 @@ import { SettingsService } from '@app/services/settings.service';
 import { CapturedPhoto, CatalogueEntry, ScreenType } from '@app/shared/interfaces';
 import { OuterShadowRoundedDirective } from '@app/shared/ui-kit/shadow.directive';
 import { VButton } from '@app/shared/ui-kit/v-button/v-button';
+import { VCard } from '@app/shared/ui-kit/v-card/v-card';
 import { AccordionDirective } from '@app/shared/ui-kit/v-expand/accordion.directive';
 import { AccordionService } from '@app/shared/ui-kit/v-expand/accordion.service';
 import { VExpand } from '@app/shared/ui-kit/v-expand/v-expand';
@@ -48,8 +47,6 @@ enum ModalViewMode {
   styleUrl: './food-diary.component.scss',
   imports: [
     NgStyle,
-    MatExpansionModule,
-    MatCardModule,
     DiaryNavButtonsComponent,
     DiaryEntryEditFormComponent,
     DiaryEntryAddFormComponent,
@@ -60,13 +57,12 @@ enum ModalViewMode {
     VButton,
     VModal,
     VExpand,
+    VCard,
     OuterShadowRoundedDirective,
     AccordionDirective,
   ],
 })
 export class FoodDiaryComponent implements OnInit, AfterViewInit, OnDestroy {
-  protected readonly contDiv = viewChild.required<ElementRef>('foodCont');
-  protected readonly nameDivs = viewChildren<ElementRef>('foodName');
   protected readonly weightsDivs = viewChildren<ElementRef>('foodWeight');
   protected readonly kcalsDivs = viewChildren<ElementRef>('foodKcals');
   protected readonly percentsDivs = viewChildren<ElementRef>('foodPercent');
@@ -146,7 +142,7 @@ export class FoodDiaryComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   public ngOnInit(): void {
-    this.deviceDetectorService.logDeviceInfo();
+    // this.deviceDetectorService.logDeviceInfo();
   }
 
   public ngAfterViewInit(): void {
@@ -167,16 +163,14 @@ export class FoodDiaryComponent implements OnInit, AfterViewInit, OnDestroy {
     const percentCapped = percent <= 100 ? percent : 100;
     return {
       background: `linear-gradient(to right, var(--gradient-color) ${percentCapped}%, var(--gradient-bg) ${percentCapped}%)`,
-      'border-top-left-radius': isFirst ? 'var(--unit-1)' : '0',
-      'border-top-right-radius': isFirst ? 'var(--unit-1)' : '0',
-      'border-bottom-left-radius': isLast ? 'var(--unit-1)' : '0',
-      'border-bottom-right-radius': isLast ? 'var(--unit-1)' : '0',
+      'border-top-left-radius': isFirst ? 'var(--unit-2)' : '0',
+      'border-top-right-radius': isFirst ? 'var(--unit-2)' : '0',
+      'border-bottom-left-radius': isLast ? 'var(--unit-2)' : '0',
+      'border-bottom-right-radius': isLast ? 'var(--unit-2)' : '0',
     };
   }
 
   protected diaryEntryExpanded(diaryEntry: MatExpansionPanel, diaryEntryId: number) {
-    // this.foodDiaryService.diaryEntryClickedFocus$.next(diaryEntryId);
-
     if (this.screenSizeWatcherService.currentScreenType === ScreenType.DESKTOP) return;
 
     setTimeout(() => {
@@ -199,10 +193,6 @@ export class FoodDiaryComponent implements OnInit, AfterViewInit, OnDestroy {
 
   protected openAddFoodModal() {
     this.isAddFoodModalOpen = true;
-  }
-
-  protected onModalOpened() {
-    // Логика фокуса теперь в FoodSearchComponent.ngAfterViewInit()
   }
 
   protected async takePhoto() {
