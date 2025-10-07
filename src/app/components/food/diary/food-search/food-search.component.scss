@@ -1,5 +1,6 @@
 .grid-auto-fill {
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  justify-items: end;
 }
 
 .catalogue-entry-name {
@@ -9,6 +10,11 @@
   line-clamp: var(--lines);
   -webkit-line-clamp: var(--lines);
   overflow: hidden;
+}
+
+.add-catalogue-entry {
+  // --lines: 4;
+  // min-height: calc(var(--lines) * 1.5em);
 }
 
 ::ng-deep {

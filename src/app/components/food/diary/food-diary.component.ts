@@ -24,21 +24,23 @@ import { DeviceDetectorService } from '@app/services/device-detector.service';
 import { FoodCatalogueService } from '@app/services/food/food-catalogue.service';
 import { FoodDiaryService } from '@app/services/food/food-diary.service';
 import { PhotoCaptureService } from '@app/services/photo-capture.service';
-import { ScreenSizeWatcherService } from '@app/services/screen-size-watcher.service';
+import { ScreenSizeWatcherService, ScreenType } from '@app/services/screen-size-watcher.service';
 import { SettingsService } from '@app/services/settings.service';
-import { CapturedPhoto, CatalogueEntry, ScreenType } from '@app/shared/interfaces';
+import { CapturedPhoto, CatalogueEntry } from '@app/shared/interfaces';
 import { OuterShadowRoundedDirective } from '@app/shared/ui-kit/shadow.directive';
 import { VButton } from '@app/shared/ui-kit/v-button/v-button';
 import { VCard } from '@app/shared/ui-kit/v-card/v-card';
 import { AccordionDirective } from '@app/shared/ui-kit/v-expand/accordion.directive';
 import { AccordionService } from '@app/shared/ui-kit/v-expand/accordion.service';
 import { VExpand } from '@app/shared/ui-kit/v-expand/v-expand';
+import { IconName, VIcon } from '@app/shared/ui-kit/v-icon/v-icon';
 import { VModal } from '@app/shared/ui-kit/v-modal/v-modal';
 
 enum ModalViewMode {
   CAMERA_PREVIEW,
   SEARCH,
   ADD_DIARY_ENTRY,
+  CREATE_NEW_PRODUCT,
 }
 
 @Component({
@@ -58,6 +60,7 @@ enum ModalViewMode {
     VModal,
     VExpand,
     VCard,
+    VIcon,
     OuterShadowRoundedDirective,
     AccordionDirective,
   ],
@@ -71,6 +74,7 @@ export class FoodDiaryComponent implements OnInit, AfterViewInit, OnDestroy {
 
   protected readonly isCameraPreviewOpen$$: WritableSignal<boolean> = signal(false);
   protected readonly selectedProduct$$: WritableSignal<CatalogueEntry | null> = signal(null);
+  protected readonly isCreateNewProductMode$$: WritableSignal<boolean> = signal(false);
 
   private readonly shouldRecalcColumns$$ = signal(0);
 
@@ -87,10 +91,14 @@ export class FoodDiaryComponent implements OnInit, AfterViewInit, OnDestroy {
     if (this.selectedProduct$$()) {
       return ModalViewMode.ADD_DIARY_ENTRY;
     }
+    if (this.isCreateNewProductMode$$()) {
+      return ModalViewMode.CREATE_NEW_PRODUCT;
+    }
     return ModalViewMode.SEARCH;
   });
 
   protected readonly ModalViewMode = ModalViewMode;
+  protected readonly IconName = IconName;
 
   protected get todaysKcalsPercent() {
     return this.foodDiaryService.selectedDayTotals$$().kcalsPercent;
@@ -188,6 +196,7 @@ export class FoodDiaryComponent implements OnInit, AfterViewInit, OnDestroy {
   protected closeModal() {
     this.isAddFoodModalOpen = false;
     this.selectedProduct$$.set(null);
+    this.isCreateNewProductMode$$.set(false);
     this.foodCatalogueService.clearSearch();
   }
 
@@ -229,8 +238,13 @@ export class FoodDiaryComponent implements OnInit, AfterViewInit, OnDestroy {
     this.selectedProduct$$.set(product);
   }
 
+  protected openCreateNewProductMode() {
+    this.isCreateNewProductMode$$.set(true);
+  }
+
   protected goBackToSearch() {
     this.selectedProduct$$.set(null);
+    this.isCreateNewProductMode$$.set(false);
   }
 
   private syncColumnWidths(): void {

@@ -1,8 +1,11 @@
-import { AfterViewInit, Component, effect, inject, input, OnDestroy, OnInit, output } from '@angular/core';
+import { NgClass } from '@angular/common';
+import { AfterViewInit, Component, computed, effect, inject, input, OnDestroy, OnInit, output } from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { DeviceDetectorService } from '@app/services/device-detector.service';
 import { FoodCatalogueService } from '@app/services/food/food-catalogue.service';
+import { ScreenSizeWatcherService } from '@app/services/screen-size-watcher.service';
 import { VoiceRecordingService } from '@app/services/voice-recording.service';
+import { fadeScaleInAnimation } from '@app/shared/animations';
 import { FlipAnimateDirective } from '@app/shared/directives/flip-animate.directive';
 import { CatalogueEntry } from '@app/shared/interfaces';
 import { VButton } from '@app/shared/ui-kit/v-button/v-button';
@@ -15,19 +18,34 @@ import { Subscription } from 'rxjs';
   selector: 'food-search',
   templateUrl: './food-search.component.html',
   styleUrl: './food-search.component.scss',
-  imports: [ReactiveFormsModule, VInput, VButton, VIcon, VCard, FlipAnimateDirective],
+  imports: [ReactiveFormsModule, VInput, VButton, VIcon, VCard, FlipAnimateDirective, NgClass],
+  animations: [fadeScaleInAnimation],
 })
 export class FoodSearchComponent implements OnInit, OnDestroy, AfterViewInit {
   readonly isSearchMode = input<boolean>(false);
 
-  readonly onSelectProduct = output<CatalogueEntry>();
-  readonly onTakePhoto = output<void>();
+  readonly onProductSelect = output<CatalogueEntry>();
+  readonly onPhotoTake = output<void>();
+  readonly onAddNewProduct = output<void>();
   readonly onClose = output<void>();
 
   protected readonly foodNameControl = new FormControl('');
   protected readonly Icon = IconName;
 
   private searchSubscription?: Subscription;
+
+  protected readonly isMobile$$ = computed(() => this.screenSizeWatcherService.isMobile$$());
+
+  protected readonly isLegacySearch$$ = computed(() => this.foodCatalogueService.isLegacySearch$$());
+
+  protected readonly searchResults$$ = computed(() => {
+    const isLegacy = this.isLegacySearch$$();
+    if (isLegacy) {
+      return this.foodCatalogueService.legacySearchResults$$();
+    } else {
+      return this.foodCatalogueService.searchResults$$();
+    }
+  });
 
   private readonly focusEffect = effect(() => {
     if (this.isSearchMode()) {
@@ -63,21 +81,10 @@ export class FoodSearchComponent implements OnInit, OnDestroy, AfterViewInit {
     return this.deviceDetectorService.shouldShowCameraButtonSync();
   }
 
-  protected get isLegacySearch$$() {
-    return this.foodCatalogueService.isLegacySearch$$;
-  }
-
-  protected get searchResults$$(): CatalogueEntry[] {
-    if (this.isLegacySearch$$()) {
-      return this.foodCatalogueService.legacySearchResults$$();
-    } else {
-      return this.foodCatalogueService.searchResults$$();
-    }
-  }
-
   private readonly voiceRecordingService = inject(VoiceRecordingService);
   private readonly foodCatalogueService = inject(FoodCatalogueService);
   private readonly deviceDetectorService = inject(DeviceDetectorService);
+  private readonly screenSizeWatcherService = inject(ScreenSizeWatcherService);
 
   ngOnInit(): void {
     this.searchSubscription = this.foodNameControl.valueChanges.subscribe((value) => {
@@ -103,7 +110,7 @@ export class FoodSearchComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   protected toggleLegacySearch(): void {
-    this.foodCatalogueService.isLegacySearch$$.update((val: boolean) => !val);
+    this.foodCatalogueService.isLegacySearch$$.update((val) => !val);
   }
 
   protected async toggleVoiceRecording(): Promise<void> {
@@ -120,13 +127,17 @@ export class FoodSearchComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   protected takePhoto(): void {
-    this.onTakePhoto.emit();
+    this.onPhotoTake.emit();
   }
 
   protected selectProduct(product: CatalogueEntry): void {
     this.foodCatalogueService.searchResults$$.set([]);
     this.foodCatalogueService.legacySearchResults$$.set([]);
-    this.onSelectProduct.emit(product);
+    this.onProductSelect.emit(product);
+  }
+
+  protected addProduct(): void {
+    this.onAddNewProduct.emit();
   }
 
   protected closeModal(): void {
@@ -134,7 +145,8 @@ export class FoodSearchComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   protected getDisplayName(catalogueEntry: CatalogueEntry): string {
-    if (this.isLegacySearch$$()) {
+    const isLegacy = this.isLegacySearch$$();
+    if (isLegacy) {
       return catalogueEntry.legacyName || catalogueEntry.name;
     }
     return catalogueEntry.name;

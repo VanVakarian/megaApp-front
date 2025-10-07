@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, effect, input, output, viewChild } from '@angular/core';
+import { AfterViewInit, Component, effect, inject, input, output, viewChild } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { FoodCoefficientsService } from '@app/services/food/food-coefficients.service';
 import { FoodDiaryService } from '@app/services/food/food-diary.service';
@@ -15,9 +15,11 @@ import { VInput } from '@app/shared/ui-kit/v-input/v-input';
   imports: [ReactiveFormsModule, UiProgressIcon, VButton, VIcon, VInput],
 })
 export class DiaryEntryAddFormComponent implements AfterViewInit {
-  readonly onGoBack = output<void>();
-  readonly onSubmit = output<void>();
-  readonly selectedProduct = input.required<CatalogueEntry>();
+  public readonly selectedProduct = input.required<CatalogueEntry>();
+
+  public readonly onGoBack = output<void>();
+
+  public readonly onSubmit = output<void>();
 
   protected readonly Icon = IconName;
 
@@ -30,32 +32,30 @@ export class DiaryEntryAddFormComponent implements AfterViewInit {
 
   protected readonly foodWeightInput = viewChild.required(VInput);
 
+  private readonly foodDiaryService = inject(FoodDiaryService);
+  private readonly foodCoefficientsService = inject(FoodCoefficientsService);
+  private readonly foodStatsService = inject(FoodStatsService);
+
+  private readonly selectedDayTotalsEffect = effect(() => {
+    const totals = this.foodDiaryService.selectedDayTotals$$();
+    this.selectedDaysTargerKcals = totals.targetKcals;
+    this.selectedDaysEatenPercent = totals.kcalsPercent;
+    this.updateProjectedDaysEatenPercent(0);
+  });
+
+  private readonly selectedProductEffect = effect(() => {
+    const product = this.selectedProduct();
+    this.selectedFoodKcals = product.kcals;
+    this.diaryEntriesCoefficient = this.foodCoefficientsService.coefficients$$()?.[product.id] ?? 1;
+    this.updateProjectedDaysEatenPercent(this.foodWeightControl.value || 0);
+  });
+
   protected diaryEntryForm: FormGroup = new FormGroup({
     foodWeight: new FormControl<number | null>(null, [Validators.required, Validators.pattern(/^\d+$/)]),
   });
 
   protected get foodWeightControl() {
     return this.diaryEntryForm.get('foodWeight') as FormControl<number | null>;
-  }
-
-  constructor(
-    private foodDiaryService: FoodDiaryService,
-    private foodCoefficientsService: FoodCoefficientsService,
-    private foodStatsService: FoodStatsService,
-  ) {
-    effect(() => {
-      const totals = this.foodDiaryService.selectedDayTotals$$();
-      this.selectedDaysTargerKcals = totals.targetKcals;
-      this.selectedDaysEatenPercent = totals.kcalsPercent;
-      this.updateProjectedDaysEatenPercent(0);
-    });
-
-    effect(() => {
-      const product = this.selectedProduct();
-      this.selectedFoodKcals = product.kcals;
-      this.diaryEntriesCoefficient = this.foodCoefficientsService.coefficients$$()?.[product.id] ?? 1;
-      this.updateProjectedDaysEatenPercent(this.foodWeightControl.value || 0);
-    });
   }
 
   public ngAfterViewInit(): void {
