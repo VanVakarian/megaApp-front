@@ -2,15 +2,14 @@ import { NgStyle } from '@angular/common';
 import {
   AfterViewInit,
   Component,
-  computed,
   effect,
   ElementRef,
+  inject,
   NgZone,
   OnDestroy,
   OnInit,
   signal,
   viewChildren,
-  WritableSignal,
 } from '@angular/core';
 import { MatExpansionPanel } from '@angular/material/expansion';
 import { BMIComponent } from '@app/components/food/diary/bmi/bmi.component';
@@ -21,27 +20,19 @@ import { DiaryEntryEditFormComponent } from '@app/components/food/diary/diary-en
 import { DiaryNavButtonsComponent } from '@app/components/food/diary/diary-nav/diary-nav-buttons.component';
 import { FoodSearchComponent } from '@app/components/food/diary/food-search/food-search.component';
 import { DeviceDetectorService } from '@app/services/device-detector.service';
+import { FoodAddModalService, ModalState } from '@app/services/food/food-add-modal.service';
 import { FoodCatalogueService } from '@app/services/food/food-catalogue.service';
 import { FoodDiaryService } from '@app/services/food/food-diary.service';
-import { PhotoCaptureService } from '@app/services/photo-capture.service';
 import { ScreenSizeWatcherService, ScreenType } from '@app/services/screen-size-watcher.service';
 import { SettingsService } from '@app/services/settings.service';
-import { CapturedPhoto, CatalogueEntry } from '@app/shared/interfaces';
 import { OuterShadowRoundedDirective } from '@app/shared/ui-kit/shadow.directive';
 import { VButton } from '@app/shared/ui-kit/v-button/v-button';
 import { VCard } from '@app/shared/ui-kit/v-card/v-card';
 import { AccordionDirective } from '@app/shared/ui-kit/v-expand/accordion.directive';
 import { AccordionService } from '@app/shared/ui-kit/v-expand/accordion.service';
 import { VExpand } from '@app/shared/ui-kit/v-expand/v-expand';
-import { IconName, VIcon } from '@app/shared/ui-kit/v-icon/v-icon';
 import { VModal } from '@app/shared/ui-kit/v-modal/v-modal';
-
-enum ModalViewMode {
-  CAMERA_PREVIEW,
-  SEARCH,
-  ADD_DIARY_ENTRY,
-  CREATE_NEW_PRODUCT,
-}
+import { CatalogueEntryEditFormComponent } from './catalogue-entry-edit-form/catalogue-entry-edit-form';
 
 @Component({
   selector: 'app-food-diary',
@@ -56,11 +47,11 @@ enum ModalViewMode {
     BMIComponent,
     CameraPreviewComponent,
     FoodSearchComponent,
+    CatalogueEntryEditFormComponent,
     VButton,
     VModal,
     VExpand,
     VCard,
-    VIcon,
     OuterShadowRoundedDirective,
     AccordionDirective,
   ],
@@ -70,12 +61,6 @@ export class FoodDiaryComponent implements OnInit, AfterViewInit, OnDestroy {
   protected readonly kcalsDivs = viewChildren<ElementRef>('foodKcals');
   protected readonly percentsDivs = viewChildren<ElementRef>('foodPercent');
 
-  protected isAddFoodModalOpen = false;
-
-  protected readonly isCameraPreviewOpen$$: WritableSignal<boolean> = signal(false);
-  protected readonly selectedProduct$$: WritableSignal<CatalogueEntry | null> = signal(null);
-  protected readonly isCreateNewProductMode$$: WritableSignal<boolean> = signal(false);
-
   private readonly shouldRecalcColumns$$ = signal(0);
 
   private readonly columnSyncEffect = effect(() => {
@@ -84,21 +69,7 @@ export class FoodDiaryComponent implements OnInit, AfterViewInit, OnDestroy {
     setTimeout(() => this.syncColumnWidths(), 0);
   });
 
-  protected readonly currentViewMode$$ = computed(() => {
-    if (this.isCameraPreviewOpen$$()) {
-      return ModalViewMode.CAMERA_PREVIEW;
-    }
-    if (this.selectedProduct$$()) {
-      return ModalViewMode.ADD_DIARY_ENTRY;
-    }
-    if (this.isCreateNewProductMode$$()) {
-      return ModalViewMode.CREATE_NEW_PRODUCT;
-    }
-    return ModalViewMode.SEARCH;
-  });
-
-  protected readonly ModalViewMode = ModalViewMode;
-  protected readonly IconName = IconName;
+  protected readonly ModalViewMode = ModalState;
 
   protected get todaysKcalsPercent() {
     return this.foodDiaryService.selectedDayTotals$$().kcalsPercent;
@@ -136,12 +107,13 @@ export class FoodDiaryComponent implements OnInit, AfterViewInit, OnDestroy {
   //   return this.settingsService.settings$$()?.liteVersion ?? false;
   // }
 
+  protected readonly foodDiaryService = inject(FoodDiaryService);
+  protected readonly foodAddModalService = inject(FoodAddModalService);
+
   constructor(
-    public foodDiaryService: FoodDiaryService,
     private ngZone: NgZone,
     private screenSizeWatcherService: ScreenSizeWatcherService,
     private settingsService: SettingsService,
-    private photoCaptureService: PhotoCaptureService,
     private foodCatalogueService: FoodCatalogueService,
     protected deviceDetectorService: DeviceDetectorService,
     private accordionService: AccordionService,
@@ -194,57 +166,12 @@ export class FoodDiaryComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   protected closeModal() {
-    this.isAddFoodModalOpen = false;
-    this.selectedProduct$$.set(null);
-    this.isCreateNewProductMode$$.set(false);
+    this.foodAddModalService.closeModal();
     this.foodCatalogueService.clearSearch();
   }
 
   protected openAddFoodModal() {
-    this.isAddFoodModalOpen = true;
-  }
-
-  protected async takePhoto() {
-    this.isCameraPreviewOpen$$.set(true);
-  }
-
-  protected async onPhotoTaken(capturedPhoto: CapturedPhoto) {
-    this.isCameraPreviewOpen$$.set(false);
-
-    try {
-      const result = await this.photoCaptureService.analyzeImage(capturedPhoto.file);
-
-      if (result?.result && result.data) {
-        console.log('Photo analysis result:', result.data);
-        this.closeModal();
-      } else if (result?.error) {
-        console.error('Photo analysis failed:', result.error);
-        // alert('Не удалось проанализировать фото. Попробуйте еще раз.');
-      } else {
-        console.error('Photo analysis returned no results');
-        // alert('Продукт на фото не распознан. Попробуйте другое фото.');
-      }
-    } catch (error) {
-      console.error('Error during photo analysis:', error);
-      // alert('Ошибка при анализе фото. Попробуйте еще раз.');
-    }
-  }
-
-  protected onCameraPreviewCancelled() {
-    this.isCameraPreviewOpen$$.set(false);
-  }
-
-  protected selectProduct(product: CatalogueEntry) {
-    this.selectedProduct$$.set(product);
-  }
-
-  protected openCreateNewProductMode() {
-    this.isCreateNewProductMode$$.set(true);
-  }
-
-  protected goBackToSearch() {
-    this.selectedProduct$$.set(null);
-    this.isCreateNewProductMode$$.set(false);
+    this.foodAddModalService.openModal();
   }
 
   private syncColumnWidths(): void {

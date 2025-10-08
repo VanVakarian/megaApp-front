@@ -2,14 +2,15 @@ import {
   AfterViewInit,
   Component,
   ElementRef,
-  EventEmitter,
   OnDestroy,
-  Output,
   ViewChild,
   computed,
   effect,
+  inject,
   signal,
 } from '@angular/core';
+import { FoodAddModalService } from '@app/services/food/food-add-modal.service';
+import { PhotoCaptureService } from '@app/services/photo-capture.service';
 import { CapturedPhoto } from '@app/shared/interfaces';
 import { VButton } from '@app/shared/ui-kit/v-button/v-button';
 import { IconName, VIcon } from '@app/shared/ui-kit/v-icon/v-icon';
@@ -27,12 +28,6 @@ export class CameraPreviewComponent implements AfterViewInit, OnDestroy {
   @ViewChild('canvas')
   private canvas!: ElementRef<HTMLCanvasElement>;
 
-  @Output()
-  public onPhotoTaken = new EventEmitter<CapturedPhoto>();
-
-  @Output()
-  public onCancel = new EventEmitter<void>();
-
   protected readonly isLoading$$ = signal(false);
   protected readonly photoDataUrl$$ = signal<string>('');
   protected readonly error$$ = signal<string>('');
@@ -44,6 +39,9 @@ export class CameraPreviewComponent implements AfterViewInit, OnDestroy {
   protected readonly Icon = IconName;
 
   private cameraStream: MediaStream | null = null;
+
+  private readonly photoCaptureService = inject(PhotoCaptureService);
+  private readonly foodAddModalService = inject(FoodAddModalService);
 
   constructor() {
     effect(() => {
@@ -124,14 +122,29 @@ export class CameraPreviewComponent implements AfterViewInit, OnDestroy {
     );
   }
 
-  public confirmPhoto(): void {
-    console.log('Confirm photo clicked');
+  public async confirmPhoto(): Promise<void> {
     const capturedFile = this.capturedFile$$();
     if (capturedFile && this.photoDataUrl$$()) {
-      this.onPhotoTaken.emit({
+      const capturedPhoto: CapturedPhoto = {
         file: capturedFile,
         dataUrl: this.photoDataUrl$$(),
-      });
+      };
+
+      this.foodAddModalService.submitSuccess();
+
+      try {
+        const result = await this.photoCaptureService.analyzeImage(capturedPhoto.file);
+
+        if (result?.result && result.data) {
+          console.log('Photo analysis result:', result.data);
+        } else if (result?.error) {
+          console.error('Photo analysis failed:', result.error);
+        } else {
+          console.error('Photo analysis returned no results');
+        }
+      } catch (error) {
+        console.error('Error during photo analysis:', error);
+      }
     }
   }
 
@@ -142,7 +155,7 @@ export class CameraPreviewComponent implements AfterViewInit, OnDestroy {
   }
 
   public cancel(): void {
-    this.onCancel.emit();
+    this.foodAddModalService.goBackToSearch();
   }
 
   private stopCamera(): void {

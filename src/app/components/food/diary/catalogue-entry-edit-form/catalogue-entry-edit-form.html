@@ -1,0 +1,33 @@
+<form [formGroup]="catalogueEditForm"
+      (ngSubmit)="submitForm()">
+  <div class="flex flex-col gap-4 p-4">
+    <div class="text-xl text-center">
+      <!-- {{ selectedProduct().name }} -->
+    </div>
+
+    <div class="flex items-end justify-end gap-4">
+    </div>
+
+    <div class="flex justify-between">
+      <v-button primary
+                [config]="{
+                  isLabelHidden: true,
+                  paddingX: 0,
+                  paddingY: 0,
+                }"
+                (click)="goBack()">
+        <v-icon v-prefix
+                [name]="Icon.ChevronLeft"
+                [size]="10" />
+      </v-button>
+
+      <v-button type="submit"
+                [config]="{
+                  type: 'submit',
+                  isDisabled: !isFormValid(),
+                }">
+        Добавить
+      </v-button>
+    </div>
+  </div>
+</form>

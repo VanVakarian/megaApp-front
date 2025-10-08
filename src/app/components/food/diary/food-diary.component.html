@@ -96,47 +96,28 @@
 
 <div class="h-[50vh]"></div>
 
-<v-modal [isOpen]="isAddFoodModalOpen"
+<v-modal [isOpen]="foodAddModalService.currentState !== ModalViewMode.CLOSED"
          [borderRadius]="3"
          [paddingX]="0"
          [paddingY]="0"
          [class.is-mobile]="deviceDetectorService.isMobile$$()"
          [class.is-desktop]="deviceDetectorService.isDesktop$$()"
          (onClose)="closeModal()">
-  @switch (currentViewMode$$()) {
+  @switch (foodAddModalService.currentState) {
     @case (ModalViewMode.SEARCH) {
-      <food-search [isSearchMode]="isAddFoodModalOpen"
-                   (onProductSelect)="selectProduct($event)"
-                   (onPhotoTake)="takePhoto()"
-                   (onAddNewProduct)="openCreateNewProductMode()"
-                   (onClose)="closeModal()" />
+      <food-search />
     }
 
     @case (ModalViewMode.CAMERA_PREVIEW) {
-      <camera-preview (onPhotoTaken)="onPhotoTaken($event)"
-                      (onCancel)="onCameraPreviewCancelled()" />
+      <camera-preview />
     }
 
     @case (ModalViewMode.ADD_DIARY_ENTRY) {
-      <diary-entry-add-form [selectedProduct]="selectedProduct$$()!"
-                            (onGoBack)="goBackToSearch()"
-                            (onSubmit)="closeModal()" />
+      <diary-entry-add-form />
     }
 
     @case (ModalViewMode.CREATE_NEW_PRODUCT) {
-      <div class="flex flex-col items-center justify-center gap-6 p-8 min-h-[400px]">
-        <v-icon [name]="IconName.Add"
-                [size]="20"
-                class="text-primary-500" />
-        <div class="text-center">
-          <h2 class="mb-2 text-2xl font-semibold">Добавление нового продукта</h2>
-          <p class="text-gray-500">Форма для создания нового продукта появится здесь</p>
-        </div>
-        <v-button primary
-                  (onClick)="goBackToSearch()">
-          Вернуться к поиску
-        </v-button>
-      </div>
+      <catalogue-entry-edit-form />
     }
   }
 </v-modal>

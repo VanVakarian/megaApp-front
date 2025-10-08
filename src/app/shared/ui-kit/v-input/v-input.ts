@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, ElementRef, input, output, Self, viewChild } from '@angular/core';
+import { Component, computed, ElementRef, input, model, Optional, output, Self, viewChild } from '@angular/core';
 import { ControlValueAccessor, NgControl } from '@angular/forms';
 import { CssUnitValue } from '@app/shared/ui-kit/types';
 import { getValidationErrorMessage } from '@app/shared/ui-kit/v-input/validators';
@@ -59,6 +59,8 @@ export class VInput implements ControlValueAccessor {
 
   public readonly config = input<VInputConfig>({});
 
+  public readonly value = model<string>('');
+
   public readonly onInputChanged = output<Event>();
   public readonly onFocused = output<Event>();
   public readonly onBlurred = output<Event>();
@@ -73,16 +75,23 @@ export class VInput implements ControlValueAccessor {
   protected readonly cssFontSize = computed(() => String(this.settings().fontSize));
   protected readonly borderRadiusString = computed(() => `var(--unit-${this.settings().borderRadius})`);
 
-  protected value: string = '';
+  protected ngControlValue: string = '';
   protected isFocused = false;
   protected hasInteracted = false;
   protected readonly inputId = `v-input-${++uniqueId}`;
 
+  protected readonly displayValue = computed(() => {
+    return this.ngControl ? this.ngControlValue : this.value();
+  });
+
   constructor(
+    @Optional()
     @Self()
-    public ngControl: NgControl,
+    public ngControl: NgControl | null,
   ) {
-    this.ngControl.valueAccessor = this;
+    if (this.ngControl) {
+      this.ngControl.valueAccessor = this;
+    }
   }
 
   protected getErrorMessage(): string {
@@ -91,6 +100,8 @@ export class VInput implements ControlValueAccessor {
   }
 
   private getValidationErrorMessage(): string {
+    if (!this.ngControl) return '';
+
     const control = this.ngControl.control;
     if (!control || !control.errors) return '';
 
@@ -105,7 +116,7 @@ export class VInput implements ControlValueAccessor {
   private onTouched = () => {};
 
   public writeValue(value: InputValue): void {
-    this.value = value != null ? String(value) : '';
+    this.ngControlValue = value != null ? String(value) : '';
     this.hasInteracted = false;
   }
 
@@ -121,10 +132,17 @@ export class VInput implements ControlValueAccessor {
 
   protected onInputChange(event: Event): void {
     const target = event.target as HTMLInputElement;
-    this.value = target.value;
+    const newValue = target.value;
     this.hasInteracted = true;
-    const outputValue = this.convertToOutputValue(this.value);
-    this.onChange(outputValue);
+
+    if (this.ngControl) {
+      this.ngControlValue = newValue;
+      const outputValue = this.convertToOutputValue(newValue);
+      this.onChange(outputValue);
+    } else {
+      this.value.set(newValue);
+    }
+
     this.onInputChanged.emit(event);
   }
 
@@ -145,7 +163,9 @@ export class VInput implements ControlValueAccessor {
 
   protected onBlur(): void {
     this.isFocused = false;
-    this.onTouched();
+    if (this.ngControl) {
+      this.onTouched();
+    }
     const event = new Event('blur');
     this.onBlurred.emit(event);
   }

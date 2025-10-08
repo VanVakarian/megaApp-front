@@ -1,7 +1,7 @@
 import { NgClass } from '@angular/common';
-import { AfterViewInit, Component, computed, effect, inject, input, OnDestroy, OnInit, output } from '@angular/core';
-import { FormControl, ReactiveFormsModule } from '@angular/forms';
+import { AfterViewInit, Component, computed, effect, inject, OnDestroy } from '@angular/core';
 import { DeviceDetectorService } from '@app/services/device-detector.service';
+import { FoodAddModalService, ModalState } from '@app/services/food/food-add-modal.service';
 import { FoodCatalogueService } from '@app/services/food/food-catalogue.service';
 import { ScreenSizeWatcherService } from '@app/services/screen-size-watcher.service';
 import { VoiceRecordingService } from '@app/services/voice-recording.service';
@@ -12,64 +12,58 @@ import { VButton } from '@app/shared/ui-kit/v-button/v-button';
 import { VCard } from '@app/shared/ui-kit/v-card/v-card';
 import { IconName, VIcon } from '@app/shared/ui-kit/v-icon/v-icon';
 import { VInput } from '@app/shared/ui-kit/v-input/v-input';
-import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'food-search',
   templateUrl: './food-search.component.html',
   styleUrl: './food-search.component.scss',
-  imports: [ReactiveFormsModule, VInput, VButton, VIcon, VCard, FlipAnimateDirective, NgClass],
+  imports: [VInput, VButton, VIcon, VCard, FlipAnimateDirective, NgClass],
   animations: [fadeScaleInAnimation],
 })
-export class FoodSearchComponent implements OnInit, OnDestroy, AfterViewInit {
-  readonly isSearchMode = input<boolean>(false);
-
-  readonly onProductSelect = output<CatalogueEntry>();
-  readonly onPhotoTake = output<void>();
-  readonly onAddNewProduct = output<void>();
-  readonly onClose = output<void>();
-
-  protected readonly foodNameControl = new FormControl('');
+export class FoodSearchComponent implements AfterViewInit, OnDestroy {
   protected readonly Icon = IconName;
 
-  private searchSubscription?: Subscription;
+  protected get searchQuery$$() {
+    return this.foodAddModalService.searchQuery$$;
+  }
 
   protected readonly isMobile$$ = computed(() => this.screenSizeWatcherService.isMobile$$());
 
   protected readonly isLegacySearch$$ = computed(() => this.foodCatalogueService.isLegacySearch$$());
 
   protected readonly searchResults$$ = computed(() => {
-    const isLegacy = this.isLegacySearch$$();
-    if (isLegacy) {
+    if (this.isLegacySearch$$()) {
       return this.foodCatalogueService.legacySearchResults$$();
     } else {
       return this.foodCatalogueService.searchResults$$();
     }
   });
 
-  private readonly focusEffect = effect(() => {
-    if (this.isSearchMode()) {
+  private readonly clearSearchOnModalClose = effect(() => {
+    const currentState = this.foodAddModalService.currentState;
+
+    if (currentState === ModalState.CLOSED) {
+      this.foodAddModalService.searchQuery$$.set('');
+      this.foodCatalogueService.clearSearch();
+    }
+
+    if (currentState === ModalState.SEARCH) {
       setTimeout(() => this.focusInput(), 200);
     }
   });
 
-  private readonly syncSearchQueryEffect = effect(() => {
-    const serviceQuery = this.foodCatalogueService.searchQuery$$();
-    if (this.foodNameControl.value !== serviceQuery) {
-      this.foodNameControl.setValue(serviceQuery, { emitEvent: false });
-    }
-  });
-
-  private readonly searchTypeSwitchEffect = effect(() => {
+  private readonly searchEffect = effect(() => {
+    const searchQuery = this.searchQuery$$();
     const isLegacy = this.isLegacySearch$$();
-    const currentValue = this.foodNameControl.value;
 
-    if (currentValue && currentValue.trim()) {
+    if (searchQuery && searchQuery.trim()) {
       if (isLegacy) {
-        this.foodCatalogueService.legacySearchProducts(currentValue);
+        this.foodCatalogueService.legacySearchProducts(searchQuery);
       } else {
-        this.foodCatalogueService.searchProducts(currentValue);
+        this.foodCatalogueService.searchProducts(searchQuery);
       }
+    } else {
+      this.foodCatalogueService.clearSearch();
     }
   });
 
@@ -83,26 +77,13 @@ export class FoodSearchComponent implements OnInit, OnDestroy, AfterViewInit {
 
   private readonly voiceRecordingService = inject(VoiceRecordingService);
   private readonly foodCatalogueService = inject(FoodCatalogueService);
+  private readonly foodAddModalService = inject(FoodAddModalService);
   private readonly deviceDetectorService = inject(DeviceDetectorService);
   private readonly screenSizeWatcherService = inject(ScreenSizeWatcherService);
 
-  ngOnInit(): void {
-    this.searchSubscription = this.foodNameControl.valueChanges.subscribe((value) => {
-      if (value === null) return;
-
-      if (this.isLegacySearch$$()) {
-        this.foodCatalogueService.legacySearchProducts(value);
-      } else {
-        this.foodCatalogueService.searchProducts(value);
-      }
-    });
-  }
-
   ngAfterViewInit(): void {}
 
-  ngOnDestroy(): void {
-    this.searchSubscription?.unsubscribe();
-  }
+  ngOnDestroy(): void {}
 
   private focusInput(): void {
     const inputEl = document.querySelector('v-input.catalogue-entry-name-input input') as HTMLInputElement;
@@ -127,21 +108,19 @@ export class FoodSearchComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   protected takePhoto(): void {
-    this.onPhotoTake.emit();
+    this.foodAddModalService.takePhoto();
   }
 
   protected selectProduct(product: CatalogueEntry): void {
-    this.foodCatalogueService.searchResults$$.set([]);
-    this.foodCatalogueService.legacySearchResults$$.set([]);
-    this.onProductSelect.emit(product);
+    this.foodAddModalService.selectProduct(product);
   }
 
   protected addProduct(): void {
-    this.onAddNewProduct.emit();
+    this.foodAddModalService.addProduct();
   }
 
   protected closeModal(): void {
-    this.onClose.emit();
+    this.foodAddModalService.closeModal();
   }
 
   protected getDisplayName(catalogueEntry: CatalogueEntry): string {

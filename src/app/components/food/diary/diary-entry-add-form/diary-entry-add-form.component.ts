@@ -1,9 +1,10 @@
-import { AfterViewInit, Component, effect, inject, input, output, viewChild } from '@angular/core';
+import { AfterViewInit, Component, computed, effect, inject, viewChild } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FoodAddModalService } from '@app/services/food/food-add-modal.service';
 import { FoodCoefficientsService } from '@app/services/food/food-coefficients.service';
 import { FoodDiaryService } from '@app/services/food/food-diary.service';
 import { FoodStatsService } from '@app/services/food/food-stats.service';
-import { CatalogueEntry, DiaryEntry, HistoryEntryAction } from '@app/shared/interfaces';
+import { DiaryEntry, HistoryEntryAction } from '@app/shared/interfaces';
 import { UiProgressIcon } from '@app/shared/ui-kit/progress-icon/progress-icon.component';
 import { VButton } from '@app/shared/ui-kit/v-button/v-button';
 import { IconName, VIcon } from '@app/shared/ui-kit/v-icon/v-icon';
@@ -15,13 +16,9 @@ import { VInput } from '@app/shared/ui-kit/v-input/v-input';
   imports: [ReactiveFormsModule, UiProgressIcon, VButton, VIcon, VInput],
 })
 export class DiaryEntryAddFormComponent implements AfterViewInit {
-  public readonly selectedProduct = input.required<CatalogueEntry>();
-
-  public readonly onGoBack = output<void>();
-
-  public readonly onSubmit = output<void>();
-
   protected readonly Icon = IconName;
+
+  protected readonly selectedProduct = computed(() => this.foodAddModalService.selectedProduct$$());
 
   private selectedDaysTargerKcals = 0;
   private selectedDaysEatenPercent = 0;
@@ -33,6 +30,7 @@ export class DiaryEntryAddFormComponent implements AfterViewInit {
   protected readonly foodWeightInput = viewChild.required(VInput);
 
   private readonly foodDiaryService = inject(FoodDiaryService);
+  private readonly foodAddModalService = inject(FoodAddModalService);
   private readonly foodCoefficientsService = inject(FoodCoefficientsService);
   private readonly foodStatsService = inject(FoodStatsService);
 
@@ -45,6 +43,8 @@ export class DiaryEntryAddFormComponent implements AfterViewInit {
 
   private readonly selectedProductEffect = effect(() => {
     const product = this.selectedProduct();
+    if (!product) return;
+
     this.selectedFoodKcals = product.kcals;
     this.diaryEntriesCoefficient = this.foodCoefficientsService.coefficients$$()?.[product.id] ?? 1;
     this.updateProjectedDaysEatenPercent(this.foodWeightControl.value || 0);
@@ -99,6 +99,7 @@ export class DiaryEntryAddFormComponent implements AfterViewInit {
     this.diaryEntryForm.disable();
     const { foodWeight } = this.diaryEntryForm.value;
     const product = this.selectedProduct();
+    if (!product) return;
 
     const entry: DiaryEntry = {
       id: 0,
@@ -110,16 +111,14 @@ export class DiaryEntryAddFormComponent implements AfterViewInit {
 
     const response = await this.foodDiaryService.createDiaryEntry(entry);
 
-    if (response?.result) {
-      if (response.diaryId) {
-        this.onSubmit.emit();
-      }
+    if (response?.result && response.diaryId) {
+      this.foodAddModalService.submitSuccess();
     }
 
     this.diaryEntryForm.enable();
   }
 
   protected goBack(): void {
-    this.onGoBack.emit();
+    this.foodAddModalService.goBackToSearch();
   }
 }

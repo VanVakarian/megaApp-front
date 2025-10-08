@@ -27,7 +27,7 @@
     </v-button>
   }
 
-  <v-input [formControl]="foodNameControl"
+  <v-input [(value)]="searchQuery$$"
            [config]="{
              type: 'text'
            }"

@@ -13,7 +13,7 @@
 
   <input #inputElement
          [id]="inputId"
-         [value]="value"
+         [value]="displayValue()"
          [name]="settings().name || inputId"
          [type]="settings().type"
          [placeholder]="settings().placeholder"
