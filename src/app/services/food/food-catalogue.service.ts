@@ -4,8 +4,12 @@ import { exhaustRequest } from '@app/shared/decorators/exhaust-request.decorator
 import {
   Catalogue,
   CatalogueEntry,
+  ProductPreviewData,
+  ProductSaveRequest,
   SearchQueryWsMessage,
   SearchResultsWsMessage,
+  ServerResponseProductPreview,
+  ServerResponseProductSave,
   WebSocketMessageType,
 } from '@app/shared/interfaces';
 import { transliterateEnToRu } from '@app/shared/utils';
@@ -199,5 +203,48 @@ export class FoodCatalogueService extends BaseFoodService {
     this.searchResults$$.set([]);
     this.legacySearchResults$$.set([]);
     this.isLegacySearch$$.set(false);
+  }
+
+  public async generateProductPreview(description: string): Promise<ProductPreviewData> {
+    try {
+      const response = await firstValueFrom(
+        this.http.post<ServerResponseProductPreview>('/api/food/generate-product-preview', { description }),
+      );
+
+      if (!response.result || !response.data) {
+        throw new Error('Failed to generate product preview');
+      }
+
+      return response.data;
+    } catch (error) {
+      console.error('Failed to generate product preview:', error);
+      throw error;
+    }
+  }
+
+  public async saveProduct(productData: ProductSaveRequest): Promise<CatalogueEntry> {
+    try {
+      const response = await firstValueFrom(
+        this.http.post<ServerResponseProductSave>('/api/food/save-product', productData),
+      );
+
+      if (!response.result || !response.data?.catalogueEntry) {
+        throw new Error(response.error || 'Failed to save product');
+      }
+
+      const catalogueEntry = response.data.catalogueEntry;
+
+      const updatedCatalogue = {
+        ...this.catalogue$$(),
+        [catalogueEntry.id]: catalogueEntry,
+      };
+      this.catalogue$$.set(updatedCatalogue);
+      this.saveToLocalStorage(updatedCatalogue);
+
+      return catalogueEntry;
+    } catch (error: any) {
+      console.error('Failed to save product:', error);
+      throw error;
+    }
   }
 }

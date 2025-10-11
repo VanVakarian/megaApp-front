@@ -71,6 +71,7 @@ export class FoodDiaryService extends BaseFoodService {
       if (this.shouldLoadMore()) this.fetchMoreDiaryTrigger$.next();
     });
 
+    // effect(() => { console.log('SELECTED DAY ISO has been updated:', this.selectedDayIso$$()) }); // prettier-ignore
     // effect(() => { console.log('DIARY RAW has been updated:', this.diaryRaw$$()) }); // prettier-ignore
     // effect(() => { console.log('UNIFIED DIARY has been updated:', this.diary$$()) }); // prettier-ignore
   }

@@ -1,5 +1,17 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, ElementRef, input, model, Optional, output, Self, viewChild } from '@angular/core';
+import {
+  Component,
+  computed,
+  ElementRef,
+  input,
+  model,
+  Optional,
+  output,
+  Self,
+  signal,
+  viewChild,
+  WritableSignal,
+} from '@angular/core';
 import { ControlValueAccessor, NgControl } from '@angular/forms';
 import { CssUnitValue } from '@app/shared/ui-kit/types';
 import { getValidationErrorMessage } from '@app/shared/ui-kit/v-input/validators';
@@ -26,6 +38,9 @@ export interface VInputConfig {
   fontWeight?: FontWeight;
   textAlign?: TextAlign;
   borderRadius?: CssUnitValue;
+  isTextarea?: boolean;
+  rows?: number;
+  cols?: number;
 }
 
 const DEFAULT_V_INPUT_CONFIG: Required<VInputConfig> = {
@@ -40,6 +55,9 @@ const DEFAULT_V_INPUT_CONFIG: Required<VInputConfig> = {
   fontWeight: 400,
   textAlign: 'left',
   borderRadius: 2,
+  isTextarea: false,
+  rows: 3,
+  cols: 50,
 };
 
 let uniqueId = 0;
@@ -55,7 +73,7 @@ let uniqueId = 0;
   imports: [CommonModule],
 })
 export class VInput implements ControlValueAccessor {
-  public readonly inputElement = viewChild.required<ElementRef<HTMLInputElement>>('inputElement');
+  public readonly inputElement = viewChild.required<ElementRef<HTMLInputElement | HTMLTextAreaElement>>('inputElement');
 
   public readonly config = input<VInputConfig>({});
 
@@ -75,13 +93,13 @@ export class VInput implements ControlValueAccessor {
   protected readonly cssFontSize = computed(() => String(this.settings().fontSize));
   protected readonly borderRadiusString = computed(() => `var(--unit-${this.settings().borderRadius})`);
 
-  protected ngControlValue: string = '';
+  protected ngControlValue: WritableSignal<string> = signal('');
   protected isFocused = false;
   protected hasInteracted = false;
   protected readonly inputId = `v-input-${++uniqueId}`;
 
   protected readonly displayValue = computed(() => {
-    return this.ngControl ? this.ngControlValue : this.value();
+    return this.ngControl ? this.ngControlValue() : this.value();
   });
 
   constructor(
@@ -116,7 +134,7 @@ export class VInput implements ControlValueAccessor {
   private onTouched = () => {};
 
   public writeValue(value: InputValue): void {
-    this.ngControlValue = value != null ? String(value) : '';
+    this.ngControlValue.set(value != null ? String(value) : '');
     this.hasInteracted = false;
   }
 
@@ -131,12 +149,12 @@ export class VInput implements ControlValueAccessor {
   public setDisabledState(isDisabled: boolean): void {}
 
   protected onInputChange(event: Event): void {
-    const target = event.target as HTMLInputElement;
+    const target = event.target as HTMLInputElement | HTMLTextAreaElement;
     const newValue = target.value;
     this.hasInteracted = true;
 
     if (this.ngControl) {
-      this.ngControlValue = newValue;
+      this.ngControlValue.set(newValue);
       const outputValue = this.convertToOutputValue(newValue);
       this.onChange(outputValue);
     } else {
@@ -171,7 +189,7 @@ export class VInput implements ControlValueAccessor {
   }
 
   protected onKeydown(event: KeyboardEvent): void {
-    if (event.key === 'Enter') {
+    if (event.key === 'Enter' && !this.settings().isTextarea) {
       this.onEnterPressed.emit(event);
     }
   }

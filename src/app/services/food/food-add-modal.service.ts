@@ -10,13 +10,13 @@ export enum ModalState {
 }
 
 export enum ModalEvent {
-  OPEN = 'OPEN',
-  CLOSE = 'CLOSE',
-  SELECT_PRODUCT = 'SELECT_PRODUCT',
-  ADD_PRODUCT = 'ADD_PRODUCT',
-  GO_BACK = 'GO_BACK',
-  SUBMIT_SUCCESS = 'SUBMIT_SUCCESS',
-  TAKE_PHOTO = 'TAKE_PHOTO',
+  OPEN,
+  CLOSE,
+  SELECT_PRODUCT,
+  ADD_PRODUCT,
+  GO_BACK,
+  SUBMIT_SUCCESS,
+  TAKE_PHOTO,
 }
 
 interface ModalContext {

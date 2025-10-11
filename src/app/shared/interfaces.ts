@@ -145,6 +145,39 @@ export interface ServerResponseWithCatalogueEntry extends ServerResponseBasic {
   kcals?: number;
 }
 
+export interface ProductPreviewData {
+  generalizedName: string;
+  kcals: number;
+  protein: number;
+  fat: number;
+  carbs: number;
+  fiber: number;
+  descriptionForEmbedding: string;
+  confidence: number;
+}
+
+export interface ServerResponseProductPreview extends ServerResponseBasic {
+  data: ProductPreviewData;
+}
+
+export interface ProductSaveRequest {
+  id?: number;
+  name: string;
+  kcals: number;
+  protein: number;
+  fat: number;
+  carbs: number;
+  fiber: number;
+  description: string;
+}
+
+export interface ServerResponseProductSave extends ServerResponseBasic {
+  data: {
+    catalogueEntry: CatalogueEntry;
+  };
+  error?: string;
+}
+
 //                                                                      SETTINGS
 
 export interface Settings {

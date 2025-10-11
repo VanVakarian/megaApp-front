@@ -3,12 +3,12 @@
            [state]="currentState"
            [formControl]="form.controls.bodyWeight"
            [config]="{
-               type: 'number',
-               label: FormLabels.WEIGHT,
-               fontSize: '20px',
-               fontWeight: 500,
-               textAlign: 'right',
-             }"
+             type: 'number',
+             label: FormLabels.WEIGHT,
+             fontSize: '20px',
+             fontWeight: 500,
+             textAlign: 'right',
+           }"
            (onInputChanged)="onInput()"
            (onEnterPressed)="onEnter()"
            class="w-1/3">

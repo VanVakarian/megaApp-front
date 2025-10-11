@@ -1,16 +1,89 @@
 <form [formGroup]="catalogueEditForm"
-      (ngSubmit)="submitForm()">
-  <div class="flex flex-col gap-4 p-4">
-    <div class="text-xl text-center">
-      <!-- {{ selectedProduct().name }} -->
+      (ngSubmit)="submitForm()"
+      class="flex flex-col gap-4 p-4">
+
+  @if (isLoadingPreview$$()) {
+    <div class="animate-pulse py-8 text-center">
+      <div class="mb-2 text-lg font-semibold">Генерация данных продукта...</div>
+      <div class="opacity-70 text-sm">Пожалуйста, подождите, пока ИИ анализирует ваш запрос</div>
+    </div>
+  } @else {
+    <div class="text-xl font-semibold text-center">
+      Добавление нового продукта
     </div>
 
-    <div class="flex items-end justify-end gap-4">
+    <!-- <div class="opacity-70 mb-2 text-sm text-center">
+      Запрос: "{{ searchQuery$$() }}"
+    </div> -->
+
+    @if (error$$()) {
+      <div class="dark:bg-red-900 dark:text-red-200 p-3 text-sm text-red-800 bg-red-100 rounded-lg">
+        {{ error$$() }}
+      </div>
+    }
+
+    <div class="flex flex-col gap-2">
+      <v-input formControlName="name"
+               [config]="{
+                 label: 'Название продукта',
+                 placeholder: 'Введите название продукта',
+                 type: 'text'
+               }" />
+
+      <div class="flex gap-3">
+        <v-input formControlName="kcals"
+                 [config]="{
+                   label: 'Калории (на 100г)',
+                   placeholder: '0',
+                   type: 'number',
+                   textAlign: 'right',
+                 }" />
+
+        <v-input formControlName="fiber"
+                 [config]="{
+                   label: 'Клетчатка',
+                   placeholder: '0',
+                   type: 'number',
+                   textAlign: 'right',
+                 }" />
+      </div>
+
+      <div class="flex gap-3">
+        <v-input formControlName="protein"
+                 [config]="{
+                   label: 'Белки',
+                   placeholder: '0',
+                   type: 'number',
+                   textAlign: 'right',
+                 }" />
+        <v-input formControlName="fat"
+                 [config]="{
+                   label: 'Жиры',
+                   placeholder: '0',
+                   type: 'number',
+                   textAlign: 'right',
+                 }" />
+
+        <v-input formControlName="carbs"
+                 [config]="{
+                   label: 'Углеводы',
+                   placeholder: '0',
+                   type: 'number',
+                   textAlign: 'right',
+                 }" />
+      </div>
+
+      <v-input formControlName="description"
+               [config]="{
+                 label: 'Описание',
+                 placeholder: 'Введите описание продукта для улучшения результатов поиска',
+                 isTextarea: true,
+                 rows: 3
+               }" />
     </div>
 
-    <div class="flex justify-between">
-      <v-button primary
-                [config]="{
+    <div class="flex justify-between gap-4 mt-0">
+      <v-button [config]="{
                   isLabelHidden: true,
                   paddingX: 0,
                   paddingY: 0,
@@ -24,10 +97,10 @@
       <v-button type="submit"
                 [config]="{
                   type: 'submit',
-                  isDisabled: !isFormValid(),
+                  isDisabled: !isFormValid() || isSaving$$(),
                 }">
-        Добавить
+        {{ isSaving$$() ? 'Сохранение...' : 'Добавить продукт' }}
       </v-button>
     </div>
-  </div>
+  }
 </form>

@@ -11,22 +11,42 @@
     <ng-content select="[v-prefix]" />
   </div>
 
-  <input #inputElement
-         [id]="inputId"
-         [value]="displayValue()"
-         [name]="settings().name || inputId"
-         [type]="settings().type"
-         [placeholder]="settings().placeholder"
-         [disabled]="settings().isDisabled"
-         [readonly]="settings().isReadonly"
-         [style.text-align]="settings().textAlign"
-         [style.--v-input-font-weight]="cssFontWeight()"
-         [style.--v-input-font-size]="cssFontSize()"
-         (input)="onInputChange($event)"
-         (focus)="onFocus()"
-         (blur)="onBlur()"
-         (keydown)="onKeydown($event)"
-         class="input-field" />
+  @if (settings().isTextarea) {
+    <textarea #inputElement
+              [id]="inputId"
+              [value]="displayValue()"
+              [name]="settings().name || inputId"
+              [placeholder]="settings().placeholder"
+              [disabled]="settings().isDisabled"
+              [readonly]="settings().isReadonly"
+              [rows]="settings().rows"
+              [cols]="settings().cols"
+              [style.text-align]="settings().textAlign"
+              [style.--v-input-font-weight]="cssFontWeight()"
+              [style.--v-input-font-size]="cssFontSize()"
+              (input)="onInputChange($event)"
+              (focus)="onFocus()"
+              (blur)="onBlur()"
+              (keydown)="onKeydown($event)"
+              class="input-field textarea-field"></textarea>
+  } @else {
+    <input #inputElement
+           [id]="inputId"
+           [value]="displayValue()"
+           [name]="settings().name || inputId"
+           [type]="settings().type"
+           [placeholder]="settings().placeholder"
+           [disabled]="settings().isDisabled"
+           [readonly]="settings().isReadonly"
+           [style.text-align]="settings().textAlign"
+           [style.--v-input-font-weight]="cssFontWeight()"
+           [style.--v-input-font-size]="cssFontSize()"
+           (input)="onInputChange($event)"
+           (focus)="onFocus()"
+           (blur)="onBlur()"
+           (keydown)="onKeydown($event)"
+           class="input-field" />
+  }
 
   <div class="postfix">
     <ng-content select="[v-postfix]" />

@@ -38,7 +38,6 @@ export class ScreenSizeWatcherService {
         distinctUntilChanged(),
       )
       .subscribe((isMobile) => {
-        console.log('isMobile:', isMobile);
         this.isMobile$$.set(isMobile);
       });
   }
