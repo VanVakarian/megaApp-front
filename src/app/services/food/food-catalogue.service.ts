@@ -4,6 +4,7 @@ import { exhaustRequest } from '@app/shared/decorators/exhaust-request.decorator
 import {
   Catalogue,
   CatalogueEntry,
+  CatalogueEntrySavedWsMessage,
   ProductPreviewData,
   ProductSaveRequest,
   SearchQueryWsMessage,
@@ -36,6 +37,7 @@ export class FoodCatalogueService extends BaseFoodService {
   public legacySearchResults$$: WritableSignal<CatalogueEntry[]> = signal([]);
 
   private searchCache: Record<string, number[]> = {};
+  private pendingSearchQuery: string = '';
 
   protected getStorageKey(): string {
     return this.CATALOGUE_STORAGE_KEY;
@@ -90,7 +92,19 @@ export class FoodCatalogueService extends BaseFoodService {
       this.displaySearchResults(cachedIds);
     }
 
-    this.sendSearchQuery(query);
+    const queryWithTransliteration = this.addTransliterationToQuery(query);
+    this.pendingSearchQuery = query;
+    this.sendSearchQuery(queryWithTransliteration);
+  }
+
+  private addTransliterationToQuery(query: string): string {
+    const transliteratedQuery = query.split(' ').map(transliterateEnToRu).join(' ');
+
+    if (transliteratedQuery === query) {
+      return query;
+    }
+
+    return `${query} ${transliteratedQuery}`;
   }
 
   public legacySearchProducts(query: string): void {
@@ -148,18 +162,40 @@ export class FoodCatalogueService extends BaseFoodService {
       .subscribe((msg) => {
         this.handleSearchResults(msg as SearchResultsWsMessage);
       });
+
+    this.networkService.wsMessages$
+      .pipe(filter((msg) => msg.type === WebSocketMessageType.CATALOGUE_ENTRY_SAVED))
+      .subscribe((msg) => {
+        this.handleCatalogueEntrySaved(msg as CatalogueEntrySavedWsMessage);
+      });
   }
 
   private handleSearchResults(msg: SearchResultsWsMessage): void {
-    const query = msg.payload.query;
     const results = msg.payload.catalogueIds;
+    const originalQuery = this.pendingSearchQuery;
 
-    const cachedIds = this.getSearchCachedResults(query);
+    if (!originalQuery) {
+      return;
+    }
+
+    const cachedIds = this.getSearchCachedResults(originalQuery);
 
     if (!cachedIds || !this.arraysEqual(cachedIds, results)) {
-      this.setSearchCachedResults(query, results);
+      this.setSearchCachedResults(originalQuery, results);
       this.displaySearchResults(results);
     }
+  }
+
+  private handleCatalogueEntrySaved(msg: CatalogueEntrySavedWsMessage): void {
+    const entry = msg.payload;
+
+    const updatedCatalogue = {
+      ...this.catalogue$$(),
+      [entry.id]: entry,
+    };
+
+    this.catalogue$$.set(updatedCatalogue);
+    this.saveToLocalStorage(updatedCatalogue);
   }
 
   private displaySearchResults(ids: number[]): void {
@@ -202,7 +238,6 @@ export class FoodCatalogueService extends BaseFoodService {
     this.searchQuery$$.set('');
     this.searchResults$$.set([]);
     this.legacySearchResults$$.set([]);
-    this.isLegacySearch$$.set(false);
   }
 
   public async generateProductPreview(description: string): Promise<ProductPreviewData> {

@@ -121,4 +121,11 @@ export class DiaryEntryAddFormComponent implements AfterViewInit {
   protected goBack(): void {
     this.foodAddModalService.goBackToSearch();
   }
+
+  protected editProduct(): void {
+    const product = this.selectedProduct();
+    if (!product) return;
+
+    this.foodAddModalService.editProduct(product);
+  }
 }

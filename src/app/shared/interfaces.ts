@@ -26,6 +26,7 @@ export enum WebSocketMessageType {
   STOP_VOICE_RECORDING = 'STOP_VOICE_RECORDING',
   SEARCH_QUERY = 'SEARCH_QUERY',
   SEARCH_RESULTS = 'SEARCH_RESULTS',
+  CATALOGUE_ENTRY_SAVED = 'CATALOGUE_ENTRY_SAVED',
 }
 
 export interface PingWsMessage {
@@ -106,6 +107,11 @@ export interface SearchResultsWsMessage {
   };
 }
 
+export interface CatalogueEntrySavedWsMessage {
+  type: WebSocketMessageType.CATALOGUE_ENTRY_SAVED;
+  payload: CatalogueEntry;
+}
+
 export type IncomingWsMessage =
   | PingWsMessage
   | SyncStatusWsMessage
@@ -113,7 +119,8 @@ export type IncomingWsMessage =
   | DiaryEntryUpdatedWsMessage
   | DiaryEntryDeletedWsMessage
   | BodyWeightUpdatedWsMessage
-  | SearchResultsWsMessage;
+  | SearchResultsWsMessage
+  | CatalogueEntrySavedWsMessage;
 
 export type OutgoingWsMessage =
   | StartVoiceRecordingWsMessage

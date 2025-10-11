@@ -5,18 +5,18 @@
       <div class="flex-grow text-xl font-medium text-center">
         {{ selectedProduct()?.name }}
       </div>
+
       <v-button raised
                 [config]="{
                   isLabelHidden: true,
                   padding: 2,
                 }"
-                (click)="goBack()"
+                (click)="editProduct()"
                 class=" self-start">
         <v-icon v-prefix
                 [name]="Icon.Edit"
                 [size]="7" />
       </v-button>
-
     </div>
 
     <div class="flex items-end justify-end gap-4">

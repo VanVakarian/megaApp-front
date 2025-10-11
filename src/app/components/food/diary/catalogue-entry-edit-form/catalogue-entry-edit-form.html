@@ -9,7 +9,7 @@
     </div>
   } @else {
     <div class="text-xl font-semibold text-center">
-      Добавление нового продукта
+      {{ mode$$() === 'edit' ? 'Редактирование продукта' : 'Добавление нового продукта' }}
     </div>
 
     <!-- <div class="opacity-70 mb-2 text-sm text-center">
@@ -98,7 +98,7 @@
                   type: 'submit',
                   isDisabled: !isFormValid() || isSaving$$(),
                 }">
-        {{ isSaving$$() ? 'Сохранение...' : 'Добавить продукт' }}
+        {{ isSaving$$() ? 'Сохранение...' : (mode$$() === 'edit' ? 'Сохранить изменения' : 'Добавить продукт') }}
       </v-button>
     </div>
   }

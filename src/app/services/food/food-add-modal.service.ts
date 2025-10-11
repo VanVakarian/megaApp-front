@@ -6,6 +6,7 @@ export enum ModalState {
   SEARCH = 'SEARCH',
   ADD_DIARY_ENTRY = 'ADD_DIARY_ENTRY',
   CREATE_NEW_PRODUCT = 'CREATE_NEW_PRODUCT',
+  EDIT_PRODUCT = 'EDIT_PRODUCT',
   CAMERA_PREVIEW = 'CAMERA_PREVIEW',
 }
 
@@ -14,6 +15,7 @@ export enum ModalEvent {
   CLOSE,
   SELECT_PRODUCT,
   ADD_PRODUCT,
+  EDIT_PRODUCT,
   GO_BACK,
   SUBMIT_SUCCESS,
   TAKE_PHOTO,
@@ -52,11 +54,17 @@ export class FoodAddModalService {
     },
     [ModalState.ADD_DIARY_ENTRY]: {
       [ModalEvent.GO_BACK]: ModalState.SEARCH,
+      [ModalEvent.EDIT_PRODUCT]: ModalState.EDIT_PRODUCT,
       [ModalEvent.SUBMIT_SUCCESS]: ModalState.CLOSED,
       [ModalEvent.CLOSE]: ModalState.CLOSED,
     },
     [ModalState.CREATE_NEW_PRODUCT]: {
       [ModalEvent.GO_BACK]: ModalState.SEARCH,
+      [ModalEvent.SUBMIT_SUCCESS]: ModalState.ADD_DIARY_ENTRY,
+      [ModalEvent.CLOSE]: ModalState.CLOSED,
+    },
+    [ModalState.EDIT_PRODUCT]: {
+      [ModalEvent.GO_BACK]: ModalState.ADD_DIARY_ENTRY,
       [ModalEvent.SUBMIT_SUCCESS]: ModalState.ADD_DIARY_ENTRY,
       [ModalEvent.CLOSE]: ModalState.CLOSED,
     },
@@ -146,5 +154,9 @@ export class FoodAddModalService {
 
   public submitSuccess(): void {
     this.transition(ModalEvent.SUBMIT_SUCCESS);
+  }
+
+  public editProduct(product: CatalogueEntry): void {
+    this.transition(ModalEvent.EDIT_PRODUCT, product);
   }
 }

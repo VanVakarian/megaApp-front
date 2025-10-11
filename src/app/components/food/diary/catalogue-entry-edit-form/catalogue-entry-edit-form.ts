@@ -19,6 +19,13 @@ export class CatalogueEntryEditFormComponent implements OnInit {
   private readonly foodAddModalService = inject(FoodAddModalService);
   private readonly foodCatalogueService = inject(FoodCatalogueService);
 
+  protected readonly mode$$ = computed(() => {
+    const selectedProduct = this.foodAddModalService.selectedProduct$$();
+    return selectedProduct ? 'edit' : 'create';
+  });
+
+  protected readonly productToEdit$$ = computed(() => this.foodAddModalService.selectedProduct$$());
+
   protected readonly isLoadingPreview$$ = signal(false);
   protected readonly isSaving$$ = signal(false);
   protected readonly error$$ = signal<string | null>(null);
@@ -40,7 +47,36 @@ export class CatalogueEntryEditFormComponent implements OnInit {
   });
 
   public async ngOnInit(): Promise<void> {
-    await this.loadProductPreview();
+    const mode = this.mode$$();
+
+    if (mode === 'edit') {
+      this.loadExistingProductData();
+    } else {
+      await this.loadProductPreview();
+    }
+  }
+
+  private loadExistingProductData(): void {
+    const product = this.productToEdit$$();
+
+    console.log('[CatalogueEditForm] Loading existing product data:', product);
+
+    if (!product) {
+      this.error$$.set('No product selected for editing');
+      return;
+    }
+
+    this.catalogueEditForm.patchValue({
+      name: product.name,
+      kcals: product.kcals,
+      protein: product.protein,
+      fat: product.fat,
+      carbs: product.carbs,
+      fiber: product.fiber,
+      description: product.description,
+    });
+
+    console.log('[CatalogueEditForm] Form values after patching:', this.catalogueEditForm.value);
   }
 
   private async loadProductPreview(): Promise<void> {
@@ -91,20 +127,37 @@ export class CatalogueEntryEditFormComponent implements OnInit {
 
     try {
       const formValue = this.catalogueEditForm.value;
+      const mode = this.mode$$();
+      const productToEdit = this.productToEdit$$();
+
       const productData: ProductSaveRequest = {
         name: formValue.name,
-        kcals: formValue.kcals,
-        protein: formValue.protein,
-        fat: formValue.fat,
-        carbs: formValue.carbs,
-        fiber: formValue.fiber,
+        kcals: Number(formValue.kcals) || 0,
+        protein: Number(formValue.protein) || 0,
+        fat: Number(formValue.fat) || 0,
+        carbs: Number(formValue.carbs) || 0,
+        fiber: Number(formValue.fiber) || 0,
         description: formValue.description,
       };
 
-      await this.foodCatalogueService.saveProduct(productData);
+      console.log('[CatalogueEditForm] Product data to save:', productData);
 
-      this.foodCatalogueService.searchProducts(this.searchQuery$$());
-      this.foodAddModalService.goBackToSearch();
+      if (mode === 'edit' && productToEdit) {
+        productData.id = productToEdit.id;
+      }
+
+      const savedProduct = await this.foodCatalogueService.saveProduct(productData);
+
+      console.log('[CatalogueEditForm] Product saved successfully:', savedProduct);
+      console.log('[CatalogueEditForm] Mode:', mode);
+
+      this.foodAddModalService.selectedProduct$$.set(savedProduct);
+
+      if (mode === 'create') {
+        this.foodCatalogueService.searchProducts(this.searchQuery$$());
+      }
+
+      this.foodAddModalService.submitSuccess();
     } catch (error: any) {
       console.error('Failed to save product:', error);
 
