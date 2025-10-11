@@ -19,6 +19,7 @@ import {
   ValidatorFn,
   Validators,
 } from '@angular/forms';
+import { DeviceDetectorService } from '@app/services/device-detector.service';
 import { FoodCatalogueService } from '@app/services/food/food-catalogue.service';
 import { FoodCoefficientsService } from '@app/services/food/food-coefficients.service';
 import { FoodDiaryService } from '@app/services/food/food-diary.service';
@@ -95,7 +96,7 @@ export class DiaryEntryEditFormComponent implements OnInit, OnChanges, OnDestroy
     return this.diaryEntryForm.controls.foodWeightChange;
   }
 
-  private inputFocusEffect = effect(() => {
+  private inputFocusEffect$$ = effect(() => {
     const focusId = this.foodDiaryService.diaryEntryFocusId$$();
     if (focusId === this.diaryEntryForm.value.id) {
       setTimeout(() => {
@@ -104,7 +105,7 @@ export class DiaryEntryEditFormComponent implements OnInit, OnChanges, OnDestroy
     }
   });
 
-  private formResetEffect = effect(() => {
+  private formResetEffect$$ = effect(() => {
     const resetId = this.foodDiaryService.diaryEntryResetId$$();
     if (resetId === this.diaryEntryForm.value.id) {
       this.resetForm();
@@ -112,7 +113,7 @@ export class DiaryEntryEditFormComponent implements OnInit, OnChanges, OnDestroy
     }
   });
 
-  private totalsUpdateEffect = effect(() => {
+  private totalsUpdateEffect$$ = effect(() => {
     const totals = this.foodDiaryService.selectedDayTotals$$();
     this.selectedDaysEatenPercent = totals.kcalsPercent;
     this.selectedDaysTargerKcals = totals.targetKcals;
@@ -128,6 +129,7 @@ export class DiaryEntryEditFormComponent implements OnInit, OnChanges, OnDestroy
   private readonly foodDiaryService = inject(FoodDiaryService);
   private readonly foodCatalogueService = inject(FoodCatalogueService);
   private readonly foodCoefficientsService = inject(FoodCoefficientsService);
+  protected readonly deviceDetectorService = inject(DeviceDetectorService);
 
   public ngOnInit(): void {}
 

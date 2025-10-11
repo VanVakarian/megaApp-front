@@ -15,7 +15,7 @@ export class AccordionDirective implements OnInit, OnDestroy {
   private id = crypto.randomUUID();
   private groupId = 'default';
 
-  private readonly syncEffectRef: EffectRef = effect(() => {
+  private readonly syncEffectRef$$: EffectRef = effect(() => {
     const accordionValue = this.accordion();
     const groupId = typeof accordionValue === 'string' ? accordionValue : 'default';
     this.groupId = groupId;
@@ -39,7 +39,7 @@ export class AccordionDirective implements OnInit, OnDestroy {
   }
 
   public ngOnDestroy() {
-    this.syncEffectRef.destroy();
+    this.syncEffectRef$$.destroy();
   }
 
   @HostListener('click', ['$event'])

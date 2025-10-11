@@ -31,7 +31,7 @@ export class DiaryNavButtonsComponent implements OnInit, OnDestroy {
     nonNullable: true,
   });
 
-  public selectedDateFormatted: Signal<string> = computed(() => this.formatDate(this.foodDiaryService.selectedDayIso$$())); // prettier-ignore
+  public selectedDateFormatted$$: Signal<string> = computed(() => this.formatDate(this.foodDiaryService.selectedDayIso$$())); // prettier-ignore
 
   private selectedDateMsWithUserHourShift: number = this.initDateTodayWithUserHourShift.getTime();
 

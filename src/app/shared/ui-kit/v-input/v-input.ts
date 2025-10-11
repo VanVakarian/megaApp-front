@@ -93,13 +93,13 @@ export class VInput implements ControlValueAccessor {
   protected readonly cssFontSize = computed(() => String(this.settings().fontSize));
   protected readonly borderRadiusString = computed(() => `var(--unit-${this.settings().borderRadius})`);
 
-  protected ngControlValue: WritableSignal<string> = signal('');
+  protected ngControlValue$$: WritableSignal<string> = signal('');
   protected isFocused = false;
   protected hasInteracted = false;
   protected readonly inputId = `v-input-${++uniqueId}`;
 
   protected readonly displayValue = computed(() => {
-    return this.ngControl ? this.ngControlValue() : this.value();
+    return this.ngControl ? this.ngControlValue$$() : this.value();
   });
 
   constructor(
@@ -134,7 +134,7 @@ export class VInput implements ControlValueAccessor {
   private onTouched = () => {};
 
   public writeValue(value: InputValue): void {
-    this.ngControlValue.set(value != null ? String(value) : '');
+    this.ngControlValue$$.set(value != null ? String(value) : '');
     this.hasInteracted = false;
   }
 
@@ -154,7 +154,7 @@ export class VInput implements ControlValueAccessor {
     this.hasInteracted = true;
 
     if (this.ngControl) {
-      this.ngControlValue.set(newValue);
+      this.ngControlValue$$.set(newValue);
       const outputValue = this.convertToOutputValue(newValue);
       this.onChange(outputValue);
     } else {

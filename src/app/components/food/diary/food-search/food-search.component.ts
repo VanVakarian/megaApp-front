@@ -39,7 +39,7 @@ export class FoodSearchComponent implements AfterViewInit, OnDestroy {
     }
   });
 
-  private readonly clearSearchOnModalClose = effect(() => {
+  private readonly clearSearchOnModalClose$$ = effect(() => {
     const currentState = this.foodAddModalService.currentState;
 
     if (currentState === ModalState.CLOSED) {
@@ -52,7 +52,7 @@ export class FoodSearchComponent implements AfterViewInit, OnDestroy {
     }
   });
 
-  private readonly searchEffect = effect(() => {
+  private readonly searchEffect$$ = effect(() => {
     const searchQuery = this.searchQuery$$();
     const isLegacy = this.isLegacySearch$$();
 

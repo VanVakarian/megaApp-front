@@ -3,12 +3,14 @@
   @if (isLegacySearch$$()) {
     <v-button primary
               [config]="{
-                paddingX: 2,
+                isLabelHidden: true,
+                padding: 2,
               }"
               (mousedown)="$event.preventDefault()"
               (onClick)="toggleLegacySearch()"
               tabindex="-1">
-      <v-icon [name]="Icon.SwapHoriz"
+      <v-icon v-prefix
+              [name]="Icon.SwapHoriz"
               [size]="7"
               class="m-0" />
     </v-button>
@@ -16,12 +18,14 @@
   @else {
     <v-button raised
               [config]="{
-                paddingX: 2,
+                isLabelHidden: true,
+                padding: 2,
               }"
               (mousedown)="$event.preventDefault()"
               (onClick)="toggleLegacySearch()"
               tabindex="-1">
-      <v-icon [name]="Icon.SwapHoriz"
+      <v-icon v-prefix
+              [name]="Icon.SwapHoriz"
               [size]="7"
               class="m-0" />
     </v-button>
@@ -36,20 +40,24 @@
   @if (isRecording) {
     <v-button primary
               [config]="{
-                paddingX: 2,
+                padding: 2,
+                isLabelHidden: true,
               }"
               (click)="toggleVoiceRecording()">
-      <v-icon class="animate-pulse"
+      <v-icon v-prefix
+              class="animate-pulse"
               [name]="Icon.Mic"
               [size]="7" />
     </v-button>
   } @else {
     <v-button raised
               [config]="{
-                paddingX: 2,
+                padding: 2,
+                isLabelHidden: true,
               }"
               (click)="toggleVoiceRecording()">
-      <v-icon [name]="Icon.Mic"
+      <v-icon v-prefix
+              [name]="Icon.Mic"
               [size]="7" />
     </v-button>
   }
@@ -58,10 +66,12 @@
     <v-button raised
               class="md:hidden inline-block"
               [config]="{
-                paddingX: 2,
+                padding: 2,
+                isLabelHidden: true,
               }"
               (click)="takePhoto()">
-      <v-icon [name]="Icon.PhotoCamera"
+      <v-icon v-prefix
+              [name]="Icon.PhotoCamera"
               [size]="7" />
     </v-button>
   }
@@ -69,10 +79,10 @@
 
 @if (isLegacySearch$$()) {
   <div [class.mb-4]="searchResults$$().length === 0"
-       class="shadow-orange-500/30 flex items-center gap-2 px-2 py-1 mx-4 mt-4 font-medium text-white origin-top bg-orange-500 rounded-lg shadow-lg">
+       class="shadow-orange-500/30 flex-nowrap flex items-center gap-2 px-2 py-1 mx-4 mt-4 font-medium text-white origin-top bg-orange-500 rounded-lg shadow-lg">
     <v-icon [name]="Icon.Warning"
             [size]="5" />
-    <span>Используется устаревший поиск</span>
+    <span class="text-nowrap text-ellipsis">Используется устаревший поиск</span>
   </div>
 }
 
@@ -109,12 +119,12 @@
               [config]="{
                 isWithoutShadow: true,
                 isLabelHidden: true,
-                paddingX: 2,
+                padding: 1,
               }"
               (click)="closeModal()">
       <v-icon v-prefix
               [name]="Icon.Close"
-              [size]="10" />
+              [size]="9" />
     </v-button>
   </div>
 }

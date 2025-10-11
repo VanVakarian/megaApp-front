@@ -22,13 +22,4 @@
     /* Stretch camera preview to fill the entire screen */
     width: 100vw !important;
   }
-
-  v-modal.is-desktop .modal-content {
-    // 3 columns of cards; exactly half way between 2 and 4 columns breakpoints
-    --v-modal-width: min(100vw, 577px)
-  }
-
-  v-modal.is-mobile .modal-content {
-    --v-modal-width: 100vw
-  }
 }

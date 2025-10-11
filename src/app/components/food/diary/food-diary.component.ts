@@ -63,7 +63,7 @@ export class FoodDiaryComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private readonly shouldRecalcColumns$$ = signal(0);
 
-  private readonly columnSyncEffect = effect(() => {
+  private readonly columnSyncEffect$$ = effect(() => {
     this.selectedDayFood;
     this.shouldRecalcColumns$$();
     setTimeout(() => this.syncColumnWidths(), 0);

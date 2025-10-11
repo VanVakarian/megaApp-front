@@ -8,6 +8,7 @@ export interface VButtonConfig {
   buttonStyle?: ButtonStyle;
   width?: string;
   borderRadius?: CssUnitValue;
+  padding?: CssUnitValue;
   paddingY?: CssUnitValue;
   paddingX?: CssUnitValue;
   isDisabled?: boolean;
@@ -22,8 +23,9 @@ const DEFAULT_V_BUTTON_CONFIG: Required<VButtonConfig> = {
   buttonStyle: undefined as unknown as ButtonStyle,
   width: undefined as unknown as string,
   borderRadius: 2,
-  paddingY: 2,
+  padding: undefined as unknown as CssUnitValue,
   paddingX: 4,
+  paddingY: 2,
   isDisabled: false,
   isWithoutShadow: false,
   bgOpacity: '1',
@@ -51,8 +53,8 @@ const DEFAULT_V_BUTTON_CONFIG: Required<VButtonConfig> = {
     '[attr.no-shadow]': 'isWithoutShadow() ? "" : null',
     '[style.--v-button-border-radius]': 'borderRadiusString()',
     '[style.--v-button-bg-opacity]': 'bgOpacity()',
-    '[style.--v-button-padding-y]': 'paddingYString()',
     '[style.--v-button-padding-x]': 'paddingXString()',
+    '[style.--v-button-padding-y]': 'paddingYString()',
     '[attr.text-align]': 'textAlign() ? textAlign() : null',
     '[attr.aria-disabled]': 'isDisabled() ? "true" : "false"',
   },
@@ -70,8 +72,8 @@ export class VButton {
   protected readonly isLabelHidden = computed(() => this.settings().isLabelHidden);
 
   protected readonly borderRadius = computed(() => this.settings().borderRadius);
-  protected readonly paddingY = computed(() => this.settings().paddingY);
-  protected readonly paddingX = computed(() => this.settings().paddingX);
+  protected readonly paddingX = computed(() => this.getPaddingX());
+  protected readonly paddingY = computed(() => this.getPaddingY());
   protected readonly isDisabled = computed(() => this.settings().isDisabled);
   protected readonly isWithoutShadow = computed(() => this.settings().isWithoutShadow);
   protected readonly bgOpacity = computed(() => this.settings().bgOpacity);
@@ -123,5 +125,19 @@ export class VButton {
     if (element.hasAttribute('danger')) return ButtonStyle.Danger;
 
     return ButtonStyle.Primary;
+  }
+
+  private getPaddingX(): CssUnitValue {
+    const config = this.config();
+    if (config.paddingX !== undefined) return config.paddingX;
+    if (config.padding !== undefined) return config.padding;
+    return this.settings().paddingX;
+  }
+
+  private getPaddingY(): CssUnitValue {
+    const config = this.config();
+    if (config.paddingY !== undefined) return config.paddingY;
+    if (config.padding !== undefined) return config.padding;
+    return this.settings().paddingY;
   }
 }

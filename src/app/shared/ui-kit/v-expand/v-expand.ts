@@ -18,16 +18,16 @@ export class VExpand {
   public readonly onOpened = output<CustomEvent<boolean>>();
   public readonly isWithoutAnimation = input<boolean>(false);
 
-  private readonly _isExpanded = signal(false);
+  private readonly _isExpanded$$ = signal(false);
 
-  private readonly onExpandedChangeEmitEffect = effect(() => {
-    const current = this._isExpanded();
+  private readonly onExpandedChangeEmitEffect$$ = effect(() => {
+    const current = this._isExpanded$$();
     this.onOpened.emit(new CustomEvent('opened', { detail: current }));
   });
 
-  private readonly syncIsExpandedEffect = effect(() => {
+  private readonly syncIsExpandedEffect$$ = effect(() => {
     const external = this.isExpanded();
-    this._isExpanded.set(external);
+    this._isExpanded$$.set(external);
   });
 
   // public getExpandBorderRadius(): string {
@@ -39,14 +39,14 @@ export class VExpand {
   }
 
   public setExpanded(state: boolean): void {
-    this._isExpanded.set(state);
+    this._isExpanded$$.set(state);
   }
 
   protected isPanelExpanded(): boolean {
-    return this._isExpanded();
+    return this._isExpanded$$();
   }
 
   protected toggle(): void {
-    this._isExpanded.set(!this._isExpanded());
+    this._isExpanded$$.set(!this._isExpanded$$());
   }
 }

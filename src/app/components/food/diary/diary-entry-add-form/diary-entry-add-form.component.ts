@@ -34,14 +34,14 @@ export class DiaryEntryAddFormComponent implements AfterViewInit {
   private readonly foodCoefficientsService = inject(FoodCoefficientsService);
   private readonly foodStatsService = inject(FoodStatsService);
 
-  private readonly selectedDayTotalsEffect = effect(() => {
+  private readonly selectedDayTotalsEffect$$ = effect(() => {
     const totals = this.foodDiaryService.selectedDayTotals$$();
     this.selectedDaysTargerKcals = totals.targetKcals;
     this.selectedDaysEatenPercent = totals.kcalsPercent;
     this.updateProjectedDaysEatenPercent(0);
   });
 
-  private readonly selectedProductEffect = effect(() => {
+  private readonly selectedProductEffect$$ = effect(() => {
     const product = this.selectedProduct();
     if (!product) return;
 

@@ -4,52 +4,92 @@
   </div>
 
   <div class="flex flex-col gap-2">
-    <v-button [config]="{ buttonStyle: foodButtonStyle(), width: '100%', paddingX: 2, isLabelHidden: isMenuCollapsed, textAlign: 'left' }"
+    <v-button [config]="{
+                buttonStyle: foodButtonStyle(),
+                width: '100%',
+                padding: 2,
+                isLabelHidden: isMenuCollapsed,
+                textAlign: 'left',
+              }"
               class="menu-item"
               (click)="navigateToFood()">
       <v-icon v-prefix
-              [name]="Icon.Restaurant" />
+              [name]="Icon.Restaurant"
+              [size]="7" />
       Food
     </v-button>
 
-    <v-button [config]="{ buttonStyle: moneyButtonStyle(), width: '100%', paddingX: 2, isLabelHidden: isMenuCollapsed, textAlign: 'left' }"
+    <v-button [config]="{
+                buttonStyle: moneyButtonStyle(),
+                width: '100%',
+                padding: 2,
+                isLabelHidden: isMenuCollapsed,
+                textAlign: 'left',
+              }"
               class="menu-item"
               (click)="navigateToMoney()">
       <v-icon v-prefix
-              [name]="Icon.Paid" />
+              [name]="Icon.Paid"
+              [size]="7" />
       Money
     </v-button>
 
-    <v-button [config]="{ buttonStyle: iconsButtonStyle(), width: '100%', paddingX: 2, isLabelHidden: isMenuCollapsed, textAlign: 'left' }"
+    <v-button [config]="{
+                buttonStyle: iconsButtonStyle(),
+                width: '100%',
+                padding: 2,
+                isLabelHidden: isMenuCollapsed,
+                textAlign: 'left',
+              }"
               class="menu-item"
               (click)="navigateToIcons()">
       <v-icon v-prefix
-              [name]="Icon.ViewCozy" />
+              [name]="Icon.ViewCozy"
+              [size]="7" />
       Icons
     </v-button>
 
-    <v-button [config]="{ buttonStyle: otherButtonStyle(), width: '100%', paddingX: 2, isLabelHidden: isMenuCollapsed, textAlign: 'left' }"
+    <v-button [config]="{
+                buttonStyle: otherButtonStyle(),
+                width: '100%',
+                padding: 2,
+                isLabelHidden: isMenuCollapsed,
+                textAlign: 'left',
+              }"
               class="menu-item"
               (click)="navigateToOther()">
       <v-icon v-prefix
-              [name]="Icon.Article" />
+              [name]="Icon.Article"
+              [size]="7" />
       Other
     </v-button>
   </div>
 
   <div class="flex flex-col gap-2 mt-auto">
-    <v-button [config]="{ buttonStyle: ButtonStyle.Flat, paddingX: 2, isLabelHidden: true }"
+    <v-button [config]="{
+                buttonStyle: ButtonStyle.Flat,
+                padding: 2,
+                isLabelHidden: true,
+              }"
               class="menu-item"
               (click)="toggleMenuCollapse()">
       <v-icon v-prefix
-              [name]="getMenuSizeControlIconName()" />
+              [name]="getMenuSizeControlIconName()"
+              [size]="7" />
     </v-button>
 
-    <v-button [config]="{ buttonStyle: settingsButtonStyle(), width: '100%', paddingX: 2, isLabelHidden: isMenuCollapsed, textAlign: 'left' }"
+    <v-button [config]="{
+                buttonStyle: settingsButtonStyle(),
+                width: '100%',
+                padding: 2,
+                isLabelHidden: isMenuCollapsed,
+                textAlign: 'left',
+              }"
               class="menu-item"
               (click)="navigateToSettings()">
       <v-icon v-prefix
-              [name]="Icon.Settings" />
+              [name]="Icon.Settings"
+              [size]="7" />
       Settings
     </v-button>
   </div>

@@ -1,8 +1,22 @@
 <form [formGroup]="diaryEntryForm"
       (ngSubmit)="submitForm()">
   <div class="flex flex-col gap-4 p-4">
-    <div class="text-xl text-center">
-      {{ selectedProduct()?.name }}
+    <div class=" flex items-center justify-center">
+      <div class="flex-grow text-xl font-medium text-center">
+        {{ selectedProduct()?.name }}
+      </div>
+      <v-button raised
+                [config]="{
+                  isLabelHidden: true,
+                  padding: 2,
+                }"
+                (click)="goBack()"
+                class=" self-start">
+        <v-icon v-prefix
+                [name]="Icon.Edit"
+                [size]="7" />
+      </v-button>
+
     </div>
 
     <div class="flex items-end justify-end gap-4">
@@ -28,7 +42,7 @@
                    (onInputChanged)="onFoodWeightInput()"
                    class="">
             <span v-postfix
-                  class="mr-3">г.</span>
+                  class="ml-1 mr-3">г.</span>
           </v-input>
         </div>
       </div>
@@ -38,13 +52,12 @@
       <v-button primary
                 [config]="{
                   isLabelHidden: true,
-                  paddingX: 0,
-                  paddingY: 0,
+                  padding: 1,
                 }"
                 (click)="goBack()">
         <v-icon v-prefix
                 [name]="Icon.ChevronLeft"
-                [size]="10" />
+                [size]="9" />
       </v-button>
 
       <v-button [config]="{

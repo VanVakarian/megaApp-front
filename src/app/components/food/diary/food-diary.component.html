@@ -96,12 +96,14 @@
 
 <div class="h-[50vh]"></div>
 
-<v-modal [isOpen]="foodAddModalService.currentState !== ModalViewMode.CLOSED"
-         [borderRadius]="3"
-         [paddingX]="0"
-         [paddingY]="0"
-         [class.is-mobile]="deviceDetectorService.isMobile$$()"
-         [class.is-desktop]="deviceDetectorService.isDesktop$$()"
+<v-modal [config]="{
+           isOpen: foodAddModalService.currentState !== ModalViewMode.CLOSED,
+           borderRadius: 3,
+           padding: 0,
+           deviceType: deviceDetectorService.isMobile$$() ? 'mobile' : 'desktop',
+           mobileWidth: '100vw',
+           desktopWidth: 'min(100vw, 577px)'
+         }"
          (onClose)="closeModal()">
   @switch (foodAddModalService.currentState) {
     @case (ModalViewMode.SEARCH) {

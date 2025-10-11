@@ -46,13 +46,19 @@
 
     <div class="flex gap-3">
       <v-button primary
-                [config]="{ isLabelHidden: true, paddingX: 2 }">
+                [config]="{
+                  isLabelHidden: true,
+                  padding: 2,
+                }">
         <v-icon v-prefix
                 [name]="Icon.Mic" />
       </v-button>
 
       <v-button danger
-                [config]="{ isLabelHidden: true, paddingX: 2 }">
+                [config]="{
+                  isLabelHidden: true,
+                  padding: 2,
+                }">
         <v-icon v-prefix
                 [name]="Icon.Close" />
       </v-button>
@@ -91,7 +97,11 @@
                formControlName="testInput">
         <v-button flat
                   v-prefix
-                  [config]="{ isWithoutShadow: true, bgOpacity: '0.5', paddingX: 0, paddingY: 0 }"
+                  [config]="{
+                    isWithoutShadow: true,
+                    bgOpacity: '0.5',
+                    padding: 0,
+                  }"
                   (click)="consoleLogFormValue()"
                   class="mr-2">
           <v-icon [name]="Icon.Close"
@@ -140,9 +150,11 @@
   </form>
 </div>
 
-<v-modal [isOpen]="isModalOpen"
-         width="500px"
-         [borderRadius]="3"
+<v-modal [config]="{
+           isOpen: isModalOpen,
+           width: '500px',
+           borderRadius: 3
+         }"
          (onClose)="closeModal()">
   <v-dropdown label="Select Food Item"
               placeholder="Search food items"

@@ -4,11 +4,11 @@ import { Injectable, signal } from '@angular/core';
   providedIn: 'root',
 })
 export class AccordionService {
-  private readonly openedIds = signal<Map<string, string | null>>(new Map());
-  public readonly openedIds$$ = this.openedIds.asReadonly();
+  private readonly _openedIds$$ = signal<Map<string, string | null>>(new Map());
+  public readonly openedIds$$ = this._openedIds$$.asReadonly();
 
   public toggle(groupId: string, id: string) {
-    const openedIds = this.openedIds();
+    const openedIds = this._openedIds$$();
     const currentOpenedId = openedIds.get(groupId);
 
     if (currentOpenedId === id) {
@@ -16,11 +16,11 @@ export class AccordionService {
     } else {
       openedIds.set(groupId, id);
     }
-    this.openedIds.set(new Map(openedIds));
+    this._openedIds$$.set(new Map(openedIds));
   }
 
   public isOpen(groupId: string, id: string): boolean {
-    return this.openedIds().get(groupId) === id;
+    return this._openedIds$$().get(groupId) === id;
   }
 
   public open(groupId: string, id: string) {
@@ -28,20 +28,20 @@ export class AccordionService {
   }
 
   public close(groupId: string, id: string) {
-    const openedIds = this.openedIds();
+    const openedIds = this._openedIds$$();
     if (openedIds.get(groupId) === id) {
       openedIds.set(groupId, null);
-      this.openedIds.set(new Map(openedIds));
+      this._openedIds$$.set(new Map(openedIds));
     }
   }
 
   public closeGroup(groupId: string) {
-    const openedIds = this.openedIds();
+    const openedIds = this._openedIds$$();
     openedIds.set(groupId, null);
-    this.openedIds.set(new Map(openedIds));
+    this._openedIds$$.set(new Map(openedIds));
   }
 
   public closeAll() {
-    this.openedIds.set(new Map());
+    this._openedIds$$.set(new Map());
   }
 }

@@ -7,11 +7,10 @@
   <div class="absolute -bottom-[9px] -right-[8px]">
     <v-button flat
               [config]="{
+                bgOpacity: '0.75',
                 isWithoutShadow: true,
                 isLabelHidden: true,
-                bgOpacity: '0.75',
-                paddingX: 0,
-                paddingY: 0,
+                padding: 0,
               }"
               (click)="toggleHistory()">
       @if (isHistoryExpanded) {
@@ -81,19 +80,21 @@
                   v-prefix
                   [config]="{
                     isWithoutShadow: true,
+                    isLabelHidden: true,
                     bgOpacity: '0',
                     paddingX: 2,
                     paddingY: 0,
                   }"
                   (click)="onWeightNewResetClick()">
-          <v-icon [name]="Icon.Close"
+          <v-icon v-prefix
+                  [name]="Icon.Close"
                   [size]="6" />
         </v-button>
       }
 
       @if (foodWeightNewControl.value !== null) {
         <span v-postfix
-              class="ml-0 mr-3"> г. </span>
+              class="ml-1 mr-3"> г. </span>
       }
     </v-input>
 
@@ -113,19 +114,21 @@
                   v-prefix
                   [config]="{
                     isWithoutShadow: true,
+                    isLabelHidden: true,
                     bgOpacity: '0',
                     paddingX: 2,
                     paddingY: 0,
                   }"
                   (click)="onWeightChangeResetClick()">
-          <v-icon [name]="Icon.Close"
+          <v-icon v-prefix
+                  [name]="Icon.Close"
                   [size]="6" />
         </v-button>
       }
 
       @if (foodWeightChangeControl.value !== null) {
         <span v-postfix
-              class="ml-0 mr-3"> г. </span>
+              class="ml-1 mr-3"> г. </span>
       }
     </v-input>
   </div>
@@ -149,24 +152,32 @@
   </div>
 </form>
 
-<v-modal [isOpen]="isDeleteConfirmOpen"
-         [borderRadius]="3"
-         [paddingX]="4"
-         [paddingY]="4"
+<v-modal [config]="{
+           isOpen: isDeleteConfirmOpen,
+           borderRadius: 3,
+           padding: 4,
+           deviceType: deviceDetectorService.isMobile$$() ? 'mobile' : 'desktop',
+           mobileWidth: 'min(100vw, 300px)',
+           desktopWidth: '300px',
+         }"
          (onClose)="closeConfirmationModal()">
   <div class="flex flex-col gap-4">
-    <div class="text-xl font-semibold text-center">
+    <div class="text-xl font-medium text-center">
       Вы уверены, что хотите удалить эту запись?
     </div>
 
     <div class="flex gap-4">
-      <v-button [config]="{ width: '100%' }"
+      <v-button [config]="{
+                  width: '100%'
+                }"
                 (onClick)="closeConfirmationModal()">
         Нет
       </v-button>
 
       <v-button danger
-                [config]="{ width: '100%' }"
+                [config]="{
+                  width: '100%'
+                }"
                 (onClick)="onDeleteConfirmed()">
         Да
       </v-button>
