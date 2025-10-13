@@ -27,6 +27,7 @@ export enum WebSocketMessageType {
   SEARCH_QUERY = 'SEARCH_QUERY',
   SEARCH_RESULTS = 'SEARCH_RESULTS',
   CATALOGUE_ENTRY_SAVED = 'CATALOGUE_ENTRY_SAVED',
+  CATALOGUE_IMAGE_GENERATED = 'CATALOGUE_IMAGE_GENERATED',
 }
 
 export interface PingWsMessage {
@@ -112,6 +113,11 @@ export interface CatalogueEntrySavedWsMessage {
   payload: CatalogueEntry;
 }
 
+export interface CatalogueImageGeneratedWsMessage {
+  type: WebSocketMessageType.CATALOGUE_IMAGE_GENERATED;
+  payload: CatalogueEntry;
+}
+
 export type IncomingWsMessage =
   | PingWsMessage
   | SyncStatusWsMessage
@@ -120,7 +126,8 @@ export type IncomingWsMessage =
   | DiaryEntryDeletedWsMessage
   | BodyWeightUpdatedWsMessage
   | SearchResultsWsMessage
-  | CatalogueEntrySavedWsMessage;
+  | CatalogueEntrySavedWsMessage
+  | CatalogueImageGeneratedWsMessage;
 
 export type OutgoingWsMessage =
   | StartVoiceRecordingWsMessage
@@ -278,6 +285,7 @@ export interface CatalogueEntry {
   carbs: number;
   fiber: number;
   description: string;
+  imageUrl?: string;
 }
 
 export interface Catalogue {

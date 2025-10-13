@@ -23,6 +23,8 @@ import { VInput } from '@app/shared/ui-kit/v-input/v-input';
 export class FoodSearchComponent implements AfterViewInit, OnDestroy {
   protected readonly Icon = IconName;
 
+  private readonly imageLoadErrors = new Set<number>();
+
   protected get searchQuery$$() {
     return this.foodAddModalService.searchQuery$$;
   }
@@ -45,6 +47,7 @@ export class FoodSearchComponent implements AfterViewInit, OnDestroy {
     if (currentState === ModalState.CLOSED) {
       this.foodAddModalService.searchQuery$$.set('');
       this.foodCatalogueService.clearSearch();
+      this.imageLoadErrors.clear();
     }
 
     if (currentState === ModalState.SEARCH) {
@@ -57,6 +60,7 @@ export class FoodSearchComponent implements AfterViewInit, OnDestroy {
     const isLegacy = this.isLegacySearch$$();
 
     if (searchQuery && searchQuery.trim()) {
+      this.imageLoadErrors.clear();
       if (isLegacy) {
         this.foodCatalogueService.legacySearchProducts(searchQuery);
       } else {
@@ -129,5 +133,22 @@ export class FoodSearchComponent implements AfterViewInit, OnDestroy {
       return catalogueEntry.legacyName || catalogueEntry.name;
     }
     return catalogueEntry.name;
+  }
+
+  protected getImageUrl(catalogueEntry: CatalogueEntry): string | null {
+    if (!catalogueEntry.imageUrl) {
+      return null;
+    }
+    // Backend returns only filename like 204-thumb.webp
+    // Build full path with /api/images prefix (proxied to backend via /api → localhost:3000)
+    return `/api/images/food/${catalogueEntry.imageUrl}`;
+  }
+
+  protected onImageError(event: Event, productId: number): void {
+    this.imageLoadErrors.add(productId);
+  }
+
+  protected hasImageError(productId: number): boolean {
+    return this.imageLoadErrors.has(productId);
   }
 }

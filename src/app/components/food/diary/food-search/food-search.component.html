@@ -90,9 +90,23 @@
     <div flipAnimate
          class="contents">
       @for (catalogueEntry of searchResults$$(); track catalogueEntry.id) {
-        <v-card class="pb-2 rounded cursor-pointer"
+        <v-card class="pb-2 overflow-hidden rounded cursor-pointer"
                 [attr.data-flip-key]="'catalogue-' + catalogueEntry.id"
                 (click)="selectProduct(catalogueEntry)">
+          <div class="product-image-container">
+            @if (getImageUrl(catalogueEntry) && !hasImageError(catalogueEntry.id)) {
+              <img [src]="getImageUrl(catalogueEntry)"
+                   [alt]="getDisplayName(catalogueEntry)"
+                   class="product-image"
+                   (error)="onImageError($event, catalogueEntry.id)" />
+            }
+            @else {
+              <div class="product-image-placeholder animate-pulse">
+                <v-icon [name]="Icon.Restaurant"
+                        [size]="8" />
+              </div>
+            }
+          </div>
           <div class="catalogue-entry-name">{{ getDisplayName(catalogueEntry) }}</div>
         </v-card>
       }
