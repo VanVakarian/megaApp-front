@@ -213,7 +213,7 @@ export class FoodCatalogueService extends BaseFoodService {
     if (existingEntry) {
       const updatedEntry = {
         ...existingEntry,
-        imageUrl: entry.imageUrl,
+        imageFileName: entry.imageFileName,
       };
 
       const updatedCatalogue = {

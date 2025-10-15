@@ -90,31 +90,28 @@
     <div flipAnimate
          class="contents">
       @for (catalogueEntry of searchResults$$(); track catalogueEntry.id) {
-        <v-card class="pb-2 overflow-hidden rounded cursor-pointer"
+        <v-card class="cursor-pointer"
                 [attr.data-flip-key]="'catalogue-' + catalogueEntry.id"
+                [config]="{
+                  padding: 1,
+                  backgroundImageUrl: getImageUrl(catalogueEntry),
+                  backgroundImageOpacity: 0.15,
+                  minHeight: '104px'
+                }"
                 (click)="selectProduct(catalogueEntry)">
-          <div class="product-image-container">
-            @if (getImageUrl(catalogueEntry) && !hasImageError(catalogueEntry.id)) {
-              <img [src]="getImageUrl(catalogueEntry)"
-                   [alt]="getDisplayName(catalogueEntry)"
-                   class="product-image"
-                   (error)="onImageError($event, catalogueEntry.id)" />
-            }
-            @else {
-              <div class="product-image-placeholder animate-pulse">
-                <v-icon [name]="Icon.Restaurant"
-                        [size]="8" />
-              </div>
-            }
+          <div>
+            <span class="catalogue-entry-name">{{ getDisplayName(catalogueEntry) }}</span>
           </div>
-          <div class="catalogue-entry-name">{{ getDisplayName(catalogueEntry) }}</div>
         </v-card>
       }
     </div>
   }
 
   @if (searchResults$$().length > 0) {
-    <v-card class="pb-2 rounded cursor-pointer"
+    <v-card class="cursor-pointer"
+            [config]="{
+              padding: 2
+            }"
             @fadeScaleIn
             (click)="addProduct()">
       <div class="add-catalogue-entry flex items-center justify-center w-full h-full">

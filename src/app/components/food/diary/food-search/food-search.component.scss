@@ -4,42 +4,13 @@
 }
 
 .catalogue-entry-name {
-  --lines: 4;
-  display: -webkit-box;
-  min-height: calc(var(--lines) * 1.5em);
-  line-clamp: var(--lines);
-  -webkit-line-clamp: var(--lines);
-  overflow: hidden;
+  padding: 1px 6px;
+  background: color-mix(in srgb, var(--color-bg-default) 85%, transparent);
+  border-radius: 4px;
+  box-decoration-break: clone;
 }
 
-.add-catalogue-entry {
-  // --lines: 4;
-  // min-height: calc(var(--lines) * 1.5em);
-}
-
-.product-image-container {
-  position: relative;
-  width: 100%;
-  height: 120px;
-  overflow: hidden;
-}
-
-.product-image {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.product-image-placeholder {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  opacity: 0.3;
-}
+.add-catalogue-entry {}
 
 ::ng-deep {
   v-input.catalogue-entry-name-input div.input-wrapper div.prefix {

@@ -72,12 +72,16 @@
     </div>
   </v-card>
 
-  <v-card [borderRadius]="1"
-          [padding]="1">
+  <v-card [config]="{
+            borderRadius: 1,
+            padding: 1
+          }">
     Компактная карточка (маленькие значения)
   </v-card>
 
-  <v-card [borderRadius]="0"
+  <v-card [config]="{
+            borderRadius: 0
+          }"
           class="flex flex-col gap-2">
     Карточка без скругления
 

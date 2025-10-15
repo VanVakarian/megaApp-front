@@ -285,7 +285,7 @@ export interface CatalogueEntry {
   carbs: number;
   fiber: number;
   description: string;
-  imageUrl?: string;
+  imageFileName?: string;
 }
 
 export interface Catalogue {
