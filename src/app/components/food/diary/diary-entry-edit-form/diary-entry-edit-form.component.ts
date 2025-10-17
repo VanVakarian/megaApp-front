@@ -39,8 +39,8 @@ interface DiaryEntryFormModel {
 
 @Component({
   selector: 'app-diary-entry-edit-form',
-  imports: [ReactiveFormsModule, UiProgressIcon, VButton, VIcon, VExpand, VInput, VModal],
   templateUrl: './diary-entry-edit-form.component.html',
+  imports: [ReactiveFormsModule, UiProgressIcon, VButton, VIcon, VExpand, VInput, VModal],
 })
 export class DiaryEntryEditFormComponent implements OnInit, OnChanges, OnDestroy {
   @Input()

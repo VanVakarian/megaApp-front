@@ -5,6 +5,7 @@ export enum IconName {
   Add = 'add',
   Article = 'article',
   Cached = 'cached',
+  CalendarMonth = 'calendar_month',
   Check = 'check',
   ChevronLeft = 'chevron_left',
   Close = 'close',

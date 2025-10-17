@@ -24,7 +24,6 @@ import { FoodAddModalService, ModalState } from '@app/services/food/food-add-mod
 import { FoodCatalogueService } from '@app/services/food/food-catalogue.service';
 import { FoodDiaryService } from '@app/services/food/food-diary.service';
 import { ScreenSizeWatcherService, ScreenType } from '@app/services/screen-size-watcher.service';
-import { SettingsService } from '@app/services/settings.service';
 import { OuterShadowRoundedDirective } from '@app/shared/ui-kit/shadow.directive';
 import { VButton } from '@app/shared/ui-kit/v-button/v-button';
 import { VCard } from '@app/shared/ui-kit/v-card/v-card';
@@ -109,17 +108,11 @@ export class FoodDiaryComponent implements OnInit, AfterViewInit, OnDestroy {
 
   protected readonly foodDiaryService = inject(FoodDiaryService);
   protected readonly foodAddModalService = inject(FoodAddModalService);
-
-  constructor(
-    private ngZone: NgZone,
-    private screenSizeWatcherService: ScreenSizeWatcherService,
-    private settingsService: SettingsService,
-    private foodCatalogueService: FoodCatalogueService,
-    protected deviceDetectorService: DeviceDetectorService,
-    private accordionService: AccordionService,
-  ) {
-    // effect(() => console.log('SIGNAL isLegacySearch:', this.isLegacySearch$$())); // prettier-ignore
-  }
+  protected readonly deviceDetectorService = inject(DeviceDetectorService);
+  private readonly accordionService = inject(AccordionService);
+  private readonly foodCatalogueService = inject(FoodCatalogueService);
+  private readonly screenSizeWatcherService = inject(ScreenSizeWatcherService);
+  private readonly ngZone = inject(NgZone);
 
   public ngOnInit(): void {
     // this.deviceDetectorService.logDeviceInfo();

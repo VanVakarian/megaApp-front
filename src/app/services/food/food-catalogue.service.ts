@@ -206,30 +206,30 @@ export class FoodCatalogueService extends BaseFoodService {
   }
 
   private handleCatalogueImageGenerated(msg: CatalogueImageGeneratedWsMessage): void {
-    const entry = msg.payload;
+    const catalogueId = msg.payload.catalogueId;
     const catalogue = this.catalogue$$();
-    const existingEntry = catalogue[entry.id];
+    const existingEntry = catalogue[catalogueId];
 
     if (existingEntry) {
       const updatedEntry = {
         ...existingEntry,
-        imageFileName: entry.imageFileName,
+        hasImage: true,
       };
 
       const updatedCatalogue = {
         ...catalogue,
-        [entry.id]: updatedEntry,
+        [catalogueId]: updatedEntry,
       };
 
       this.catalogue$$.set(updatedCatalogue);
       this.saveToLocalStorage(updatedCatalogue);
 
       const currentSearchResults = this.searchResults$$();
-      const updatedSearchResults = currentSearchResults.map((item) => (item.id === entry.id ? updatedEntry : item));
+      const updatedSearchResults = currentSearchResults.map((item) => (item.id === catalogueId ? updatedEntry : item));
       this.searchResults$$.set(updatedSearchResults);
 
       const currentLegacyResults = this.legacySearchResults$$();
-      const updatedLegacyResults = currentLegacyResults.map((item) => (item.id === entry.id ? updatedEntry : item));
+      const updatedLegacyResults = currentLegacyResults.map((item) => (item.id === catalogueId ? updatedEntry : item));
       this.legacySearchResults$$.set(updatedLegacyResults);
     }
   }

@@ -1,74 +1,108 @@
 <div class="flex w-full gap-2">
-  <div class="lg:block hidden">
-    <button class="diary-day-switch-button w-9"
-            mat-raised-button
-            color="primary"
-            (click)="previousDay()">
-      <mat-icon class="diary-day-switch-button-icon scale-125">chevron_left</mat-icon>
-    </button>
-  </div>
+  @if(deviceDetectorService.isDesktop$$()) {
+    <v-button primary
+              [config]="{
+                isWithoutShadow: true,
+                isLabelHidden: true,
+                padding: 1,
+              }"
+              (click)="goToPreviousDay()">
+      <v-icon v-prefix
+              [name]="Icon.KeyboardArrowLeft"
+              [size]="7" />
+    </v-button>
+  }
 
   <div class="grow overflow-hidden whitespace-nowrap pt-[6px] text-center text-xl">
     {{ selectedDateFormatted$$() }}
   </div>
 
-  <div class="lg:flex flex-col hidden">
-    <button class="diary-day-switch-button w-9"
-            mat-raised-button
-            color="primary"
-            (click)="pickerDesktop.open()">
-      <mat-icon class="diary-day-switch-button-icon scale-125">calendar_month</mat-icon>
-    </button>
+  @if(deviceDetectorService.isDesktop$$()) {
+    <div class="flex flex-col">
+      <v-button primary
+                [config]="{
+                isWithoutShadow: true,
+                isLabelHidden: true,
+                padding: 2,
+              }"
+                (click)="pickerDesktop.open()">
+        <v-icon v-prefix
+                [name]="Icon.CalendarMonth"
+                [size]="5" />
+      </v-button>
 
-    <mat-form-field class="w-0 h-0">
-      <input matInput
-             [matDatepicker]="pickerDesktop"
-             [formControl]="formCalendarSelectedDay"
-             (dateChange)="onDatePicked($event)"
-             [max]="initDateTodayWithUserHourShift" />
-      <mat-datepicker-toggle [for]="pickerDesktop" />
-      <mat-datepicker #pickerDesktop />
-    </mat-form-field>
-  </div>
+      <mat-form-field class="w-0 h-0">
+        <input matInput
+               [matDatepicker]="pickerDesktop"
+               [formControl]="formCalendarSelectedDay"
+               (dateChange)="onDatePicked($event)"
+               [max]="initDateTodayWithUserHourShift" />
+        <mat-datepicker-toggle [for]="pickerDesktop" />
+        <mat-datepicker #pickerDesktop />
+      </mat-form-field>
+    </div>
 
-  <div class="lg:block hidden">
-    <button class="diary-day-switch-button w-9"
-            mat-raised-button
-            color="primary"
-            (click)="nextDay()">
-      <mat-icon class="diary-day-switch-button-icon scale-125">chevron_right</mat-icon>
-    </button>
-  </div>
+    <v-button primary
+              [config]="{
+                isWithoutShadow: true,
+                isLabelHidden: true,
+                padding: 1,
+              }"
+              (click)="goToNextDay()">
+      <v-icon v-prefix
+              [name]="Icon.KeyboardArrowRight"
+              [size]="7" />
+    </v-button>
+  }
 </div>
 
-<div *ngIf="isAuthenticated"
-     class="lg:hidden fixed bottom-0 left-0 flex justify-between w-full gap-5 px-4 pb-4"
-     style="z-index: 10">
-  <button class="scale-100"
-          mat-fab
-          color="primary"
-          (click)="previousDay()">
-    <mat-icon class="scale-150">chevron_left</mat-icon>
-  </button>
+@if (isAuthenticated) {
+  <div class="lg:hidden fixed bottom-0 left-0 flex justify-between w-full gap-5 px-4 pb-4"
+       style="z-index: 10">
+    <v-button primary
+              [config]="{
+                borderRadius: 7,
+                isWithoutShadow: true,
+                isLabelHidden: true,
+                padding: 3,
+              }"
+              (click)="goToPreviousDay()">
+      <v-icon v-prefix
+              [name]="Icon.KeyboardArrowLeft"
+              [size]="8" />
+    </v-button>
 
-  <button class="scale-100"
-          mat-fab
-          color="primary"
-          (click)="pickerTouch.open()">
-    <mat-icon class="scale-150">calendar_month</mat-icon>
-  </button>
+    <v-button primary
+              [config]="{
+                borderRadius: 7,
+                isWithoutShadow: true,
+                isLabelHidden: true,
+                padding: 3,
+              }"
+              (click)="pickerTouch.open()">
+      <v-icon v-prefix
+              [name]="Icon.CalendarMonth"
+              [size]="8" />
+    </v-button>
 
-  <button class="scale-100"
-          mat-fab
-          color="primary"
-          (click)="nextDay()">
-    <mat-icon class="scale-150">chevron_right</mat-icon>
-  </button>
+    <v-button primary
+              [config]="{
+                borderRadius: 7,
+                isWithoutShadow: true,
+                isLabelHidden: true,
+                padding: 3,
+              }"
+              (click)="goToNextDay()">
+      <v-icon v-prefix
+              [name]="Icon.KeyboardArrowRight"
+              [size]="8" />
+    </v-button>
 
-  <div class="w-14 h-14">
-    <!-- placeholder for hamburger menu -->
+    <div class="w-14 h-14">
+      <!-- placeholder for hamburger menu -->
+    </div>
   </div>
-</div>
+}
 
 <mat-form-field class="hide-form">
   <input matInput

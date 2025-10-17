@@ -115,7 +115,9 @@ export interface CatalogueEntrySavedWsMessage {
 
 export interface CatalogueImageGeneratedWsMessage {
   type: WebSocketMessageType.CATALOGUE_IMAGE_GENERATED;
-  payload: CatalogueEntry;
+  payload: {
+    catalogueId: number;
+  };
 }
 
 export type IncomingWsMessage =
@@ -285,7 +287,7 @@ export interface CatalogueEntry {
   carbs: number;
   fiber: number;
   description: string;
-  imageFileName?: string;
+  hasImage: boolean;
 }
 
 export interface Catalogue {

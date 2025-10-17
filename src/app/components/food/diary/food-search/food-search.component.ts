@@ -132,9 +132,9 @@ export class FoodSearchComponent implements AfterViewInit, OnDestroy {
   }
 
   protected getImageUrl(catalogueEntry: CatalogueEntry): string | null {
-    if (!catalogueEntry.imageFileName) {
+    if (!catalogueEntry.hasImage) {
       return null;
     }
-    return `/api/images/food/${catalogueEntry.imageFileName}`;
+    return `/api/images/food/${catalogueEntry.id}-thumb.webp`;
   }
 }

@@ -27,8 +27,7 @@
 </div>
 
 <v-expand [isExpanded]="isHistoryExpanded"
-          [isWithoutAnimation]="disableHistoryAnimationTemporaroly"
-          class="">
+          [isWithoutAnimation]="disableHistoryAnimationTemporaroly">
   <div v-body
        class="flex flex-col gap-2 mb-4 ml-2">
     @for (historyEntry of diaryEntry.history; track $index) {
