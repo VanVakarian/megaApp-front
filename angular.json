@@ -83,7 +83,11 @@
           "builder": "@angular/build:dev-server",
           "options": {
             "buildTarget": "megaapp:build:dev",
-            "proxyConfig": "proxy.conf.json"
+            "proxyConfig": "proxy.conf.json",
+            "host": "0.0.0.0",
+            "allowedHosts": [
+              "lab.vslav.dev"
+            ]
           },
           "configurations": {
             "prod": {

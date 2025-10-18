@@ -9,10 +9,10 @@ export abstract class BaseFoodService {
   protected abstract getStorageKey(): string;
 
   constructor(
-    protected http: HttpClient,
-    protected localStorageService: LocalStorageService,
-    protected networkService: NetworkService,
-    protected syncQueueService: SyncQueueService,
+    protected readonly http: HttpClient,
+    protected readonly localStorageService: LocalStorageService,
+    protected readonly networkService: NetworkService,
+    protected readonly syncQueueService: SyncQueueService,
   ) {}
 
   protected saveToLocalStorage<T>(data: T): void {
@@ -25,13 +25,6 @@ export abstract class BaseFoodService {
 
   protected checkNetworkAvailability(): boolean {
     return this.networkService.isNetworkAvailable$$();
-  }
-
-  protected createRollback<T>(originalData: T, setter: (data: T) => void, saver: () => void): () => void {
-    return () => {
-      setter(originalData);
-      saver();
-    };
   }
 
   protected addSyncOperation(operation: {

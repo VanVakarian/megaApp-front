@@ -1,5 +1,5 @@
 import { HttpClient } from '@angular/common/http';
-import { Injectable, signal, WritableSignal } from '@angular/core';
+import { inject, Injectable, signal, WritableSignal } from '@angular/core';
 import { DEFAULT_SETTINGS } from '@app/shared/const';
 import { Settings } from '@app/shared/interfaces';
 import { catchError, firstValueFrom, of } from 'rxjs';
@@ -14,20 +14,17 @@ import { SyncOperationType, SyncQueueService } from './sync-queue.service';
 export class SettingsService {
   private readonly SETTINGS_STORAGE_KEY = 'settings';
 
-  public settings$$: WritableSignal<Settings> = signal(DEFAULT_SETTINGS);
+  public readonly settings$$: WritableSignal<Settings> = signal(DEFAULT_SETTINGS);
 
-  public USE_COEFFICIENTS_TEMP = true; // TODO[067] implement sometime
+  private readonly http = inject(HttpClient);
+  private readonly localStorage = inject(LocalStorageService);
+  private readonly notificationsService = inject(NotificationService);
+  private readonly networkService = inject(NetworkService);
+  private readonly syncQueue = inject(SyncQueueService);
 
-  constructor(
-    private http: HttpClient,
-    private localStorage: LocalStorageService,
-    private notificationsService: NotificationService,
-    private networkService: NetworkService,
-    private syncQueue: SyncQueueService,
-  ) {
+  constructor() {
     this.initializeFromLocalStorage();
     this.performBackgroundSync();
-    // effect(() => { console.log('settings', this.settings$$()) }); // prettier-ignore
   }
 
   private initializeFromLocalStorage(): void {

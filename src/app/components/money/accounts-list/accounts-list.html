@@ -14,8 +14,8 @@
     <div class="flex items-center justify-between mb-4">
       <h3 class="text-lg font-semibold">Accounts</h3>
       @if (!showForm) {
-        <button (click)="showCreateForm()"
-                class="hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 px-4 py-2 text-white bg-blue-600 rounded-md">
+        <button class="hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 px-4 py-2 text-white bg-blue-600 rounded-md"
+                (click)="showCreateForm()">
           Add New Account
         </button>
       }
@@ -58,13 +58,13 @@
           </div>
 
           <div class="flex gap-2 ml-4">
-            <button (click)="editAccount(account)"
-                    class="hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500 px-3 py-1 text-sm text-blue-700 bg-blue-100 rounded">
+            <button class="hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500 px-3 py-1 text-sm text-blue-700 bg-blue-100 rounded"
+                    (click)="editAccount(account)">
               Edit
             </button>
 
-            <button (click)="deleteAccount(account.id!)"
-                    class="hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-red-500 px-3 py-1 text-sm text-red-700 bg-red-100 rounded">
+            <button class="hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-red-500 px-3 py-1 text-sm text-red-700 bg-red-100 rounded"
+                    (click)="deleteAccount(account.id!)">
               Delete
             </button>
           </div>

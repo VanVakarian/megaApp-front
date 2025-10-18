@@ -1,10 +1,9 @@
-import { Injectable, WritableSignal, computed, signal } from '@angular/core';
+import { Injectable, WritableSignal, computed, inject, signal } from '@angular/core';
 import { tokenGetter } from '@app/services/auth.service';
-import { IncomingWsMessage, WebSocketMessageType } from '@app/shared/interfaces';
+import { IncomingWsMessage, OutgoingWsMessage, WebSocketMessageType } from '@app/shared/interfaces';
 import { EMPTY, Subject, timer } from 'rxjs';
 import { catchError, retry, tap } from 'rxjs/operators';
 import { WebSocketSubject, webSocket } from 'rxjs/webSocket';
-import { environment } from 'src/environments/environment.dev';
 import { NotificationService } from './notification.service';
 
 @Injectable({
@@ -16,11 +15,13 @@ export class NetworkService {
   public readonly isNetworkAvailable$$ = computed(() => this.isOnline$$());
 
   private socket$: WebSocketSubject<any> | undefined;
-  private reconnectDelaySec = 1;
+  private reconnectDelaySec = 5;
   public readonly wsMessages$ = new Subject<IncomingWsMessage>();
   private readonly clientId: string;
 
-  constructor(private readonly notifications: NotificationService) {
+  private readonly notifications = inject(NotificationService);
+
+  constructor() {
     this.clientId = Math.random().toString(36).substring(2, 10);
     this.initNetworkEvents();
   }
@@ -81,6 +82,14 @@ export class NetworkService {
     this.isConnected$$.set(false);
   }
 
+  public sendMessage(message: OutgoingWsMessage): void {
+    if (this.socket$ && !this.socket$.closed && this.isConnected$$()) {
+      this.socket$.next(message);
+    } else {
+      console.warn('WebSocket not connected, cannot send message:', message);
+    }
+  }
+
   private initNetworkEvents(): void {
     window.addEventListener('online', () => this.updateOnlineStatus(true));
     window.addEventListener('offline', () => this.updateOnlineStatus(false));
@@ -97,18 +106,12 @@ export class NetworkService {
   }
 
   private createWebSocket(token: string): WebSocketSubject<any> {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const host = window.location.host;
     const encodedToken = encodeURIComponent(token);
     const encodedClientId = encodeURIComponent(this.clientId);
 
-    let wsUrl: string;
-
-    if (environment.wsUrl) {
-      wsUrl = `${environment.wsUrl}?token=${encodedToken}&clientId=${encodedClientId}`;
-    } else {
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const host = window.location.host;
-      wsUrl = `${protocol}//${host}/api/ws?token=${encodedToken}&clientId=${encodedClientId}`;
-    }
+    const wsUrl = `${protocol}//${host}/api/ws?token=${encodedToken}&clientId=${encodedClientId}`;
 
     return webSocket(wsUrl);
   }

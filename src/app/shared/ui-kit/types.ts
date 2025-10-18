@@ -32,22 +32,13 @@ export type CssUnitValue =
   | 64 // 256px
   | 72 // 288px
   | 80 // 320px
-  | 96; // 384px
+  | 96 // 384px
+  | 100 // 400px
+  | 128; // 512px
 
 export enum ButtonStyle {
-  Flat = 'flat',
-  Raised = 'raised',
   Primary = 'primary',
-}
-
-export enum IconName {
-  Restaurant = 'restaurant',
-  Paid = 'paid',
-  Settings = 'settings',
-  Person_add = 'person_add',
-  Login = 'login',
-  Logout = 'logout',
-  Article = 'article',
-  LeftPanelOpen = 'left_panel_open',
-  LeftPanelClose = 'left_panel_close',
+  Raised = 'raised',
+  Flat = 'flat',
+  Danger = 'danger',
 }

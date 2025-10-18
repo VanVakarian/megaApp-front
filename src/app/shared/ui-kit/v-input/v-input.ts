@@ -1,18 +1,64 @@
 import { CommonModule } from '@angular/common';
-import { Component, ElementRef, input, output, Self, ViewChild } from '@angular/core';
+import {
+  Component,
+  computed,
+  ElementRef,
+  input,
+  model,
+  Optional,
+  output,
+  Self,
+  signal,
+  viewChild,
+  WritableSignal,
+} from '@angular/core';
 import { ControlValueAccessor, NgControl } from '@angular/forms';
+import { CssUnitValue } from '@app/shared/ui-kit/types';
 import { getValidationErrorMessage } from '@app/shared/ui-kit/v-input/validators';
 
-export enum InputType {
-  Text = 'text',
-  Password = 'password',
-  Email = 'email',
-  Number = 'number',
-  Tel = 'tel',
-  Url = 'url',
+type InputValue = string | number | null;
+
+type InputType = 'text' | 'password' | 'email' | 'number' | 'tel' | 'url';
+
+type FontSize = `${number}px` | `${number}rem` | `${number}em` | `${number}%`;
+
+type FontWeight = 100 | 200 | 300 | 400 | 500 | 600 | 700 | 800 | 900;
+
+type TextAlign = 'left' | 'right' | 'center';
+
+export interface VInputConfig {
+  isDisabled?: boolean;
+  isReadonly?: boolean;
+  type?: InputType;
+  label?: string;
+  placeholder?: string;
+  errorMessage?: string;
+  name?: string;
+  fontSize?: FontSize;
+  fontWeight?: FontWeight;
+  textAlign?: TextAlign;
+  borderRadius?: CssUnitValue;
+  isTextarea?: boolean;
+  rows?: number;
+  cols?: number;
 }
 
-type InputValue = string | number | null;
+const DEFAULT_V_INPUT_CONFIG: Required<VInputConfig> = {
+  isDisabled: false,
+  isReadonly: false,
+  type: 'text',
+  label: '',
+  placeholder: '',
+  errorMessage: '',
+  name: '',
+  fontSize: '1rem',
+  fontWeight: 400,
+  textAlign: 'left',
+  borderRadius: 2,
+  isTextarea: false,
+  rows: 3,
+  cols: 50,
+};
 
 let uniqueId = 0;
 
@@ -20,43 +66,60 @@ let uniqueId = 0;
   selector: 'v-input',
   templateUrl: './v-input.html',
   styleUrl: './v-input.css',
+  host: {
+    '[style.--v-input-border-radius]': 'borderRadiusString$$()',
+    '[class]': '"v-input"',
+  },
   imports: [CommonModule],
 })
 export class VInput implements ControlValueAccessor {
-  @ViewChild('inputElement')
-  public readonly inputElement!: ElementRef<HTMLInputElement>;
+  public readonly inputElement = viewChild.required<ElementRef<HTMLInputElement | HTMLTextAreaElement>>('inputElement');
 
-  public readonly isDisabled = input<boolean>(false);
-  public readonly isReadonly = input<boolean>(false);
+  public readonly config = input<VInputConfig>({});
 
-  public readonly type = input<string>(InputType.Text);
-  public readonly label = input<string>('');
-  public readonly placeholder = input<string>('');
-  public readonly errorMessage = input<string>('');
-  public readonly name = input<string>('');
+  public readonly value = model<string>('');
 
   public readonly onInputChanged = output<Event>();
   public readonly onFocused = output<Event>();
   public readonly onBlurred = output<Event>();
+  public readonly onEnterPressed = output<Event>();
 
-  protected value: string = '';
+  protected readonly settings$$ = computed(() => ({
+    ...DEFAULT_V_INPUT_CONFIG,
+    ...this.config(),
+  }));
+
+  protected readonly cssFontWeight$$ = computed(() => String(this.settings$$().fontWeight));
+  protected readonly cssFontSize$$ = computed(() => String(this.settings$$().fontSize));
+  protected readonly borderRadiusString$$ = computed(() => `var(--unit-${this.settings$$().borderRadius})`);
+
+  protected ngControlValue$$: WritableSignal<string> = signal('');
   protected isFocused = false;
   protected hasInteracted = false;
   protected readonly inputId = `v-input-${++uniqueId}`;
 
+  protected readonly displayValue$$ = computed(() => {
+    return this.ngControl ? this.ngControlValue$$() : this.value();
+  });
+
   constructor(
+    @Optional()
     @Self()
-    public ngControl: NgControl,
+    public ngControl: NgControl | null,
   ) {
-    this.ngControl.valueAccessor = this;
+    if (this.ngControl) {
+      this.ngControl.valueAccessor = this;
+    }
   }
 
   protected getErrorMessage(): string {
     if (!this.hasInteracted) return '';
-    return this.errorMessage() || this.getValidationErrorMessage();
+    return this.settings$$().errorMessage || this.getValidationErrorMessage();
   }
 
   private getValidationErrorMessage(): string {
+    if (!this.ngControl) return '';
+
     const control = this.ngControl.control;
     if (!control || !control.errors) return '';
 
@@ -71,7 +134,7 @@ export class VInput implements ControlValueAccessor {
   private onTouched = () => {};
 
   public writeValue(value: InputValue): void {
-    this.value = value != null ? String(value) : '';
+    this.ngControlValue$$.set(value != null ? String(value) : '');
     this.hasInteracted = false;
   }
 
@@ -86,15 +149,23 @@ export class VInput implements ControlValueAccessor {
   public setDisabledState(isDisabled: boolean): void {}
 
   protected onInputChange(event: Event): void {
-    const target = event.target as HTMLInputElement;
-    this.value = target.value;
+    const target = event.target as HTMLInputElement | HTMLTextAreaElement;
+    const newValue = target.value;
     this.hasInteracted = true;
-    const outputValue = this.convertToOutputValue(this.value);
-    this.onChange(outputValue);
+
+    if (this.ngControl) {
+      this.ngControlValue$$.set(newValue);
+      const outputValue = this.convertToOutputValue(newValue);
+      this.onChange(outputValue);
+    } else {
+      this.value.set(newValue);
+    }
+
+    this.onInputChanged.emit(event);
   }
 
   private convertToOutputValue(inputValue: string): InputValue {
-    if (this.type() !== InputType.Number || inputValue.trim() === '') {
+    if (this.settings$$().type !== 'number' || inputValue.trim() === '') {
       return inputValue;
     }
 
@@ -110,14 +181,23 @@ export class VInput implements ControlValueAccessor {
 
   protected onBlur(): void {
     this.isFocused = false;
-    this.onTouched();
+    if (this.ngControl) {
+      this.onTouched();
+    }
     const event = new Event('blur');
     this.onBlurred.emit(event);
   }
 
+  protected onKeydown(event: KeyboardEvent): void {
+    if (event.key === 'Enter' && !this.settings$$().isTextarea) {
+      this.onEnterPressed.emit(event);
+    }
+  }
+
   public focus(): void {
-    if (this.inputElement) {
-      this.inputElement.nativeElement.focus();
+    const element = this.inputElement();
+    if (element) {
+      element.nativeElement.focus();
     }
   }
 }

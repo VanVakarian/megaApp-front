@@ -1,11 +1,8 @@
 import { Component, OnInit } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { BMIComponent } from '@app/components/food/diary/bmi/bmi.component';
-import {
-  InnerShadowRoundedDirective,
-  OuterShadowDirective,
-  OuterShadowRoundedDirective,
-} from '@app/shared/ui-kit/shadow.directive';
+import { BMI } from '@app/components/food/diary/bmi/bmi';
+import { InnerShadowRoundedDirective, OuterShadowRoundedDirective } from '@app/shared/ui-kit/shadow.directive';
+import { VButton } from '@app/shared/ui-kit/v-button/v-button';
 import { VCard } from '@app/shared/ui-kit/v-card/v-card';
 import { ddExpandDirection, DropdownItem, VDropdown } from '@app/shared/ui-kit/v-dropdown/v-dropdown';
 import { AccordionDirective } from '@app/shared/ui-kit/v-expand/accordion.directive';
@@ -23,11 +20,11 @@ import { weightValidator } from '@app/shared/ui-kit/v-input/validators';
     VExpand,
     VDropdown,
     VInput,
-    BMIComponent,
-    OuterShadowDirective,
+    BMI,
     OuterShadowRoundedDirective,
     InnerShadowRoundedDirective,
     AccordionDirective,
+    VButton,
   ],
 })
 export class Food implements OnInit {
@@ -51,9 +48,15 @@ export class Food implements OnInit {
     // test03: new FormControl(''),
   });
 
+  protected isHiddenPanelExpanded = false;
+
   constructor() {}
 
   public ngOnInit(): void {}
+
+  protected toggleHiddenPanel(): void {
+    this.isHiddenPanelExpanded = !this.isHiddenPanelExpanded;
+  }
 
   protected onFoodItemChange(item: DropdownItem | null): void {
     if (item) {

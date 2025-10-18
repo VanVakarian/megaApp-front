@@ -1,7 +1,7 @@
 <div class="p-2">
   <div class="mx-auto flex max-w-[400px] flex-col gap-2 lg:gap-4">
 
-    @if (authService.isAuthenticated) {
+    @if (authService.isAuthenticated$$()) {
       <app-settings-form />
     }
 

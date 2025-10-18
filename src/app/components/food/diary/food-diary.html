@@ -1,0 +1,134 @@
+@if (deviceInfoService.isDesktopScreen$$()) {
+  <div class="mb-4">
+    <v-card [config]="{
+              borderRadius: 2,
+              padding: 0
+            }">
+      <div class="w-full my-2 text-xl font-semibold text-center">Дневник</div>
+    </v-card>
+  </div>
+}
+
+<div class="flex gap-2">
+  <div class="w-full mb-2">
+    <diary-nav-buttons />
+  </div>
+</div>
+
+<v-expand outer-shadow-rounded
+          accordion="food-group"
+          class="BMI mb-2"
+          (onOpened)="onBMIExpandOpened($event)">
+  <div v-header
+       class="v-header w-full p-2 text-center"
+       [ngStyle]="setBackgroundStyle(selectedDaysKcalsPercent$$(), true, true)">
+    <span class=" font-normal">{{ caloriesDisplayText$$() }}</span>
+
+  </div>
+  <div v-body
+       class="flex flex-col gap-2 p-4">
+    <bmi />
+    <body-weight #bodyWeight />
+  </div>
+</v-expand>
+
+<div #foodCont
+     class="whitespace-nowrap flex w-full gap-1 px-2 overflow-hidden text-base font-normal">
+  <div #foodName
+       class="tw-card-food-entry grow whitespace-nowrap overflow-hidden text-center">
+    Блюдо:
+  </div>
+
+  <div #foodWeight
+       class="text-center">
+    г.
+  </div>
+
+  <div #foodPercent
+       class="text-center">
+    %
+  </div>
+</div>
+
+<div outer-shadow-rounded
+     [shadowBorderRadius]="2">
+  @for (food of selectedDayDiaryEntries$$(); track food.id; let isFirst = $first; let isLast = $last) {
+    <v-expand accordion="food-group"
+              class="item"
+              (onOpened)="onVExpandOpened($event, food.id)">
+      <div v-header
+           #diaryEntryHeader
+           class="p-2"
+           [ngStyle]="setBackgroundStyle(food.foodKcalPercentageOfDaysNorm, isFirst, isLast)">
+        <div #foodCont
+             class="whitespace-nowrap flex overflow-hidden font-normal">
+          <div #foodName
+               class="tw-card-food-entry grow whitespace-nowrap overflow-hidden">
+            {{ food.foodName }}
+          </div>
+
+          <div #foodWeight
+               class="text-right">
+            {{ food.foodWeight }} <span class="text-xs"> Г.</span>
+          </div>
+
+          <div #foodPercent
+               class="pl-2 text-right">
+            {{ food.foodPercent }} <span class="text-xs">%</span>
+          </div>
+        </div>
+      </div>
+
+      <div v-body
+           class="p-4">
+        @defer (on timer(300)) {
+          <diary-entry-edit-form [diaryEntry]="food"
+                                 (onServerSuccessfullEditResponse)="accordionCollapse()" />
+        }
+      </div>
+    </v-expand>
+  }
+</div>
+
+<v-button primary
+          class="pt-4"
+          [config]="{
+            width: '100%',
+          }"
+          (onClick)="openAddFoodModal()">
+  Добавить запись
+</v-button>
+
+<div class="h-[50vh]"></div>
+
+<v-modal [config]="{
+           isOpen: foodAddModalService.currentState$$() !== ModalViewMode.CLOSED,
+           borderRadius: 3,
+           padding: 0,
+           deviceType: deviceInfoService.isMobileScreen$$() ? 'mobile' : 'desktop',
+           mobileWidth: '100vw',
+           desktopWidth: 'min(100vw, 577px)'
+         }"
+         (onClose)="closeModal()">
+  @switch (foodAddModalService.currentState$$()) {
+    @case (ModalViewMode.SEARCH) {
+      <food-search />
+    }
+
+    @case (ModalViewMode.CAMERA_PREVIEW) {
+      <camera-preview />
+    }
+
+    @case (ModalViewMode.ADD_DIARY_ENTRY) {
+      <diary-entry-add-form />
+    }
+
+    @case (ModalViewMode.CREATE_NEW_PRODUCT) {
+      <catalogue-entry-edit-form />
+    }
+
+    @case (ModalViewMode.EDIT_PRODUCT) {
+      <catalogue-entry-edit-form />
+    }
+  }
+</v-modal>

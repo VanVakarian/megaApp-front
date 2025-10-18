@@ -1,10 +1,5 @@
 //                                                                           APP
 
-export enum ScreenType {
-  MOBILE = 'MOBILE',
-  DESKTOP = 'DESKTOP',
-}
-
 //                                                                          AUTH
 
 export interface UserCreds {
@@ -26,6 +21,13 @@ export enum WebSocketMessageType {
   DIARY_ENTRY_UPDATED = 'DIARY_ENTRY_UPDATED',
   DIARY_ENTRY_DELETED = 'DIARY_ENTRY_DELETED',
   BODY_WEIGHT_UPDATED = 'BODY_WEIGHT_UPDATED',
+  START_VOICE_RECORDING = 'START_VOICE_RECORDING',
+  AUDIO_CHUNK = 'AUDIO_CHUNK',
+  STOP_VOICE_RECORDING = 'STOP_VOICE_RECORDING',
+  SEARCH_QUERY = 'SEARCH_QUERY',
+  SEARCH_RESULTS = 'SEARCH_RESULTS',
+  CATALOGUE_ENTRY_SAVED = 'CATALOGUE_ENTRY_SAVED',
+  CATALOGUE_IMAGE_GENERATED = 'CATALOGUE_IMAGE_GENERATED',
 }
 
 export interface PingWsMessage {
@@ -78,13 +80,62 @@ export interface BodyWeightUpdatedWsMessage {
   payload: BodyWeightToUpdate;
 }
 
+export interface StartVoiceRecordingWsMessage {
+  type: WebSocketMessageType.START_VOICE_RECORDING;
+}
+
+export interface AudioChunkWsMessage {
+  type: WebSocketMessageType.AUDIO_CHUNK;
+  data: string;
+  sequence: number;
+}
+
+export interface StopVoiceRecordingWsMessage {
+  type: WebSocketMessageType.STOP_VOICE_RECORDING;
+}
+
+export interface SearchQueryWsMessage {
+  type: WebSocketMessageType.SEARCH_QUERY;
+  query: string;
+}
+
+export interface SearchResultsWsMessage {
+  type: WebSocketMessageType.SEARCH_RESULTS;
+  payload: {
+    query: string;
+    catalogueIds: number[];
+    timestamp: number;
+  };
+}
+
+export interface CatalogueEntrySavedWsMessage {
+  type: WebSocketMessageType.CATALOGUE_ENTRY_SAVED;
+  payload: CatalogueEntry;
+}
+
+export interface CatalogueImageGeneratedWsMessage {
+  type: WebSocketMessageType.CATALOGUE_IMAGE_GENERATED;
+  payload: {
+    catalogueId: number;
+  };
+}
+
 export type IncomingWsMessage =
   | PingWsMessage
   | SyncStatusWsMessage
   | DiaryEntryCreatedWsMessage
   | DiaryEntryUpdatedWsMessage
   | DiaryEntryDeletedWsMessage
-  | BodyWeightUpdatedWsMessage;
+  | BodyWeightUpdatedWsMessage
+  | SearchResultsWsMessage
+  | CatalogueEntrySavedWsMessage
+  | CatalogueImageGeneratedWsMessage;
+
+export type OutgoingWsMessage =
+  | StartVoiceRecordingWsMessage
+  | AudioChunkWsMessage
+  | StopVoiceRecordingWsMessage
+  | SearchQueryWsMessage;
 
 //                                                                        SERVER
 
@@ -108,6 +159,39 @@ export interface ServerResponseWithCatalogueEntry extends ServerResponseBasic {
   id?: number;
   name?: string;
   kcals?: number;
+}
+
+export interface ProductPreviewData {
+  generalizedName: string;
+  kcals: number;
+  protein: number;
+  fat: number;
+  carbs: number;
+  fiber: number;
+  descriptionForEmbedding: string;
+  confidence: number;
+}
+
+export interface ServerResponseProductPreview extends ServerResponseBasic {
+  data: ProductPreviewData;
+}
+
+export interface ProductSaveRequest {
+  id?: number;
+  name: string;
+  kcals: number;
+  protein: number;
+  fat: number;
+  carbs: number;
+  fiber: number;
+  description: string;
+}
+
+export interface ServerResponseProductSave extends ServerResponseBasic {
+  data: {
+    catalogueEntry: CatalogueEntry;
+  };
+  error?: string;
 }
 
 //                                                                      SETTINGS
@@ -193,12 +277,17 @@ export interface HistoryEntry {
 
 export type CatalogueId = number;
 
-export type CatalogueIds = CatalogueId[];
-
 export interface CatalogueEntry {
   id: number;
   name: string;
+  legacyName?: string;
   kcals: number;
+  protein: number;
+  fat: number;
+  carbs: number;
+  fiber: number;
+  description: string;
+  hasImage: boolean;
 }
 
 export interface Catalogue {
@@ -209,7 +298,7 @@ export interface Coefficients {
   [id: number]: number;
 }
 
-export interface BodyWeight {
+export interface BodyWeightInterface {
   bodyWeight: string;
   dateISO: string;
 }
@@ -322,6 +411,11 @@ export interface Transaction {
 // }
 
 //                                                                            UI
+
+export interface CapturedPhoto {
+  file: File;
+  dataUrl: string;
+}
 
 // export interface InputWithProgressSubmitData {
 //   value: string;

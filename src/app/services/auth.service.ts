@@ -10,23 +10,20 @@ import { catchError, map, tap } from 'rxjs/operators';
   providedIn: 'root',
 })
 export class AuthService {
+  public readonly isAuthenticated$$ = signal<boolean>(false);
+
   private readonly ACCESS_TOKEN_KEY = 'access_token';
   private readonly REFRESH_TOKEN_KEY = 'refresh_token';
-  private readonly authenticationStatus$$ = signal<boolean>(false);
+
   private readonly networkService = inject(NetworkService);
-
-  public get isAuthenticated(): boolean {
-    return this.authenticationStatus$$();
-  }
-
-  constructor(private readonly http: HttpClient) {}
+  private readonly http = inject(HttpClient);
 
   public login(user: UserCreds): Observable<any> {
     return this.http.post<AuthResponse>('/api/auth/login', user, { observe: 'response' }).pipe(
       tap((response: HttpResponse<AuthResponse>) => {
         if (response.body?.accessToken && response.body?.refreshToken) {
           this.setTokens(response.body);
-          this.authenticationStatus$$.set(true);
+          this.isAuthenticated$$.set(true);
           this.networkService.connect();
         } else {
           throw new Error('Auth failed');
@@ -49,7 +46,7 @@ export class AuthService {
 
   public logout(): void {
     this.removeTokens();
-    this.authenticationStatus$$.set(false);
+    this.isAuthenticated$$.set(false);
     this.networkService.disconnect();
   }
 
@@ -75,7 +72,7 @@ export class AuthService {
       const currentTime = Math.round(new Date().getTime() / 1000);
 
       if (decodedToken.exp > currentTime) {
-        this.authenticationStatus$$.set(true);
+        this.isAuthenticated$$.set(true);
         this.networkService.connect();
         return of(true);
       } else {
@@ -83,20 +80,20 @@ export class AuthService {
           map((response: AuthResponse) => {
             if (response.accessToken) {
               this.setTokens(response);
-              this.authenticationStatus$$.set(true);
+              this.isAuthenticated$$.set(true);
               this.networkService.connect();
               return true;
             }
             return false;
           }),
           catchError(() => {
-            this.authenticationStatus$$.set(false);
+            this.isAuthenticated$$.set(false);
             return of(false);
           }),
         );
       }
     }
-    this.authenticationStatus$$.set(false);
+    this.isAuthenticated$$.set(false);
     return of(false);
   }
 

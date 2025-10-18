@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import {
   Component,
+  computed,
   ElementRef,
   forwardRef,
   Inject,
@@ -9,11 +10,11 @@ import {
   OnInit,
   Optional,
   output,
-  ViewChild,
+  viewChild,
 } from '@angular/core';
 import { ControlValueAccessor, FormControl, FormGroup, NG_VALUE_ACCESSOR, ReactiveFormsModule } from '@angular/forms';
 import { VBackdropDirective } from '@app/shared/ui-kit/backdrop.directive';
-import { VInput } from '@app/shared/ui-kit/v-input/v-input';
+import { VInput, VInputConfig } from '@app/shared/ui-kit/v-input/v-input';
 import { LayerController, PARENT_LAYER_ID, ZLayerService } from '@app/shared/ui-kit/z-layer.service';
 
 export enum ddExpandDirection {
@@ -30,7 +31,10 @@ export interface DropdownItem {
   selector: 'v-dropdown',
   templateUrl: './v-dropdown.html',
   styleUrl: './v-dropdown.css',
-  imports: [CommonModule, VInput, ReactiveFormsModule, VBackdropDirective],
+  host: {
+    '[style.--v-dropdown-z-index]': 'zIndex',
+    '[style.--v-dropdown-backdrop-z-index]': 'backdropZIndex',
+  },
   providers: [
     {
       provide: NG_VALUE_ACCESSOR,
@@ -38,10 +42,7 @@ export interface DropdownItem {
       multi: true,
     },
   ],
-  host: {
-    '[style.--v-dropdown-z-index]': 'zIndex',
-    '[style.--v-dropdown-backdrop-z-index]': 'backdropZIndex',
-  },
+  imports: [CommonModule, VInput, ReactiveFormsModule, VBackdropDirective],
 })
 export class VDropdown implements ControlValueAccessor, OnInit, OnDestroy {
   public readonly label = input<string>('');
@@ -55,8 +56,14 @@ export class VDropdown implements ControlValueAccessor, OnInit, OnDestroy {
 
   public readonly onSelectionChanged = output<DropdownItem | null>();
 
-  @ViewChild('inputComponent')
-  protected readonly inputComponent!: VInput;
+  protected readonly inputComponent = viewChild.required<VInput>('inputComponent');
+
+  protected readonly inputConfig$$ = computed<VInputConfig>(() => ({
+    label: this.label(),
+    placeholder: this.placeholder(),
+    isDisabled: this.isDisabled(),
+    errorMessage: this.computedErrorMessage,
+  }));
 
   protected value: string = '';
   protected isOpen = false;
@@ -151,7 +158,13 @@ export class VDropdown implements ControlValueAccessor, OnInit, OnDestroy {
     this.onChange(item.value);
     this.onSelectionChanged.emit(item);
     this.isOpen = false;
-    this.inputComponent?.inputElement.nativeElement.blur();
+    const inputComp = this.inputComponent();
+    if (inputComp) {
+      const element = inputComp.inputElement();
+      if (element) {
+        element.nativeElement.blur();
+      }
+    }
   }
 
   protected clearInput(): void {
