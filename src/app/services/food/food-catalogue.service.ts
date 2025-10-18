@@ -29,13 +29,13 @@ export class FoodCatalogueService extends BaseFoodService {
   private readonly CATALOGUE_STORAGE_KEY = 'food_catalogue';
   private readonly SEARCH_CACHE_KEY = 'food_search_cache';
 
-  public catalogue$$: WritableSignal<Catalogue> = signal({});
+  public readonly catalogue$$: WritableSignal<Catalogue> = signal({});
 
-  public searchResults$$: WritableSignal<CatalogueEntry[]> = signal([]);
-  public searchQuery$$: WritableSignal<string> = signal('');
-  public isLegacySearch$$: WritableSignal<boolean> = signal(false);
+  private readonly searchQuery$$: WritableSignal<string> = signal('');
+  public readonly searchResults$$: WritableSignal<CatalogueEntry[]> = signal([]);
 
-  public legacySearchResults$$: WritableSignal<CatalogueEntry[]> = signal([]);
+  public readonly isLegacySearch$$: WritableSignal<boolean> = signal(false);
+  public readonly legacySearchResults$$: WritableSignal<CatalogueEntry[]> = signal([]);
 
   private searchCache: Record<string, number[]> = {};
   private pendingSearchQuery: string = '';
@@ -54,9 +54,6 @@ export class FoodCatalogueService extends BaseFoodService {
     this.loadCatalogueFromLocalStorage();
     this.loadSearchCacheFromLocalStorage();
     this.setupSearchWebSocketListener();
-
-    // effect(() => console.log('SIGNAL searchResults$$:', this.searchResults$$())) // prettier-ignore
-    // effect(() => console.log('SIGNAL legacySearchResults$$:', this.legacySearchResults$$())) // prettier-ignore
   }
 
   @exhaustRequest()

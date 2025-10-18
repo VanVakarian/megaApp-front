@@ -1,4 +1,4 @@
-import { Injectable, signal } from '@angular/core';
+import { inject, Injectable, signal } from '@angular/core';
 import { NetworkService } from '@app/services/network.service';
 import { WebSocketMessageType } from '@app/shared/interfaces';
 
@@ -12,7 +12,7 @@ export class VoiceRecordingService {
 
   public readonly isRecording$$ = signal(false);
 
-  constructor(private networkService: NetworkService) {}
+  private readonly networkService = inject(NetworkService);
 
   public async startRecording(): Promise<void> {
     try {

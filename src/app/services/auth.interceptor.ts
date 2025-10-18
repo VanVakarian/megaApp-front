@@ -9,9 +9,9 @@ import { catchError, filter, switchMap, take } from 'rxjs/operators';
 export class AuthInterceptor implements HttpInterceptor {
   private isRefreshing = false;
   private readonly refreshTokenSubject: BehaviorSubject<any> = new BehaviorSubject<any>(null);
-  private readonly networkService = inject(NetworkService);
 
-  constructor(public readonly authService: AuthService) {}
+  private readonly networkService = inject(NetworkService);
+  private readonly authService = inject(AuthService);
 
   public intercept(request: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
     const accessToken = localStorage.getItem('access_token');

@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, OnInit, Signal } from '@angular/core';
+import { Component, computed, inject, OnInit, Signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { FoodDiaryService } from '@app/services/food/food-diary.service';
 import { SettingsService } from '@app/services/settings.service';
@@ -10,13 +10,13 @@ interface BmiSegment {
 }
 
 @Component({
-  selector: 'app-bmi',
-  templateUrl: './bmi.component.html',
-  styleUrl: './bmi.component.scss',
+  selector: 'bmi',
+  templateUrl: './bmi.html',
+  styleUrl: './bmi.scss',
   imports: [CommonModule, MatIconModule],
 })
-export class BMIComponent implements OnInit {
-  protected bmiSegments: BmiSegment[] = [
+export class BMI implements OnInit {
+  protected readonly bmiSegments: BmiSegment[] = [
     {
       twSegmentClasses: 'relative h-2 rounded-l-md bg-yellow-300',
     },
@@ -44,20 +44,16 @@ export class BMIComponent implements OnInit {
 
   protected bmiSegmentsWidthFractions: number[] = [];
 
-  protected bmiPointerPercent$$: Signal<number | null> = computed(() => this.calculateBmiPointerPercent());
+  protected readonly bmiPointerPercent$$: Signal<number | null> = computed(() => this.calculateBmiPointerPercent());
 
-  private bmiValues = [16, 18.5, 25, 30, 35, 40, 45];
+  private readonly bmiValues = [16, 18.5, 25, 30, 35, 40, 45];
 
-  private bmiSegmentsThresholdsInKgs$$: Signal<number[]> = computed(() => this.prepBmiSegmentsThresholdsInKgs());
+  private readonly bmiSegmentsThresholdsInKgs$$: Signal<number[]> = computed(() =>
+    this.prepBmiSegmentsThresholdsInKgs(),
+  );
 
-  private selectedDateWeight$$: Signal<number> = computed(() => this.getSelectedDateWeight());
-
-  constructor(
-    private foodDiaryService: FoodDiaryService,
-    private settingsService: SettingsService,
-  ) {
-    // effect(() => { console.log('SELECTEDDATEWEIGHT has been updated:', this.selectedDateWeight$$()) }); // prettier-ignore
-  }
+  private readonly foodDiaryService = inject(FoodDiaryService);
+  private readonly settingsService = inject(SettingsService);
 
   public ngOnInit(): void {
     this.bmiSegmentsWidthFractions = this.calculateBmiSegmentsWidthFractions();
@@ -74,13 +70,10 @@ export class BMIComponent implements OnInit {
     return `${segmentStart} - ${segmentEnd}`;
   }
 
-  private getSelectedDateWeight(): number {
-    const selectedDateISO = this.foodDiaryService.selectedDayIso$$();
-    return this.foodDiaryService.diary$$()?.[selectedDateISO]?.totals.bodyWeight ?? 0;
-  }
-
   private calculateBmiPointerPercent(): number | null {
-    const weight = this.selectedDateWeight$$();
+    const selectedDateISO = this.foodDiaryService.selectedDayIso$$();
+    const weight = this.foodDiaryService.diary$$()?.[selectedDateISO]?.totals.bodyWeight ?? 0;
+
     if (!this.isWeightWithinRange(weight)) return null;
 
     const bmiKgs = this.bmiSegmentsThresholdsInKgs$$();

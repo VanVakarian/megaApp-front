@@ -31,7 +31,10 @@ export interface DropdownItem {
   selector: 'v-dropdown',
   templateUrl: './v-dropdown.html',
   styleUrl: './v-dropdown.css',
-  imports: [CommonModule, VInput, ReactiveFormsModule, VBackdropDirective],
+  host: {
+    '[style.--v-dropdown-z-index]': 'zIndex',
+    '[style.--v-dropdown-backdrop-z-index]': 'backdropZIndex',
+  },
   providers: [
     {
       provide: NG_VALUE_ACCESSOR,
@@ -39,10 +42,7 @@ export interface DropdownItem {
       multi: true,
     },
   ],
-  host: {
-    '[style.--v-dropdown-z-index]': 'zIndex',
-    '[style.--v-dropdown-backdrop-z-index]': 'backdropZIndex',
-  },
+  imports: [CommonModule, VInput, ReactiveFormsModule, VBackdropDirective],
 })
 export class VDropdown implements ControlValueAccessor, OnInit, OnDestroy {
   public readonly label = input<string>('');
@@ -58,7 +58,7 @@ export class VDropdown implements ControlValueAccessor, OnInit, OnDestroy {
 
   protected readonly inputComponent = viewChild.required<VInput>('inputComponent');
 
-  protected readonly inputConfig = computed<VInputConfig>(() => ({
+  protected readonly inputConfig$$ = computed<VInputConfig>(() => ({
     label: this.label(),
     placeholder: this.placeholder(),
     isDisabled: this.isDisabled(),

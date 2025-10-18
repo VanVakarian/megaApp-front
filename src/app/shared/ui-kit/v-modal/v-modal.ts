@@ -37,7 +37,13 @@ const DEFAULT_V_MODAL_CONFIG: Required<VModalConfig> = {
   selector: 'v-modal',
   templateUrl: './v-modal.html',
   styleUrl: './v-modal.css',
-  imports: [CommonModule, VButton, VBackdropDirective],
+  host: {
+    '[style.--v-modal-width]': 'width$$()',
+    '[style.--v-modal-border-radius]': 'borderRadiusString$$()',
+    '[style.--v-modal-z-index]': 'zIndex',
+    '[style.--v-modal-padding-x]': 'paddingXString$$()',
+    '[style.--v-modal-padding-y]': 'paddingYString$$()',
+  },
   providers: [
     {
       provide: PARENT_LAYER_ID,
@@ -45,13 +51,7 @@ const DEFAULT_V_MODAL_CONFIG: Required<VModalConfig> = {
       deps: [VModal],
     },
   ],
-  host: {
-    '[style.--v-modal-width]': 'width()',
-    '[style.--v-modal-border-radius]': 'getBorderRadius()',
-    '[style.--v-modal-z-index]': 'zIndex',
-    '[style.--v-modal-padding-x]': 'paddingXString()',
-    '[style.--v-modal-padding-y]': 'paddingYString()',
-  },
+  imports: [CommonModule, VButton, VBackdropDirective],
 })
 export class VModal implements OnInit, OnDestroy {
   public readonly config = input<VModalConfig>({});
@@ -59,30 +59,32 @@ export class VModal implements OnInit, OnDestroy {
   public readonly onClose = output<void>();
   public readonly onOpen = output<void>();
 
-  protected readonly settings = computed(() => ({
+  protected readonly settings$$ = computed(() => ({
     ...DEFAULT_V_MODAL_CONFIG,
     ...this.config(),
   }));
 
-  protected readonly isOpen = computed(() => this.settings().isOpen);
-  protected readonly isCloseButtonVisible = computed(() => this.settings().isCloseButtonVisible);
-  protected readonly width = computed(() => this.getFinalWidth());
-  protected readonly borderRadius = computed(() => this.settings().borderRadius);
-  protected readonly paddingX = computed(() => this.getPaddingX());
-  protected readonly paddingY = computed(() => this.getPaddingY());
+  protected readonly isOpen$$ = computed(() => this.settings$$().isOpen);
+  protected readonly isCloseButtonVisible$$ = computed(() => this.settings$$().isCloseButtonVisible);
+  protected readonly width$$ = computed(() => this.getFinalWidth());
+  protected readonly borderRadius$$ = computed(() => this.settings$$().borderRadius);
+  protected readonly paddingX$$ = computed(() => this.getPaddingX());
+  protected readonly paddingY$$ = computed(() => this.getPaddingY());
 
-  protected readonly paddingXString = computed(() => `var(--unit-${this.paddingX()})`);
-  protected readonly paddingYString = computed(() => `var(--unit-${this.paddingY()})`);
+  protected readonly paddingXString$$ = computed(() => `var(--unit-${this.paddingX$$()})`);
+  protected readonly paddingYString$$ = computed(() => `var(--unit-${this.paddingY$$()})`);
 
-  protected readonly isMobile = computed(() => this.settings().deviceType === 'mobile');
-  protected readonly isDesktop = computed(() => this.settings().deviceType === 'desktop');
+  protected readonly isMobile$$ = computed(() => this.settings$$().deviceType === 'mobile');
+  protected readonly isDesktop$$ = computed(() => this.settings$$().deviceType === 'desktop');
+
+  protected readonly borderRadiusString$$ = computed(() => `var(--unit-${this.borderRadius$$()})`);
 
   protected zIndex = 100;
   private layerController?: LayerController;
   private readonly zLayerService: ZLayerService = inject(ZLayerService);
 
   private readonly isOpenEffect$$ = effect(() => {
-    const isOpen = this.isOpen();
+    const isOpen = this.isOpen$$();
     if (isOpen) this.onOpen.emit();
   });
 
@@ -93,7 +95,7 @@ export class VModal implements OnInit, OnDestroy {
   constructor() {}
 
   public ngOnInit(): void {
-    if (this.isOpen()) {
+    if (this.isOpen$$()) {
       this.registerLayer();
     }
   }
@@ -104,13 +106,9 @@ export class VModal implements OnInit, OnDestroy {
 
   @HostListener('document:keydown.escape', ['$event'])
   protected onEscapeKey(event: KeyboardEvent): void {
-    if (this.isOpen()) {
+    if (this.isOpen$$()) {
       this.closeModal();
     }
-  }
-
-  public getBorderRadius(): string {
-    return `var(--unit-${this.borderRadius()})`;
   }
 
   protected closeModal(): void {
@@ -126,18 +124,18 @@ export class VModal implements OnInit, OnDestroy {
     const config = this.config();
     if (config.paddingX !== undefined) return config.paddingX;
     if (config.padding !== undefined) return config.padding;
-    return this.settings().paddingX;
+    return this.settings$$().paddingX;
   }
 
   private getPaddingY(): CssUnitValue {
     const config = this.config();
     if (config.paddingY !== undefined) return config.paddingY;
     if (config.padding !== undefined) return config.padding;
-    return this.settings().paddingY;
+    return this.settings$$().paddingY;
   }
 
   private getFinalWidth(): string {
-    const deviceType = this.settings().deviceType;
+    const deviceType = this.settings$$().deviceType;
     const config = this.config();
 
     if (deviceType === 'mobile' && config.mobileWidth) {
@@ -146,6 +144,6 @@ export class VModal implements OnInit, OnDestroy {
     if (deviceType === 'desktop' && config.desktopWidth) {
       return config.desktopWidth;
     }
-    return this.settings().width;
+    return this.settings$$().width;
   }
 }

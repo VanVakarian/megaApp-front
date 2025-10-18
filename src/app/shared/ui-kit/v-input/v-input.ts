@@ -67,7 +67,7 @@ let uniqueId = 0;
   templateUrl: './v-input.html',
   styleUrl: './v-input.css',
   host: {
-    '[style.--v-input-border-radius]': 'borderRadiusString()',
+    '[style.--v-input-border-radius]': 'borderRadiusString$$()',
     '[class]': '"v-input"',
   },
   imports: [CommonModule],
@@ -84,21 +84,21 @@ export class VInput implements ControlValueAccessor {
   public readonly onBlurred = output<Event>();
   public readonly onEnterPressed = output<Event>();
 
-  protected readonly settings = computed(() => ({
+  protected readonly settings$$ = computed(() => ({
     ...DEFAULT_V_INPUT_CONFIG,
     ...this.config(),
   }));
 
-  protected readonly cssFontWeight = computed(() => String(this.settings().fontWeight));
-  protected readonly cssFontSize = computed(() => String(this.settings().fontSize));
-  protected readonly borderRadiusString = computed(() => `var(--unit-${this.settings().borderRadius})`);
+  protected readonly cssFontWeight$$ = computed(() => String(this.settings$$().fontWeight));
+  protected readonly cssFontSize$$ = computed(() => String(this.settings$$().fontSize));
+  protected readonly borderRadiusString$$ = computed(() => `var(--unit-${this.settings$$().borderRadius})`);
 
   protected ngControlValue$$: WritableSignal<string> = signal('');
   protected isFocused = false;
   protected hasInteracted = false;
   protected readonly inputId = `v-input-${++uniqueId}`;
 
-  protected readonly displayValue = computed(() => {
+  protected readonly displayValue$$ = computed(() => {
     return this.ngControl ? this.ngControlValue$$() : this.value();
   });
 
@@ -114,7 +114,7 @@ export class VInput implements ControlValueAccessor {
 
   protected getErrorMessage(): string {
     if (!this.hasInteracted) return '';
-    return this.settings().errorMessage || this.getValidationErrorMessage();
+    return this.settings$$().errorMessage || this.getValidationErrorMessage();
   }
 
   private getValidationErrorMessage(): string {
@@ -165,7 +165,7 @@ export class VInput implements ControlValueAccessor {
   }
 
   private convertToOutputValue(inputValue: string): InputValue {
-    if (this.settings().type !== 'number' || inputValue.trim() === '') {
+    if (this.settings$$().type !== 'number' || inputValue.trim() === '') {
       return inputValue;
     }
 
@@ -189,7 +189,7 @@ export class VInput implements ControlValueAccessor {
   }
 
   protected onKeydown(event: KeyboardEvent): void {
-    if (event.key === 'Enter' && !this.settings().isTextarea) {
+    if (event.key === 'Enter' && !this.settings$$().isTextarea) {
       this.onEnterPressed.emit(event);
     }
   }

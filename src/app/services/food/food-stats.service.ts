@@ -12,25 +12,18 @@ import { LocalStorageService } from '../local-storage.service';
 export class FoodStatsService {
   private readonly STATS_STORAGE_KEY = 'food_stats';
 
-  public stats$$: WritableSignal<Stats> = signal({});
-  public statsChartData$$: Signal<StatsChartData> = computed(() => this.prepareChartData());
-  public StatsChartDataClipped$$: Signal<StatsChartData> = computed(() => this.prepareChartDataClipped());
+  private readonly stats$$: WritableSignal<Stats> = signal({});
+  public readonly statsChartData$$: Signal<StatsChartData> = computed(() => this.prepareChartData());
+  public readonly statsChartDataClipped$$: Signal<StatsChartData> = computed(() => this.prepareChartDataClipped());
 
-  public forceUpdateTrigger$$ = signal(0);
-
-  public selectedDateIdxStart$$: WritableSignal<number> = signal(0);
-  public selectedDateIdxEnd$$: WritableSignal<number> = signal(0);
+  public readonly selectedDateIdxStart$$: WritableSignal<number> = signal(0);
+  public readonly selectedDateIdxEnd$$: WritableSignal<number> = signal(0);
 
   constructor(
     private http: HttpClient,
     private localStorageService: LocalStorageService,
   ) {
     this.loadStatsFromLocalStorageOnInit();
-    // effect(() => { console.log('STATS has been updated:', this.stats$$(), Object.keys(this.stats$$()).length) }); // prettier-ignore
-    // effect(() => { console.log('STATS CHART DATA has been updated:', this.statsChartData$$(), Object.keys(this.statsChartData$$()).length) }); // prettier-ignore
-    // effect(() => { console.log('STATS CHART DATA SLICED has been updated:', this.StatsChartDataClipped$$(), Object.keys(this.StatsChartDataClipped$$()).length) }); // prettier-ignore
-    // effect(() => { console.log('SELECTED DATE IDX LOW has been updated:', this.selectedDateIdxStart$$()) }); // prettier-ignore
-    // effect(() => { console.log('SELECTED DATE IDX HIGH has been updated:', this.selectedDateIdxEnd$$()) }); // prettier-ignore
   }
 
   @exhaustRequest()

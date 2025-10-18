@@ -1,4 +1,4 @@
-@if (authService.isAuthenticated) {
+@if (authService.isAuthenticated$$()) {
   <header #header
           class="tw-bg-color-80 lg:block fixed z-10 hidden w-full">
 
@@ -6,15 +6,15 @@
       @for (button of desktopButtons; track $index) {
         @if (button.label !== "DarkThemeSwitch") {
           @if (button.selected) {
-            <button class="main-menu-button"
-                    mat-raised-button
+            <button mat-raised-button
+                    class="main-menu-button"
                     color="primary"
                     [routerLink]="button.link">
               {{ button.label }}
             </button>
           } @else {
-            <button class="main-menu-button"
-                    mat-flat-button
+            <button mat-flat-button
+                    class="main-menu-button"
                     [routerLink]="button.link">
               {{ button.label }}
             </button>

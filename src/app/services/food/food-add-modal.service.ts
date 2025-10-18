@@ -10,7 +10,7 @@ export enum ModalState {
   CAMERA_PREVIEW = 'CAMERA_PREVIEW',
 }
 
-export enum ModalEvent {
+enum ModalEvent {
   OPEN,
   CLOSE,
   SELECT_PRODUCT,
@@ -37,9 +37,10 @@ type StateTransitionMap = {
   providedIn: 'root',
 })
 export class FoodAddModalService {
-  private readonly currentState$$: WritableSignal<ModalState> = signal(ModalState.CLOSED);
+  public readonly currentState$$: WritableSignal<ModalState> = signal(ModalState.CLOSED);
 
   public readonly searchQuery$$: WritableSignal<string> = signal('');
+
   public readonly selectedProduct$$: WritableSignal<CatalogueEntry | null> = signal(null);
 
   private readonly stateTransitions: StateTransitionMap = {
@@ -74,14 +75,6 @@ export class FoodAddModalService {
       [ModalEvent.CLOSE]: ModalState.CLOSED,
     },
   };
-
-  public get isOpen$$(): WritableSignal<boolean> {
-    return signal(this.currentState$$() !== ModalState.CLOSED);
-  }
-
-  public get currentState(): ModalState {
-    return this.currentState$$();
-  }
 
   public transition(event: ModalEvent, payload?: any): void {
     const currentState = this.currentState$$();

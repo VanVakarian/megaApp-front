@@ -1,5 +1,6 @@
 <div class="flex justify-end">
   <v-input fieldStateAnimations
+           class="w-1/3"
            [state]="currentState"
            [formControl]="form.controls.bodyWeight"
            [config]="{
@@ -10,8 +11,7 @@
              textAlign: 'right',
            }"
            (onInputChanged)="onInput()"
-           (onEnterPressed)="onEnter()"
-           class="w-1/3">
+           (onEnterPressed)="onEnter()">
     <span v-postfix
           class="ml-1 mr-3">кг</span>
   </v-input>

@@ -1,8 +1,8 @@
 import { HttpClient } from '@angular/common/http';
-import { computed, effect, Injectable, signal, Signal, WritableSignal } from '@angular/core';
+import { computed, effect, inject, Injectable, signal, Signal, WritableSignal } from '@angular/core';
 import { exhaustRequest } from '@app/shared/decorators/exhaust-request.decorator';
 import {
-  BodyWeight,
+  BodyWeightInterface,
   BodyWeightToUpdate,
   DayTotals,
   Diary,
@@ -54,26 +54,23 @@ export class FoodDiaryService extends BaseFoodService {
     return this.DIARY_STORAGE_KEY;
   }
 
+  private readonly catalogueService = inject(FoodCatalogueService);
+  private readonly coefficientsService = inject(FoodCoefficientsService);
+  private readonly foodStatsService = inject(FoodStatsService);
+
+  private readonly loadMoreDiaryEffect$$ = effect(() => {
+    if (this.shouldLoadMore()) this.fetchMoreDiaryTrigger$.next();
+  });
+
   constructor(
     http: HttpClient,
     localStorageService: LocalStorageService,
     networkService: NetworkService,
     syncQueueService: SyncQueueService,
-    private readonly catalogueService: FoodCatalogueService,
-    private readonly coefficientsService: FoodCoefficientsService,
-    private readonly foodStatsService: FoodStatsService,
   ) {
     super(http, localStorageService, networkService, syncQueueService);
     this.loadDiaryFromLocalStorage();
     this.subscribe();
-
-    effect(() => {
-      if (this.shouldLoadMore()) this.fetchMoreDiaryTrigger$.next();
-    });
-
-    // effect(() => { console.log('SELECTED DAY ISO has been updated:', this.selectedDayIso$$()) }); // prettier-ignore
-    // effect(() => { console.log('DIARY RAW has been updated:', this.diaryRaw$$()) }); // prettier-ignore
-    // effect(() => { console.log('UNIFIED DIARY has been updated:', this.diary$$()) }); // prettier-ignore
   }
 
   public calculateEntryKcals(entry: DiaryEntry): number {
@@ -85,14 +82,12 @@ export class FoodDiaryService extends BaseFoodService {
 
   public focusDiaryEntry(diaryEntryId: number): void {
     this.diaryEntryFocusId$$.set(diaryEntryId);
-    // Очищаем сигнал через небольшую задержку
-    setTimeout(() => this.diaryEntryFocusId$$.set(null), 100);
+    setTimeout(() => this.diaryEntryFocusId$$.set(null), 100); // clearing the signal after a short delay
   }
 
   public resetDiaryEntryForm(diaryEntryId: number): void {
     this.diaryEntryResetId$$.set(diaryEntryId);
-    // Очищаем сигнал через небольшую задержку
-    setTimeout(() => this.diaryEntryResetId$$.set(null), 100);
+    setTimeout(() => this.diaryEntryResetId$$.set(null), 100); // clearing the signal after a short delay
   }
 
   @exhaustRequest()
@@ -243,7 +238,7 @@ export class FoodDiaryService extends BaseFoodService {
     return true;
   }
 
-  public async setUserBodyWeight(bodyWeight: BodyWeight): Promise<boolean> {
+  public async setUserBodyWeight(bodyWeight: BodyWeightInterface): Promise<boolean> {
     if (!this.checkNetworkAvailability()) {
       console.error('Network not available for setting body weight');
       return false;

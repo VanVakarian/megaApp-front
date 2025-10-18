@@ -5,7 +5,7 @@
      (backdropClick)="closeDropdown()">
 
   <v-input #inputComponent
-           [config]="inputConfig()"
+           [config]="inputConfig$$()"
            formControlName="search"
            (onFocused)="onFocus()"
            (onBlurred)="onBlur()">

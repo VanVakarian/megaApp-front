@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, effect } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, effect, inject, viewChild } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { FoodDiaryService } from '@app/services/food/food-diary.service';
 import { DEFAULT_INPUT_FIELD_PROGRESS_TIMER } from '@app/shared/const';
@@ -7,7 +7,7 @@ import {
   AnimationStateManager,
   FieldStateAnimationsDirective,
 } from '@app/shared/directives/field-state-animations.directive';
-import { BodyWeight } from '@app/shared/interfaces';
+import { BodyWeightInterface as BodyWeightI } from '@app/shared/interfaces';
 import { VInput } from '@app/shared/ui-kit/v-input/v-input';
 
 interface BodyWeightForm {
@@ -24,23 +24,25 @@ enum FormErrors {
 }
 
 @Component({
-  selector: 'app-body-weight',
-  templateUrl: './body-weight.component.html',
-  styleUrl: './body-weight.component.scss',
+  selector: 'body-weight',
+  templateUrl: './body-weight.html',
+  styleUrl: './body-weight.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [ReactiveFormsModule, FieldStateAnimationsDirective, VInput],
 })
-export class BodyWeightComponent {
-  public FormLabels = FormLabels;
-  public FormErrors = FormErrors;
+export class BodyWeight {
+  protected readonly bodyWeightInput = viewChild.required(VInput);
 
-  public form = new FormGroup<BodyWeightForm>({
+  protected readonly FormLabels = FormLabels;
+  protected readonly FormErrors = FormErrors;
+
+  protected form = new FormGroup<BodyWeightForm>({
     bodyWeight: new FormControl('', {
       validators: [Validators.required, Validators.pattern(/^\d{2,3}([.,]\d)?$/)],
     }),
   });
 
-  public currentState: AnimationState = AnimationState.IDLE;
+  protected currentState: AnimationState = AnimationState.IDLE;
 
   private previousValue: string = '';
 
@@ -51,16 +53,14 @@ export class BodyWeightComponent {
     this.cdRef.detectChanges();
   });
 
-  constructor(
-    private foodDiaryService: FoodDiaryService,
-    private cdRef: ChangeDetectorRef,
-  ) {
-    effect(() => {
-      this.applyWeight();
-    });
-  }
+  private readonly applyWeightEffect$$ = effect(() => {
+    this.applyWeight();
+  });
 
-  public get isFormValid(): boolean {
+  private readonly foodDiaryService = inject(FoodDiaryService);
+  private readonly cdRef = inject(ChangeDetectorRef);
+
+  protected get isFormValid(): boolean {
     return this.form.valid || this.form.disabled || this.form.pristine;
   }
 
@@ -106,7 +106,7 @@ export class BodyWeightComponent {
     this.form.disable();
 
     try {
-      const weight: BodyWeight = {
+      const weight: BodyWeightI = {
         bodyWeight: weightValue,
         dateISO: selectedDateISO,
       };
@@ -134,5 +134,14 @@ export class BodyWeightComponent {
 
     this.form.patchValue({ bodyWeight: String(weight) });
     this.previousValue = String(weight);
+  }
+
+  public focusIfEmpty(): void {
+    const control = this.form.controls.bodyWeight;
+    if (!control.value || control.value === '') {
+      setTimeout(() => {
+        this.bodyWeightInput().focus();
+      }, 100);
+    }
   }
 }

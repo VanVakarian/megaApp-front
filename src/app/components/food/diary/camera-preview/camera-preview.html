@@ -38,8 +38,8 @@
   } @else if (hasPhoto$$()) {
 
     <div class="flex h-full">
-      <img [src]="photoDataUrl$$()"
-           class="background-black flex object-contain" />
+      <img class="background-black flex object-contain"
+           [src]="photoDataUrl$$()" />
 
       <div class="absolute bottom-0 flex justify-center w-full gap-4 p-4">
         <v-button danger

@@ -1,13 +1,11 @@
-import { Directive, ElementRef, OnInit, Renderer2, input } from '@angular/core';
+import { Directive, ElementRef, OnInit, Renderer2, inject, input } from '@angular/core';
 
 @Directive({
   selector: '[outer-shadow]',
 })
 export class OuterShadowDirective implements OnInit {
-  constructor(
-    private el: ElementRef,
-    private renderer: Renderer2,
-  ) {}
+  private readonly el = inject(ElementRef);
+  private readonly renderer = inject(Renderer2);
 
   public ngOnInit() {
     const element = this.el.nativeElement;
@@ -27,10 +25,8 @@ export class OuterShadowDirective implements OnInit {
 export class OuterShadowRoundedDirective implements OnInit {
   readonly shadowBorderRadius = input<number>(2);
 
-  constructor(
-    private el: ElementRef,
-    private renderer: Renderer2,
-  ) {}
+  private readonly el = inject(ElementRef);
+  private readonly renderer = inject(Renderer2);
 
   public ngOnInit() {
     const element = this.el.nativeElement;
@@ -49,10 +45,8 @@ export class OuterShadowRoundedDirective implements OnInit {
   selector: '[inner-shadow]',
 })
 export class InnerShadowDirective implements OnInit {
-  constructor(
-    private el: ElementRef,
-    private renderer: Renderer2,
-  ) {}
+  private readonly el = inject(ElementRef);
+  private readonly renderer = inject(Renderer2);
 
   public ngOnInit() {
     const element = this.el.nativeElement;
@@ -72,10 +66,8 @@ export class InnerShadowDirective implements OnInit {
 export class InnerShadowRoundedDirective implements OnInit {
   readonly shadowBorderRadius = input<number>(2);
 
-  constructor(
-    private el: ElementRef,
-    private renderer: Renderer2,
-  ) {}
+  private readonly el = inject(ElementRef);
+  private readonly renderer = inject(Renderer2);
 
   public ngOnInit() {
     const element = this.el.nativeElement;

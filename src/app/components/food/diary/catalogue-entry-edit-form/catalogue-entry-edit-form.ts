@@ -8,20 +8,26 @@ import { VButton } from '@app/shared/ui-kit/v-button/v-button';
 import { IconName, VIcon } from '@app/shared/ui-kit/v-icon/v-icon';
 import { VInput } from '@app/shared/ui-kit/v-input/v-input';
 
+enum FormMode {
+  Create = 'create',
+  Edit = 'edit',
+}
+
 @Component({
   selector: 'catalogue-entry-edit-form',
   templateUrl: './catalogue-entry-edit-form.html',
   imports: [CommonModule, ReactiveFormsModule, VButton, VIcon, VInput],
 })
-export class CatalogueEntryEditFormComponent implements OnInit {
+export class CatalogueEntryEditForm implements OnInit {
   protected readonly Icon = IconName;
 
   private readonly foodAddModalService = inject(FoodAddModalService);
   private readonly foodCatalogueService = inject(FoodCatalogueService);
 
+  protected formMode = FormMode;
   protected readonly mode$$ = computed(() => {
     const selectedProduct = this.foodAddModalService.selectedProduct$$();
-    return selectedProduct ? 'edit' : 'create';
+    return selectedProduct ? this.formMode.Edit : this.formMode.Create;
   });
 
   protected readonly productToEdit$$ = computed(() => this.foodAddModalService.selectedProduct$$());
@@ -49,7 +55,7 @@ export class CatalogueEntryEditFormComponent implements OnInit {
   public async ngOnInit(): Promise<void> {
     const mode = this.mode$$();
 
-    if (mode === 'edit') {
+    if (mode === this.formMode.Edit) {
       this.loadExistingProductData();
     } else {
       await this.loadProductPreview();
@@ -142,7 +148,7 @@ export class CatalogueEntryEditFormComponent implements OnInit {
 
       console.log('[CatalogueEditForm] Product data to save:', productData);
 
-      if (mode === 'edit' && productToEdit) {
+      if (mode === this.formMode.Edit && productToEdit) {
         productData.id = productToEdit.id;
       }
 
@@ -153,7 +159,7 @@ export class CatalogueEntryEditFormComponent implements OnInit {
 
       this.foodAddModalService.selectedProduct$$.set(savedProduct);
 
-      if (mode === 'create') {
+      if (mode === this.formMode.Create) {
         this.foodCatalogueService.searchProducts(this.searchQuery$$());
       }
 

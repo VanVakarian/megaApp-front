@@ -17,16 +17,15 @@ import { IconName, VIcon } from '@app/shared/ui-kit/v-icon/v-icon';
 
 @Component({
   selector: 'camera-preview',
-  templateUrl: './camera-preview.component.html',
-  styleUrl: './camera-preview.component.scss',
+  templateUrl: './camera-preview.html',
   imports: [VIcon, VButton],
 })
-export class CameraPreviewComponent implements AfterViewInit, OnDestroy {
+export class CameraPreview implements AfterViewInit, OnDestroy {
   @ViewChild('video')
-  private video!: ElementRef<HTMLVideoElement>;
+  private readonly video!: ElementRef<HTMLVideoElement>;
 
   @ViewChild('canvas')
-  private canvas!: ElementRef<HTMLCanvasElement>;
+  private readonly canvas!: ElementRef<HTMLCanvasElement>;
 
   protected readonly isLoading$$ = signal(false);
   protected readonly photoDataUrl$$ = signal<string>('');
@@ -43,17 +42,12 @@ export class CameraPreviewComponent implements AfterViewInit, OnDestroy {
   private readonly photoCaptureService = inject(PhotoCaptureService);
   private readonly foodAddModalService = inject(FoodAddModalService);
 
-  constructor() {
-    effect(() => {
-      if (this.hasPhoto$$()) {
-        this.isConfirmPhotoTemporarilyDisabled$$.set(true);
-        setTimeout(() => this.isConfirmPhotoTemporarilyDisabled$$.set(false), 500);
-      }
-    });
-
-    // effect(() => { console.log('isConfirmTemporarilyDisabled$$ has been updated:', this.isConfirmTemporarilyDisabled$$()) }); // prettier-ignore
-    // effect(() => { console.log('hasPhoto$$ has been updated:', this.hasPhoto$$()) }); // prettier-ignore
-  }
+  private readonly confirmPhotoButtonCooldownEffect$$ = effect(() => {
+    if (this.hasPhoto$$()) {
+      this.isConfirmPhotoTemporarilyDisabled$$.set(true);
+      setTimeout(() => this.isConfirmPhotoTemporarilyDisabled$$.set(false), 500);
+    }
+  });
 
   public async ngAfterViewInit(): Promise<void> {
     await this.startCamera();

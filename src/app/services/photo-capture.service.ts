@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 
-export interface PhotoAnalysisResult {
+interface PhotoAnalysisResult {
   result: boolean;
   data?: {
     id: number;

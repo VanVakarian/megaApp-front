@@ -39,8 +39,8 @@ export enum IconName {
   templateUrl: './v-icon.html',
   styleUrl: './v-icon.css',
   host: {
-    '[style.--v-icon-size]': 'getIconSize()',
-    '[style.--v-icon-background]': 'getIconBackground()',
+    '[style.--v-icon-size]': 'iconUnitSizeString$$()',
+    '[style.--v-icon-background]': 'iconBackgroundString$$()',
     '[style.--v-icon-color]': 'color()',
   },
 })
@@ -49,15 +49,10 @@ export class VIcon {
   public readonly size = input<CssUnitValue>(6);
   public readonly color = input<string>();
 
-  public readonly iconPath = computed(() => {
-    return `assets/icons/${this.name()}.svg`;
+  public readonly iconBackgroundString$$ = computed(() => {
+    return `url(assets/icons/${this.name()}.svg)`;
   });
-
-  public getIconSize(): string {
+  public readonly iconUnitSizeString$$ = computed(() => {
     return `var(--unit-${this.size()})`;
-  }
-
-  public getIconBackground(): string {
-    return `url(${this.iconPath()})`;
-  }
+  });
 }

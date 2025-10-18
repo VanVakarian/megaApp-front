@@ -1,15 +1,4 @@
-import {
-  Component,
-  effect,
-  EventEmitter,
-  inject,
-  Input,
-  OnChanges,
-  OnDestroy,
-  OnInit,
-  Output,
-  viewChild,
-} from '@angular/core';
+import { Component, effect, EventEmitter, inject, Input, OnChanges, Output, viewChild } from '@angular/core';
 import {
   AbstractControl,
   FormControl,
@@ -19,7 +8,7 @@ import {
   ValidatorFn,
   Validators,
 } from '@angular/forms';
-import { DeviceDetectorService } from '@app/services/device-detector.service';
+import { DeviceInfoService } from '@app/services/device-info.service';
 import { FoodCatalogueService } from '@app/services/food/food-catalogue.service';
 import { FoodCoefficientsService } from '@app/services/food/food-coefficients.service';
 import { FoodDiaryService } from '@app/services/food/food-diary.service';
@@ -38,11 +27,11 @@ interface DiaryEntryFormModel {
 }
 
 @Component({
-  selector: 'app-diary-entry-edit-form',
-  templateUrl: './diary-entry-edit-form.component.html',
+  selector: 'diary-entry-edit-form',
+  templateUrl: './diary-entry-edit-form.html',
   imports: [ReactiveFormsModule, UiProgressIcon, VButton, VIcon, VExpand, VInput, VModal],
 })
-export class DiaryEntryEditFormComponent implements OnInit, OnChanges, OnDestroy {
+export class DiaryEntryEditForm implements OnChanges {
   @Input()
   public diaryEntry!: DiaryEntry;
 
@@ -52,19 +41,19 @@ export class DiaryEntryEditFormComponent implements OnInit, OnChanges, OnDestroy
   protected readonly foodWeightChangeElem = viewChild.required<VInput>('foodWeightChangeElem');
 
   protected isDeleteConfirmOpen = false;
-  public isHistoryExpanded: boolean = false;
-  public disableHistoryAnimationTemporaroly: boolean = false;
+  protected isHistoryExpanded: boolean = false;
+  protected disableHistoryAnimationTemporaroly: boolean = false;
   private historyAction: HistoryEntryAction = HistoryEntryAction.SET;
 
   private selectedDaysTargerKcals = 0;
   private selectedDaysEatenPercent = 0;
   private selectedFoodKcals = 0;
   private diaryEntriesCoefficient = 0;
-  public projectedSelectedDaysEatenPercentNum = 0;
-  public projectedSelectedDaysEatenPercentPadded = '0';
+  protected projectedSelectedDaysEatenPercentNum = 0;
+  protected projectedSelectedDaysEatenPercentPadded = '0';
 
-  public foodWeightInitial: number = 0;
-  public foodWeightFinal: number = 0;
+  protected foodWeightInitial: number = 0;
+  protected foodWeightFinal: number = 0;
 
   protected readonly Icon = IconName;
 
@@ -80,7 +69,7 @@ export class DiaryEntryEditFormComponent implements OnInit, OnChanges, OnDestroy
     };
   }
 
-  public diaryEntryForm = new FormGroup<DiaryEntryFormModel>({
+  protected diaryEntryForm = new FormGroup<DiaryEntryFormModel>({
     id: new FormControl(0, { nonNullable: true }),
     foodWeightNew: new FormControl<number | null>(null, [Validators.pattern(this.newWeightPattern)]),
     foodWeightChange: new FormControl<number | null>(null, [
@@ -89,10 +78,10 @@ export class DiaryEntryEditFormComponent implements OnInit, OnChanges, OnDestroy
     ]),
   });
 
-  public get foodWeightNewControl() {
+  protected get foodWeightNewControl() {
     return this.diaryEntryForm.controls.foodWeightNew;
   }
-  public get foodWeightChangeControl() {
+  protected get foodWeightChangeControl() {
     return this.diaryEntryForm.controls.foodWeightChange;
   }
 
@@ -101,16 +90,18 @@ export class DiaryEntryEditFormComponent implements OnInit, OnChanges, OnDestroy
     if (focusId === this.diaryEntryForm.value.id) {
       setTimeout(() => {
         this.foodWeightChangeElem().focus();
-      }, 100);
+      }, 100); // Waiting for the panel animation to finish, otherwise there's a jitter
     }
   });
 
   private formResetEffect$$ = effect(() => {
     const resetId = this.foodDiaryService.diaryEntryResetId$$();
-    if (resetId === this.diaryEntryForm.value.id) {
-      this.resetForm();
-      this.collapseHistory();
-    }
+    setTimeout(() => {
+      if (resetId === this.diaryEntryForm.value.id) {
+        this.resetForm();
+        this.collapseHistory();
+      }
+    }, 50); // Waiting for the panel to close, otherwise the reset is visually janky
   });
 
   private totalsUpdateEffect$$ = effect(() => {
@@ -120,18 +111,17 @@ export class DiaryEntryEditFormComponent implements OnInit, OnChanges, OnDestroy
     this.selectedFoodKcals = this.foodCatalogueService.catalogue$$()?.[this.diaryEntry.foodCatalogueId]?.kcals ?? 0;
     this.diaryEntriesCoefficient =
       this.foodCoefficientsService.coefficients$$()?.[this.diaryEntry.foodCatalogueId] ?? 1;
+    this.updateProjectedDaysEatenPercent();
   });
 
-  public get selectedFoodName() {
+  protected get selectedFoodName() {
     return this.foodCatalogueService.catalogue$$()?.[this.diaryEntry.foodCatalogueId]?.name;
   }
 
+  protected readonly deviceInfoService = inject(DeviceInfoService);
   private readonly foodDiaryService = inject(FoodDiaryService);
   private readonly foodCatalogueService = inject(FoodCatalogueService);
   private readonly foodCoefficientsService = inject(FoodCoefficientsService);
-  protected readonly deviceDetectorService = inject(DeviceDetectorService);
-
-  public ngOnInit(): void {}
 
   public ngOnChanges(): void {
     if (this.diaryEntry) {
@@ -147,9 +137,7 @@ export class DiaryEntryEditFormComponent implements OnInit, OnChanges, OnDestroy
     }
   }
 
-  public ngOnDestroy(): void {}
-
-  public isFormValid(): boolean {
+  protected isFormValid(): boolean {
     if (!this.diaryEntryForm.valid) return false;
     if ((this.foodWeightNewControl.value as any) === '') return false;
     if ((this.foodWeightChangeControl.value as any) === '') return false;
@@ -164,7 +152,7 @@ export class DiaryEntryEditFormComponent implements OnInit, OnChanges, OnDestroy
     return hasValidChange && this.foodWeightFinal > 0;
   }
 
-  public onNewWeightInput() {
+  protected onNewWeightInput() {
     this.foodWeightChangeControl.setValue(null);
     const newWeight = this.diaryEntryForm.controls.foodWeightNew.value;
 
@@ -177,13 +165,13 @@ export class DiaryEntryEditFormComponent implements OnInit, OnChanges, OnDestroy
     this.updateProjectedDaysEatenPercent();
   }
 
-  public onWeightNewResetClick(): void {
+  protected onWeightNewResetClick(): void {
     this.foodWeightNewControl.setValue(null);
     this.foodWeightFinal = this.foodWeightInitial;
     this.updateProjectedDaysEatenPercent();
   }
 
-  public onChangeWeightInput() {
+  protected onChangeWeightInput() {
     this.diaryEntryForm.controls.foodWeightNew.setValue(null);
     const foodWeightChangeStr = String(this.foodWeightChangeControl.value);
     const foodWeightChangeInt = parseInt(foodWeightChangeStr);
@@ -256,11 +244,11 @@ export class DiaryEntryEditFormComponent implements OnInit, OnChanges, OnDestroy
     this.isDeleteConfirmOpen = false;
   }
 
-  public toggleHistory() {
+  protected toggleHistory() {
     this.isHistoryExpanded = !this.isHistoryExpanded;
   }
 
-  public formHistoryEntry(historyEntry: HistoryEntry) {
+  protected formHistoryEntry(historyEntry: HistoryEntry) {
     switch (historyEntry.action) {
       case HistoryEntryAction.INIT:
         return `Запись создана с весом ${historyEntry.value} г.`;
@@ -273,7 +261,7 @@ export class DiaryEntryEditFormComponent implements OnInit, OnChanges, OnDestroy
     }
   }
 
-  public chooseIconForHistoryEntry(historyEntry: HistoryEntry) {
+  protected chooseIconForHistoryEntry(historyEntry: HistoryEntry) {
     switch (historyEntry.action) {
       case HistoryEntryAction.INIT:
         return this.Icon.Star;
@@ -335,6 +323,6 @@ export class DiaryEntryEditFormComponent implements OnInit, OnChanges, OnDestroy
     this.isHistoryExpanded = false;
     setTimeout(() => {
       this.disableHistoryAnimationTemporaroly = false;
-    }, 100);
+    }, 100); // Disabling history v-expand animation temporarily for the duration of collapse a parent v-expand animation, they otherwise conflict
   }
 }

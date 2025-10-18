@@ -4,11 +4,7 @@ import { Injectable, WritableSignal, signal } from '@angular/core';
   providedIn: 'root',
 })
 export class NetworkMonitor {
-  public isOnline$$: WritableSignal<boolean> = signal(true);
-
-  constructor() {
-    // effect(() => { console.log('ISONLINE$$ has been updated:', this.isOnline$$()) }); // prettier-ignore
-  }
+  public readonly isOnline$$: WritableSignal<boolean> = signal(true);
 
   public initNetworkEvents(): void {
     window.addEventListener('online', () => this.updateOnlineStatus(true));

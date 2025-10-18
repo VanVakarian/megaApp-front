@@ -1,11 +1,11 @@
-<button [type]="type()"
-        [disabled]="isDisabled()"
+<button [type]="type$$()"
+        [disabled]="isDisabled$$()"
         (click)="onButtonClick($event)">
 
   <ng-content select="[v-prefix]"
               class="prefix" />
 
-  @if (!isLabelHidden()) {
+  @if (!isLabelHidden$$()) {
     <div class="btn-text">
       <ng-content />
     </div>

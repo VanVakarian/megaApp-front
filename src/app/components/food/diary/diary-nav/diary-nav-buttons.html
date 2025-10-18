@@ -1,5 +1,5 @@
 <div class="flex w-full gap-2">
-  @if(deviceDetectorService.isDesktop$$()) {
+  @if(deviceInfoService.isDesktopScreen$$()) {
     <v-button primary
               [config]="{
                 isWithoutShadow: true,
@@ -17,7 +17,7 @@
     {{ selectedDateFormatted$$() }}
   </div>
 
-  @if(deviceDetectorService.isDesktop$$()) {
+  @if(deviceInfoService.isDesktopScreen$$()) {
     <div class="flex flex-col">
       <v-button primary
                 [config]="{
@@ -35,8 +35,8 @@
         <input matInput
                [matDatepicker]="pickerDesktop"
                [formControl]="formCalendarSelectedDay"
-               (dateChange)="onDatePicked($event)"
-               [max]="initDateTodayWithUserHourShift" />
+               [max]="initDateTodayWithUserHourShift"
+               (dateChange)="onDatePicked($event)" />
         <mat-datepicker-toggle [for]="pickerDesktop" />
         <mat-datepicker #pickerDesktop />
       </mat-form-field>
@@ -56,7 +56,7 @@
   }
 </div>
 
-@if (isAuthenticated) {
+@if (authService.isAuthenticated$$()) {
   <div class="lg:hidden fixed bottom-0 left-0 flex justify-between w-full gap-5 px-4 pb-4"
        style="z-index: 10">
     <v-button primary
@@ -108,9 +108,9 @@
   <input matInput
          [matDatepicker]="pickerTouch"
          [formControl]="formCalendarSelectedDay"
-         (dateChange)="onDatePicked($event)"
-         [max]="initDateTodayWithUserHourShift" />
+         [max]="initDateTodayWithUserHourShift"
+         (dateChange)="onDatePicked($event)" />
   <mat-datepicker-toggle [for]="pickerTouch" />
-  <mat-datepicker touchUi
-                  #pickerTouch />
+  <mat-datepicker #pickerTouch
+                  touchUi />
 </mat-form-field>

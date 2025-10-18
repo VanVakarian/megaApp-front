@@ -110,7 +110,7 @@ interface VInputConfig {
 ### Dynamic Configuration with State Management
 ```typescript
 // Component
-protected readonly inputConfig = computed<VInputConfig>(() => ({
+protected readonly inputConfig$$ = computed<VInputConfig>(() => ({
   type: 'tel',
   label: 'Phone Number',
   placeholder: this.isInternational() ? '+1 (555) 000-0000' : '(555) 000-0000',

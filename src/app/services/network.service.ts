@@ -1,4 +1,4 @@
-import { Injectable, WritableSignal, computed, signal } from '@angular/core';
+import { Injectable, WritableSignal, computed, inject, signal } from '@angular/core';
 import { tokenGetter } from '@app/services/auth.service';
 import { IncomingWsMessage, OutgoingWsMessage, WebSocketMessageType } from '@app/shared/interfaces';
 import { EMPTY, Subject, timer } from 'rxjs';
@@ -15,11 +15,13 @@ export class NetworkService {
   public readonly isNetworkAvailable$$ = computed(() => this.isOnline$$());
 
   private socket$: WebSocketSubject<any> | undefined;
-  private reconnectDelaySec = 1;
+  private reconnectDelaySec = 5;
   public readonly wsMessages$ = new Subject<IncomingWsMessage>();
   private readonly clientId: string;
 
-  constructor(private readonly notifications: NotificationService) {
+  private readonly notifications = inject(NotificationService);
+
+  constructor() {
     this.clientId = Math.random().toString(36).substring(2, 10);
     this.initNetworkEvents();
   }
@@ -104,18 +106,12 @@ export class NetworkService {
   }
 
   private createWebSocket(token: string): WebSocketSubject<any> {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const host = window.location.host;
     const encodedToken = encodeURIComponent(token);
     const encodedClientId = encodeURIComponent(this.clientId);
 
-    let wsUrl: string;
-
-    // if (environment.wsUrl) {
-    //   wsUrl = `${environment.wsUrl}?token=${encodedToken}&clientId=${encodedClientId}`;
-    // } else {
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host = window.location.host;
-    wsUrl = `${protocol}//${host}/api/ws?token=${encodedToken}&clientId=${encodedClientId}`;
-    // }
+    const wsUrl = `${protocol}//${host}/api/ws?token=${encodedToken}&clientId=${encodedClientId}`;
 
     return webSocket(wsUrl);
   }

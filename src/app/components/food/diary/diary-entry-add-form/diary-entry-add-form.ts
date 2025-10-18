@@ -12,13 +12,13 @@ import { VInput } from '@app/shared/ui-kit/v-input/v-input';
 
 @Component({
   selector: 'diary-entry-add-form',
-  templateUrl: './diary-entry-add-form.component.html',
+  templateUrl: './diary-entry-add-form.html',
   imports: [ReactiveFormsModule, UiProgressIcon, VButton, VIcon, VInput],
 })
-export class DiaryEntryAddFormComponent implements AfterViewInit {
+export class DiaryEntryAddForm implements AfterViewInit {
   protected readonly Icon = IconName;
 
-  protected readonly selectedProduct = computed(() => this.foodAddModalService.selectedProduct$$());
+  protected readonly selectedProduct$$ = computed(() => this.foodAddModalService.selectedProduct$$());
 
   private selectedDaysTargerKcals = 0;
   private selectedDaysEatenPercent = 0;
@@ -42,7 +42,7 @@ export class DiaryEntryAddFormComponent implements AfterViewInit {
   });
 
   private readonly selectedProductEffect$$ = effect(() => {
-    const product = this.selectedProduct();
+    const product = this.selectedProduct$$();
     if (!product) return;
 
     this.selectedFoodKcals = product.kcals;
@@ -98,7 +98,7 @@ export class DiaryEntryAddFormComponent implements AfterViewInit {
 
     this.diaryEntryForm.disable();
     const { foodWeight } = this.diaryEntryForm.value;
-    const product = this.selectedProduct();
+    const product = this.selectedProduct$$();
     if (!product) return;
 
     const entry: DiaryEntry = {
@@ -123,7 +123,7 @@ export class DiaryEntryAddFormComponent implements AfterViewInit {
   }
 
   protected editProduct(): void {
-    const product = this.selectedProduct();
+    const product = this.selectedProduct$$();
     if (!product) return;
 
     this.foodAddModalService.editProduct(product);

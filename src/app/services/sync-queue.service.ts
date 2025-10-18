@@ -1,5 +1,5 @@
 import { HttpClient } from '@angular/common/http';
-import { Injectable } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { BACKGROUND_SYNC_RETRIES_MAX, BACKGROUND_SYNC_TIMEOUT_MS } from '@app/shared/const';
 import { sleep } from '@app/shared/utils';
 import { firstValueFrom, timeout } from 'rxjs';
@@ -23,10 +23,10 @@ interface SyncOperation {
   providedIn: 'root',
 })
 export class SyncQueueService {
-  private queue: SyncOperation[] = [];
+  private readonly queue: SyncOperation[] = [];
   private isProcessing = false;
 
-  constructor(private http: HttpClient) {}
+  private readonly http = inject(HttpClient);
 
   public addOperation(operation: Omit<SyncOperation, 'retryCount'>): void {
     const fullOperation: SyncOperation = {

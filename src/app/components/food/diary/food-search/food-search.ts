@@ -1,9 +1,8 @@
 import { NgClass } from '@angular/common';
-import { AfterViewInit, Component, computed, effect, inject, OnDestroy } from '@angular/core';
-import { DeviceDetectorService } from '@app/services/device-detector.service';
+import { Component, computed, effect, inject } from '@angular/core';
+import { DeviceInfoService } from '@app/services/device-info.service';
 import { FoodAddModalService, ModalState } from '@app/services/food/food-add-modal.service';
 import { FoodCatalogueService } from '@app/services/food/food-catalogue.service';
-import { ScreenSizeWatcherService } from '@app/services/screen-size-watcher.service';
 import { VoiceRecordingService } from '@app/services/voice-recording.service';
 import { fadeScaleInAnimation } from '@app/shared/animations';
 import { FlipAnimateDirective } from '@app/shared/directives/flip-animate.directive';
@@ -15,19 +14,17 @@ import { VInput } from '@app/shared/ui-kit/v-input/v-input';
 
 @Component({
   selector: 'food-search',
-  templateUrl: './food-search.component.html',
-  styleUrl: './food-search.component.scss',
+  templateUrl: './food-search.html',
+  styleUrl: './food-search.scss',
   imports: [VInput, VButton, VIcon, VCard, FlipAnimateDirective, NgClass],
   animations: [fadeScaleInAnimation],
 })
-export class FoodSearchComponent implements AfterViewInit, OnDestroy {
+export class FoodSearch {
   protected readonly Icon = IconName;
 
   protected get searchQuery$$() {
     return this.foodAddModalService.searchQuery$$;
   }
-
-  protected readonly isMobile$$ = computed(() => this.screenSizeWatcherService.isMobile$$());
 
   protected readonly isLegacySearch$$ = computed(() => this.foodCatalogueService.isLegacySearch$$());
 
@@ -39,8 +36,8 @@ export class FoodSearchComponent implements AfterViewInit, OnDestroy {
     }
   });
 
-  private readonly clearSearchOnModalClose$$ = effect(() => {
-    const currentState = this.foodAddModalService.currentState;
+  private readonly clearSearchOnModalCloseEffect$$ = effect(() => {
+    const currentState = this.foodAddModalService.currentState$$();
 
     if (currentState === ModalState.CLOSED) {
       this.foodAddModalService.searchQuery$$.set('');
@@ -71,19 +68,10 @@ export class FoodSearchComponent implements AfterViewInit, OnDestroy {
     return this.voiceRecordingService.isRecording$$();
   }
 
-  protected get shouldShowCameraButton(): boolean {
-    return this.deviceDetectorService.shouldShowCameraButtonSync();
-  }
-
+  protected readonly deviceInfoService = inject(DeviceInfoService);
   private readonly voiceRecordingService = inject(VoiceRecordingService);
   private readonly foodCatalogueService = inject(FoodCatalogueService);
   private readonly foodAddModalService = inject(FoodAddModalService);
-  private readonly deviceDetectorService = inject(DeviceDetectorService);
-  private readonly screenSizeWatcherService = inject(ScreenSizeWatcherService);
-
-  ngAfterViewInit(): void {}
-
-  ngOnDestroy(): void {}
 
   private focusInput(): void {
     const inputEl = document.querySelector('v-input.catalogue-entry-name-input input') as HTMLInputElement;

@@ -1,6 +1,6 @@
-<form [formGroup]="catalogueEditForm"
-      (ngSubmit)="submitForm()"
-      class="flex flex-col gap-4 p-4">
+<form class="flex flex-col gap-4 p-4"
+      [formGroup]="catalogueEditForm"
+      (ngSubmit)="submitForm()">
 
   @if (isLoadingPreview$$()) {
     <div class="animate-pulse py-8 text-center">
@@ -9,7 +9,7 @@
     </div>
   } @else {
     <div class="text-xl font-semibold text-center">
-      {{ mode$$() === 'edit' ? 'Редактирование продукта' : 'Добавление нового продукта' }}
+      {{ mode$$() === this.formMode.Edit ? 'Редактирование продукта' : 'Добавление нового продукта' }}
     </div>
 
     <!-- <div class="opacity-70 mb-2 text-sm text-center">
@@ -98,7 +98,7 @@
                   type: 'submit',
                   isDisabled: !isFormValid() || isSaving$$(),
                 }">
-        {{ isSaving$$() ? 'Сохранение...' : (mode$$() === 'edit' ? 'Сохранить изменения' : 'Добавить продукт') }}
+        {{ isSaving$$() ? 'Сохранение...' : (mode$$() === this.formMode.Edit ? 'Сохранить изменения' : 'Добавить продукт') }}
       </v-button>
     </div>
   }

@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { AfterViewInit, Component, ElementRef, OnDestroy, OnInit, ViewChild, effect } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, OnInit, ViewChild, effect } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
@@ -7,6 +7,7 @@ import { MatSliderModule } from '@angular/material/slider';
 import { FoodStatsService } from '@app/services/food/food-stats.service';
 import { SettingsService } from '@app/services/settings.service';
 import { KCALS_CHART_SETTINGS, WEIGHT_CHART_SETTINGS } from '@app/shared/const';
+import { StatsChartData } from '@app/shared/interfaces';
 import { debounce, formatDateTicks, getRuDeclension, throttle } from '@app/shared/utils';
 import {
   BarController,
@@ -36,38 +37,29 @@ Chart.register(
   Legend,
 );
 
-interface StatsChartData {
-  dates: string[];
-  weights: number[];
-  weightsAvg: number[];
-  kcals: number[];
-  kcalsTarget: number[];
-}
-
 @Component({
-  selector: 'app-food-stats',
-  templateUrl: './food-stats.component.html',
-  styleUrl: './food-stats.component.scss',
+  selector: 'food-stats',
+  templateUrl: './food-stats.html',
   imports: [CommonModule, MatCardModule, MatSliderModule, FormsModule, MatButtonModule],
 })
-export class FoodStatsComponent implements OnInit, OnDestroy, AfterViewInit {
+export class FoodStats implements OnInit, AfterViewInit {
   @ViewChild('weightChartCanvas')
-  public weightChartCanvas!: ElementRef;
+  protected weightChartCanvas!: ElementRef;
 
   @ViewChild('kcalsChartCanvas')
-  public kcalsChartCanvas!: ElementRef;
+  protected kcalsChartCanvas!: ElementRef;
 
-  public weightChart!: Chart;
-  public kcalsChart!: Chart;
+  protected weightChart!: Chart;
+  protected kcalsChart!: Chart;
 
-  public selectedDateIdxStart: number = 0;
-  public selectedDateIdxEnd: number = 0;
+  protected selectedDateIdxStart: number = 0;
+  protected selectedDateIdxEnd: number = 0;
 
-  public sliderStartLabel: string = '';
-  public sliderEndLabel: string = '';
-  public selectedRangeLabel: string = '';
+  protected sliderStartLabel: string = '';
+  protected sliderEndLabel: string = '';
+  protected selectedRangeLabel: string = '';
 
-  public get maxSliderValue(): number {
+  protected get maxSliderValue(): number {
     return this.foodStatsService.statsChartData$$().dates.length - 1;
   }
 
@@ -106,7 +98,7 @@ export class FoodStatsComponent implements OnInit, OnDestroy, AfterViewInit {
     });
 
     effect(() => {
-      const data = this.foodStatsService.StatsChartDataClipped$$();
+      const data = this.foodStatsService.statsChartDataClipped$$();
       throttledUpdate(data);
       debouncedUpdate(data);
     });
@@ -132,8 +124,6 @@ export class FoodStatsComponent implements OnInit, OnDestroy, AfterViewInit {
       this.kcalsChartCanvas.nativeElement.getContext('2d').canvas.height = 250;
     }
   }
-
-  public ngOnDestroy(): void {}
 
   public sliderChangeStart(event: Event): void {
     const input = event.target as HTMLInputElement;

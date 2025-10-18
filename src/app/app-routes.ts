@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { FoodScreenComponent } from '@app/components/food/food-screen.component';
+import { FoodScreen } from '@app/components/food/food-screen';
 import { MoneyScreen } from '@app/components/money/money-screen';
 import { SettingsPageComponent } from '@app/components/settings/settings-page.component';
 import { authResolver } from '@app/services/auth.resolver';
@@ -14,13 +14,13 @@ import { UiShowcase } from './components/ui-showcase/ui-showcase';
 export const routes: Routes = [
   {
     path: 'food',
-    component: FoodScreenComponent,
+    component: FoodScreen,
     resolve: { auth: authResolver },
     canActivate: [isChapterSelected],
   },
   {
     path: 'food/:section',
-    component: FoodScreenComponent,
+    component: FoodScreen,
     resolve: { auth: authResolver },
     canActivate: [isChapterSelected],
   },

@@ -2,28 +2,26 @@ import { NgStyle } from '@angular/common';
 import {
   AfterViewInit,
   Component,
+  computed,
   effect,
   ElementRef,
   inject,
   NgZone,
-  OnDestroy,
-  OnInit,
   signal,
+  viewChild,
   viewChildren,
 } from '@angular/core';
-import { MatExpansionPanel } from '@angular/material/expansion';
-import { BMIComponent } from '@app/components/food/diary/bmi/bmi.component';
-import { BodyWeightComponent } from '@app/components/food/diary/body-weight/body-weight.component';
-import { CameraPreviewComponent } from '@app/components/food/diary/camera-preview/camera-preview.component';
-import { DiaryEntryAddFormComponent } from '@app/components/food/diary/diary-entry-add-form/diary-entry-add-form.component';
-import { DiaryEntryEditFormComponent } from '@app/components/food/diary/diary-entry-edit-form/diary-entry-edit-form.component';
-import { DiaryNavButtonsComponent } from '@app/components/food/diary/diary-nav/diary-nav-buttons.component';
-import { FoodSearchComponent } from '@app/components/food/diary/food-search/food-search.component';
-import { DeviceDetectorService } from '@app/services/device-detector.service';
+import { BMI } from '@app/components/food/diary/bmi/bmi';
+import { BodyWeight } from '@app/components/food/diary/body-weight/body-weight';
+import { CameraPreview } from '@app/components/food/diary/camera-preview/camera-preview';
+import { DiaryEntryAddForm } from '@app/components/food/diary/diary-entry-add-form/diary-entry-add-form';
+import { DiaryEntryEditForm } from '@app/components/food/diary/diary-entry-edit-form/diary-entry-edit-form';
+import { DiaryNavButtons } from '@app/components/food/diary/diary-nav/diary-nav-buttons';
+import { FoodSearch } from '@app/components/food/diary/food-search/food-search';
+import { DeviceInfoService } from '@app/services/device-info.service';
 import { FoodAddModalService, ModalState } from '@app/services/food/food-add-modal.service';
 import { FoodCatalogueService } from '@app/services/food/food-catalogue.service';
 import { FoodDiaryService } from '@app/services/food/food-diary.service';
-import { ScreenSizeWatcherService, ScreenType } from '@app/services/screen-size-watcher.service';
 import { OuterShadowRoundedDirective } from '@app/shared/ui-kit/shadow.directive';
 import { VButton } from '@app/shared/ui-kit/v-button/v-button';
 import { VCard } from '@app/shared/ui-kit/v-card/v-card';
@@ -31,92 +29,82 @@ import { AccordionDirective } from '@app/shared/ui-kit/v-expand/accordion.direct
 import { AccordionService } from '@app/shared/ui-kit/v-expand/accordion.service';
 import { VExpand } from '@app/shared/ui-kit/v-expand/v-expand';
 import { VModal } from '@app/shared/ui-kit/v-modal/v-modal';
-import { CatalogueEntryEditFormComponent } from './catalogue-entry-edit-form/catalogue-entry-edit-form';
+import { CatalogueEntryEditForm } from './catalogue-entry-edit-form/catalogue-entry-edit-form';
 
 @Component({
-  selector: 'app-food-diary',
-  templateUrl: './food-diary.component.html',
-  styleUrl: './food-diary.component.scss',
+  selector: 'food-diary',
+  templateUrl: './food-diary.html',
+  styleUrl: './food-diary.scss',
   imports: [
     NgStyle,
-    DiaryNavButtonsComponent,
-    DiaryEntryEditFormComponent,
-    DiaryEntryAddFormComponent,
-    BodyWeightComponent,
-    BMIComponent,
-    CameraPreviewComponent,
-    FoodSearchComponent,
-    CatalogueEntryEditFormComponent,
+    DiaryNavButtons,
+    DiaryEntryEditForm,
+    DiaryEntryAddForm,
+    BMI,
+    CameraPreview,
+    FoodSearch,
+    CatalogueEntryEditForm,
     VButton,
     VModal,
     VExpand,
     VCard,
     OuterShadowRoundedDirective,
     AccordionDirective,
+    BodyWeight,
   ],
 })
-export class FoodDiaryComponent implements OnInit, AfterViewInit, OnDestroy {
+export class FoodDiary implements AfterViewInit {
+  protected readonly bodyWeightComponent = viewChild.required<BodyWeight>('bodyWeight');
+  protected readonly diaryEntryHeaders = viewChildren<ElementRef>('diaryEntryHeader');
+
   protected readonly weightsDivs = viewChildren<ElementRef>('foodWeight');
   protected readonly kcalsDivs = viewChildren<ElementRef>('foodKcals');
   protected readonly percentsDivs = viewChildren<ElementRef>('foodPercent');
 
   private readonly shouldRecalcColumns$$ = signal(0);
 
-  private readonly columnSyncEffect$$ = effect(() => {
-    this.selectedDayFood;
+  protected readonly ModalViewMode = ModalState;
+
+  protected readonly selectedDayDiaryEntries$$ = computed(() => {
+    const selectedDay = this.foodDiaryService.selectedDayIso$$();
+    return this.foodDiaryService.diary$$()[selectedDay]?.food || [];
+  });
+
+  protected readonly selectedDaysKcalsPercent$$ = computed(() => {
+    return this.foodDiaryService.selectedDayTotals$$().kcalsPercent;
+  });
+
+  protected readonly selectedDaysKcalsEaten$$ = computed(() => {
+    return this.foodDiaryService.selectedDayTotals$$().kcalsEaten;
+  });
+
+  protected readonly selectedDaysTargetKcals$$ = computed(() => {
+    return this.foodDiaryService.selectedDayTotals$$().targetKcals;
+  });
+
+  protected readonly selectedDaysFormattedEatenPercent$$ = computed(() => {
+    return Math.round(this.foodDiaryService.selectedDayTotals$$().kcalsPercent * 10) / 10;
+  });
+
+  protected readonly caloriesDisplayText$$ = computed(() => {
+    const percent = this.selectedDaysFormattedEatenPercent$$();
+    if (Number.isNaN(percent)) return '';
+
+    return `Съедено ${percent}% от дневной нормы`;
+  });
+
+  private readonly columnWidthsSyncEffect$$ = effect(() => {
+    this.selectedDayDiaryEntries$$();
     this.shouldRecalcColumns$$();
     setTimeout(() => this.syncColumnWidths(), 0);
   });
 
-  protected readonly ModalViewMode = ModalState;
-
-  protected get todaysKcalsPercent() {
-    return this.foodDiaryService.selectedDayTotals$$().kcalsPercent;
-  }
-
-  protected get selectedDayFood() {
-    const selectedDay = this.foodDiaryService.selectedDayIso$$();
-    return this.foodDiaryService.diary$$()[selectedDay]?.food || [];
-  }
-
-  protected get todaysKcalsEaten() {
-    return this.foodDiaryService.selectedDayTotals$$().kcalsEaten;
-  }
-
-  protected get todaysTargetKcals() {
-    return this.foodDiaryService.selectedDayTotals$$().targetKcals;
-  }
-
-  protected get formattedSelectedDaysEatenPercent(): number {
-    return Math.round(this.foodDiaryService.selectedDayTotals$$().kcalsPercent * 10) / 10;
-  }
-
-  protected get caloriesDisplayText(): string {
-    const percent = this.formattedSelectedDaysEatenPercent;
-    if (Number.isNaN(percent)) return '';
-
-    // if (this.isLiteVersionSetting) {
-    return `Съедено ${percent}% от дневной нормы`;
-    // } else {
-    //   return `Съедено ${this.todaysKcalsEaten} ккал. от нормы ${this.todaysTargetKcals} (${percent}%)`;
-    // }
-  }
-
-  // protected get isLiteVersionSetting(): boolean {
-  //   return this.settingsService.settings$$()?.liteVersion ?? false;
-  // }
-
   protected readonly foodDiaryService = inject(FoodDiaryService);
   protected readonly foodAddModalService = inject(FoodAddModalService);
-  protected readonly deviceDetectorService = inject(DeviceDetectorService);
+  protected readonly deviceInfoService = inject(DeviceInfoService);
   private readonly accordionService = inject(AccordionService);
   private readonly foodCatalogueService = inject(FoodCatalogueService);
-  private readonly screenSizeWatcherService = inject(ScreenSizeWatcherService);
   private readonly ngZone = inject(NgZone);
-
-  public ngOnInit(): void {
-    // this.deviceDetectorService.logDeviceInfo();
-  }
 
   public ngAfterViewInit(): void {
     this.triggerColumnRecalc();
@@ -125,8 +113,6 @@ export class FoodDiaryComponent implements OnInit, AfterViewInit, OnDestroy {
   private triggerColumnRecalc(): void {
     this.shouldRecalcColumns$$.update((val) => val + 1);
   }
-
-  public ngOnDestroy(): void {}
 
   protected setBackgroundStyle(
     percent: number,
@@ -143,17 +129,6 @@ export class FoodDiaryComponent implements OnInit, AfterViewInit, OnDestroy {
     };
   }
 
-  protected diaryEntryExpanded(diaryEntry: MatExpansionPanel, diaryEntryId: number) {
-    if (this.screenSizeWatcherService.currentScreenType === ScreenType.DESKTOP) return;
-
-    setTimeout(() => {
-      window.scrollTo({
-        top: diaryEntry._body.nativeElement.getBoundingClientRect().top + window.scrollY - 70,
-        behavior: 'smooth',
-      });
-    }, 170);
-  }
-
   protected accordionCollapse() {
     this.accordionService.closeGroup('food-group');
   }
@@ -164,6 +139,7 @@ export class FoodDiaryComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   protected openAddFoodModal() {
+    this.accordionCollapse();
     this.foodAddModalService.openModal();
   }
 
@@ -214,12 +190,33 @@ export class FoodDiaryComponent implements OnInit, AfterViewInit, OnDestroy {
     });
   }
 
-  protected onVExpandOpened($event: CustomEvent<boolean>, diaryEntryId: number): void {
+  protected onVExpandOpened($event: CustomEvent<boolean>, expandingDiaryEntryId: number): void {
     if ($event.detail) {
-      this.foodDiaryService.focusDiaryEntry(diaryEntryId);
+      this.foodDiaryService.focusDiaryEntry(expandingDiaryEntryId);
       this.triggerColumnRecalc();
+
+      if (this.deviceInfoService.isDesktopScreen$$()) return;
+
+      setTimeout(() => {
+        const foodIndex = this.selectedDayDiaryEntries$$().findIndex((food) => food.id === expandingDiaryEntryId);
+        if (foodIndex === -1) return;
+
+        const headerEl = this.diaryEntryHeaders()[foodIndex]?.nativeElement;
+        if (headerEl) {
+          window.scrollTo({
+            top: headerEl.getBoundingClientRect().top + window.scrollY - 4,
+            behavior: 'smooth',
+          });
+        }
+      }, 100); // Waiting for the v-expand animation to finish, otherwise the scroll animation may not finish properly
     } else {
-      this.foodDiaryService.resetDiaryEntryForm(diaryEntryId);
+      this.foodDiaryService.resetDiaryEntryForm(expandingDiaryEntryId);
+    }
+  }
+
+  protected onBMIExpandOpened($event: CustomEvent<boolean>): void {
+    if ($event.detail) {
+      this.bodyWeightComponent().focusIfEmpty();
     }
   }
 }

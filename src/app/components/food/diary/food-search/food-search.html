@@ -2,13 +2,13 @@
      class="flex justify-center gap-4 px-4 pt-4">
   @if (isLegacySearch$$()) {
     <v-button primary
+              tabindex="-1"
               [config]="{
                 isLabelHidden: true,
                 padding: 2,
               }"
               (mousedown)="$event.preventDefault()"
-              (onClick)="toggleLegacySearch()"
-              tabindex="-1">
+              (onClick)="toggleLegacySearch()">
       <v-icon v-prefix
               [name]="Icon.SwapHoriz"
               [size]="7" />
@@ -16,25 +16,26 @@
   }
   @else {
     <v-button raised
+              tabindex="-1"
               [config]="{
                 isLabelHidden: true,
                 padding: 2,
               }"
               (mousedown)="$event.preventDefault()"
-              (onClick)="toggleLegacySearch()"
-              tabindex="-1">
+              (onClick)="toggleLegacySearch()">
       <v-icon v-prefix
               [name]="Icon.SwapHoriz"
               [size]="7" />
     </v-button>
   }
 
-  <v-input [(value)]="searchQuery$$"
+  <v-input class="catalogue-entry-name-input w-full"
            [config]="{
              type: 'text'
            }"
-           class="catalogue-entry-name-input w-full" />
+           [(value)]="searchQuery$$" />
 
+  <!--
   @if (isRecording) {
     <v-button primary
               [config]="{
@@ -60,9 +61,8 @@
     </v-button>
   }
 
-  @if (shouldShowCameraButton) {
+  @if (deviceInfoService.hasCameras$$() && deviceInfoService.isMobileDevice$$()) {
     <v-button raised
-              class="md:hidden inline-block"
               [config]="{
                 padding: 2,
                 isLabelHidden: true,
@@ -73,6 +73,7 @@
               [size]="7" />
     </v-button>
   }
+  -->
 </div>
 
 @if (isLegacySearch$$()) {
@@ -90,8 +91,8 @@
     <div flipAnimate
          class="contents">
       @for (catalogueEntry of searchResults$$(); track catalogueEntry.id) {
-        <v-card class="cursor-pointer"
-                [attr.data-flip-key]="'catalogue-' + catalogueEntry.id"
+        <v-card [attr.data-flip-key]="'catalogue-' + catalogueEntry.id"
+                class="cursor-pointer"
                 [config]="{
                   padding: 1,
                   backgroundImageUrl: getImageUrl(catalogueEntry),
@@ -108,11 +109,11 @@
   }
 
   @if (searchResults$$().length > 0) {
-    <v-card class="cursor-pointer"
+    <v-card @fadeScaleIn
+            class="cursor-pointer"
             [config]="{
               padding: 2
             }"
-            @fadeScaleIn
             (click)="addProduct()">
       <div class="add-catalogue-entry flex items-center justify-center w-full h-full">
         <v-icon [name]="Icon.Add"
@@ -122,7 +123,7 @@
   }
 </div>
 
-@if (searchResults$$().length > 0 && isMobile$$()) {
+@if (searchResults$$().length > 0 && this.deviceInfoService.isMobileScreen$$()) {
   <div class="sticky bottom-0 flex justify-start px-4 pb-4">
     <v-button danger
               [config]="{

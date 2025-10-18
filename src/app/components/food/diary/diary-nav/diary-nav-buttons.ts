@@ -4,19 +4,19 @@ import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { MatDatepickerInputEvent, MatDatepickerModule } from '@angular/material/datepicker';
 import { MatInputModule } from '@angular/material/input';
 import { AuthService } from '@app/services/auth.service';
-import { DeviceDetectorService } from '@app/services/device-detector.service';
+import { DeviceInfoService } from '@app/services/device-info.service';
 import { FoodDiaryService } from '@app/services/food/food-diary.service';
 import { VButton } from '@app/shared/ui-kit/v-button/v-button';
 import { IconName, VIcon } from '@app/shared/ui-kit/v-icon/v-icon';
 import { calcDateWithUserTimeShift, dateToIsoNoTimeNoTZ, epochToIsoNoTimeNoTZ } from '@app/shared/utils';
 
 @Component({
-  selector: 'app-diary-nav-buttons',
-  templateUrl: './diary-nav-buttons.component.html',
-  styleUrl: './diary-nav-buttons.component.scss',
+  selector: 'diary-nav-buttons',
+  templateUrl: './diary-nav-buttons.html',
+  styleUrl: './diary-nav-buttons.scss',
   imports: [CommonModule, MatDatepickerModule, ReactiveFormsModule, MatInputModule, VButton, VIcon],
 })
-export class DiaryNavButtonsComponent {
+export class DiaryNavButtons {
   protected initDateTodayWithUserHourShift: Date = calcDateWithUserTimeShift(new Date());
 
   protected formCalendarSelectedDay: FormControl<Date> = new FormControl<Date>(this.initDateTodayWithUserHourShift, {
@@ -29,12 +29,12 @@ export class DiaryNavButtonsComponent {
 
   private selectedDateMsWithUserHourShift: number = this.initDateTodayWithUserHourShift.getTime();
 
-  protected readonly deviceDetectorService = inject(DeviceDetectorService);
-  private readonly authService = inject(AuthService);
+  protected readonly deviceInfoService = inject(DeviceInfoService);
+  protected readonly authService = inject(AuthService);
   private readonly foodDiaryService = inject(FoodDiaryService);
 
   protected get isAuthenticated(): boolean {
-    return this.authService.isAuthenticated;
+    return this.authService.isAuthenticated$$();
   }
 
   protected formatDate(dateIso: string): string {

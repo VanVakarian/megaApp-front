@@ -1,31 +1,34 @@
-<div class="lg:block hidden mb-4">
-  <v-card [config]="{
-            borderRadius: 2,
-            padding: 0
-          }">
-    <div class="w-full my-2 text-xl font-semibold text-center">Дневник</div>
-  </v-card>
-</div>
+@if (deviceInfoService.isDesktopScreen$$()) {
+  <div class="mb-4">
+    <v-card [config]="{
+              borderRadius: 2,
+              padding: 0
+            }">
+      <div class="w-full my-2 text-xl font-semibold text-center">Дневник</div>
+    </v-card>
+  </div>
+}
 
 <div class="flex gap-2">
   <div class="w-full mb-2">
-    <app-diary-nav-buttons />
+    <diary-nav-buttons />
   </div>
 </div>
 
-<v-expand accordion="food-group"
-          outer-shadow-rounded
-          class="BMI mb-2">
+<v-expand outer-shadow-rounded
+          accordion="food-group"
+          class="BMI mb-2"
+          (onOpened)="onBMIExpandOpened($event)">
   <div v-header
        class="v-header w-full p-2 text-center"
-       [ngStyle]="setBackgroundStyle(todaysKcalsPercent, true, true)">
-    <span class=" font-normal">{{ caloriesDisplayText }}</span>
+       [ngStyle]="setBackgroundStyle(selectedDaysKcalsPercent$$(), true, true)">
+    <span class=" font-normal">{{ caloriesDisplayText$$() }}</span>
 
   </div>
   <div v-body
        class="flex flex-col gap-2 p-4">
-    <app-bmi />
-    <app-body-weight />
+    <bmi />
+    <body-weight #bodyWeight />
   </div>
 </v-expand>
 
@@ -48,15 +51,15 @@
 </div>
 
 <div outer-shadow-rounded
-     [shadowBorderRadius]="2"
-     class="">
-  @for (food of selectedDayFood; track food.id; let isFirst = $first; let isLast = $last) {
+     [shadowBorderRadius]="2">
+  @for (food of selectedDayDiaryEntries$$(); track food.id; let isFirst = $first; let isLast = $last) {
     <v-expand accordion="food-group"
-              (onOpened)="onVExpandOpened($event, food.id)"
-              class="item">
+              class="item"
+              (onOpened)="onVExpandOpened($event, food.id)">
       <div v-header
-           [ngStyle]="setBackgroundStyle(food.foodKcalPercentageOfDaysNorm, isFirst, isLast)"
-           class="p-2">
+           #diaryEntryHeader
+           class="p-2"
+           [ngStyle]="setBackgroundStyle(food.foodKcalPercentageOfDaysNorm, isFirst, isLast)">
         <div #foodCont
              class="whitespace-nowrap flex overflow-hidden font-normal">
           <div #foodName
@@ -79,8 +82,8 @@
       <div v-body
            class="p-4">
         @defer (on timer(300)) {
-          <app-diary-entry-edit-form [diaryEntry]="food"
-                                     (onServerSuccessfullEditResponse)="accordionCollapse()" />
+          <diary-entry-edit-form [diaryEntry]="food"
+                                 (onServerSuccessfullEditResponse)="accordionCollapse()" />
         }
       </div>
     </v-expand>
@@ -99,15 +102,15 @@
 <div class="h-[50vh]"></div>
 
 <v-modal [config]="{
-           isOpen: foodAddModalService.currentState !== ModalViewMode.CLOSED,
+           isOpen: foodAddModalService.currentState$$() !== ModalViewMode.CLOSED,
            borderRadius: 3,
            padding: 0,
-           deviceType: deviceDetectorService.isMobile$$() ? 'mobile' : 'desktop',
+           deviceType: deviceInfoService.isMobileScreen$$() ? 'mobile' : 'desktop',
            mobileWidth: '100vw',
            desktopWidth: 'min(100vw, 577px)'
          }"
          (onClose)="closeModal()">
-  @switch (foodAddModalService.currentState) {
+  @switch (foodAddModalService.currentState$$()) {
     @case (ModalViewMode.SEARCH) {
       <food-search />
     }

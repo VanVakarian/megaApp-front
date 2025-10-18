@@ -101,13 +101,13 @@
                formControlName="testInput">
         <v-button flat
                   v-prefix
+                  class="mr-2"
                   [config]="{
                     isWithoutShadow: true,
                     bgOpacity: '0.5',
                     padding: 0,
                   }"
-                  (click)="consoleLogFormValue()"
-                  class="mr-2">
+                  (click)="consoleLogFormValue()">
           <v-icon [name]="Icon.Close"
                   [size]="8" />
         </v-button>

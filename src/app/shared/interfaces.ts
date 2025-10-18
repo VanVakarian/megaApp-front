@@ -298,7 +298,7 @@ export interface Coefficients {
   [id: number]: number;
 }
 
-export interface BodyWeight {
+export interface BodyWeightInterface {
   bodyWeight: string;
   dateISO: string;
 }

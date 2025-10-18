@@ -45,45 +45,45 @@ const DEFAULT_V_BUTTON_CONFIG: Required<VButtonConfig> = {
   templateUrl: './v-button.html',
   styleUrl: './v-button.css',
   host: {
-    '[style.width]': 'width() ? width() : null',
+    '[style.width]': 'width$$() ? width$$() : null',
     '[attr.primary]': 'isPrimary ? "" : null',
     '[attr.raised]': 'isRaised ? "" : null',
     '[attr.flat]': 'isFlat ? "" : null',
     '[attr.danger]': 'isDanger ? "" : null',
-    '[attr.no-shadow]': 'isWithoutShadow() ? "" : null',
-    '[style.--v-button-border-radius]': 'borderRadiusString()',
-    '[style.--v-button-bg-opacity]': 'bgOpacity()',
-    '[style.--v-button-padding-x]': 'paddingXString()',
-    '[style.--v-button-padding-y]': 'paddingYString()',
-    '[attr.text-align]': 'textAlign() ? textAlign() : null',
-    '[attr.aria-disabled]': 'isDisabled() ? "true" : "false"',
+    '[attr.no-shadow]': 'isWithoutShadow$$() ? "" : null',
+    '[style.--v-button-border-radius]': 'borderRadiusString$$()',
+    '[style.--v-button-bg-opacity]': 'bgOpacity$$()',
+    '[style.--v-button-padding-x]': 'paddingXString$$()',
+    '[style.--v-button-padding-y]': 'paddingYString$$()',
+    '[attr.text-align]': 'textAlign$$() ? textAlign$$() : null',
+    '[attr.aria-disabled]': 'isDisabled$$() ? "true" : "false"',
   },
 })
 export class VButton {
   public readonly config = input<VButtonConfig>({});
 
-  protected readonly settings = computed(() => ({
+  protected readonly settings$$ = computed(() => ({
     ...DEFAULT_V_BUTTON_CONFIG,
     ...this.config(),
   }));
 
-  protected readonly type = computed(() => this.settings().type);
-  protected readonly width = computed(() => this.settings().width);
-  protected readonly isLabelHidden = computed(() => this.settings().isLabelHidden);
+  protected readonly type$$ = computed(() => this.settings$$().type);
+  protected readonly width$$ = computed(() => this.settings$$().width);
+  protected readonly isLabelHidden$$ = computed(() => this.settings$$().isLabelHidden);
 
-  protected readonly borderRadius = computed(() => this.settings().borderRadius);
-  protected readonly paddingX = computed(() => this.getPaddingX());
-  protected readonly paddingY = computed(() => this.getPaddingY());
-  protected readonly isDisabled = computed(() => this.settings().isDisabled);
-  protected readonly isWithoutShadow = computed(() => this.settings().isWithoutShadow);
-  protected readonly bgOpacity = computed(() => this.settings().bgOpacity);
-  protected readonly textAlign = computed(() => this.settings().textAlign);
+  protected readonly borderRadius$$ = computed(() => this.settings$$().borderRadius);
+  protected readonly paddingX$$ = computed(() => this.getPaddingX());
+  protected readonly paddingY$$ = computed(() => this.getPaddingY());
+  protected readonly isDisabled$$ = computed(() => this.settings$$().isDisabled);
+  protected readonly isWithoutShadow$$ = computed(() => this.settings$$().isWithoutShadow);
+  protected readonly bgOpacity$$ = computed(() => this.settings$$().bgOpacity);
+  protected readonly textAlign$$ = computed(() => this.settings$$().textAlign);
 
   protected readonly onClick = output<MouseEvent>();
 
-  protected readonly borderRadiusString = computed(() => `var(--unit-${this.borderRadius()})`);
-  protected readonly paddingYString = computed(() => `var(--unit-${this.paddingY()})`);
-  protected readonly paddingXString = computed(() => `var(--unit-${this.paddingX()})`);
+  protected readonly borderRadiusString$$ = computed(() => `var(--unit-${this.borderRadius$$()})`);
+  protected readonly paddingYString$$ = computed(() => `var(--unit-${this.paddingY$$()})`);
+  protected readonly paddingXString$$ = computed(() => `var(--unit-${this.paddingX$$()})`);
 
   public get isFlat(): boolean {
     return this.getActiveStyle() === ButtonStyle.Flat;
@@ -106,7 +106,7 @@ export class VButton {
   constructor() {}
 
   protected onButtonClick(event: MouseEvent): void {
-    if (this.isDisabled()) {
+    if (this.isDisabled$$()) {
       event.preventDefault();
       event.stopPropagation();
       return;
@@ -115,7 +115,7 @@ export class VButton {
   }
 
   private getActiveStyle(): ButtonStyle {
-    const styleInput = this.settings().buttonStyle;
+    const styleInput = this.settings$$().buttonStyle;
     if (styleInput) return styleInput;
 
     const element = this.elementRef.nativeElement;
@@ -131,13 +131,13 @@ export class VButton {
     const config = this.config();
     if (config.paddingX !== undefined) return config.paddingX;
     if (config.padding !== undefined) return config.padding;
-    return this.settings().paddingX;
+    return this.settings$$().paddingX;
   }
 
   private getPaddingY(): CssUnitValue {
     const config = this.config();
     if (config.paddingY !== undefined) return config.paddingY;
     if (config.padding !== undefined) return config.padding;
-    return this.settings().paddingY;
+    return this.settings$$().paddingY;
   }
 }

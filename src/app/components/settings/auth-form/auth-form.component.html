@@ -1,7 +1,7 @@
 <mat-card>
 
   <div class="m-4">
-    @if (!authService.isAuthenticated) {
+    @if (!authService.isAuthenticated$$()) {
       <form class="flex flex-col gap-2 mt-6"
             [formGroup]="authForm"
             (ngSubmit)="submit()">

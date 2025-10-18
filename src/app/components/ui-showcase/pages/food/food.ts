@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { BMIComponent } from '@app/components/food/diary/bmi/bmi.component';
+import { BMI } from '@app/components/food/diary/bmi/bmi';
 import { InnerShadowRoundedDirective, OuterShadowRoundedDirective } from '@app/shared/ui-kit/shadow.directive';
 import { VButton } from '@app/shared/ui-kit/v-button/v-button';
 import { VCard } from '@app/shared/ui-kit/v-card/v-card';
@@ -20,7 +20,7 @@ import { weightValidator } from '@app/shared/ui-kit/v-input/validators';
     VExpand,
     VDropdown,
     VInput,
-    BMIComponent,
+    BMI,
     OuterShadowRoundedDirective,
     InnerShadowRoundedDirective,
     AccordionDirective,
