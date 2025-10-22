@@ -97,6 +97,7 @@ export interface StopVoiceRecordingWsMessage {
 export interface SearchQueryWsMessage {
   type: WebSocketMessageType.SEARCH_QUERY;
   query: string;
+  sequenceNumber: number;
 }
 
 export interface SearchResultsWsMessage {
@@ -105,6 +106,7 @@ export interface SearchResultsWsMessage {
     query: string;
     catalogueIds: number[];
     timestamp: number;
+    sequenceNumber: number;
   };
 }
 
@@ -168,7 +170,7 @@ export interface ProductPreviewData {
   fat: number;
   carbs: number;
   fiber: number;
-  descriptionForEmbedding: string;
+  description: string;
   confidence: number;
 }
 

@@ -39,6 +39,8 @@ export class FoodCatalogueService extends BaseFoodService {
 
   private searchCache: Record<string, number[]> = {};
   private pendingSearchQuery: string = '';
+  private searchSequenceNumber: number = 0;
+  private lastDisplayedSequenceNumber: number = 0;
 
   protected getStorageKey(): string {
     return this.CATALOGUE_STORAGE_KEY;
@@ -82,17 +84,22 @@ export class FoodCatalogueService extends BaseFoodService {
 
     if (!query.trim()) {
       this.searchResults$$.set([]);
+      this.searchSequenceNumber = 0;
+      this.lastDisplayedSequenceNumber = 0;
       return;
     }
+
+    this.searchSequenceNumber++;
 
     const cachedIds = this.getSearchCachedResults(query);
     if (cachedIds) {
       this.displaySearchResults(cachedIds);
+      this.lastDisplayedSequenceNumber = this.searchSequenceNumber;
     }
 
     const queryWithTransliteration = this.addTransliterationToQuery(query);
     this.pendingSearchQuery = query;
-    this.sendSearchQuery(queryWithTransliteration);
+    this.sendSearchQuery(queryWithTransliteration, this.searchSequenceNumber);
   }
 
   private addTransliterationToQuery(query: string): string {
@@ -146,10 +153,11 @@ export class FoodCatalogueService extends BaseFoodService {
     this.saveSearchCacheToLocalStorage();
   }
 
-  private sendSearchQuery(query: string): void {
+  private sendSearchQuery(query: string, sequenceNumber: number): void {
     const message: SearchQueryWsMessage = {
       type: WebSocketMessageType.SEARCH_QUERY,
       query: query,
+      sequenceNumber: sequenceNumber,
     };
     this.networkService.sendMessage(message);
   }
@@ -176,17 +184,22 @@ export class FoodCatalogueService extends BaseFoodService {
 
   private handleSearchResults(msg: SearchResultsWsMessage): void {
     const results = msg.payload.catalogueIds;
-    const originalQuery = this.pendingSearchQuery;
+    const queryFromMessage = msg.payload.query;
+    const sequenceFromMessage = msg.payload.sequenceNumber;
 
-    if (!originalQuery) {
+    if (!queryFromMessage) {
       return;
     }
 
-    const cachedIds = this.getSearchCachedResults(originalQuery);
+    const cachedIds = this.getSearchCachedResults(queryFromMessage);
 
     if (!cachedIds || !this.arraysEqual(cachedIds, results)) {
-      this.setSearchCachedResults(originalQuery, results);
-      this.displaySearchResults(results);
+      this.setSearchCachedResults(queryFromMessage, results);
+
+      if (sequenceFromMessage > this.lastDisplayedSequenceNumber) {
+        this.displaySearchResults(results);
+        this.lastDisplayedSequenceNumber = sequenceFromMessage;
+      }
     }
   }
 
@@ -271,6 +284,8 @@ export class FoodCatalogueService extends BaseFoodService {
     this.searchQuery$$.set('');
     this.searchResults$$.set([]);
     this.legacySearchResults$$.set([]);
+    this.searchSequenceNumber = 0;
+    this.lastDisplayedSequenceNumber = 0;
   }
 
   public async generateProductPreview(description: string): Promise<ProductPreviewData> {
