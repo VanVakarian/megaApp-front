@@ -115,7 +115,7 @@ export class CatalogueEntryEditForm implements OnInit {
       fat: data.fat,
       carbs: data.carbs,
       fiber: data.fiber,
-      description: data.descriptionForEmbedding,
+      description: data.description,
     });
   }
 
