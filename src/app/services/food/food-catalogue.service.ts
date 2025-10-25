@@ -221,13 +221,14 @@ export class FoodCatalogueService extends BaseFoodService {
 
   private handleCatalogueImageGenerated(msg: CatalogueImageGeneratedWsMessage): void {
     const catalogueId = msg.payload.catalogueId;
+    const imageVersion = msg.payload.imageVersion;
     const catalogue = this.catalogue$$();
     const existingEntry = catalogue[catalogueId];
 
     if (existingEntry) {
       const updatedEntry = {
         ...existingEntry,
-        hasImage: true,
+        imageVersion,
       };
 
       const updatedCatalogue = {

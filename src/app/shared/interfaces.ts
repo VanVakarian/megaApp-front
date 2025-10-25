@@ -119,6 +119,7 @@ export interface CatalogueImageGeneratedWsMessage {
   type: WebSocketMessageType.CATALOGUE_IMAGE_GENERATED;
   payload: {
     catalogueId: number;
+    imageVersion: number;
   };
 }
 
@@ -289,7 +290,7 @@ export interface CatalogueEntry {
   carbs: number;
   fiber: number;
   description: string;
-  hasImage: boolean;
+  imageVersion?: number;
 }
 
 export interface Catalogue {
