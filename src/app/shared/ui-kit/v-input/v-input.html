@@ -26,6 +26,7 @@
               [style.--v-input-font-size]="cssFontSize$$()"
               class="input-field textarea-field"
               (input)="onInputChange($event)"
+              (change)="onInputChange($event)"
               (focus)="onFocus()"
               (blur)="onBlur()"
               (keydown)="onKeydown($event)"></textarea>
@@ -43,6 +44,7 @@
            [style.--v-input-font-size]="cssFontSize$$()"
            class="input-field"
            (input)="onInputChange($event)"
+           (change)="onInputChange($event)"
            (focus)="onFocus()"
            (blur)="onBlur()"
            (keydown)="onKeydown($event)" />
