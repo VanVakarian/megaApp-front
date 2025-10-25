@@ -120,9 +120,9 @@ export class FoodSearch {
   }
 
   protected getImageUrl(catalogueEntry: CatalogueEntry): string | null {
-    if (!catalogueEntry.hasImage) {
+    if (!catalogueEntry.imageVersion) {
       return null;
     }
-    return `/api/images/food/${catalogueEntry.id}-thumb.webp`;
+    return `/api/images/food/${catalogueEntry.id}-thumb-v${catalogueEntry.imageVersion}.webp`;
   }
 }
