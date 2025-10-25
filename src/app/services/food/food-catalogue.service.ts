@@ -94,6 +94,7 @@ export class FoodCatalogueService extends BaseFoodService {
     const cachedIds = this.getSearchCachedResults(query);
     if (cachedIds) {
       this.displaySearchResults(cachedIds);
+      this.lastDisplayedSequenceNumber = this.searchSequenceNumber;
     }
 
     const queryWithTransliteration = this.addTransliterationToQuery(query);
@@ -190,13 +191,16 @@ export class FoodCatalogueService extends BaseFoodService {
       return;
     }
 
-    const cacheKey = this.pendingSearchQuery;
+    const cacheKey = queryFromMessage;
     const cachedIds = this.getSearchCachedResults(cacheKey);
+
+    const currentQuery = this.searchQuery$$();
+    const isCurrentSearch = queryFromMessage === currentQuery;
 
     if (!cachedIds || !this.arraysEqual(cachedIds, results)) {
       this.setSearchCachedResults(cacheKey, results);
 
-      if (sequenceFromMessage > this.lastDisplayedSequenceNumber) {
+      if (sequenceFromMessage > this.lastDisplayedSequenceNumber && isCurrentSearch) {
         this.displaySearchResults(results);
         this.lastDisplayedSequenceNumber = sequenceFromMessage;
       }
