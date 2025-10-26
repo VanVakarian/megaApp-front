@@ -1,17 +1,9 @@
 <div class="header"
      (click)="toggle()">
-
-  <!-- <div class="header-content"> -->
   <ng-content select="[v-header]" />
-  <!-- </div> -->
-
 </div>
 
 <div class="body"
-     [class.expanded]="isExpanded()">
-
-  <!-- <div class="body-content"> -->
+     [class.expanded]="isPanelExpanded()">
   <ng-content select="[v-body]" />
-  <!-- </div> -->
-
 </div>

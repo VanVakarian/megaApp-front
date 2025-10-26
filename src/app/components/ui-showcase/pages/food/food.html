@@ -1,33 +1,52 @@
 <v-expand accordion
-          outer-shadow
+          outer-shadow-rounded
           class="BMI">
   <div v-header
        class="v-header w-full p-2 text-center"
-       [ngStyle]="setBackgroundStyle(todaysKcalsPercent)">
+       [style.background]="setBackgroundStyle(todaysKcalsPercent)">
     Съедено 80.6% от дневной нормы
   </div>
   <div v-body
        class="flex flex-col gap-4 p-2">
-    <app-bmi />
+    <bmi />
     <form [formGroup]="form"
           class="flex justify-end">
-      <v-input type="text"
-               label="Вес"
-               placeholder="Введите вес"
-               formControlName="weight"
+      <v-input formControlName="weight"
+               [config]="{
+                 type: 'text',
+                 label: 'Вес',
+                 placeholder: 'Введите вес'
+               }"
                class="weight-input w-1/2" />
     </form>
   </div>
 </v-expand>
 
-<v-card>
+<v-card class="flex flex-col gap-4">
   <h2>Food UI Components</h2>
   <p>Here will be food-related UI components showcase</p>
   <p><strong>Note:</strong> Food menu items are in "food-menu" group, items below are in "items-group"</p>
+
+  <v-button primary
+            (click)="toggleHiddenPanel()">
+    @if (isHiddenPanelExpanded) {
+      Hide Hidden Panel
+    } @else {
+      Show Hidden Panel
+    }
+  </v-button>
+
+  <v-expand outer-shadow-rounded
+            [isExpanded]="isHiddenPanelExpanded">
+    <div v-body
+         class="p-2">
+      <p>Hidden expansion panel content</p>
+    </div>
+  </v-expand>
 </v-card>
 
 <v-expand accordion
-          outer-shadow>
+          outer-shadow-rounded>
   <h3 v-header
       class="p-2">🍕 Pizza Menu</h3>
   <div v-body
@@ -39,7 +58,7 @@
 </v-expand>
 
 <v-expand accordion
-          inner-shadow>
+          inner-shadow-rounded>
   <h3 v-header
       class="p-2">🥗 Daily Specials</h3>
   <div v-body
@@ -54,7 +73,8 @@
   </div>
 </v-expand>
 
-<div outer-shadow
+<div outer-shadow-rounded
+     [shadowBorderRadius]="4"
      class="items">
   @for (i of [0,1,2]; track i) {
     <v-expand accordion="test-group"
@@ -72,17 +92,21 @@
 </div>
 
 <div class="flex gap-4">
-  <div [formGroup]="form">
-    <v-input label="random input"
-             placeholder="Введите что-нибудь"
-             formControlName="test01" />
+  <div class="w-1/2"
+       [formGroup]="form">
+    <v-input formControlName="test01"
+             [config]="{
+               label: 'random input',
+               placeholder: 'Введите что-нибудь'
+             }" />
   </div>
 
   <v-dropdown label="Select Food Item"
               placeholder="Search food items"
+              class="w-1/2"
               [items]="foodItems"
               [minDropdownWidth]="'300px'"
-              [expandDirection]="'left'"
+              [expandDirection]="ddExpandDirection.Left"
               (onSelectionChanged)="onFoodItemChange($event)">
   </v-dropdown>
 </div>

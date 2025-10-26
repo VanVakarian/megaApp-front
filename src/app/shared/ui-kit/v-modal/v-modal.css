@@ -1,0 +1,73 @@
+@import '@app/shared/ui-kit/vars.css';
+
+:host {
+}
+
+.modal-container {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  max-width: 100vw;
+  max-height: 100dvh;
+  z-index: var(--v-modal-z-index);
+  display: flex;
+  flex-direction: column;
+  cursor: default;
+}
+
+.modal-content {
+  width: var(--v-modal-width, 400px);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: visible; /* TODO[121]: fix cutting out of the dropdown list popup */
+  padding: var(--v-modal-padding-y, var(--unit-2)) var(--v-modal-padding-x, var(--unit-2));
+}
+
+.modal-content::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--color-bg-default);
+  border-radius: var(--v-modal-border-radius);
+  z-index: 0;
+}
+
+.close-button {
+  position: absolute;
+  top: var(--unit-1);
+  right: var(--unit-2);
+  z-index: 2;
+
+  svg {
+    width: var(--unit-6);
+    height: var(--unit-6);
+  }
+}
+
+.modal-body {
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  position: relative;
+  z-index: 1;
+  min-height: 0;
+}
+
+::ng-deep [v-header] {
+  border-bottom: 1px solid var(--shadow-dark-light);
+  font-weight: 600;
+  color: var(--color-text-default);
+  flex-shrink: 0;
+  position: relative;
+  z-index: 1;
+}
+
+::ng-deep [v-footer] {
+  border-top: 1px solid var(--shadow-dark-light);
+  flex-shrink: 0;
+  position: relative;
+  z-index: 1;
+}

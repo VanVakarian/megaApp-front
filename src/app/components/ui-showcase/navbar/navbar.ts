@@ -1,24 +1,30 @@
 import { Component, DestroyRef, OnInit } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router } from '@angular/router';
-import { ButtonStyle, VButton } from '@app/shared/ui-kit/v-button/v-button';
+import { ButtonStyle } from '@app/shared/ui-kit/types';
+import { VButton } from '@app/shared/ui-kit/v-button/v-button';
+import { IconName, VIcon } from '@app/shared/ui-kit/v-icon/v-icon';
 import { filter } from 'rxjs';
 
 enum SelectedPage {
   Food = 'food',
   Money = 'money',
   Other = 'other',
+  Icons = 'icons',
   Settings = 'settings',
 }
 
 @Component({
   selector: 'navbar',
   templateUrl: './navbar.html',
-  styleUrl: './navbar.css',
-  imports: [VButton],
+  imports: [VButton, VIcon],
 })
 export class Navbar implements OnInit {
   protected selectedPage: SelectedPage = SelectedPage.Other;
+  protected readonly Icon = IconName;
+  protected isMenuCollapsed = true; // TODO: move to settings
+
+  protected readonly ButtonStyle = ButtonStyle;
 
   constructor(
     private router: Router,
@@ -36,6 +42,10 @@ export class Navbar implements OnInit {
 
   protected navigateToMoney(): void {
     this.router.navigate(['/ui-showcase/money']);
+  }
+
+  protected navigateToIcons(): void {
+    this.router.navigate(['/ui-showcase/icons']);
   }
 
   protected navigateToOther(): void {
@@ -62,6 +72,18 @@ export class Navbar implements OnInit {
     return this.selectedPage === SelectedPage.Settings ? ButtonStyle.Raised : ButtonStyle.Flat;
   }
 
+  protected iconsButtonStyle(): ButtonStyle {
+    return this.selectedPage === SelectedPage.Icons ? ButtonStyle.Raised : ButtonStyle.Flat;
+  }
+
+  protected toggleMenuCollapse(): void {
+    this.isMenuCollapsed = !this.isMenuCollapsed;
+  }
+
+  protected getMenuSizeControlIconName(): IconName {
+    return this.isMenuCollapsed ? IconName.LeftPanelOpen : IconName.LeftPanelClose;
+  }
+
   private subscribe(): void {
     this.router.events
       .pipe(
@@ -80,6 +102,8 @@ export class Navbar implements OnInit {
       this.selectedPage = SelectedPage.Money;
     } else if (url.includes('/ui-showcase/settings')) {
       this.selectedPage = SelectedPage.Settings;
+    } else if (url.includes('/ui-showcase/icons')) {
+      this.selectedPage = SelectedPage.Icons;
     } else {
       this.selectedPage = SelectedPage.Other;
     }

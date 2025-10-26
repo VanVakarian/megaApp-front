@@ -1,33 +1,89 @@
-import { Component, ElementRef, inject, input, output } from '@angular/core';
+import { Component, computed, ElementRef, inject, input, output } from '@angular/core';
+import { ButtonStyle, CssUnitValue } from '@app/shared/ui-kit/types';
 
-export enum ButtonStyle {
-  Flat = 'flat',
-  Raised = 'raised',
-  Primary = 'primary',
+type ButtonType = 'button' | 'submit' | 'reset';
+
+export interface VButtonConfig {
+  type?: ButtonType;
+  buttonStyle?: ButtonStyle;
+  width?: string;
+  borderRadius?: CssUnitValue;
+  padding?: CssUnitValue;
+  paddingY?: CssUnitValue;
+  paddingX?: CssUnitValue;
+  isDisabled?: boolean;
+  isWithoutShadow?: boolean;
+  bgOpacity?: '0' | '1' | `0.${number}`;
+  isLabelHidden?: boolean;
+  textAlign?: 'left' | 'center' | 'right';
 }
+
+const DEFAULT_V_BUTTON_CONFIG: Required<VButtonConfig> = {
+  type: 'button',
+  buttonStyle: undefined as unknown as ButtonStyle,
+  width: undefined as unknown as string,
+  borderRadius: 2,
+  padding: undefined as unknown as CssUnitValue,
+  paddingX: 4,
+  paddingY: 2,
+  isDisabled: false,
+  isWithoutShadow: false,
+  bgOpacity: '1',
+  isLabelHidden: false,
+  textAlign: undefined as unknown as 'left' | 'center' | 'right',
+};
 
 @Component({
   selector: `
-    v-button[flat],
-    v-button[raised],
+    v-button,
     v-button[primary],
-    v-button[buttonStyle]
+    v-button[raised],
+    v-button[flat],
+    v-button[danger],
+    v-button[buttonStyle],
   `,
   templateUrl: './v-button.html',
   styleUrl: './v-button.css',
   host: {
-    '[style.width]': 'width()',
-    '[attr.flat]': 'isFlat ? "" : null',
-    '[attr.raised]': 'isRaised ? "" : null',
+    '[style.width]': 'width$$() ? width$$() : null',
     '[attr.primary]': 'isPrimary ? "" : null',
+    '[attr.raised]': 'isRaised ? "" : null',
+    '[attr.flat]': 'isFlat ? "" : null',
+    '[attr.danger]': 'isDanger ? "" : null',
+    '[attr.no-shadow]': 'isWithoutShadow$$() ? "" : null',
+    '[style.--v-button-border-radius]': 'borderRadiusString$$()',
+    '[style.--v-button-bg-opacity]': 'bgOpacity$$()',
+    '[style.--v-button-padding-x]': 'paddingXString$$()',
+    '[style.--v-button-padding-y]': 'paddingYString$$()',
+    '[attr.text-align]': 'textAlign$$() ? textAlign$$() : null',
+    '[attr.aria-disabled]': 'isDisabled$$() ? "true" : "false"',
   },
 })
 export class VButton {
-  public readonly buttonStyle = input<ButtonStyle>();
+  public readonly config = input<VButtonConfig>({});
 
-  public readonly width = input<string>();
+  protected readonly settings$$ = computed(() => ({
+    ...DEFAULT_V_BUTTON_CONFIG,
+    ...this.config(),
+  }));
 
-  public readonly onClick = output<MouseEvent>();
+  protected readonly type$$ = computed(() => this.settings$$().type);
+  protected readonly width$$ = computed(() => this.settings$$().width);
+  protected readonly isLabelHidden$$ = computed(() => this.settings$$().isLabelHidden);
+
+  protected readonly borderRadius$$ = computed(() => this.settings$$().borderRadius);
+  protected readonly paddingX$$ = computed(() => this.getPaddingX());
+  protected readonly paddingY$$ = computed(() => this.getPaddingY());
+  protected readonly isDisabled$$ = computed(() => this.settings$$().isDisabled);
+  protected readonly isWithoutShadow$$ = computed(() => this.settings$$().isWithoutShadow);
+  protected readonly bgOpacity$$ = computed(() => this.settings$$().bgOpacity);
+  protected readonly textAlign$$ = computed(() => this.settings$$().textAlign);
+
+  protected readonly onClick = output<MouseEvent>();
+
+  protected readonly borderRadiusString$$ = computed(() => `var(--unit-${this.borderRadius$$()})`);
+  protected readonly paddingYString$$ = computed(() => `var(--unit-${this.paddingY$$()})`);
+  protected readonly paddingXString$$ = computed(() => `var(--unit-${this.paddingX$$()})`);
 
   public get isFlat(): boolean {
     return this.getActiveStyle() === ButtonStyle.Flat;
@@ -41,23 +97,47 @@ export class VButton {
     return this.getActiveStyle() === ButtonStyle.Primary;
   }
 
+  public get isDanger(): boolean {
+    return this.getActiveStyle() === ButtonStyle.Danger;
+  }
+
   private readonly elementRef = inject(ElementRef);
 
   constructor() {}
 
   protected onButtonClick(event: MouseEvent): void {
+    if (this.isDisabled$$()) {
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
     this.onClick.emit(event);
   }
 
-  private getActiveStyle(): ButtonStyle | null {
-    const styleInput = this.buttonStyle();
+  private getActiveStyle(): ButtonStyle {
+    const styleInput = this.settings$$().buttonStyle;
     if (styleInput) return styleInput;
 
     const element = this.elementRef.nativeElement;
-    if (element.hasAttribute('flat')) return ButtonStyle.Flat;
-    if (element.hasAttribute('raised')) return ButtonStyle.Raised;
     if (element.hasAttribute('primary')) return ButtonStyle.Primary;
+    if (element.hasAttribute('raised')) return ButtonStyle.Raised;
+    if (element.hasAttribute('flat')) return ButtonStyle.Flat;
+    if (element.hasAttribute('danger')) return ButtonStyle.Danger;
 
-    return null;
+    return ButtonStyle.Primary;
+  }
+
+  private getPaddingX(): CssUnitValue {
+    const config = this.config();
+    if (config.paddingX !== undefined) return config.paddingX;
+    if (config.padding !== undefined) return config.padding;
+    return this.settings$$().paddingX;
+  }
+
+  private getPaddingY(): CssUnitValue {
+    const config = this.config();
+    if (config.paddingY !== undefined) return config.paddingY;
+    if (config.padding !== undefined) return config.padding;
+    return this.settings$$().paddingY;
   }
 }

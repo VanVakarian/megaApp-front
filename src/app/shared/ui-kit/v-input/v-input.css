@@ -1,9 +1,6 @@
-@import '@app/shared/ui-kit/vars.css';
-
 :host {
   display: flex;
   flex-direction: column;
-  /* width: 100%; */
 }
 
 .label {
@@ -19,9 +16,10 @@
   align-items: center;
   width: 100%;
   padding: var(--unit-2) 0;
-  border-radius: var(--unit-1);
+  border-radius: var(--v-input-border-radius, var(--unit-2));
   box-sizing: border-box;
   transition: all 0.2s ease;
+  isolation: isolate;
 
   box-shadow:
     inset 3px 3px 3px var(--shadow-dark-light),
@@ -42,7 +40,10 @@
 
   .prefix,
   .postfix {
+    display: flex;
     min-width: var(--unit-2);
+    position: relative;
+    z-index: 1;
   }
 }
 
@@ -50,10 +51,13 @@
   background: transparent;
   border: none;
   outline: none;
-  font-size: 1rem;
+  font-size: var(--v-input-font-size, 1rem);
   color: var(--color-text-default);
   flex: 1;
   font-family: inherit;
+  font-weight: var(--v-input-font-weight, 400);
+  position: relative;
+  z-index: 1;
 
   &::placeholder {
     font-style: italic;
@@ -74,6 +78,14 @@
   &:-webkit-autofill:active {
     -webkit-background-clip: text;
   }
+}
+
+.textarea-field {
+  resize: vertical;
+  min-height: 60px;
+  line-height: 1.5;
+  padding-top: 0.25rem;
+  padding-bottom: 0.25rem;
 }
 
 .error-message {

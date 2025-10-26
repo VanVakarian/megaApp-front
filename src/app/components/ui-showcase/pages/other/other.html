@@ -1,61 +1,198 @@
-<div class="col col-01">
-  <v-card>
-    Карточка по умолчанию (borderRadius=2, padding=2)
-    <div class="buttons-row">
+<div class="flex flex-wrap gap-4 w-[400px]">
+  <v-card class="flex flex-col gap-3">
+    <div class="row">
+      Карточка по умолчанию (borderRadius=2, padding=2)
+    </div>
+
+    <div class="flex gap-3">
       <v-button flat>
-        Кнопка
+        flat
       </v-button>
 
       <v-button raised>
-        Кнопка
+        raised
       </v-button>
 
       <v-button primary>
-        Кнопка
+        primary
+      </v-button>
+
+      <v-button danger>
+        danger
+      </v-button>
+    </div>
+
+    <div class="flex gap-3">
+      <v-button flat
+                [config]="{ isDisabled: true }">
+        flat
+      </v-button>
+
+      <v-button raised
+                [config]="{ isDisabled: true }">
+        raised
+      </v-button>
+
+      <v-button primary
+                [config]="{ isDisabled: true }">
+        primary
+      </v-button>
+
+      <v-button danger
+                [config]="{ isDisabled: true }">
+        danger
+      </v-button>
+    </div>
+
+    <div class="flex gap-3">
+      <v-button primary
+                [config]="{
+                  isLabelHidden: true,
+                  padding: 2,
+                }">
+        <v-icon v-prefix
+                [name]="Icon.Mic" />
+      </v-button>
+
+      <v-button danger
+                [config]="{
+                  isLabelHidden: true,
+                  padding: 2,
+                }">
+        <v-icon v-prefix
+                [name]="Icon.Close" />
+      </v-button>
+    </div>
+
+    <div class="flex gap-3">
+      <v-button raised
+                (onClick)="openModal()">
+        Открыть модальное окно
       </v-button>
     </div>
   </v-card>
 
-  <v-card [borderRadius]="1"
-          [padding]="1">
+  <v-card [config]="{
+            borderRadius: 1,
+            padding: 1
+          }">
     Компактная карточка (маленькие значения)
   </v-card>
 
-  <v-card [borderRadius]="0">
+  <v-card [config]="{
+            borderRadius: 0
+          }"
+          class="flex flex-col gap-2">
     Карточка без скругления
+
     <div [formGroup]="form">
       <v-input #testInput
                formControlName="testInput">
         <span v-prefix
-              class="prefix">$</span>
+              class="px-2">$</span>
         <button v-postfix
                 type="button"
-                class="postfix">🔍</button>
+                class="w-7 h-7">🔍</button>
+      </v-input>
+    </div>
+
+    <div [formGroup]="form">
+      <v-input #testInput
+               formControlName="testInput">
+        <v-button flat
+                  v-prefix
+                  class="mr-2"
+                  [config]="{
+                    isWithoutShadow: true,
+                    bgOpacity: '0.5',
+                    padding: 0,
+                  }"
+                  (click)="consoleLogFormValue()">
+          <v-icon [name]="Icon.Close"
+                  [size]="8" />
+        </v-button>
+
+        <button v-postfix
+                type="button"
+                class="w-7 h-7">🔍</button>
       </v-input>
     </div>
   </v-card>
 
   <form [formGroup]="form">
-    <v-input label="Имя пользователя"
-             placeholder="Введите ваше имя"
-             formControlName="username" />
+    <v-input formControlName="username"
+             [config]="{
+               label: 'Имя пользователя',
+               placeholder: 'Введите ваше имя'
+             }" />
 
-    <v-input label="Email"
-             placeholder="example@email.com"
-             [type]="InputType.Email"
-             formControlName="email" />
+    <v-input formControlName="email"
+             [config]="{
+               label: 'Email',
+               placeholder: 'example@email.com',
+               type: 'email'
+             }" />
 
-    <v-input label="Пароль"
-             placeholder="Введите пароль"
-             [type]="InputType.Password"
-             formControlName="password" />
+    <v-input formControlName="password"
+             [config]="{
+               label: 'Пароль',
+               placeholder: 'Введите пароль',
+               type: 'password'
+             }" />
 
-    <v-input label="Отключенное поле"
-             placeholder="Это поле отключено"
-             formControlName="disabled" />
+    <v-input formControlName="disabled"
+             [config]="{
+               label: 'Отключенное поле',
+               placeholder: 'Это поле отключено'
+             }" />
 
-    <v-input label="Поле с ошибкой"
-             placeholder="Введите что-то"
-             formControlName="error" />
+    <v-input formControlName="error"
+             [config]="{
+               label: 'Поле с ошибкой',
+               placeholder: 'Введите что-то'
+             }" />
   </form>
 </div>
+
+<v-modal [config]="{
+           isOpen: isModalOpen,
+           width: '500px',
+           borderRadius: 3
+         }"
+         (onClose)="closeModal()">
+  <v-dropdown label="Select Food Item"
+              placeholder="Search food items"
+              class="w-[56%]"
+              [items]="foodItems"
+              [minDropdownWidth]="'300px'"
+              [expandDirection]="ddExpandDirection.Left"
+              (onSelectionChanged)="onFoodItemChange($event)">
+  </v-dropdown>
+
+  <div v-header>
+    <h3 class="m-0">
+      Заголовок модального окна
+    </h3>
+  </div>
+
+  <div class="">
+    <v-button raised
+              (onClick)="isShowLongContent = !isShowLongContent">
+      {{isShowLongContent ? 'Скрыть' : 'Показать'}} длинный контент
+    </v-button>
+  </div>
+
+  @if (isShowLongContent) {
+    <div class="h-[999px] flex flex-col justify-end">
+      Really loooooong content
+    </div>
+  }
+
+  <div v-footer
+       class="flex justify-end">
+    <v-button danger
+              (onClick)="closeModal()">
+      Закрыть
+    </v-button>
+  </div>
+</v-modal>

@@ -1,0 +1,19 @@
+.grid-auto-fill {
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  justify-items: end;
+}
+
+.catalogue-entry-name {
+  padding: 1px 6px;
+  background: color-mix(in srgb, var(--color-bg-default) 85%, transparent);
+  border-radius: 4px;
+  box-decoration-break: clone;
+}
+
+.add-catalogue-entry {}
+
+::ng-deep {
+  v-input.catalogue-entry-name-input div.input-wrapper div.prefix {
+    line-height: 12px;
+  }
+}

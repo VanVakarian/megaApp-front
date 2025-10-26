@@ -1,15 +1,15 @@
-@if (authService.isAuthenticated) {
+@if (authService.isAuthenticated$$()) {
   <div [@menuSlide]="menuOpened ? 'open' : 'closed'"
        class="h-dvh lg:hidden fixed top-0 right-0 z-40 pointer-events-none">
     <div class="flex flex-col justify-end h-full gap-4 mx-4 pointer-events-none">
       @for (button of mobileButtons; track $index) {
-        <button class="side-menu-button overflow-hidden pointer-events-auto"
-                mat-raised-button
+        <button mat-raised-button
                 color="primary"
+                class="side-menu-button overflow-hidden pointer-events-auto"
                 [routerLink]="button.link"
                 (click)="closeMenu()">
-          <div class="menu-btn-bg absolute bottom-[-16px] right-[-2px] h-full w-full"
-               [ngClass]="[button.bgClass]"></div>
+          <div [ngClass]="[button.bgClass]"
+               class="menu-btn-bg absolute bottom-[-16px] right-[-2px] h-full w-full"></div>
 
           <div class="flex w-full gap-1">
             <div class="mr-2 mt-[2px]">
@@ -34,9 +34,9 @@
   </div>
 
   <div class="lg:hidden fixed bottom-0 right-0 z-50 block mb-4 mr-4">
-    <button class="scale-100"
-            mat-fab
+    <button mat-fab
             color="primary"
+            class="scale-100"
             (click)="toggleMenu()">
       <mat-icon class="scale-150">{{ menuOpened ? "close" : "menu" }}</mat-icon>
     </button>

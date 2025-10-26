@@ -1,12 +1,11 @@
 <div class="dropdown-wrapper"
      [class.open]="isOpen"
-     [formGroup]="internalForm">
+     [formGroup]="internalForm"
+     [vBackdrop]="isOpen"
+     (backdropClick)="closeDropdown()">
 
   <v-input #inputComponent
-           [label]="label()"
-           [placeholder]="placeholder()"
-           [isDisabled]="isDisabled()"
-           [errorMessage]="computedErrorMessage"
+           [config]="inputConfig$$()"
            formControlName="search"
            (onFocused)="onFocus()"
            (onBlurred)="onBlur()">

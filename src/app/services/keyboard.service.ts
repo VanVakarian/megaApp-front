@@ -1,5 +1,4 @@
 import { Injectable } from '@angular/core';
-
 import { combineLatest, fromEvent, Observable, Subject } from 'rxjs';
 import { filter, map, startWith } from 'rxjs/operators';
 
@@ -7,18 +6,17 @@ import { filter, map, startWith } from 'rxjs/operators';
   providedIn: 'root',
 })
 export class KeyboardService {
-  private inputFocusSubject = new Subject<boolean>();
-  private keyboardEvents$ = fromEvent<KeyboardEvent>(document, 'keydown');
+  private readonly inputFocusSubject = new Subject<boolean>();
 
-  public inputIsInFocus$ = this.inputFocusSubject.asObservable().pipe(startWith(false));
+  private readonly keyboardEvents$ = fromEvent<KeyboardEvent>(document, 'keydown');
 
-  constructor() { }
+  public readonly inputIsInFocus$ = this.inputFocusSubject.asObservable().pipe(startWith(false));
 
-  setInputFocus(isInFocus: boolean) {
+  private setInputFocus(isInFocus: boolean) {
     this.inputFocusSubject.next(isInFocus);
   }
 
-  getKeyboardEvents$(): Observable<KeyboardEvent> {
+  private getKeyboardEvents$(): Observable<KeyboardEvent> {
     return combineLatest([this.keyboardEvents$, this.inputIsInFocus$]).pipe(
       filter(([event, isInputFocused]) => !isInputFocused),
       map(([event]) => event),
