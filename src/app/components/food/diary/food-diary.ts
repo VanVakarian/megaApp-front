@@ -23,6 +23,7 @@ import { FoodAddModalService, ModalState } from '@app/services/food/food-add-mod
 import { FoodCatalogueService } from '@app/services/food/food-catalogue.service';
 import { FoodDiaryService } from '@app/services/food/food-diary.service';
 import { OuterShadowRoundedDirective } from '@app/shared/ui-kit/shadow.directive';
+import { ButtonStyle } from '@app/shared/ui-kit/types';
 import { VButton } from '@app/shared/ui-kit/v-button/v-button';
 import { VCard } from '@app/shared/ui-kit/v-card/v-card';
 import { AccordionDirective } from '@app/shared/ui-kit/v-expand/accordion.directive';
@@ -91,6 +92,15 @@ export class FoodDiary implements AfterViewInit {
     if (Number.isNaN(percent)) return '';
 
     return `Съедено ${percent}% от дневной нормы`;
+  });
+
+  protected readonly addDiaryEntryButtonStyle$$ = computed(() => {
+    if (this.deviceInfoService.isDesktopScreen$$()) return ButtonStyle.Primary;
+
+    const openedIds = this.accordionService.openedIds$$();
+    const openedId = openedIds.get('food-group');
+    const isAnyAccordionOpen = openedId !== null && openedId !== undefined;
+    return isAnyAccordionOpen ? ButtonStyle.Raised : ButtonStyle.Primary;
   });
 
   private readonly columnWidthsSyncEffect$$ = effect(() => {

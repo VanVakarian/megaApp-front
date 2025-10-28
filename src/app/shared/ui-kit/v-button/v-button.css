@@ -22,7 +22,9 @@ button {
   background: color-mix(in oklab, var(--color-bg-default) calc(var(--v-button-bg-opacity, 1) * 100%), transparent);
   color: var(--color-text-default);
 
-  transition: all 0.2s ease;
+  transition:
+    background 0.2s ease,
+    box-shadow 0.2s ease;
 
   &:disabled {
     opacity: 0.4;
