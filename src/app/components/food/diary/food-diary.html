@@ -55,6 +55,7 @@
   @for (food of selectedDayDiaryEntries$$(); track food.id; let isFirst = $first; let isLast = $last) {
     <v-expand accordion="food-group"
               class="item"
+              [foodImageUrl]="getImageUrl(food.foodCatalogueId)"
               (onOpened)="onVExpandOpened($event, food.id)">
       <div v-header
            #diaryEntryHeader
@@ -62,9 +63,10 @@
            [ngStyle]="setBackgroundStyle(food.foodKcalPercentageOfDaysNorm, isFirst, isLast)">
         <div #foodCont
              class="whitespace-nowrap flex overflow-hidden font-normal">
+          <div class="diary-thumbnail-spacer"></div>
           <div #foodName
-               class="tw-card-food-entry grow whitespace-nowrap overflow-hidden">
-            {{ food.foodName }}
+               class="overflow-ellipsis grow whitespace-nowrap overflow-hidden">
+            <span class="readable-text-bg">{{ food.foodName }}</span>
           </div>
 
           <div #foodWeight

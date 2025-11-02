@@ -22,6 +22,7 @@ import { DeviceInfoService } from '@app/services/device-info.service';
 import { FoodAddModalService, ModalState } from '@app/services/food/food-add-modal.service';
 import { FoodCatalogueService } from '@app/services/food/food-catalogue.service';
 import { FoodDiaryService } from '@app/services/food/food-diary.service';
+import { FoodThumbnailDirective } from '@app/shared/directives/expand-thumbnail.directive';
 import { OuterShadowRoundedDirective } from '@app/shared/ui-kit/shadow.directive';
 import { ButtonStyle } from '@app/shared/ui-kit/types';
 import { VButton } from '@app/shared/ui-kit/v-button/v-button';
@@ -52,6 +53,7 @@ import { CatalogueEntryEditForm } from './catalogue-entry-edit-form/catalogue-en
     OuterShadowRoundedDirective,
     AccordionDirective,
     BodyWeight,
+    FoodThumbnailDirective,
   ],
 })
 export class FoodDiary implements AfterViewInit {
@@ -131,12 +133,20 @@ export class FoodDiary implements AfterViewInit {
   ): { [key: string]: string } {
     const percentCapped = percent <= 100 ? percent : 100;
     return {
-      background: `linear-gradient(to right, var(--gradient-color) ${percentCapped}%, var(--gradient-bg) ${percentCapped}%)`,
+      background: `linear-gradient(to left, var(--gradient-color) ${percentCapped}%, var(--gradient-bg) ${percentCapped}%)`,
       'border-top-left-radius': isFirst ? 'var(--unit-2)' : '0',
       'border-top-right-radius': isFirst ? 'var(--unit-2)' : '0',
       'border-bottom-left-radius': isLast ? 'var(--unit-2)' : '0',
       'border-bottom-right-radius': isLast ? 'var(--unit-2)' : '0',
     };
+  }
+
+  protected getImageUrl(catalogueId: number): string | undefined {
+    const catalogueEntry = this.foodCatalogueService.catalogue$$()[catalogueId];
+    if (!catalogueEntry?.imageVersion) {
+      return undefined;
+    }
+    return `/api/images/food/${catalogueId}-medium-v${catalogueEntry.imageVersion}.webp`;
   }
 
   protected accordionCollapse() {
