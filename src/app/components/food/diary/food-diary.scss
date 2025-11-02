@@ -23,3 +23,20 @@
     width: 100vw !important;
   }
 }
+
+.readable-text-bg {
+  padding: 1px 6px;
+  background: color-mix(in srgb, var(--color-bg-default) 80%, transparent);
+  border-radius: 4px;
+}
+
+.diary-thumbnail-spacer {
+  width: 31px;
+  height: 100%;
+  flex-shrink: 0;
+  transition: width 0.1s ease-in-out;
+}
+
+v-expand.thumbnail-expanded .diary-thumbnail-spacer {
+  width: 0px;
+}
