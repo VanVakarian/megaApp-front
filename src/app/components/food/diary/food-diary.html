@@ -23,8 +23,8 @@
        class="v-header w-full p-2 text-center"
        [ngStyle]="setBackgroundStyle(selectedDaysKcalsPercent$$(), true, true)">
     <span class=" font-normal">{{ caloriesDisplayText$$() }}</span>
-
   </div>
+
   <div v-body
        class="flex flex-col gap-2 p-4">
     <bmi />
@@ -55,15 +55,28 @@
   @for (food of selectedDayDiaryEntries$$(); track food.id; let isFirst = $first; let isLast = $last) {
     <v-expand accordion="food-group"
               class="item"
-              [foodImageUrl]="getImageUrl(food.foodCatalogueId)"
               (onOpened)="onVExpandOpened($event, food.id)">
+      @if (getCornerImageUrl(food.foodCatalogueId); as cornerImageUrl) {
+        <img v-corner-pic
+             [src]="cornerImageUrl"
+             class="absolute top-[-3px] left-[-3px] w-[185px] h-[185px] pointer-events-none z-[-1]"
+             [class.hidden]="!isEntryExpanded(food.id)">
+      }
+
       <div v-header
            #diaryEntryHeader
-           class="p-2"
+           class="relative p-2"
            [ngStyle]="setBackgroundStyle(food.foodKcalPercentageOfDaysNorm, isFirst, isLast)">
+
+        @if (getSquircleImageUrl(food.foodCatalogueId); as squircleImageUrl) {
+          <img [src]="squircleImageUrl"
+               class="absolute top-0 left-0 w-[40px] h-[40px] pointer-events-none z-[-1]"
+               [class.hidden]="isEntryExpanded(food.id)">
+        }
+
         <div #foodCont
-             class="whitespace-nowrap flex overflow-hidden font-normal">
-          <div class="diary-thumbnail-spacer"></div>
+             class="whitespace-nowrap flex overflow-hidden font-normal"
+             [class.pl-[31px]]="!isEntryExpanded(food.id)">
           <div #foodName
                class="overflow-ellipsis grow whitespace-nowrap overflow-hidden">
             <span class="readable-text-bg">{{ food.foodName }}</span>

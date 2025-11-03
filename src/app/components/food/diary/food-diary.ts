@@ -22,7 +22,7 @@ import { DeviceInfoService } from '@app/services/device-info.service';
 import { FoodAddModalService, ModalState } from '@app/services/food/food-add-modal.service';
 import { FoodCatalogueService } from '@app/services/food/food-catalogue.service';
 import { FoodDiaryService } from '@app/services/food/food-diary.service';
-import { FoodThumbnailDirective } from '@app/shared/directives/expand-thumbnail.directive';
+
 import { OuterShadowRoundedDirective } from '@app/shared/ui-kit/shadow.directive';
 import { ButtonStyle } from '@app/shared/ui-kit/types';
 import { VButton } from '@app/shared/ui-kit/v-button/v-button';
@@ -53,7 +53,6 @@ import { CatalogueEntryEditForm } from './catalogue-entry-edit-form/catalogue-en
     OuterShadowRoundedDirective,
     AccordionDirective,
     BodyWeight,
-    FoodThumbnailDirective,
   ],
 })
 export class FoodDiary implements AfterViewInit {
@@ -141,12 +140,20 @@ export class FoodDiary implements AfterViewInit {
     };
   }
 
-  protected getImageUrl(catalogueId: number): string | undefined {
+  protected getSquircleImageUrl(catalogueId: number): string | undefined {
     const catalogueEntry = this.foodCatalogueService.catalogue$$()[catalogueId];
     if (!catalogueEntry?.imageVersion) {
       return undefined;
     }
-    return `/api/images/food/${catalogueId}-medium-v${catalogueEntry.imageVersion}.webp`;
+    return `/api/images/food/${catalogueId}-squircle-v${catalogueEntry.imageVersion}.png`;
+  }
+
+  protected getCornerImageUrl(catalogueId: number): string | undefined {
+    const catalogueEntry = this.foodCatalogueService.catalogue$$()[catalogueId];
+    if (!catalogueEntry?.imageVersion) {
+      return undefined;
+    }
+    return `/api/images/food/${catalogueId}-corner-v${catalogueEntry.imageVersion}.png`;
   }
 
   protected accordionCollapse() {
@@ -210,8 +217,17 @@ export class FoodDiary implements AfterViewInit {
     });
   }
 
+  protected isEntryExpanded(diaryEntryId: number): boolean {
+    return this.openedDiaryEntryId$$() === diaryEntryId;
+  }
+
+  private readonly openedDiaryEntryId$$ = signal<number | null>(null);
+
   protected onVExpandOpened($event: CustomEvent<boolean>, expandingDiaryEntryId: number): void {
     if ($event.detail) {
+      setTimeout(() => {
+        this.openedDiaryEntryId$$.set(expandingDiaryEntryId);
+      }, 0);
       this.foodDiaryService.focusDiaryEntry(expandingDiaryEntryId);
       this.triggerColumnRecalc();
 
@@ -224,12 +240,13 @@ export class FoodDiary implements AfterViewInit {
         const headerEl = this.diaryEntryHeaders()[foodIndex]?.nativeElement;
         if (headerEl) {
           window.scrollTo({
-            top: headerEl.getBoundingClientRect().top + window.scrollY - 4,
+            top: headerEl.getBoundingClientRect().top + window.scrollY - 40,
             behavior: 'smooth',
           });
         }
       }, 100); // Waiting for the v-expand animation to finish, otherwise the scroll animation may not finish properly
     } else {
+      this.openedDiaryEntryId$$.set(null);
       this.foodDiaryService.resetDiaryEntryForm(expandingDiaryEntryId);
     }
   }

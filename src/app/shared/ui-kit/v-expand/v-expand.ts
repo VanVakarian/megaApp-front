@@ -43,7 +43,7 @@ export class VExpand {
     this._isExpanded$$.set(state);
   }
 
-  protected isPanelExpanded(): boolean {
+  public isPanelExpanded(): boolean {
     return this._isExpanded$$();
   }
 
