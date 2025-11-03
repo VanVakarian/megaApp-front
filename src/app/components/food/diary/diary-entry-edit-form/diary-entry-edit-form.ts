@@ -29,6 +29,7 @@ interface DiaryEntryFormModel {
 @Component({
   selector: 'diary-entry-edit-form',
   templateUrl: './diary-entry-edit-form.html',
+  styleUrl: './diary-entry-edit-form.scss',
   imports: [ReactiveFormsModule, UiProgressIcon, VButton, VIcon, VExpand, VInput, VModal],
 })
 export class DiaryEntryEditForm implements OnChanges {
@@ -251,13 +252,13 @@ export class DiaryEntryEditForm implements OnChanges {
   protected formHistoryEntry(historyEntry: HistoryEntry) {
     switch (historyEntry.action) {
       case HistoryEntryAction.INIT:
-        return `Запись создана с весом ${historyEntry.value} г.`;
+        return `Создано: ${historyEntry.value} г.`;
       case HistoryEntryAction.SET:
-        return `Задан новый вес: ${historyEntry.value} г.`;
+        return `Задано: ${historyEntry.value} г.`;
       case HistoryEntryAction.ADD:
-        return `Добавлено ${historyEntry.value} г.`;
+        return `Добавлено: ${historyEntry.value} г.`;
       case HistoryEntryAction.SUBTRACT:
-        return `Убрано ${historyEntry.value} г.`;
+        return `Убрано: ${historyEntry.value} г.`;
     }
   }
 

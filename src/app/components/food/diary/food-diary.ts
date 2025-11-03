@@ -22,6 +22,7 @@ import { DeviceInfoService } from '@app/services/device-info.service';
 import { FoodAddModalService, ModalState } from '@app/services/food/food-add-modal.service';
 import { FoodCatalogueService } from '@app/services/food/food-catalogue.service';
 import { FoodDiaryService } from '@app/services/food/food-diary.service';
+
 import { OuterShadowRoundedDirective } from '@app/shared/ui-kit/shadow.directive';
 import { ButtonStyle } from '@app/shared/ui-kit/types';
 import { VButton } from '@app/shared/ui-kit/v-button/v-button';
@@ -113,7 +114,7 @@ export class FoodDiary implements AfterViewInit {
   protected readonly foodAddModalService = inject(FoodAddModalService);
   protected readonly deviceInfoService = inject(DeviceInfoService);
   private readonly accordionService = inject(AccordionService);
-  private readonly foodCatalogueService = inject(FoodCatalogueService);
+  protected readonly foodCatalogueService = inject(FoodCatalogueService);
   private readonly ngZone = inject(NgZone);
 
   public ngAfterViewInit(): void {
@@ -131,7 +132,7 @@ export class FoodDiary implements AfterViewInit {
   ): { [key: string]: string } {
     const percentCapped = percent <= 100 ? percent : 100;
     return {
-      background: `linear-gradient(to right, var(--gradient-color) ${percentCapped}%, var(--gradient-bg) ${percentCapped}%)`,
+      background: `linear-gradient(to left, var(--gradient-color) ${percentCapped}%, var(--gradient-bg) ${percentCapped}%)`,
       'border-top-left-radius': isFirst ? 'var(--unit-2)' : '0',
       'border-top-right-radius': isFirst ? 'var(--unit-2)' : '0',
       'border-bottom-left-radius': isLast ? 'var(--unit-2)' : '0',
@@ -200,8 +201,17 @@ export class FoodDiary implements AfterViewInit {
     });
   }
 
+  protected isEntryExpanded(diaryEntryId: number): boolean {
+    return this.openedDiaryEntryId$$() === diaryEntryId;
+  }
+
+  private readonly openedDiaryEntryId$$ = signal<number | null>(null);
+
   protected onVExpandOpened($event: CustomEvent<boolean>, expandingDiaryEntryId: number): void {
     if ($event.detail) {
+      setTimeout(() => {
+        this.openedDiaryEntryId$$.set(expandingDiaryEntryId);
+      }, 0);
       this.foodDiaryService.focusDiaryEntry(expandingDiaryEntryId);
       this.triggerColumnRecalc();
 
@@ -214,12 +224,13 @@ export class FoodDiary implements AfterViewInit {
         const headerEl = this.diaryEntryHeaders()[foodIndex]?.nativeElement;
         if (headerEl) {
           window.scrollTo({
-            top: headerEl.getBoundingClientRect().top + window.scrollY - 4,
+            top: headerEl.getBoundingClientRect().top + window.scrollY - 40,
             behavior: 'smooth',
           });
         }
       }, 100); // Waiting for the v-expand animation to finish, otherwise the scroll animation may not finish properly
     } else {
+      this.openedDiaryEntryId$$.set(null);
       this.foodDiaryService.resetDiaryEntryForm(expandingDiaryEntryId);
     }
   }

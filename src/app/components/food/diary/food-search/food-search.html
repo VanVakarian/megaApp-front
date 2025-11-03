@@ -33,7 +33,7 @@
            [config]="{
              type: 'text'
            }"
-           [(value)]="searchQuery$$" />
+           [(value)]="foodAddModalService.searchQuery$$" />
 
   <!--
   @if (isRecording) {
@@ -96,7 +96,7 @@
                 [config]="{
                   padding: 1,
                   backgroundImageUrl: getImageUrl(catalogueEntry),
-                  backgroundImageOpacity: 0.15,
+                  backgroundImageOpacity: 0,
                   minHeight: '104px'
                 }"
                 (click)="selectProduct(catalogueEntry)">

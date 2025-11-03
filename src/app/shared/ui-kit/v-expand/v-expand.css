@@ -3,13 +3,14 @@
 :host {
   display: block;
   overflow: hidden;
+  position: relative;
 }
 
 .header {
   border-radius: var(--v-expand-border-radius);
   cursor: pointer;
   user-select: none;
-  transition: background-color 0.2s ease;
+  transition: background-color 0.1s ease-in-out;
 }
 
 .header:hover {
