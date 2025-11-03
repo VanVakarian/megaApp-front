@@ -56,7 +56,7 @@
     <v-expand accordion="food-group"
               class="item"
               (onOpened)="onVExpandOpened($event, food.id)">
-      @if (getCornerImageUrl(food.foodCatalogueId); as cornerImageUrl) {
+      @if (foodCatalogueService.getCornerImageUrl(food.foodCatalogueId); as cornerImageUrl) {
         <img v-corner-pic
              [src]="cornerImageUrl"
              class="absolute top-[-3px] left-[-3px] w-[185px] h-[185px] pointer-events-none z-[-1]"
@@ -68,7 +68,7 @@
            class="relative p-2"
            [ngStyle]="setBackgroundStyle(food.foodKcalPercentageOfDaysNorm, isFirst, isLast)">
 
-        @if (getSquircleImageUrl(food.foodCatalogueId); as squircleImageUrl) {
+        @if (foodCatalogueService.getSquircleImageUrl(food.foodCatalogueId); as squircleImageUrl) {
           <img [src]="squircleImageUrl"
                class="absolute top-0 left-0 w-[40px] h-[40px] pointer-events-none z-[-1]"
                [class.hidden]="isEntryExpanded(food.id)">

@@ -114,7 +114,7 @@ export class FoodDiary implements AfterViewInit {
   protected readonly foodAddModalService = inject(FoodAddModalService);
   protected readonly deviceInfoService = inject(DeviceInfoService);
   private readonly accordionService = inject(AccordionService);
-  private readonly foodCatalogueService = inject(FoodCatalogueService);
+  protected readonly foodCatalogueService = inject(FoodCatalogueService);
   private readonly ngZone = inject(NgZone);
 
   public ngAfterViewInit(): void {
@@ -138,22 +138,6 @@ export class FoodDiary implements AfterViewInit {
       'border-bottom-left-radius': isLast ? 'var(--unit-2)' : '0',
       'border-bottom-right-radius': isLast ? 'var(--unit-2)' : '0',
     };
-  }
-
-  protected getSquircleImageUrl(catalogueId: number): string | undefined {
-    const catalogueEntry = this.foodCatalogueService.catalogue$$()[catalogueId];
-    if (!catalogueEntry?.imageVersion) {
-      return undefined;
-    }
-    return `/api/images/food/${catalogueId}-squircle-v${catalogueEntry.imageVersion}.png`;
-  }
-
-  protected getCornerImageUrl(catalogueId: number): string | undefined {
-    const catalogueEntry = this.foodCatalogueService.catalogue$$()[catalogueId];
-    if (!catalogueEntry?.imageVersion) {
-      return undefined;
-    }
-    return `/api/images/food/${catalogueId}-corner-v${catalogueEntry.imageVersion}.png`;
   }
 
   protected accordionCollapse() {

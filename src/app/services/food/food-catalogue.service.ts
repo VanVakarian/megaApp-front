@@ -38,7 +38,6 @@ export class FoodCatalogueService extends BaseFoodService {
   public readonly legacySearchResults$$: WritableSignal<CatalogueEntry[]> = signal([]);
 
   private searchCache: Record<string, number[]> = {};
-  private pendingSearchQuery: string = '';
   private searchSequenceNumber: number = 0;
   private lastDisplayedSequenceNumber: number = 0;
 
@@ -97,19 +96,7 @@ export class FoodCatalogueService extends BaseFoodService {
       this.lastDisplayedSequenceNumber = this.searchSequenceNumber;
     }
 
-    const queryWithTransliteration = this.addTransliterationToQuery(query);
-    this.pendingSearchQuery = query;
-    this.sendSearchQuery(queryWithTransliteration, this.searchSequenceNumber);
-  }
-
-  private addTransliterationToQuery(query: string): string {
-    const transliteratedQuery = query.split(' ').map(transliterateEnToRu).join(' ');
-
-    if (transliteratedQuery === query) {
-      return query;
-    }
-
-    return `${query} ${transliteratedQuery}`;
+    this.sendSearchQuery(query, this.searchSequenceNumber);
   }
 
   public legacySearchProducts(query: string): void {
@@ -194,13 +181,10 @@ export class FoodCatalogueService extends BaseFoodService {
     const cacheKey = queryFromMessage;
     const cachedIds = this.getSearchCachedResults(cacheKey);
 
-    const currentQuery = this.searchQuery$$();
-    const isCurrentSearch = queryFromMessage === currentQuery;
-
     if (!cachedIds || !this.arraysEqual(cachedIds, results)) {
       this.setSearchCachedResults(cacheKey, results);
 
-      if (sequenceFromMessage > this.lastDisplayedSequenceNumber && isCurrentSearch) {
+      if (sequenceFromMessage > this.lastDisplayedSequenceNumber) {
         this.displaySearchResults(results);
         this.lastDisplayedSequenceNumber = sequenceFromMessage;
       }
@@ -334,5 +318,21 @@ export class FoodCatalogueService extends BaseFoodService {
       console.error('Failed to save product:', error);
       throw error;
     }
+  }
+
+  public getSquircleImageUrl(catalogueId: number): string | undefined {
+    const catalogueEntry = this.catalogue$$()[catalogueId];
+    if (!catalogueEntry?.imageVersion) {
+      return undefined;
+    }
+    return `/api/images/food/${catalogueId}-squircle-v${catalogueEntry.imageVersion}.png`;
+  }
+
+  public getCornerImageUrl(catalogueId: number): string | undefined {
+    const catalogueEntry = this.catalogue$$()[catalogueId];
+    if (!catalogueEntry?.imageVersion) {
+      return undefined;
+    }
+    return `/api/images/food/${catalogueId}-corner-v${catalogueEntry.imageVersion}.png`;
   }
 }
