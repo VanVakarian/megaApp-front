@@ -1,0 +1,5 @@
+.readable-text-bg {
+  background: color-mix(in srgb, var(--color-bg-default) 80%, transparent);
+  border-radius: 4px;
+  box-decoration-break: clone;
+}

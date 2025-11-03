@@ -1,6 +1,7 @@
-import { AfterViewInit, Component, computed, effect, inject, viewChild } from '@angular/core';
+import { AfterViewInit, Component, effect, inject, viewChild } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { FoodAddModalService } from '@app/services/food/food-add-modal.service';
+import { FoodCatalogueService } from '@app/services/food/food-catalogue.service';
 import { FoodCoefficientsService } from '@app/services/food/food-coefficients.service';
 import { FoodDiaryService } from '@app/services/food/food-diary.service';
 import { FoodStatsService } from '@app/services/food/food-stats.service';
@@ -13,12 +14,11 @@ import { VInput } from '@app/shared/ui-kit/v-input/v-input';
 @Component({
   selector: 'diary-entry-add-form',
   templateUrl: './diary-entry-add-form.html',
+  styleUrl: './diary-entry-add-form.scss',
   imports: [ReactiveFormsModule, UiProgressIcon, VButton, VIcon, VInput],
 })
 export class DiaryEntryAddForm implements AfterViewInit {
   protected readonly Icon = IconName;
-
-  protected readonly selectedProduct$$ = computed(() => this.foodAddModalService.selectedProduct$$());
 
   private selectedDaysTargerKcals = 0;
   private selectedDaysEatenPercent = 0;
@@ -29,8 +29,9 @@ export class DiaryEntryAddForm implements AfterViewInit {
 
   protected readonly foodWeightInput = viewChild.required(VInput);
 
+  protected readonly foodCatalogueService = inject(FoodCatalogueService);
+  protected readonly foodAddModalService = inject(FoodAddModalService);
   private readonly foodDiaryService = inject(FoodDiaryService);
-  private readonly foodAddModalService = inject(FoodAddModalService);
   private readonly foodCoefficientsService = inject(FoodCoefficientsService);
   private readonly foodStatsService = inject(FoodStatsService);
 
@@ -42,7 +43,7 @@ export class DiaryEntryAddForm implements AfterViewInit {
   });
 
   private readonly selectedProductEffect$$ = effect(() => {
-    const product = this.selectedProduct$$();
+    const product = this.foodAddModalService.selectedProduct$$();
     if (!product) return;
 
     this.selectedFoodKcals = product.kcals;
@@ -98,7 +99,7 @@ export class DiaryEntryAddForm implements AfterViewInit {
 
     this.diaryEntryForm.disable();
     const { foodWeight } = this.diaryEntryForm.value;
-    const product = this.selectedProduct$$();
+    const product = this.foodAddModalService.selectedProduct$$();
     if (!product) return;
 
     const entry: DiaryEntry = {
@@ -123,7 +124,7 @@ export class DiaryEntryAddForm implements AfterViewInit {
   }
 
   protected editProduct(): void {
-    const product = this.selectedProduct$$();
+    const product = this.foodAddModalService.selectedProduct$$();
     if (!product) return;
 
     this.foodAddModalService.editProduct(product);

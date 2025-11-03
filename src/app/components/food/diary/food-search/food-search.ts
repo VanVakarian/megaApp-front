@@ -22,10 +22,6 @@ import { VInput } from '@app/shared/ui-kit/v-input/v-input';
 export class FoodSearch {
   protected readonly Icon = IconName;
 
-  protected get searchQuery$$() {
-    return this.foodAddModalService.searchQuery$$;
-  }
-
   protected readonly isLegacySearch$$ = computed(() => this.foodCatalogueService.isLegacySearch$$());
 
   protected readonly searchResults$$ = computed(() => {
@@ -50,7 +46,7 @@ export class FoodSearch {
   });
 
   private readonly searchEffect$$ = effect(() => {
-    const searchQuery = this.searchQuery$$();
+    const searchQuery = this.foodAddModalService.searchQuery$$();
     const isLegacy = this.isLegacySearch$$();
 
     if (searchQuery && searchQuery.trim()) {
@@ -69,9 +65,9 @@ export class FoodSearch {
   }
 
   protected readonly deviceInfoService = inject(DeviceInfoService);
+  protected readonly foodAddModalService = inject(FoodAddModalService);
   private readonly voiceRecordingService = inject(VoiceRecordingService);
   private readonly foodCatalogueService = inject(FoodCatalogueService);
-  private readonly foodAddModalService = inject(FoodAddModalService);
 
   private focusInput(): void {
     const inputEl = document.querySelector('v-input.catalogue-entry-name-input input') as HTMLInputElement;
