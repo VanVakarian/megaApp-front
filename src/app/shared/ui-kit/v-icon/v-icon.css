@@ -1,13 +1,11 @@
-@import '@app/shared/ui-kit/vars.css';
-
 :host {
-  display: inline-flex;
+  display: inline-block;
   align-items: center;
   justify-content: center;
   width: var(--v-icon-size, var(--unit-4));
   height: var(--v-icon-size, var(--unit-4));
-  color: var(--v-icon-color, var(--color-text-default));
-  transition: all 0.2s ease;
+  color: var(--v-icon-color, currentColor);
+  /* transition: all 0.2s ease; */
 }
 
 .icon-svg {
@@ -15,4 +13,7 @@
   height: 100%;
   background-color: currentColor;
   mask-image: var(--v-icon-background);
+  mask-size: contain;
+  mask-repeat: no-repeat;
+  mask-position: center;
 }

@@ -1,10 +1,5 @@
 //                                                                           APP
 
-export enum ScreenType {
-  MOBILE = 'MOBILE',
-  DESKTOP = 'DESKTOP',
-}
-
 //                                                                          AUTH
 
 export interface UserCreds {
@@ -19,11 +14,131 @@ export interface AuthResponse {
 
 //                                                                            WS
 
-export interface IncomingMessage {
-  type?: string;
-  payload?: any;
-  [key: string]: any;
+export enum WebSocketMessageType {
+  PING = 'PING',
+  SYNC_STATUS = 'SYNC_STATUS',
+  DIARY_ENTRY_CREATED = 'DIARY_ENTRY_CREATED',
+  DIARY_ENTRY_UPDATED = 'DIARY_ENTRY_UPDATED',
+  DIARY_ENTRY_DELETED = 'DIARY_ENTRY_DELETED',
+  BODY_WEIGHT_UPDATED = 'BODY_WEIGHT_UPDATED',
+  START_VOICE_RECORDING = 'START_VOICE_RECORDING',
+  AUDIO_CHUNK = 'AUDIO_CHUNK',
+  STOP_VOICE_RECORDING = 'STOP_VOICE_RECORDING',
+  SEARCH_QUERY = 'SEARCH_QUERY',
+  SEARCH_RESULTS = 'SEARCH_RESULTS',
+  CATALOGUE_ENTRY_SAVED = 'CATALOGUE_ENTRY_SAVED',
+  CATALOGUE_IMAGE_GENERATED = 'CATALOGUE_IMAGE_GENERATED',
 }
+
+export interface PingWsMessage {
+  type: WebSocketMessageType.PING;
+}
+
+export interface UserDataLastModifiedTs {
+  userDataLastModifiedTs: number;
+}
+
+export interface SyncStatusWsMessage {
+  type: WebSocketMessageType.SYNC_STATUS;
+  payload: UserDataLastModifiedTs;
+}
+
+export interface DiaryEntryToCreate extends DiaryEntry {}
+
+export interface DiaryEntryCreatedWsMessage {
+  type: WebSocketMessageType.DIARY_ENTRY_CREATED;
+  payload: DiaryEntryToCreate;
+}
+
+export interface DiaryEntryToUpdate {
+  id: number;
+  newFoodWeight: number;
+  newHistoryEntry: HistoryEntry;
+}
+
+export interface DiaryEntryUpdatedWsMessage {
+  type: WebSocketMessageType.DIARY_ENTRY_UPDATED;
+  payload: DiaryEntryToUpdate;
+}
+
+export interface DiaryEntryToDelete {
+  deletedDiaryEntryId: number;
+}
+
+export interface DiaryEntryDeletedWsMessage {
+  type: WebSocketMessageType.DIARY_ENTRY_DELETED;
+  payload: DiaryEntryToDelete;
+}
+
+export interface BodyWeightToUpdate {
+  dateISO: string;
+  newBodyWeight: number;
+}
+
+export interface BodyWeightUpdatedWsMessage {
+  type: WebSocketMessageType.BODY_WEIGHT_UPDATED;
+  payload: BodyWeightToUpdate;
+}
+
+export interface StartVoiceRecordingWsMessage {
+  type: WebSocketMessageType.START_VOICE_RECORDING;
+}
+
+export interface AudioChunkWsMessage {
+  type: WebSocketMessageType.AUDIO_CHUNK;
+  data: string;
+  sequence: number;
+}
+
+export interface StopVoiceRecordingWsMessage {
+  type: WebSocketMessageType.STOP_VOICE_RECORDING;
+}
+
+export interface SearchQueryWsMessage {
+  type: WebSocketMessageType.SEARCH_QUERY;
+  query: string;
+  sequenceNumber: number;
+}
+
+export interface SearchResultsWsMessage {
+  type: WebSocketMessageType.SEARCH_RESULTS;
+  payload: {
+    query: string;
+    catalogueIds: number[];
+    timestamp: number;
+    sequenceNumber: number;
+  };
+}
+
+export interface CatalogueEntrySavedWsMessage {
+  type: WebSocketMessageType.CATALOGUE_ENTRY_SAVED;
+  payload: CatalogueEntry;
+}
+
+export interface CatalogueImageGeneratedWsMessage {
+  type: WebSocketMessageType.CATALOGUE_IMAGE_GENERATED;
+  payload: {
+    catalogueId: number;
+    imageVersion: number;
+  };
+}
+
+export type IncomingWsMessage =
+  | PingWsMessage
+  | SyncStatusWsMessage
+  | DiaryEntryCreatedWsMessage
+  | DiaryEntryUpdatedWsMessage
+  | DiaryEntryDeletedWsMessage
+  | BodyWeightUpdatedWsMessage
+  | SearchResultsWsMessage
+  | CatalogueEntrySavedWsMessage
+  | CatalogueImageGeneratedWsMessage;
+
+export type OutgoingWsMessage =
+  | StartVoiceRecordingWsMessage
+  | AudioChunkWsMessage
+  | StopVoiceRecordingWsMessage
+  | SearchQueryWsMessage;
 
 //                                                                        SERVER
 
@@ -47,6 +162,39 @@ export interface ServerResponseWithCatalogueEntry extends ServerResponseBasic {
   id?: number;
   name?: string;
   kcals?: number;
+}
+
+export interface ProductPreviewData {
+  generalizedName: string;
+  kcals: number;
+  protein: number;
+  fat: number;
+  carbs: number;
+  fiber: number;
+  description: string;
+  confidence: number;
+}
+
+export interface ServerResponseProductPreview extends ServerResponseBasic {
+  data: ProductPreviewData;
+}
+
+export interface ProductSaveRequest {
+  id?: number;
+  name: string;
+  kcals: number;
+  protein: number;
+  fat: number;
+  carbs: number;
+  fiber: number;
+  description: string;
+}
+
+export interface ServerResponseProductSave extends ServerResponseBasic {
+  data: {
+    catalogueEntry: CatalogueEntry;
+  };
+  error?: string;
 }
 
 //                                                                      SETTINGS
@@ -118,19 +266,31 @@ export interface UnifiedDiary {
   };
 }
 
+export enum HistoryEntryAction {
+  INIT = 'init',
+  SET = 'set',
+  ADD = 'add',
+  SUBTRACT = 'subtract',
+}
+
 export interface HistoryEntry {
-  action: 'init' | 'set' | 'add' | 'subtract'; // TODO[115]: Enumify
+  action: HistoryEntryAction;
   value: number;
 }
 
 export type CatalogueId = number;
 
-export type CatalogueIds = CatalogueId[];
-
 export interface CatalogueEntry {
   id: number;
   name: string;
+  legacyName?: string;
   kcals: number;
+  protein: number;
+  fat: number;
+  carbs: number;
+  fiber: number;
+  description: string;
+  imageVersion?: number;
 }
 
 export interface Catalogue {
@@ -141,7 +301,7 @@ export interface Coefficients {
   [id: number]: number;
 }
 
-export interface BodyWeight {
+export interface BodyWeightInterface {
   bodyWeight: string;
   dateISO: string;
 }
@@ -254,6 +414,11 @@ export interface Transaction {
 // }
 
 //                                                                            UI
+
+export interface CapturedPhoto {
+  file: File;
+  dataUrl: string;
+}
 
 // export interface InputWithProgressSubmitData {
 //   value: string;

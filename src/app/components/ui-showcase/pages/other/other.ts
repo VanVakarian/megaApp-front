@@ -3,19 +3,18 @@ import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { VButton } from '@app/shared/ui-kit/v-button/v-button';
 import { VCard } from '@app/shared/ui-kit/v-card/v-card';
 import { ddExpandDirection, DropdownItem, VDropdown } from '@app/shared/ui-kit/v-dropdown/v-dropdown';
-import { InputType, VInput } from '@app/shared/ui-kit/v-input/v-input';
+import { IconName, VIcon } from '@app/shared/ui-kit/v-icon/v-icon';
+import { VInput } from '@app/shared/ui-kit/v-input/v-input';
 import { VModal } from '@app/shared/ui-kit/v-modal/v-modal';
 
 @Component({
   selector: 'other',
   templateUrl: './other.html',
-  styleUrl: './other.css',
-  imports: [VCard, VInput, VButton, VModal, VDropdown, ReactiveFormsModule],
+  imports: [VCard, VInput, VButton, VModal, VDropdown, VIcon, ReactiveFormsModule],
 })
 export class Other implements AfterViewInit, OnInit {
   @ViewChild('testInput')
   protected inputComponent!: VInput;
-  protected InputType = InputType;
   protected isModalOpen = false;
   protected form = new FormGroup({
     testInput: new FormControl(''),
@@ -38,6 +37,8 @@ export class Other implements AfterViewInit, OnInit {
   protected selectedFoodItem: string = '';
   protected readonly ddExpandDirection = ddExpandDirection;
   protected isShowLongContent = false;
+
+  protected readonly Icon = IconName;
 
   constructor() {}
 
@@ -64,5 +65,9 @@ export class Other implements AfterViewInit, OnInit {
     } else {
       console.log('No item selected');
     }
+  }
+
+  protected consoleLogFormValue(): void {
+    console.log(this.form.value);
   }
 }

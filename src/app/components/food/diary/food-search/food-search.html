@@ -1,0 +1,140 @@
+<div [class.mb-4]="searchResults$$().length === 0"
+     class="flex justify-center gap-4 px-4 pt-4">
+  @if (isLegacySearch$$()) {
+    <v-button primary
+              tabindex="-1"
+              [config]="{
+                isLabelHidden: true,
+                padding: 2,
+              }"
+              (mousedown)="$event.preventDefault()"
+              (onClick)="toggleLegacySearch()">
+      <v-icon v-prefix
+              [name]="Icon.SwapHoriz"
+              [size]="7" />
+    </v-button>
+  }
+  @else {
+    <v-button raised
+              tabindex="-1"
+              [config]="{
+                isLabelHidden: true,
+                padding: 2,
+              }"
+              (mousedown)="$event.preventDefault()"
+              (onClick)="toggleLegacySearch()">
+      <v-icon v-prefix
+              [name]="Icon.SwapHoriz"
+              [size]="7" />
+    </v-button>
+  }
+
+  <v-input class="catalogue-entry-name-input w-full"
+           [config]="{
+             type: 'text'
+           }"
+           [(value)]="foodAddModalService.searchQuery$$" />
+
+  <!--
+  @if (isRecording) {
+    <v-button primary
+              [config]="{
+                padding: 2,
+                isLabelHidden: true,
+              }"
+              (click)="toggleVoiceRecording()">
+      <v-icon v-prefix
+              class="animate-pulse"
+              [name]="Icon.Mic"
+              [size]="7" />
+    </v-button>
+  } @else {
+    <v-button raised
+              [config]="{
+                padding: 2,
+                isLabelHidden: true,
+              }"
+              (click)="toggleVoiceRecording()">
+      <v-icon v-prefix
+              [name]="Icon.Mic"
+              [size]="7" />
+    </v-button>
+  }
+
+  @if (deviceInfoService.hasCameras$$() && deviceInfoService.isMobileDevice$$()) {
+    <v-button raised
+              [config]="{
+                padding: 2,
+                isLabelHidden: true,
+              }"
+              (click)="takePhoto()">
+      <v-icon v-prefix
+              [name]="Icon.PhotoCamera"
+              [size]="7" />
+    </v-button>
+  }
+  -->
+</div>
+
+@if (isLegacySearch$$()) {
+  <div [class.mb-4]="searchResults$$().length === 0"
+       class="shadow-orange-500/30 flex-nowrap flex items-center gap-2 px-2 py-1 mx-4 mt-4 font-medium text-white origin-top bg-orange-500 rounded-lg shadow-lg">
+    <v-icon [name]="Icon.Warning"
+            [size]="5" />
+    <span class="text-nowrap text-ellipsis">Используется устаревший поиск</span>
+  </div>
+}
+
+<div [ngClass]="searchResults$$().length > 0 ? 'pt-4 pb-4' : ''"
+     class="grid-auto-fill grid gap-2 pl-4 pr-4 overflow-y-auto rounded-lg">
+  @if (searchResults$$().length > 0) {
+    <div flipAnimate
+         class="contents">
+      @for (catalogueEntry of searchResults$$(); track catalogueEntry.id) {
+        <v-card [attr.data-flip-key]="'catalogue-' + catalogueEntry.id"
+                class="cursor-pointer"
+                [config]="{
+                  padding: 1,
+                  backgroundImageUrl: getImageUrl(catalogueEntry),
+                  backgroundImageOpacity: 0,
+                  minHeight: '104px'
+                }"
+                (click)="selectProduct(catalogueEntry)">
+          <div>
+            <span class="catalogue-entry-name">{{ getDisplayName(catalogueEntry) }}</span>
+          </div>
+        </v-card>
+      }
+    </div>
+  }
+
+  @if (searchResults$$().length > 0) {
+    <v-card @fadeScaleIn
+            class="cursor-pointer"
+            [config]="{
+              padding: 2
+            }"
+            (click)="addProduct()">
+      <div class="add-catalogue-entry flex items-center justify-center w-full h-full">
+        <v-icon [name]="Icon.Add"
+                [size]="7" />
+      </div>
+    </v-card>
+  }
+</div>
+
+@if (searchResults$$().length > 0 && this.deviceInfoService.isMobileScreen$$()) {
+  <div class="sticky bottom-0 flex justify-start px-4 pb-4">
+    <v-button danger
+              [config]="{
+                isWithoutShadow: true,
+                isLabelHidden: true,
+                padding: 1,
+              }"
+              (click)="closeModal()">
+      <v-icon v-prefix
+              [name]="Icon.Close"
+              [size]="9" />
+    </v-button>
+  </div>
+}

@@ -1,0 +1,31 @@
+::ng-deep {
+  .panel-body-weight .mat-expansion-panel-body {
+    padding: 0px 14px;
+  }
+}
+
+.mat-expansion-panel-header .add-icon {
+  transition: 0.2s linear;
+}
+
+.mat-expansion-panel-header.mat-expanded .add-icon {
+  transform: scale(1.5) rotate(45deg);
+}
+
+.hidden-if-isLiteVersion {
+  display: none;
+  width: 0 !important;
+}
+
+::ng-deep {
+  .modal-container:has(camera-preview) {
+    /* Stretch camera preview to fill the entire screen */
+    width: 100vw !important;
+  }
+}
+
+.readable-text-bg {
+  padding: 1px 6px;
+  background: color-mix(in srgb, var(--color-bg-default) 80%, transparent);
+  border-radius: 4px;
+}

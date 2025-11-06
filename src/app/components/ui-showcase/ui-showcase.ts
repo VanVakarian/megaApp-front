@@ -5,7 +5,7 @@ import { Navbar } from './navbar/navbar';
 @Component({
   selector: 'ui-showcase',
   templateUrl: './ui-showcase.html',
-  styleUrl: './ui-showcase.css',
+  styleUrl: './ui-showcase.scss',
   imports: [Navbar, RouterOutlet],
 })
 export class UiShowcase {

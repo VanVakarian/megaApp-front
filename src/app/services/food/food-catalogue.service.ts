@@ -1,25 +1,45 @@
 import { HttpClient } from '@angular/common/http';
-import { computed, Injectable, signal, Signal, WritableSignal } from '@angular/core';
+import { Injectable, signal, WritableSignal } from '@angular/core';
 import { exhaustRequest } from '@app/shared/decorators/exhaust-request.decorator';
-import { Catalogue, CatalogueEntry, CatalogueIds } from '@app/shared/interfaces';
+import {
+  Catalogue,
+  CatalogueEntry,
+  CatalogueEntrySavedWsMessage,
+  CatalogueImageGeneratedWsMessage,
+  ProductPreviewData,
+  ProductSaveRequest,
+  SearchQueryWsMessage,
+  SearchResultsWsMessage,
+  ServerResponseProductPreview,
+  ServerResponseProductSave,
+  WebSocketMessageType,
+} from '@app/shared/interfaces';
+import { transliterateEnToRu } from '@app/shared/utils';
 import { firstValueFrom } from 'rxjs';
+import { filter } from 'rxjs/operators';
 import { LocalStorageService } from '../local-storage.service';
 import { NetworkService } from '../network.service';
-import { SyncOperationType, SyncQueueService } from '../sync-queue.service';
+import { SyncQueueService } from '../sync-queue.service';
 import { BaseFoodService } from './food-base.service';
-import { FoodCoefficientsService } from './food-coefficients.service';
 
 @Injectable({
   providedIn: 'root',
 })
 export class FoodCatalogueService extends BaseFoodService {
   private readonly CATALOGUE_STORAGE_KEY = 'food_catalogue';
-  private readonly CATALOGUE_IDS_SELECTED_STORAGE_KEY = 'food_catalogue_ids_selected';
+  private readonly SEARCH_CACHE_KEY = 'food_search_cache';
 
-  public catalogue$$: WritableSignal<Catalogue> = signal({});
-  public catalogueIdsSelected$$: WritableSignal<CatalogueIds> = signal([]);
-  public catalogueIdsSelectedSorted$$: Signal<CatalogueEntry[]> = computed(() => this.prepCatalogueSortedListSeparate(true)); // prettier-ignore
-  public catalogueIdsLeftOutSorted$$: Signal<CatalogueEntry[]> = computed(() => this.prepCatalogueSortedListSeparate(false)); // prettier-ignore
+  public readonly catalogue$$: WritableSignal<Catalogue> = signal({});
+
+  private readonly searchQuery$$: WritableSignal<string> = signal('');
+  public readonly searchResults$$: WritableSignal<CatalogueEntry[]> = signal([]);
+
+  public readonly isLegacySearch$$: WritableSignal<boolean> = signal(false);
+  public readonly legacySearchResults$$: WritableSignal<CatalogueEntry[]> = signal([]);
+
+  private searchCache: Record<string, number[]> = {};
+  private searchSequenceNumber: number = 0;
+  private lastDisplayedSequenceNumber: number = 0;
 
   protected getStorageKey(): string {
     return this.CATALOGUE_STORAGE_KEY;
@@ -30,16 +50,11 @@ export class FoodCatalogueService extends BaseFoodService {
     localStorageService: LocalStorageService,
     networkService: NetworkService,
     syncQueueService: SyncQueueService,
-    private coefficientsService: FoodCoefficientsService,
   ) {
     super(http, localStorageService, networkService, syncQueueService);
     this.loadCatalogueFromLocalStorage();
-    this.loadCatalogueIdsSelectedFromLocalStorage();
-
-    // effect(() => { console.log('CATALOGUE have been updated:', this.catalogue$$()) }); // prettier-ignore
-    // effect(() => { console.log('CATALOGUE IDS SELECTED have been updated:', this.catalogueIdsSelected$$()) }); // prettier-ignore
-    // effect(() => { console.log('CATALOGUE SORTED LIST SELECTED have been updated:', this.catalogueIdsSelectedSorted$$()) }); // prettier-ignore
-    // effect(() => { console.log('CATALOGUE SORTED LIST LEFT OUT have been updated:', this.catalogueIdsLeftOutSorted$$()) }); // prettier-ignore
+    this.loadSearchCacheFromLocalStorage();
+    this.setupSearchWebSocketListener();
   }
 
   @exhaustRequest()
@@ -56,229 +71,6 @@ export class FoodCatalogueService extends BaseFoodService {
     }
   }
 
-  public async createNewCatalogueEntry(foodName: string, foodKcals: number): Promise<number | null> {
-    if (!this.checkNetworkAvailability()) {
-      console.error('Network not available for creating catalogue entry');
-      return null;
-    }
-
-    const tempId = Date.now();
-    const originalCatalogue = { ...this.catalogue$$() };
-    const originalIdsSelected = [...this.catalogueIdsSelected$$()];
-
-    this.addFoodEntryToCatalogue(foodName, foodKcals, tempId);
-    this.addFoodIdToCatalogueIdsSelected(tempId);
-    this.saveToLocalStorage(this.catalogue$$());
-    this.saveCatalogueIdsSelectedToLocalStorage();
-
-    const successCallback = (response: any) => {
-      if (response.result && response.id) {
-        this.updateCatalogueEntryId(tempId, response.id);
-      }
-    };
-
-    const rollbackFunction = () => {
-      this.catalogue$$.set(originalCatalogue);
-      this.catalogueIdsSelected$$.set(originalIdsSelected);
-      this.saveToLocalStorage(originalCatalogue);
-      this.saveCatalogueIdsSelectedToLocalStorage();
-    };
-
-    this.addSyncOperation({
-      type: SyncOperationType.CREATE,
-      endpoint: '/api/food/catalogue/',
-      data: { foodName, foodKcals },
-      successCallback: successCallback,
-      rollbackCallback: rollbackFunction,
-    });
-
-    return tempId;
-  }
-
-  public async editCatalogueEntry(foodId: number, foodName: string, foodKcals: number): Promise<boolean> {
-    if (!this.checkNetworkAvailability()) {
-      console.error('Network not available for editing catalogue entry');
-      return false;
-    }
-
-    const originalCatalogue = { ...this.catalogue$$() };
-    const originalEntry = originalCatalogue[foodId];
-
-    if (!originalEntry) {
-      console.error('Cannot edit catalogue entry: entry not found');
-      return false;
-    }
-
-    this.catalogue$$.update((catalogue) => {
-      return {
-        ...catalogue,
-        [foodId]: {
-          id: foodId,
-          name: foodName,
-          kcals: foodKcals,
-        },
-      };
-    });
-    this.saveToLocalStorage(this.catalogue$$());
-
-    const rollbackFunction = () => {
-      this.catalogue$$.set(originalCatalogue);
-      this.saveToLocalStorage(originalCatalogue);
-    };
-
-    this.addSyncOperation({
-      type: SyncOperationType.UPDATE,
-      endpoint: '/api/food/catalogue/',
-      data: { foodId, foodName, foodKcals },
-      rollbackCallback: rollbackFunction,
-    });
-
-    return true;
-  }
-
-  @exhaustRequest()
-  public async getCatalogueEntriesSelected(): Promise<CatalogueIds> {
-    try {
-      const response = await firstValueFrom(this.http.get<CatalogueIds>('/api/food/user-catalogue'));
-
-      this.catalogueIdsSelected$$.set(response);
-      this.saveCatalogueIdsSelectedToLocalStorage();
-      return response;
-    } catch (error) {
-      console.error('Failed getting user catalogue entries:', error);
-      return [];
-    }
-  }
-
-  public async pickUserFoodId(foodId: number): Promise<boolean> {
-    if (!this.checkNetworkAvailability()) {
-      return false;
-    }
-
-    const originalIdsSelected = [...this.catalogueIdsSelected$$()];
-    const originalCoefficients = { ...this.coefficientsService.coefficients$$() };
-
-    this.addFoodIdToCatalogueIdsSelected(foodId);
-    this.saveCatalogueIdsSelectedToLocalStorage();
-
-    this.coefficientsService.coefficients$$.update((coefficients) => ({ ...coefficients, [foodId]: 1 }));
-
-    const rollbackFunction = () => {
-      this.catalogueIdsSelected$$.set(originalIdsSelected);
-      this.saveCatalogueIdsSelectedToLocalStorage();
-      this.coefficientsService.coefficients$$.set(originalCoefficients);
-    };
-
-    this.addSyncOperation({
-      type: SyncOperationType.UPDATE,
-      endpoint: '/api/food/user-catalogue/pick/',
-      data: { foodId },
-      rollbackCallback: rollbackFunction,
-    });
-
-    return true;
-  }
-
-  public async dismissUserFoodId(foodId: number): Promise<boolean> {
-    if (!this.checkNetworkAvailability()) {
-      return false;
-    }
-
-    const originalIdsSelected = [...this.catalogueIdsSelected$$()];
-    const originalCoefficients = { ...this.coefficientsService.coefficients$$() };
-
-    this.removeFoodIdFromCatalogueIdsSelected(foodId);
-    this.saveCatalogueIdsSelectedToLocalStorage();
-
-    this.coefficientsService.coefficients$$.update((coefficients) => {
-      const updated = { ...coefficients };
-      delete updated[foodId];
-      return updated;
-    });
-
-    const rollbackFunction = () => {
-      this.catalogueIdsSelected$$.set(originalIdsSelected);
-      this.saveCatalogueIdsSelectedToLocalStorage();
-      this.coefficientsService.coefficients$$.set(originalCoefficients);
-    };
-
-    this.addSyncOperation({
-      type: SyncOperationType.UPDATE,
-      endpoint: '/api/food/user-catalogue/dismiss/',
-      data: { foodId },
-      rollbackCallback: rollbackFunction,
-    });
-
-    return true;
-  }
-
-  private prepCatalogueSortedListSeparate(isSelectedEntries: boolean): CatalogueEntry[] {
-    return Object.values(this.catalogue$$())
-      .filter((item) =>
-        isSelectedEntries
-          ? this.catalogueIdsSelected$$().includes(item.id)
-          : !this.catalogueIdsSelected$$().includes(item.id),
-      )
-      .sort((a, b) => a.name.localeCompare(b.name));
-  }
-
-  private addFoodEntryToCatalogue(foodName: string, foodKcals: number, newId: number): void {
-    this.catalogue$$.update((catalogue) => {
-      const newCatalogueEntry: CatalogueEntry = {
-        id: newId,
-        name: foodName,
-        kcals: foodKcals,
-      };
-      return { ...catalogue, [newId]: newCatalogueEntry };
-    });
-  }
-
-  private updateCatalogueEntryId(tempId: number, realId: number): void {
-    this.catalogue$$.update((catalogue) => {
-      if (catalogue[tempId]) {
-        const entry = { ...catalogue[tempId], id: realId };
-        const updated = { ...catalogue };
-        updated[realId] = entry;
-        delete updated[tempId];
-        return updated;
-      }
-      return catalogue;
-    });
-
-    this.catalogueIdsSelected$$.update((myIds) => {
-      const index = myIds.indexOf(tempId);
-      if (index !== -1) {
-        const updated = [...myIds];
-        updated[index] = realId;
-        return updated;
-      }
-      return myIds;
-    });
-
-    this.coefficientsService.coefficients$$.update((coefficients) => {
-      if (coefficients[tempId]) {
-        const updated = { ...coefficients };
-        updated[realId] = coefficients[tempId];
-        delete updated[tempId];
-        return updated;
-      }
-      return coefficients;
-    });
-
-    this.saveToLocalStorage(this.catalogue$$());
-    this.saveCatalogueIdsSelectedToLocalStorage();
-  }
-
-  private addFoodIdToCatalogueIdsSelected(foodId: number): void {
-    this.catalogueIdsSelected$$.update((foodIds) => {
-      return [...foodIds, foodId];
-    });
-  }
-
-  private removeFoodIdFromCatalogueIdsSelected(foodId: number): void {
-    this.catalogueIdsSelected$$.update((foodIds) => foodIds.filter((id) => id !== foodId));
-  }
-
   private loadCatalogueFromLocalStorage(): void {
     const savedCatalogue = this.loadFromLocalStorage<Catalogue>();
     if (savedCatalogue) {
@@ -286,14 +78,261 @@ export class FoodCatalogueService extends BaseFoodService {
     }
   }
 
-  private saveCatalogueIdsSelectedToLocalStorage(): void {
-    this.localStorageService.set(this.CATALOGUE_IDS_SELECTED_STORAGE_KEY, this.catalogueIdsSelected$$());
+  public searchProducts(query: string): void {
+    this.searchQuery$$.set(query);
+
+    if (!query.trim()) {
+      this.searchResults$$.set([]);
+      this.searchSequenceNumber = 0;
+      this.lastDisplayedSequenceNumber = 0;
+      return;
+    }
+
+    this.searchSequenceNumber++;
+
+    const cachedIds = this.getSearchCachedResults(query);
+    if (cachedIds) {
+      this.displaySearchResults(cachedIds);
+      this.lastDisplayedSequenceNumber = this.searchSequenceNumber;
+    }
+
+    this.sendSearchQuery(query, this.searchSequenceNumber);
   }
 
-  private loadCatalogueIdsSelectedFromLocalStorage(): void {
-    const savedIdsSelected = this.localStorageService.get<CatalogueIds>(this.CATALOGUE_IDS_SELECTED_STORAGE_KEY);
-    if (savedIdsSelected) {
-      this.catalogueIdsSelected$$.set(savedIdsSelected);
+  public legacySearchProducts(query: string): void {
+    this.searchQuery$$.set(query);
+
+    if (!query.trim()) {
+      this.legacySearchResults$$.set([]);
+      return;
     }
+
+    const searchTerms = query
+      .toLowerCase()
+      .split(' ')
+      .filter((term) => term.length > 0);
+
+    const transliteratedTerms = query
+      .split(' ')
+      .filter((term) => term.length > 0)
+      .map(transliterateEnToRu);
+
+    const catalogue = this.catalogue$$();
+    const allEntries = Object.values(catalogue);
+
+    const results = allEntries.filter((food) => {
+      const legacyNameLower = food.legacyName?.toLowerCase() || '';
+      return (
+        searchTerms.every((term) => legacyNameLower.includes(term)) ||
+        transliteratedTerms.every((term) => legacyNameLower.includes(term))
+      );
+    });
+
+    this.legacySearchResults$$.set(results);
+  }
+
+  private getSearchCachedResults(query: string): number[] | null {
+    return this.searchCache[query] || null;
+  }
+
+  private setSearchCachedResults(query: string, ids: number[]): void {
+    this.searchCache[query] = ids;
+    this.saveSearchCacheToLocalStorage();
+  }
+
+  private sendSearchQuery(query: string, sequenceNumber: number): void {
+    const message: SearchQueryWsMessage = {
+      type: WebSocketMessageType.SEARCH_QUERY,
+      query: query,
+      sequenceNumber: sequenceNumber,
+    };
+    this.networkService.sendMessage(message);
+  }
+
+  private setupSearchWebSocketListener(): void {
+    this.networkService.wsMessages$
+      .pipe(filter((msg) => msg.type === WebSocketMessageType.SEARCH_RESULTS))
+      .subscribe((msg) => {
+        this.handleSearchResults(msg as SearchResultsWsMessage);
+      });
+
+    this.networkService.wsMessages$
+      .pipe(filter((msg) => msg.type === WebSocketMessageType.CATALOGUE_ENTRY_SAVED))
+      .subscribe((msg) => {
+        this.handleCatalogueEntrySaved(msg as CatalogueEntrySavedWsMessage);
+      });
+
+    this.networkService.wsMessages$
+      .pipe(filter((msg) => msg.type === WebSocketMessageType.CATALOGUE_IMAGE_GENERATED))
+      .subscribe((msg) => {
+        this.handleCatalogueImageGenerated(msg as CatalogueImageGeneratedWsMessage);
+      });
+  }
+
+  private handleSearchResults(msg: SearchResultsWsMessage): void {
+    const results = msg.payload.catalogueIds;
+    const queryFromMessage = msg.payload.query;
+    const sequenceFromMessage = msg.payload.sequenceNumber;
+
+    if (!queryFromMessage) {
+      return;
+    }
+
+    const cacheKey = queryFromMessage;
+    const cachedIds = this.getSearchCachedResults(cacheKey);
+
+    if (!cachedIds || !this.arraysEqual(cachedIds, results)) {
+      this.setSearchCachedResults(cacheKey, results);
+
+      if (sequenceFromMessage > this.lastDisplayedSequenceNumber) {
+        this.displaySearchResults(results);
+        this.lastDisplayedSequenceNumber = sequenceFromMessage;
+      }
+    }
+  }
+
+  private handleCatalogueEntrySaved(msg: CatalogueEntrySavedWsMessage): void {
+    const entry = msg.payload;
+
+    const updatedCatalogue = {
+      ...this.catalogue$$(),
+      [entry.id]: entry,
+    };
+
+    this.catalogue$$.set(updatedCatalogue);
+    this.saveToLocalStorage(updatedCatalogue);
+  }
+
+  private handleCatalogueImageGenerated(msg: CatalogueImageGeneratedWsMessage): void {
+    const catalogueId = msg.payload.catalogueId;
+    const imageVersion = msg.payload.imageVersion;
+    const catalogue = this.catalogue$$();
+    const existingEntry = catalogue[catalogueId];
+
+    if (existingEntry) {
+      const updatedEntry = {
+        ...existingEntry,
+        imageVersion,
+      };
+
+      const updatedCatalogue = {
+        ...catalogue,
+        [catalogueId]: updatedEntry,
+      };
+
+      this.catalogue$$.set(updatedCatalogue);
+      this.saveToLocalStorage(updatedCatalogue);
+
+      const currentSearchResults = this.searchResults$$();
+      const updatedSearchResults = currentSearchResults.map((item) => (item.id === catalogueId ? updatedEntry : item));
+      this.searchResults$$.set(updatedSearchResults);
+
+      const currentLegacyResults = this.legacySearchResults$$();
+      const updatedLegacyResults = currentLegacyResults.map((item) => (item.id === catalogueId ? updatedEntry : item));
+      this.legacySearchResults$$.set(updatedLegacyResults);
+    }
+  }
+
+  private displaySearchResults(ids: number[]): void {
+    const catalogue = this.catalogue$$();
+
+    if (!ids || !Array.isArray(ids) || !catalogue) {
+      this.searchResults$$.set([]);
+      return;
+    }
+
+    const results = ids.map((id) => catalogue[id]).filter(Boolean);
+    this.searchResults$$.set(results);
+  }
+
+  private arraysEqual(a: number[], b: number[]): boolean {
+    return a.length === b.length && a.every((val, i) => val === b[i]);
+  }
+
+  private loadSearchCacheFromLocalStorage(): void {
+    try {
+      const savedCache = this.localStorageService.get<Record<string, number[]>>(this.SEARCH_CACHE_KEY);
+      if (savedCache) {
+        this.searchCache = savedCache;
+      }
+    } catch (error) {
+      console.error('Failed to load search cache from localStorage:', error);
+      this.searchCache = {};
+    }
+  }
+
+  private saveSearchCacheToLocalStorage(): void {
+    try {
+      this.localStorageService.set(this.SEARCH_CACHE_KEY, this.searchCache);
+    } catch (error) {
+      console.error('Failed to save search cache to localStorage:', error);
+    }
+  }
+
+  public clearSearch(): void {
+    this.searchQuery$$.set('');
+    this.searchResults$$.set([]);
+    this.legacySearchResults$$.set([]);
+    this.searchSequenceNumber = 0;
+    this.lastDisplayedSequenceNumber = 0;
+  }
+
+  public async generateProductPreview(description: string): Promise<ProductPreviewData> {
+    try {
+      const response = await firstValueFrom(
+        this.http.post<ServerResponseProductPreview>('/api/food/generate-product-preview', { description }),
+      );
+
+      if (!response.result || !response.data) {
+        throw new Error('Failed to generate product preview');
+      }
+
+      return response.data;
+    } catch (error) {
+      console.error('Failed to generate product preview:', error);
+      throw error;
+    }
+  }
+
+  public async saveProduct(productData: ProductSaveRequest): Promise<CatalogueEntry> {
+    try {
+      const response = await firstValueFrom(
+        this.http.post<ServerResponseProductSave>('/api/food/save-product', productData),
+      );
+
+      if (!response.result || !response.data?.catalogueEntry) {
+        throw new Error(response.error || 'Failed to save product');
+      }
+
+      const catalogueEntry = response.data.catalogueEntry;
+
+      const updatedCatalogue = {
+        ...this.catalogue$$(),
+        [catalogueEntry.id]: catalogueEntry,
+      };
+      this.catalogue$$.set(updatedCatalogue);
+      this.saveToLocalStorage(updatedCatalogue);
+
+      return catalogueEntry;
+    } catch (error: any) {
+      console.error('Failed to save product:', error);
+      throw error;
+    }
+  }
+
+  public getSquircleImageUrl(catalogueId: number): string | undefined {
+    const catalogueEntry = this.catalogue$$()[catalogueId];
+    if (!catalogueEntry?.imageVersion) {
+      return undefined;
+    }
+    return `/api/images/food/${catalogueId}-squircle-v${catalogueEntry.imageVersion}.png`;
+  }
+
+  public getCornerImageUrl(catalogueId: number): string | undefined {
+    const catalogueEntry = this.catalogue$$()[catalogueId];
+    if (!catalogueEntry?.imageVersion) {
+      return undefined;
+    }
+    return `/api/images/food/${catalogueId}-corner-v${catalogueEntry.imageVersion}.png`;
   }
 }

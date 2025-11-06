@@ -16,19 +16,19 @@ export class AnimationStateManager {
     private onChange: (state: AnimationState) => void,
   ) {}
 
-  toIdle() {
+  public toIdle() {
     this.transition(AnimationState.IDLE);
   }
-  toCountdown() {
+  public toCountdown() {
     this.transition(AnimationState.COUNTDOWN);
   }
-  toSubmitting() {
+  public toSubmitting() {
     this.transition(AnimationState.SUBMITTING);
   }
-  toSuccess() {
+  public toSuccess() {
     this.transition(AnimationState.SUCCESS);
   }
-  toError() {
+  public toError() {
     this.transition(AnimationState.ERROR);
   }
 

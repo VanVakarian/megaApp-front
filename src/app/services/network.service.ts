@@ -1,33 +1,29 @@
-import { Injectable, OnDestroy, WritableSignal, computed, signal } from '@angular/core';
+import { Injectable, WritableSignal, computed, inject, signal } from '@angular/core';
 import { tokenGetter } from '@app/services/auth.service';
-import { IncomingMessage } from '@app/shared/interfaces';
-import { EMPTY, Observable, Subject, timer } from 'rxjs';
+import { IncomingWsMessage, OutgoingWsMessage, WebSocketMessageType } from '@app/shared/interfaces';
+import { EMPTY, Subject, timer } from 'rxjs';
 import { catchError, retry, tap } from 'rxjs/operators';
 import { WebSocketSubject, webSocket } from 'rxjs/webSocket';
-import { environment } from 'src/environments/environment.dev';
 import { NotificationService } from './notification.service';
 
 @Injectable({
   providedIn: 'root',
 })
-export class NetworkService implements OnDestroy {
+export class NetworkService {
   public readonly isOnline$$: WritableSignal<boolean> = signal(navigator.onLine);
   public readonly isConnected$$: WritableSignal<boolean> = signal(false);
   public readonly isNetworkAvailable$$ = computed(() => this.isOnline$$());
 
   private socket$: WebSocketSubject<any> | undefined;
-  private reconnectDelaySec = 1;
-  private readonly messagesSubject = new Subject<IncomingMessage>();
+  private reconnectDelaySec = 5;
+  public readonly wsMessages$ = new Subject<IncomingWsMessage>();
   private readonly clientId: string;
 
-  constructor(private readonly notifications: NotificationService) {
+  private readonly notifications = inject(NotificationService);
+
+  constructor() {
     this.clientId = Math.random().toString(36).substring(2, 10);
     this.initNetworkEvents();
-  }
-
-  public ngOnDestroy(): void {
-    this.disconnect();
-    this.messagesSubject.complete();
   }
 
   public getClientId(): string {
@@ -86,8 +82,12 @@ export class NetworkService implements OnDestroy {
     this.isConnected$$.set(false);
   }
 
-  public getMessages(): Observable<IncomingMessage> {
-    return this.messagesSubject.asObservable();
+  public sendMessage(message: OutgoingWsMessage): void {
+    if (this.socket$ && !this.socket$.closed && this.isConnected$$()) {
+      this.socket$.next(message);
+    } else {
+      console.warn('WebSocket not connected, cannot send message:', message);
+    }
   }
 
   private initNetworkEvents(): void {
@@ -106,38 +106,24 @@ export class NetworkService implements OnDestroy {
   }
 
   private createWebSocket(token: string): WebSocketSubject<any> {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const host = window.location.host;
     const encodedToken = encodeURIComponent(token);
     const encodedClientId = encodeURIComponent(this.clientId);
 
-    let wsUrl: string;
-
-    if (environment.wsUrl) {
-      wsUrl = `${environment.wsUrl}?token=${encodedToken}&clientId=${encodedClientId}`;
-    } else {
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const host = window.location.host;
-      wsUrl = `${protocol}//${host}/api/ws?token=${encodedToken}&clientId=${encodedClientId}`;
-    }
+    const wsUrl = `${protocol}//${host}/api/ws?token=${encodedToken}&clientId=${encodedClientId}`;
 
     return webSocket(wsUrl);
   }
 
-  private handleIncomingMessage(data: any): void {
-    if (data?.type === 'ping') {
+  private handleIncomingMessage(data: IncomingWsMessage): void {
+    if (data.type === WebSocketMessageType.PING) {
       if (this.socket$ && !this.socket$.closed) {
-        this.socket$.next({ type: 'pong' });
+        this.socket$.next({ type: 'PONG' });
       }
       return;
     }
 
-    if (data?.type === 'pong') {
-      console.log('Received pong');
-      return;
-    }
-
-    if (data?.type) {
-      console.log('Received realtime update:', data);
-      this.messagesSubject.next(data);
-    }
+    this.wsMessages$.next(data);
   }
 }

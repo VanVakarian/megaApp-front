@@ -1,7 +1,6 @@
-@import '@app/shared/ui-kit/vars.css';
-
 :host {
   display: inline-block;
+  width: max-content;
 }
 
 button {
@@ -17,16 +16,18 @@ button {
   font-size: 1rem;
   font-weight: 500;
 
-  padding: var(--v-btn-p-y, var(--unit-2)) var(--v-btn-p-x, var(--unit-4));
-  border-radius: var(--unit-1);
+  padding: var(--v-button-padding-y, var(--unit-2)) var(--v-button-padding-x, var(--unit-4));
+  border-radius: var(--v-button-border-radius, var(--unit-1));
 
-  background: var(--color-bg-default);
+  background: color-mix(in oklab, var(--color-bg-default) calc(var(--v-button-bg-opacity, 1) * 100%), transparent);
   color: var(--color-text-default);
 
-  transition: all 0.2s ease;
+  transition:
+    background 0.2s ease,
+    box-shadow 0.2s ease;
 
   &:disabled {
-    opacity: 0.6;
+    opacity: 0.4;
     cursor: not-allowed;
     pointer-events: none;
   }
@@ -36,6 +37,22 @@ button > :not(.prefix):not(.postfix) {
   flex: 1;
 }
 
+.btn-text {
+  height: 28px;
+  font-size: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+:host([text-align='left']) .btn-text {
+  justify-content: flex-start;
+}
+
+:host([text-align='right']) .btn-text {
+  justify-content: flex-end;
+}
+
 .prefix,
 .postfix {
   display: inline-flex;
@@ -43,13 +60,13 @@ button > :not(.prefix):not(.postfix) {
   justify-content: center;
 }
 
-:host:not([style*='width']) {
+/* :host:not([style*='width']) {
   width: fit-content;
-}
+} */
 
-:host:not([style*='width']) button {
+/* :host:not([style*='width']) button {
   width: auto;
-}
+} */
 
 /* Flat directive - with subtle press animation */
 :host([flat]) button {
@@ -89,7 +106,7 @@ button > :not(.prefix):not(.postfix) {
 
 /* Primary directive */
 :host([primary]) button {
-  color: var(--color-on-primary, white);
+  color: var(--color-text-on-dark, white);
   box-shadow:
     3px 3px 6px var(--shadow-dark-light),
     -3px -3px 6px var(--shadow-light-strong);
@@ -97,15 +114,21 @@ button > :not(.prefix):not(.postfix) {
   --angle: 155deg;
   --start-pos: -50%;
   --end-pos: 150%;
-  --lighter-color: #3f51b5;
-  --darker-color: #717dc1;
-  background: linear-gradient(var(--angle), var(--darker-color) var(--start-pos), var(--lighter-color) var(--end-pos));
+  background: linear-gradient(
+    var(--angle),
+    color-mix(in oklab, var(--color-primary-gradient-lighter) calc(var(--v-button-bg-opacity, 1) * 100%), transparent)
+      var(--start-pos),
+    color-mix(in oklab, var(--color-primary-gradient-darker) calc(var(--v-button-bg-opacity, 1) * 100%), transparent)
+      var(--end-pos)
+  );
 
   &:active {
     background: linear-gradient(
       var(--angle),
-      var(--lighter-color) var(--start-pos),
-      var(--darker-color) var(--end-pos)
+      color-mix(in oklab, var(--color-primary-gradient-darker) calc(var(--v-button-bg-opacity, 1) * 100%), transparent)
+        var(--start-pos),
+      color-mix(in oklab, var(--color-primary-gradient-lighter) calc(var(--v-button-bg-opacity, 1) * 100%), transparent)
+        var(--end-pos)
     );
   }
 
@@ -113,5 +136,58 @@ button > :not(.prefix):not(.postfix) {
     box-shadow:
       4px 4px 8px var(--shadow-dark-light),
       -4px -4px 8px var(--shadow-light-strong);
+  }
+}
+
+/* Danger directive */
+:host([danger]) button {
+  color: var(--color-text-on-dark, white);
+  box-shadow:
+    3px 3px 6px var(--shadow-dark-light),
+    -3px -3px 6px var(--shadow-light-strong);
+
+  --angle: 155deg;
+  --start-pos: -50%;
+  --end-pos: 150%;
+  background: linear-gradient(
+    var(--angle),
+    color-mix(in oklab, var(--color-danger-gradient-lighter) calc(var(--v-button-bg-opacity, 1) * 100%), transparent)
+      var(--start-pos),
+    color-mix(in oklab, var(--color-danger-gradient-darker) calc(var(--v-button-bg-opacity, 1) * 100%), transparent)
+      var(--end-pos)
+  );
+
+  &:active {
+    background: linear-gradient(
+      var(--angle),
+      color-mix(in oklab, var(--color-danger-gradient-darker) calc(var(--v-button-bg-opacity, 1) * 100%), transparent)
+        var(--start-pos),
+      color-mix(in oklab, var(--color-danger-gradient-lighter) calc(var(--v-button-bg-opacity, 1) * 100%), transparent)
+        var(--end-pos)
+    );
+  }
+
+  &:hover {
+    box-shadow:
+      4px 4px 8px var(--shadow-dark-light),
+      -4px -4px 8px var(--shadow-light-strong);
+  }
+}
+
+:host([transparent]) button {
+  background: transparent;
+  color: var(--color-text-default);
+  box-shadow: none;
+}
+
+:host([no-shadow]) button {
+  box-shadow: none !important;
+
+  &:hover {
+    box-shadow: none !important;
+  }
+
+  &:active {
+    box-shadow: none !important;
   }
 }

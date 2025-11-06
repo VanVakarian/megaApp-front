@@ -13,23 +13,23 @@ export interface NotificationMessage {
 export class NotificationService {
   public notifications$$: WritableSignal<NotificationMessage[]> = signal([]);
 
-  showSyncError(message: string): void {
+  public showSyncError(message: string): void {
     this.addNotification('error', `Sync error: ${message}`);
   }
 
-  showSyncSuccess(message: string = 'Data synchronized successfully'): void {
+  public showSyncSuccess(message: string = 'Data synchronized successfully'): void {
     this.addNotification('success', message);
   }
 
-  showOfflineMode(): void {
+  public showOfflineMode(): void {
     this.addNotification('warning', 'You are offline. Changes will be synchronized when connection is restored.');
   }
 
-  showSyncInProgress(): void {
+  public showSyncInProgress(): void {
     this.addNotification('info', 'Synchronizing data...');
   }
 
-  showNetworkError(): void {
+  public showNetworkError(): void {
     this.addNotification('error', 'Network error. Please check your connection.');
   }
 
@@ -49,12 +49,12 @@ export class NotificationService {
     }, 5000);
   }
 
-  removeNotification(id: string): void {
+  private removeNotification(id: string): void {
     const current = this.notifications$$();
     this.notifications$$.set(current.filter((n) => n.id !== id));
   }
 
-  clearAll(): void {
+  private clearAll(): void {
     this.notifications$$.set([]);
   }
 

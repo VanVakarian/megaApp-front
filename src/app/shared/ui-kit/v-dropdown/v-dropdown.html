@@ -5,10 +5,7 @@
      (backdropClick)="closeDropdown()">
 
   <v-input #inputComponent
-           [label]="label()"
-           [placeholder]="placeholder()"
-           [isDisabled]="isDisabled()"
-           [errorMessage]="computedErrorMessage"
+           [config]="inputConfig$$()"
            formControlName="search"
            (onFocused)="onFocus()"
            (onBlurred)="onBlur()">

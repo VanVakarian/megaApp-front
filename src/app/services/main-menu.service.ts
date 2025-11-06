@@ -1,12 +1,18 @@
-import { Injectable } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 
 import { RouterService } from '@app/services/router.service';
 import { SettingsService } from '@app/services/settings.service';
 import { SettingsChapterNames } from '@app/shared/interfaces';
 
+enum MenuPlace {
+  Mobile = 'mobile',
+  Desktop = 'desktop',
+  Both = 'both',
+}
+
 interface MenuButton {
   label: string;
-  place: 'mobile' | 'desktop' | 'both';
+  place: MenuPlace;
   link: string | string[];
   selected?: boolean;
   chapterSettingName?: SettingsChapterNames;
@@ -18,10 +24,10 @@ interface MenuButton {
   providedIn: 'root',
 })
 export class MainMenuService {
-  private buttons: MenuButton[] = [
+  private readonly buttons: MenuButton[] = [
     {
       label: 'Дневник питания',
-      place: 'both',
+      place: MenuPlace.Both,
       link: ['/food', 'diary'],
       selected: false,
       chapterSettingName: 'selectedChapterFood',
@@ -30,7 +36,7 @@ export class MainMenuService {
     },
     {
       label: 'Статистика',
-      place: 'mobile',
+      place: MenuPlace.Mobile,
       link: ['/food', 'stats'],
       chapterSettingName: 'selectedChapterFood',
       iconName: 'insights',
@@ -38,7 +44,7 @@ export class MainMenuService {
     },
     {
       label: 'Каталог еды',
-      place: 'mobile',
+      place: MenuPlace.Mobile,
       link: ['/food', 'catalogue'],
       chapterSettingName: 'selectedChapterFood',
       iconName: 'menu_book',
@@ -46,7 +52,7 @@ export class MainMenuService {
     },
     {
       label: 'Дневник финансов',
-      place: 'both',
+      place: MenuPlace.Both,
       link: '/money',
       selected: false,
       chapterSettingName: 'selectedChapterMoney',
@@ -55,12 +61,12 @@ export class MainMenuService {
     },
     {
       label: 'DarkThemeSwitch',
-      place: 'desktop',
+      place: MenuPlace.Desktop,
       link: '',
     },
     {
       label: 'Настройки',
-      place: 'both',
+      place: MenuPlace.Both,
       link: '/settings',
       selected: false,
       iconName: 'settings',
@@ -68,17 +74,22 @@ export class MainMenuService {
     },
   ];
 
-  // public buttonsOld: MobileMenuButton[] = [
-  //   // { label: 'Дневник операций', link: '/money-transactions', requiresAuth: true, iconName: 'receipt_long', bgClass: 'money-bg' }, // prettier-ignore
-  //   // { label: 'Управление', link: '/money-manage', requiresAuth: true, iconName: 'account_balance', bgClass: 'money-bg' }, // prettier-ignore
-  //   // { label: 'Войти', link: '/login', requiresAuth: false, iconName: 'login', bgClass: 'login-bg' }, // prettier-ignore
-  //   // { label: 'Зарегистрироваться', link: '/register', requiresAuth: false, iconName: 'person_add', bgClass: 'register-bg' }, // prettier-ignore
-  // ];
+  private readonly routerService = inject(RouterService);
+  private readonly settingsService = inject(SettingsService);
 
-  constructor(
-    private routerService: RouterService,
-    private settingsService: SettingsService,
-  ) {
+  constructor() {
+    this.subscribeToRouteChanges();
+  }
+
+  public prepButtons(place: 'mobile' | 'desktop'): MenuButton[] {
+    return this.buttons.filter((button) => {
+      const chapterName: SettingsChapterNames = button.chapterSettingName as SettingsChapterNames;
+      const chapterSelected = chapterName ? this.settingsService.settings$$()[chapterName] : true; // showing button if there's no chapterSettingName setting in buttons
+      return (button.place === place || button.place === 'both') && chapterSelected;
+    });
+  }
+
+  private subscribeToRouteChanges() {
     this.routerService.currentRoute$.subscribe((route) => {
       this.buttons.forEach((btn) => {
         if (btn.hasOwnProperty('selected')) {
@@ -89,14 +100,6 @@ export class MainMenuService {
           }
         }
       });
-    });
-  }
-
-  public prepButtons(place: 'mobile' | 'desktop'): MenuButton[] {
-    return this.buttons.filter((button) => {
-      const chapterName: SettingsChapterNames = button.chapterSettingName as SettingsChapterNames;
-      const chapterSelected = chapterName ? this.settingsService.settings$$()[chapterName] : true; // showing button if there's no chapterSettingName setting in buttons
-      return (button.place === place || button.place === 'both') && chapterSelected;
     });
   }
 }

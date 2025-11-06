@@ -6,8 +6,8 @@
       <label class="block mb-1 text-sm font-medium text-gray-700">Title <span class="text-red-500">*</span>:</label>
       <input type="text"
              placeholder="My Bank Account"
-             [(ngModel)]="title"
-             class="focus:outline-none focus:ring-2 focus:ring-blue-500 w-full px-3 py-2 border border-gray-300 rounded-md">
+             class="focus:outline-none focus:ring-2 focus:ring-blue-500 w-full px-3 py-2 border border-gray-300 rounded-md"
+             [(ngModel)]="title">
     </div>
 
     <div>
@@ -23,8 +23,8 @@
     <div>
       <label class="block mb-1 text-sm font-medium text-gray-700">Account Type <span
               class="text-red-500">*</span>:</label>
-      <select [(ngModel)]="kind"
-              class="focus:outline-none focus:ring-2 focus:ring-blue-500 w-full px-3 py-2 border border-gray-300 rounded-md">
+      <select class="focus:outline-none focus:ring-2 focus:ring-blue-500 w-full px-3 py-2 border border-gray-300 rounded-md"
+              [(ngModel)]="kind">
         @for (kindOption of getKindValues(); track kindOption) {
           <option [value]="kindOption">{{ getKindDisplayName(kindOption) }}</option>
         }
@@ -33,8 +33,8 @@
 
     <div class="flex items-center">
       <input type="checkbox"
-             [(ngModel)]="invest"
-             class="focus:ring-blue-500 w-4 h-4 mr-2 text-blue-600 border-gray-300 rounded">
+             class="focus:ring-blue-500 w-4 h-4 mr-2 text-blue-600 border-gray-300 rounded"
+             [(ngModel)]="invest">
       <label class="text-sm font-medium text-gray-700">
         Investment account
       </label>
@@ -50,9 +50,9 @@
             <div class="flex items-center">
               <input type="checkbox"
                      [id]="'category-' + category.id"
+                     class="focus:ring-blue-500 w-4 h-4 mr-2 text-blue-600 border-gray-300 rounded"
                      [checked]="isCategorySelected(category.id!)"
-                     (change)="toggleCategory(category.id!, $event)"
-                     class="focus:ring-blue-500 w-4 h-4 mr-2 text-blue-600 border-gray-300 rounded">
+                     (change)="toggleCategory(category.id!, $event)">
               <label [for]="'category-' + category.id"
                      class="text-sm text-gray-700">
                 {{ category.name }}
@@ -67,16 +67,16 @@
     </div>
 
     <div class="flex gap-2">
-      <button [disabled]="!isFormValid()"
+      <button type="button"
               class="hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-400 disabled:cursor-not-allowed px-4 py-2 text-white bg-blue-600 rounded-md"
-              (click)="save()"
-              type="button">
+              [disabled]="!isFormValid()"
+              (click)="save()">
         {{ isEditing() ? 'Update' : 'Create' }}
       </button>
 
-      <button class="hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 px-4 py-2 text-white bg-gray-600 rounded-md"
-              (click)="cancel()"
-              type="button">
+      <button type="button"
+              class="hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 px-4 py-2 text-white bg-gray-600 rounded-md"
+              (click)="cancel()">
         Cancel
       </button>
     </div>

@@ -1,27 +1,27 @@
 import { Component, DestroyRef, OnInit } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router } from '@angular/router';
-import { ButtonStyle, IconName } from '@app/shared/ui-kit/types';
+import { ButtonStyle } from '@app/shared/ui-kit/types';
 import { VButton } from '@app/shared/ui-kit/v-button/v-button';
-import { VIcon } from '@app/shared/ui-kit/v-icon/v-icon';
+import { IconName, VIcon } from '@app/shared/ui-kit/v-icon/v-icon';
 import { filter } from 'rxjs';
 
 enum SelectedPage {
   Food = 'food',
   Money = 'money',
   Other = 'other',
+  Icons = 'icons',
   Settings = 'settings',
 }
 
 @Component({
   selector: 'navbar',
   templateUrl: './navbar.html',
-  styleUrl: './navbar.css',
   imports: [VButton, VIcon],
 })
 export class Navbar implements OnInit {
   protected selectedPage: SelectedPage = SelectedPage.Other;
-  protected readonly IconName = IconName;
+  protected readonly Icon = IconName;
   protected isMenuCollapsed = true; // TODO: move to settings
 
   protected readonly ButtonStyle = ButtonStyle;
@@ -42,6 +42,10 @@ export class Navbar implements OnInit {
 
   protected navigateToMoney(): void {
     this.router.navigate(['/ui-showcase/money']);
+  }
+
+  protected navigateToIcons(): void {
+    this.router.navigate(['/ui-showcase/icons']);
   }
 
   protected navigateToOther(): void {
@@ -66,6 +70,10 @@ export class Navbar implements OnInit {
 
   protected settingsButtonStyle(): ButtonStyle {
     return this.selectedPage === SelectedPage.Settings ? ButtonStyle.Raised : ButtonStyle.Flat;
+  }
+
+  protected iconsButtonStyle(): ButtonStyle {
+    return this.selectedPage === SelectedPage.Icons ? ButtonStyle.Raised : ButtonStyle.Flat;
   }
 
   protected toggleMenuCollapse(): void {
@@ -94,6 +102,8 @@ export class Navbar implements OnInit {
       this.selectedPage = SelectedPage.Money;
     } else if (url.includes('/ui-showcase/settings')) {
       this.selectedPage = SelectedPage.Settings;
+    } else if (url.includes('/ui-showcase/icons')) {
+      this.selectedPage = SelectedPage.Icons;
     } else {
       this.selectedPage = SelectedPage.Other;
     }

@@ -4,9 +4,10 @@ import { CanActivateFn, Router } from '@angular/router';
 import { SettingsService } from '@app/services/settings.service';
 
 export const isChapterSelected: CanActivateFn = (route, state) => {
-  const settingsService = inject(SettingsService);
-  const router = inject(Router);
   const url = state.url;
+
+  const router = inject(Router);
+  const settingsService = inject(SettingsService);
 
   const settings = settingsService.settings$$();
 
