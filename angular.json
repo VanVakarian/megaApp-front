@@ -47,14 +47,7 @@
               "sourceMap": true,
               "namedChunks": true
             },
-            "test": {
-              "fileReplacements": [
-                {
-                  "replace": "src/environments/environment.dev.ts",
-                  "with": "src/environments/environment.test.ts"
-                }
-              ]
-            },
+            "test": {},
             "prod": {
               "budgets": [
                 {
@@ -68,13 +61,7 @@
                   "maximumError": "4kb"
                 }
               ],
-              "outputHashing": "all",
-              "fileReplacements": [
-                {
-                  "replace": "src/environments/environment.dev.ts",
-                  "with": "src/environments/environment.prod.ts"
-                }
-              ]
+              "outputHashing": "all"
             }
           },
           "defaultConfiguration": "prod"

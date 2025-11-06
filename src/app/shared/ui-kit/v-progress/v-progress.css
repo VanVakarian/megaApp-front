@@ -1,0 +1,90 @@
+:host {
+  display: block;
+  width: 100%;
+}
+
+.progress-track {
+  position: relative;
+  width: 100%;
+  height: var(--v-progress-height, var(--unit-3));
+  border-radius: var(--v-progress-border-radius, var(--unit-2));
+  background: var(--color-bg-default);
+  overflow: hidden;
+
+  box-shadow:
+    inset 3px 3px 3px var(--shadow-dark-light),
+    inset -3px -3px 3px var(--shadow-light-strong);
+}
+
+.progress-bar {
+  position: absolute;
+  top: var(--v-progress-bar-gap, 1px);
+  left: var(--v-progress-bar-gap, 1px);
+  height: calc(100% - var(--v-progress-bar-gap, 1px) * 2);
+  width: calc(var(--v-progress-percentage, 0%) - var(--v-progress-bar-gap, 1px) * 2);
+  background: var(--v-progress-bar-color, var(--color-primary));
+  transition: width 0.3s ease;
+  border-radius: calc(var(--v-progress-border-radius, var(--unit-2)) - var(--v-progress-bar-gap, 1px));
+}
+
+:host([bar-style='flat']) .progress-bar {
+  box-shadow: none;
+}
+
+:host([bar-style='inset']) .progress-bar {
+  box-shadow:
+    inset 1px 1px 2px rgba(24, 24, 24, 0.3),
+    inset -1px -1px 2px rgba(255, 255, 255, 0.3);
+}
+
+:host([bar-style='raised']) .progress-bar {
+  box-shadow:
+    inset 1px 1px 3px rgba(255, 255, 255, 0.3),
+    inset -1px -1px 2px rgba(24, 24, 24, 0.3);
+}
+
+.progress-wrapper {
+  position: relative;
+}
+
+.progress-values {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: var(--unit-1);
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  font-weight: 500;
+}
+
+.value-edge {
+  color: var(--color-text-muted);
+  font-weight: 500;
+  font-size: 0.75rem;
+}
+
+.value-edge.is-primary {
+  color: var(--color-text-default);
+  font-weight: 600;
+}
+
+.value-current {
+  position: absolute;
+  left: 0;
+  transform: translateX(-50%);
+  color: var(--color-text-muted);
+  font-weight: 500;
+  font-size: 0.75rem;
+  transition: left 0.3s ease;
+}
+
+.value-middle {
+  position: absolute;
+  left: 0;
+  transform: translateX(-50%);
+  color: var(--color-text-default);
+  font-weight: 600;
+  font-size: 0.875rem;
+  transition: left 0.3s ease;
+}

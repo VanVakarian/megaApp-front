@@ -45,18 +45,18 @@ const DEFAULT_V_BUTTON_CONFIG: Required<VButtonConfig> = {
   templateUrl: './v-button.html',
   styleUrl: './v-button.css',
   host: {
-    '[style.width]': 'width$$() ? width$$() : null',
+    '[style.width]': 'settings$$().width || null',
     '[attr.primary]': 'isPrimary ? "" : null',
     '[attr.raised]': 'isRaised ? "" : null',
     '[attr.flat]': 'isFlat ? "" : null',
     '[attr.danger]': 'isDanger ? "" : null',
-    '[attr.no-shadow]': 'isWithoutShadow$$() ? "" : null',
+    '[attr.no-shadow]': 'settings$$().isWithoutShadow ? "" : null',
     '[style.--v-button-border-radius]': 'borderRadiusString$$()',
-    '[style.--v-button-bg-opacity]': 'bgOpacity$$()',
+    '[style.--v-button-bg-opacity]': 'settings$$().bgOpacity',
     '[style.--v-button-padding-x]': 'paddingXString$$()',
     '[style.--v-button-padding-y]': 'paddingYString$$()',
-    '[attr.text-align]': 'textAlign$$() ? textAlign$$() : null',
-    '[attr.aria-disabled]': 'isDisabled$$() ? "true" : "false"',
+    '[attr.text-align]': 'settings$$().textAlign || null',
+    '[attr.aria-disabled]': 'settings$$().isDisabled ? "true" : "false"',
   },
 })
 export class VButton {
@@ -67,21 +67,12 @@ export class VButton {
     ...this.config(),
   }));
 
-  protected readonly type$$ = computed(() => this.settings$$().type);
-  protected readonly width$$ = computed(() => this.settings$$().width);
-  protected readonly isLabelHidden$$ = computed(() => this.settings$$().isLabelHidden);
-
-  protected readonly borderRadius$$ = computed(() => this.settings$$().borderRadius);
   protected readonly paddingX$$ = computed(() => this.getPaddingX());
   protected readonly paddingY$$ = computed(() => this.getPaddingY());
-  protected readonly isDisabled$$ = computed(() => this.settings$$().isDisabled);
-  protected readonly isWithoutShadow$$ = computed(() => this.settings$$().isWithoutShadow);
-  protected readonly bgOpacity$$ = computed(() => this.settings$$().bgOpacity);
-  protected readonly textAlign$$ = computed(() => this.settings$$().textAlign);
 
   protected readonly onClick = output<MouseEvent>();
 
-  protected readonly borderRadiusString$$ = computed(() => `var(--unit-${this.borderRadius$$()})`);
+  protected readonly borderRadiusString$$ = computed(() => `var(--unit-${this.settings$$().borderRadius})`);
   protected readonly paddingYString$$ = computed(() => `var(--unit-${this.paddingY$$()})`);
   protected readonly paddingXString$$ = computed(() => `var(--unit-${this.paddingX$$()})`);
 
@@ -103,10 +94,8 @@ export class VButton {
 
   private readonly elementRef = inject(ElementRef);
 
-  constructor() {}
-
   protected onButtonClick(event: MouseEvent): void {
-    if (this.isDisabled$$()) {
+    if (this.settings$$().isDisabled) {
       event.preventDefault();
       event.stopPropagation();
       return;
