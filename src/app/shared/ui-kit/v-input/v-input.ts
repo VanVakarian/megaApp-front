@@ -89,8 +89,6 @@ export class VInput implements ControlValueAccessor {
     ...this.config(),
   }));
 
-  protected readonly cssFontWeight$$ = computed(() => String(this.settings$$().fontWeight));
-  protected readonly cssFontSize$$ = computed(() => String(this.settings$$().fontSize));
   protected readonly borderRadiusString$$ = computed(() => `var(--unit-${this.settings$$().borderRadius})`);
 
   protected ngControlValue$$: WritableSignal<string> = signal('');

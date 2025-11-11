@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, effect, HostListener, inject, input, OnDestroy, OnInit, output } from '@angular/core';
+import { Component, computed, effect, HostListener, inject, input, output } from '@angular/core';
 import { VBackdropDirective } from '@app/shared/ui-kit/backdrop.directive';
 import { CssUnitValue } from '@app/shared/ui-kit/types';
 import { VButton } from '@app/shared/ui-kit/v-button/v-button';
@@ -53,7 +53,7 @@ const DEFAULT_V_MODAL_CONFIG: Required<VModalConfig> = {
   ],
   imports: [CommonModule, VButton, VBackdropDirective],
 })
-export class VModal implements OnInit, OnDestroy {
+export class VModal {
   public readonly config = input<VModalConfig>({});
 
   public readonly onClose = output<void>();
@@ -64,49 +64,37 @@ export class VModal implements OnInit, OnDestroy {
     ...this.config(),
   }));
 
-  protected readonly isOpen$$ = computed(() => this.settings$$().isOpen);
-  protected readonly isCloseButtonVisible$$ = computed(() => this.settings$$().isCloseButtonVisible);
   protected readonly width$$ = computed(() => this.getFinalWidth());
-  protected readonly borderRadius$$ = computed(() => this.settings$$().borderRadius);
   protected readonly paddingX$$ = computed(() => this.getPaddingX());
   protected readonly paddingY$$ = computed(() => this.getPaddingY());
 
   protected readonly paddingXString$$ = computed(() => `var(--unit-${this.paddingX$$()})`);
   protected readonly paddingYString$$ = computed(() => `var(--unit-${this.paddingY$$()})`);
-
-  protected readonly isMobile$$ = computed(() => this.settings$$().deviceType === 'mobile');
-  protected readonly isDesktop$$ = computed(() => this.settings$$().deviceType === 'desktop');
-
-  protected readonly borderRadiusString$$ = computed(() => `var(--unit-${this.borderRadius$$()})`);
+  protected readonly borderRadiusString$$ = computed(() => `var(--unit-${this.settings$$().borderRadius})`);
 
   protected zIndex = 100;
   private layerController?: LayerController;
-  private readonly zLayerService: ZLayerService = inject(ZLayerService);
+  private readonly zLayerService = inject(ZLayerService);
 
   private readonly isOpenEffect$$ = effect(() => {
-    const isOpen = this.isOpen$$();
-    if (isOpen) this.onOpen.emit();
+    const isOpen = this.settings$$().isOpen;
+    if (isOpen && !this.layerController) {
+      this.registerLayer();
+      this.onOpen.emit();
+    }
   });
 
   public get layerId(): string | undefined {
     return this.layerController?.id;
   }
 
-  constructor() {}
-
-  public ngOnInit(): void {
-    if (this.isOpen$$()) {
-      this.registerLayer();
-    }
-  }
-
   public ngOnDestroy(): void {
     this.layerController?.destroy();
   }
 
-  @HostListener('document:keydown.escape', ['$event'])
-  protected onEscapeKey(event: KeyboardEvent): void {
-    if (this.isOpen$$()) {
+  @HostListener('document:keydown.escape')
+  protected onEscapeKey(): void {
+    if (this.settings$$().isOpen) {
       this.closeModal();
     }
   }
