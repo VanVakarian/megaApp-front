@@ -47,11 +47,11 @@ export class DiaryEntryEditForm implements OnChanges {
   private historyAction: HistoryEntryAction = HistoryEntryAction.SET;
 
   private selectedDaysTargerKcals = 0;
-  private selectedDaysEatenPercent = 0;
+  private selectedDaysConsumedPercent = 0;
   private selectedFoodKcals = 0;
   private diaryEntriesCoefficient = 0;
-  protected projectedSelectedDaysEatenPercentNum = 0;
-  protected projectedSelectedDaysEatenPercentPadded = '0';
+  protected projectedSelectedDaysConsumedPercentNum = 0;
+  protected projectedSelectedDaysConsumedPercentPadded = '0';
 
   protected foodWeightInitial: number = 0;
   protected foodWeightFinal: number = 0;
@@ -107,12 +107,12 @@ export class DiaryEntryEditForm implements OnChanges {
 
   private totalsUpdateEffect$$ = effect(() => {
     const totals = this.foodDiaryService.selectedDayTotals$$();
-    this.selectedDaysEatenPercent = totals.kcalsPercent;
+    this.selectedDaysConsumedPercent = totals.kcalsPercent;
     this.selectedDaysTargerKcals = totals.targetKcals;
     this.selectedFoodKcals = this.foodCatalogueService.catalogue$$()?.[this.diaryEntry.foodCatalogueId]?.kcals ?? 0;
     this.diaryEntriesCoefficient =
       this.foodCoefficientsService.coefficients$$()?.[this.diaryEntry.foodCatalogueId] ?? 1;
-    this.updateProjectedDaysEatenPercent();
+    this.updateProjectedDaysConsumedPercent();
   });
 
   protected get selectedFoodName() {
@@ -133,7 +133,7 @@ export class DiaryEntryEditForm implements OnChanges {
       this.foodWeightFinal = this.diaryEntry.foodWeight;
 
       setTimeout(() => {
-        this.updateProjectedDaysEatenPercent();
+        this.updateProjectedDaysConsumedPercent();
       }, 0);
     }
   }
@@ -163,13 +163,13 @@ export class DiaryEntryEditForm implements OnChanges {
       this.foodWeightFinal = this.foodWeightInitial;
     }
 
-    this.updateProjectedDaysEatenPercent();
+    this.updateProjectedDaysConsumedPercent();
   }
 
   protected onWeightNewResetClick(): void {
     this.foodWeightNewControl.setValue(null);
     this.foodWeightFinal = this.foodWeightInitial;
-    this.updateProjectedDaysEatenPercent();
+    this.updateProjectedDaysConsumedPercent();
   }
 
   protected onChangeWeightInput() {
@@ -188,13 +188,13 @@ export class DiaryEntryEditForm implements OnChanges {
       this.foodWeightFinal = this.foodWeightInitial;
     }
 
-    this.updateProjectedDaysEatenPercent();
+    this.updateProjectedDaysConsumedPercent();
   }
 
   protected onWeightChangeResetClick(): void {
     this.foodWeightChangeControl.setValue(null);
     this.foodWeightFinal = this.foodWeightInitial;
-    this.updateProjectedDaysEatenPercent();
+    this.updateProjectedDaysConsumedPercent();
   }
 
   public async onSubmit(): Promise<void> {
@@ -295,7 +295,7 @@ export class DiaryEntryEditForm implements OnChanges {
     return this.foodDiaryService.calculateEntryKcals(tempEntry);
   }
 
-  private updateProjectedDaysEatenPercent(): void {
+  private updateProjectedDaysConsumedPercent(): void {
     const weightDelta = this.foodWeightFinal - this.foodWeightInitial;
 
     if (this.selectedFoodKcals && this.diaryEntriesCoefficient && this.selectedDaysTargerKcals) {
@@ -305,10 +305,10 @@ export class DiaryEntryEditForm implements OnChanges {
       const weightKcalsWithCoefficient = weightKcalsTotal * this.diaryEntriesCoefficient;
 
       const deltaInPercent = (weightKcalsWithCoefficient / this.selectedDaysTargerKcals) * 100;
-      const totalPercent = this.selectedDaysEatenPercent + deltaInPercent;
+      const totalPercent = this.selectedDaysConsumedPercent + deltaInPercent;
 
-      this.projectedSelectedDaysEatenPercentNum = totalPercent;
-      this.projectedSelectedDaysEatenPercentPadded = totalPercent.toFixed(1);
+      this.projectedSelectedDaysConsumedPercentNum = totalPercent;
+      this.projectedSelectedDaysConsumedPercentPadded = totalPercent.toFixed(1);
     }
   }
 
@@ -316,7 +316,7 @@ export class DiaryEntryEditForm implements OnChanges {
     this.foodWeightNewControl.setValue(null);
     this.foodWeightChangeControl.setValue(null);
     this.foodWeightFinal = this.foodWeightInitial;
-    this.updateProjectedDaysEatenPercent();
+    this.updateProjectedDaysConsumedPercent();
   }
 
   private collapseHistory(): void {

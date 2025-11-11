@@ -76,20 +76,20 @@ export class FoodDiary implements AfterViewInit {
     return this.foodDiaryService.selectedDayTotals$$().kcalsPercent;
   });
 
-  protected readonly selectedDaysKcalsEaten$$ = computed(() => {
-    return this.foodDiaryService.selectedDayTotals$$().kcalsEaten;
+  protected readonly selectedDaysKcalsConsumed$$ = computed(() => {
+    return this.foodDiaryService.selectedDayTotals$$().kcalsConsumed;
   });
 
   protected readonly selectedDaysTargetKcals$$ = computed(() => {
     return this.foodDiaryService.selectedDayTotals$$().targetKcals;
   });
 
-  protected readonly selectedDaysFormattedEatenPercent$$ = computed(() => {
+  protected readonly selectedDaysFormattedConsumedPercent$$ = computed(() => {
     return Math.round(this.foodDiaryService.selectedDayTotals$$().kcalsPercent * 10) / 10;
   });
 
   protected readonly caloriesDisplayText$$ = computed(() => {
-    const percent = this.selectedDaysFormattedEatenPercent$$();
+    const percent = this.selectedDaysFormattedConsumedPercent$$();
     if (Number.isNaN(percent)) return '';
 
     return `Съедено ${percent}% от дневной нормы`;
