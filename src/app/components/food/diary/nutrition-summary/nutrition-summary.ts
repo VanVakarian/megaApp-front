@@ -56,16 +56,15 @@ export class NutritionSummary {
     };
   }
 
+  /**
+   * Calculates the progress bar color based on nutrient percentage.
+   * - 0-100%: Transitions from low (blue) to target (green)
+   * - 100%+: Transitions from target (green) to high (red), capped at 200%
+   */
   private calculateBarColor(percent: number): string {
     if (percent <= 100) {
-      // Mix Low (Blue) -> Target (Green)
-      // at 0%: 0% Target, 100% Low
-      // at 100%: 100% Target, 0% Low
       return `color-mix(in srgb, var(--color-nutrient-target) ${percent}%, var(--color-nutrient-low))`;
     } else {
-      // Mix Target (Green) -> High (Red)
-      // at 100%: 0% High, 100% Target
-      // at 200%: 100% High, 0% Target
       const redPercent = Math.min(percent - 100, 100);
       return `color-mix(in srgb, var(--color-nutrient-high) ${redPercent}%, var(--color-nutrient-target))`;
     }
