@@ -145,6 +145,7 @@ export class VProgress {
   private calculatePercentage(value: number): number {
     const min = this.scaleMin$$();
     const range = this.scaleRange$$();
+    if (range === 0) return 0;
     return ((value - min) / range) * 100;
   }
 
