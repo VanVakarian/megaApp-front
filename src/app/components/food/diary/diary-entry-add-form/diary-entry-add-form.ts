@@ -21,11 +21,11 @@ export class DiaryEntryAddForm implements AfterViewInit {
   protected readonly Icon = IconName;
 
   private selectedDaysTargerKcals = 0;
-  private selectedDaysEatenPercent = 0;
+  private selectedDaysConsumedPercent = 0;
   private selectedFoodKcals = 0;
   private diaryEntriesCoefficient = 1;
-  protected projectedSelectedDaysEatenPercentNum = 0;
-  protected projectedSelectedDaysEatenPercentPadded = '0';
+  protected projectedSelectedDaysConsumedPercentNum = 0;
+  protected projectedSelectedDaysConsumedPercentPadded = '0';
 
   protected readonly foodWeightInput = viewChild.required(VInput);
 
@@ -38,8 +38,8 @@ export class DiaryEntryAddForm implements AfterViewInit {
   private readonly selectedDayTotalsEffect$$ = effect(() => {
     const totals = this.foodDiaryService.selectedDayTotals$$();
     this.selectedDaysTargerKcals = totals.targetKcals;
-    this.selectedDaysEatenPercent = totals.kcalsPercent;
-    this.updateProjectedDaysEatenPercent(0);
+    this.selectedDaysConsumedPercent = totals.kcalsPercent;
+    this.updateProjectedDaysConsumedPercent(0);
   });
 
   private readonly selectedProductEffect$$ = effect(() => {
@@ -48,7 +48,7 @@ export class DiaryEntryAddForm implements AfterViewInit {
 
     this.selectedFoodKcals = product.kcals;
     this.diaryEntriesCoefficient = this.foodCoefficientsService.coefficients$$()?.[product.id] ?? 1;
-    this.updateProjectedDaysEatenPercent(this.foodWeightControl.value || 0);
+    this.updateProjectedDaysConsumedPercent(this.foodWeightControl.value || 0);
   });
 
   protected diaryEntryForm: FormGroup = new FormGroup({
@@ -71,13 +71,13 @@ export class DiaryEntryAddForm implements AfterViewInit {
 
   protected onFoodWeightInput(): void {
     const weightValue = this.foodWeightControl.value || 0;
-    this.updateProjectedDaysEatenPercent(weightValue);
+    this.updateProjectedDaysConsumedPercent(weightValue);
   }
 
-  private updateProjectedDaysEatenPercent(weightValue: number): void {
+  private updateProjectedDaysConsumedPercent(weightValue: number): void {
     if (!this.selectedFoodKcals) {
-      this.projectedSelectedDaysEatenPercentNum = this.selectedDaysEatenPercent;
-      this.projectedSelectedDaysEatenPercentPadded = this.selectedDaysEatenPercent.toFixed(1);
+      this.projectedSelectedDaysConsumedPercentNum = this.selectedDaysConsumedPercent;
+      this.projectedSelectedDaysConsumedPercentPadded = this.selectedDaysConsumedPercent.toFixed(1);
       return;
     }
 
@@ -87,10 +87,10 @@ export class DiaryEntryAddForm implements AfterViewInit {
       const weightKcalsWithCoefficient = weightKcalsTotal * this.diaryEntriesCoefficient;
 
       const deltaInPercent = (weightKcalsWithCoefficient / this.selectedDaysTargerKcals) * 100;
-      const totalPercent = this.selectedDaysEatenPercent + deltaInPercent;
+      const totalPercent = this.selectedDaysConsumedPercent + deltaInPercent;
 
-      this.projectedSelectedDaysEatenPercentNum = totalPercent;
-      this.projectedSelectedDaysEatenPercentPadded = totalPercent.toFixed(1);
+      this.projectedSelectedDaysConsumedPercentNum = totalPercent;
+      this.projectedSelectedDaysConsumedPercentPadded = totalPercent.toFixed(1);
     }
   }
 

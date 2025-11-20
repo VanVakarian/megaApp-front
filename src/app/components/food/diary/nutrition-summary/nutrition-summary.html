@@ -1,0 +1,41 @@
+<div class="flex flex-col gap-4 mt-2">
+  <div class="flex gap-4">
+    <v-progress class="w-1/2"
+                [config]="proteinBarConfig$$()">
+      <div v-label
+           class="flex justify-between">
+        <span>Белки</span>
+        <span>{{ proteinPercentFormatted$$() }}</span>
+      </div>
+    </v-progress>
+
+    <v-progress class="w-1/2"
+                [config]="fatBarConfig$$()">
+      <div v-label
+           class="flex justify-between">
+        <span>Жиры</span>
+        <span>{{ fatPercentFormatted$$() }}</span>
+      </div>
+    </v-progress>
+  </div>
+
+  <div class="flex gap-4">
+    <v-progress class="w-1/2"
+                [config]="carbsBarConfig$$()">
+      <div v-label
+           class="flex justify-between">
+        <span>Углеводы</span>
+        <span>{{ carbsPercentFormatted$$() }}</span>
+      </div>
+    </v-progress>
+
+    <v-progress class="w-1/2"
+                [config]="fiberBarConfig$$()">
+      <div v-label
+           class="flex justify-between">
+        <span>Клетчатка</span>
+        <span>{{ fiberPercentFormatted$$() }}</span>
+      </div>
+    </v-progress>
+  </div>
+</div>

@@ -13,6 +13,7 @@ import {
   DiaryEntryWithFullData,
   HistoryEntry,
   IncomingWsMessage,
+  NutrientDelta,
   ServerResponseWithDiaryId,
   UnifiedDiary,
   UserDataLastModifiedTs,
@@ -27,6 +28,19 @@ import { BaseFoodService } from './food-base.service';
 import { FoodCatalogueService } from './food-catalogue.service';
 import { FoodCoefficientsService } from './food-coefficients.service';
 import { FoodStatsService } from './food-stats.service';
+
+const DEFAULT_NUTRIENTS = {
+  targetKcals: 2000,
+  targetProtein: 0,
+  targetFat: 0,
+  targetCarbs: 0,
+  targetFiber: 0,
+  consumedKcals: 0,
+  consumedProtein: 0,
+  consumedFat: 0,
+  consumedCarbs: 0,
+  consumedFiber: 0,
+};
 
 @Injectable({
   providedIn: 'root',
@@ -119,12 +133,14 @@ export class FoodDiaryService extends BaseFoodService {
 
     const kcalsDelta = this.calculateEntryKcals(diaryEntry);
     const selectedDay = this.selectedDayIso$$();
+    const nutrientsDelta = this.calculateEntryNutrients(diaryEntry);
 
     const statsRollback = this.foodStatsService.createStatsRollback(selectedDay);
 
     const entryWithTempId = { ...diaryEntry, id: tempId };
 
     this.updateDiaryEntryWithNewValues(entryWithTempId);
+    this.updateNutrientsOptimistically(selectedDay, nutrientsDelta, kcalsDelta);
     this.saveToLocalStorage(this.diaryRaw$$());
 
     this.foodStatsService.updateStatsOptimistically(selectedDay, 0, kcalsDelta);
@@ -171,9 +187,19 @@ export class FoodDiaryService extends BaseFoodService {
     const newKcals = this.calculateEntryKcals(diaryEntry);
     const kcalsDelta = newKcals - originalKcals;
 
+    const originalNutrients = this.calculateEntryNutrients(originalEntry);
+    const newNutrients = this.calculateEntryNutrients(diaryEntry);
+    const nutrientsDelta: NutrientDelta = {
+      protein: newNutrients.protein - originalNutrients.protein,
+      fat: newNutrients.fat - originalNutrients.fat,
+      carbs: newNutrients.carbs - originalNutrients.carbs,
+      fiber: newNutrients.fiber - originalNutrients.fiber,
+    };
+
     const statsRollback = this.foodStatsService.createStatsRollback(selectedDay);
 
     this.updateDiaryEntryWithNewValues(diaryEntry);
+    this.updateNutrientsOptimistically(selectedDay, nutrientsDelta, kcalsDelta);
     this.saveToLocalStorage(this.diaryRaw$$());
 
     if (kcalsDelta !== 0) {
@@ -215,9 +241,18 @@ export class FoodDiaryService extends BaseFoodService {
 
     const kcalsDelta = -this.calculateEntryKcals(deletedEntry);
 
+    const deletedNutrients = this.calculateEntryNutrients(deletedEntry);
+    const nutrientsDelta: NutrientDelta = {
+      protein: -deletedNutrients.protein,
+      fat: -deletedNutrients.fat,
+      carbs: -deletedNutrients.carbs,
+      fiber: -deletedNutrients.fiber,
+    };
+
     const statsRollback = this.foodStatsService.createStatsRollback(selectedDay);
 
     this.removeDiaryEntry(diaryEntryId);
+    this.updateNutrientsOptimistically(selectedDay, nutrientsDelta, kcalsDelta);
     this.saveToLocalStorage(this.diaryRaw$$());
 
     this.foodStatsService.updateStatsOptimistically(selectedDay, 0, kcalsDelta);
@@ -236,6 +271,18 @@ export class FoodDiaryService extends BaseFoodService {
     });
 
     return true;
+  }
+
+  private calculateEntryNutrients(entry: DiaryEntry): NutrientDelta {
+    const portionMultiplier = entry.foodWeight / 100;
+    const product = this.catalogueService.catalogue$$()[entry.foodCatalogueId];
+
+    return {
+      protein: Math.round((product?.protein || 0) * portionMultiplier),
+      fat: Math.round((product?.fat || 0) * portionMultiplier),
+      carbs: Math.round((product?.carbs || 0) * portionMultiplier),
+      fiber: Math.round((product?.fiber || 0) * portionMultiplier),
+    };
   }
 
   public async setUserBodyWeight(bodyWeight: BodyWeightInterface): Promise<boolean> {
@@ -297,17 +344,18 @@ export class FoodDiaryService extends BaseFoodService {
   private prepUnifiedDiary(): UnifiedDiary {
     const rawDiary = this.diaryRaw$$();
     const catalogue = this.catalogueService.catalogue$$();
-    const coefficients = this.coefficientsService.coefficients$$();
     const result: UnifiedDiary = {};
 
     for (const [dateISO, day] of Object.entries(rawDiary)) {
       const foodEntries: DiaryEntryWithFullData[] = [];
-      let kcalsEaten = 0;
-      let kcalsPercent = 0;
+
+      const targetKcals = day.nutrients?.targetKcals || 2000;
+      const consumedKcals = day.nutrients?.consumedKcals || 0;
+      const kcalsPercent = this.calculatePercentage(consumedKcals, targetKcals);
 
       for (const [id, entry] of Object.entries(day.food)) {
         const kcals = this.calculateEntryKcals(entry);
-        const percentage = this.calculatePercentage(kcals, day.targetKcals);
+        const percentage = this.calculatePercentage(kcals, targetKcals);
 
         const formattedEntry: DiaryEntryWithFullData = {
           ...entry,
@@ -318,17 +366,23 @@ export class FoodDiaryService extends BaseFoodService {
         };
 
         foodEntries.push(formattedEntry);
-        kcalsEaten += kcals;
-        kcalsPercent += percentage;
       }
 
       result[dateISO] = {
         food: foodEntries,
         totals: {
-          kcalsEaten,
+          kcalsConsumed: consumedKcals,
           kcalsPercent,
           bodyWeight: day.bodyWeight,
-          targetKcals: day.targetKcals,
+          targetKcals,
+          targetProtein: day.nutrients?.targetProtein || 0,
+          targetFat: day.nutrients?.targetFat || 0,
+          targetCarbs: day.nutrients?.targetCarbs || 0,
+          targetFiber: day.nutrients?.targetFiber || 0,
+          consumedProtein: day.nutrients?.consumedProtein || 0,
+          consumedFat: day.nutrients?.consumedFat || 0,
+          consumedCarbs: day.nutrients?.consumedCarbs || 0,
+          consumedFiber: day.nutrients?.consumedFiber || 0,
         },
       };
     }
@@ -347,7 +401,47 @@ export class FoodDiaryService extends BaseFoodService {
 
   private extractSelectedDayTotals(): DayTotals {
     const selectedDay = this.selectedDayIso$$();
-    return this.diary$$()[selectedDay]?.totals || { kcalsEaten: 0, kcalsPercent: 0, bodyWeight: null, targetKcals: 0 };
+    const defaultTotals: DayTotals = {
+      kcalsConsumed: 0,
+      kcalsPercent: 0,
+      bodyWeight: null,
+      targetKcals: 2000,
+      targetProtein: 0,
+      targetFat: 0,
+      targetCarbs: 0,
+      targetFiber: 0,
+      consumedProtein: 0,
+      consumedFat: 0,
+      consumedCarbs: 0,
+      consumedFiber: 0,
+    };
+
+    return this.diary$$()[selectedDay]?.totals || defaultTotals;
+  }
+
+  private updateNutrientsOptimistically(dateISO: string, nutrientsDelta: NutrientDelta, kcalsDelta: number): void {
+    this.diaryRaw$$.update((diary) => {
+      const updatedDiary = { ...diary };
+      const dayData = updatedDiary[dateISO];
+
+      if (dayData) {
+        const currentNutrients = dayData.nutrients || DEFAULT_NUTRIENTS;
+
+        updatedDiary[dateISO] = {
+          ...dayData,
+          nutrients: {
+            ...currentNutrients,
+            consumedKcals: (currentNutrients.consumedKcals || 0) + kcalsDelta,
+            consumedProtein: (currentNutrients.consumedProtein || 0) + nutrientsDelta.protein,
+            consumedFat: (currentNutrients.consumedFat || 0) + nutrientsDelta.fat,
+            consumedCarbs: (currentNutrients.consumedCarbs || 0) + nutrientsDelta.carbs,
+            consumedFiber: (currentNutrients.consumedFiber || 0) + nutrientsDelta.fiber,
+          },
+        };
+      }
+
+      return updatedDiary;
+    });
   }
 
   private updateDiaryEntryWithNewValues(updatedDiaryEntry: DiaryEntry): void {
@@ -568,7 +662,11 @@ export class FoodDiaryService extends BaseFoodService {
 
     this.diaryRaw$$.update((diary) => {
       const updatedDiary = { ...diary };
-      const dayData = updatedDiary[dateISO] || { food: {}, bodyWeight: null, targetKcals: 2000 };
+      const dayData = updatedDiary[dateISO] || {
+        food: {},
+        bodyWeight: null,
+        nutrients: DEFAULT_NUTRIENTS,
+      };
 
       updatedDiary[dateISO] = {
         ...dayData,
@@ -707,7 +805,11 @@ export class FoodDiaryService extends BaseFoodService {
   private handleBodyWeightUpdated(bodyWeightToUpdate: BodyWeightToUpdate): void {
     this.diaryRaw$$.update((diary) => {
       const updatedDiary = { ...diary };
-      const dayData = updatedDiary[bodyWeightToUpdate.dateISO] || { food: {}, bodyWeight: null, targetKcals: 0 };
+      const dayData = updatedDiary[bodyWeightToUpdate.dateISO] || {
+        food: {},
+        bodyWeight: null,
+        nutrients: DEFAULT_NUTRIENTS,
+      };
 
       updatedDiary[bodyWeightToUpdate.dateISO] = {
         ...dayData,

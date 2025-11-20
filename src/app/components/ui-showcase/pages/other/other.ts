@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, OnInit, ViewChild } from '@angular/core';
+import { afterNextRender, Component, viewChild } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { VButton } from '@app/shared/ui-kit/v-button/v-button';
 import { VCard } from '@app/shared/ui-kit/v-card/v-card';
@@ -6,17 +6,22 @@ import { ddExpandDirection, DropdownItem, VDropdown } from '@app/shared/ui-kit/v
 import { IconName, VIcon } from '@app/shared/ui-kit/v-icon/v-icon';
 import { VInput } from '@app/shared/ui-kit/v-input/v-input';
 import { VModal } from '@app/shared/ui-kit/v-modal/v-modal';
+import { ProgressBarStyle, VProgress } from '@app/shared/ui-kit/v-progress/v-progress';
 
 @Component({
   selector: 'other',
   templateUrl: './other.html',
-  imports: [VCard, VInput, VButton, VModal, VDropdown, VIcon, ReactiveFormsModule],
+  imports: [VCard, VInput, VButton, VModal, VDropdown, VIcon, ReactiveFormsModule, VProgress],
 })
-export class Other implements AfterViewInit, OnInit {
-  @ViewChild('testInput')
-  protected inputComponent!: VInput;
+export class Other {
+  protected readonly ProgressBarStyle = ProgressBarStyle;
+  protected readonly inputComponent = viewChild.required<VInput>('testInput');
+
   protected isModalOpen = false;
-  protected form = new FormGroup({
+  protected isShowLongContent = false;
+  protected selectedFoodItem = '';
+
+  protected readonly form = new FormGroup({
     testInput: new FormControl(''),
     username: new FormControl('', Validators.required),
     email: new FormControl('', [Validators.required, Validators.email]),
@@ -34,19 +39,13 @@ export class Other implements AfterViewInit, OnInit {
     { label: 'Dessert', value: 'dessert' },
     { label: 'Beverage', value: 'beverage' },
   ];
-  protected selectedFoodItem: string = '';
-  protected readonly ddExpandDirection = ddExpandDirection;
-  protected isShowLongContent = false;
 
+  protected readonly ddExpandDirection = ddExpandDirection;
   protected readonly Icon = IconName;
 
-  constructor() {}
-
-  public ngOnInit(): void {}
-
-  public ngAfterViewInit(): void {
-    queueMicrotask(() => {
-      this.inputComponent.writeValue('Some value');
+  constructor() {
+    afterNextRender(() => {
+      this.inputComponent().writeValue('Some value');
     });
   }
 

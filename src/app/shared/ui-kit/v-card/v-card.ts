@@ -25,7 +25,7 @@ const DEFAULT_V_CARD_CONFIG: Required<VCardConfig> = {
     '[style.--v-card-border-radius]': 'borderRadiusString$$()',
     '[style.--v-card-padding]': 'paddingString$$()',
     '[style.backgroundImage]': 'cardBackgroundImage$$()',
-    '[style.minHeight]': 'minHeight$$()',
+    '[style.minHeight]': 'settings$$().minHeight',
   },
 })
 export class VCard {
@@ -38,20 +38,13 @@ export class VCard {
     ...this.config(),
   }));
 
-  protected readonly borderRadius$$ = computed(() => this.settings$$().borderRadius);
-  protected readonly padding$$ = computed(() => this.settings$$().padding);
-  protected readonly backgroundImageUrl$$ = computed(() => this.settings$$().backgroundImageUrl);
-  protected readonly backgroundImageOpacity$$ = computed(() => this.settings$$().backgroundImageOpacity);
-  protected readonly minHeight$$ = computed(() => this.settings$$().minHeight);
-
-  protected readonly borderRadiusString$$ = computed(() => `var(--unit-${this.borderRadius$$()})`);
-  protected readonly paddingString$$ = computed(() => `var(--unit-${this.padding$$()})`);
+  protected readonly borderRadiusString$$ = computed(() => `var(--unit-${this.settings$$().borderRadius})`);
+  protected readonly paddingString$$ = computed(() => `var(--unit-${this.settings$$().padding})`);
 
   protected readonly cardBackgroundImage$$ = computed(() => {
-    const imageUrl = this.backgroundImageUrl$$();
-    if (!imageUrl) return null;
-    const opacity = this.backgroundImageOpacity$$();
-    return `linear-gradient(rgba(255, 255, 255, ${opacity}), rgba(255, 255, 255, ${opacity})), url('${imageUrl}')`;
+    const { backgroundImageUrl, backgroundImageOpacity } = this.settings$$();
+    if (!backgroundImageUrl) return null;
+    return `linear-gradient(rgba(255, 255, 255, ${backgroundImageOpacity}), rgba(255, 255, 255, ${backgroundImageOpacity})), url('${backgroundImageUrl}')`;
   });
 
   protected onClick(event: MouseEvent): void {

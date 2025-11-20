@@ -1,0 +1,26 @@
+<div class="label">
+  <ng-content select="[v-label]" />
+</div>
+
+<div class="progress-wrapper">
+  <div class="progress-track">
+    <div class="progress-bar"></div>
+  </div>
+
+  @if (isShowValues$$()) {
+    <div class="progress-values">
+      <span class="value-edge"
+            [class.is-primary]="leftLabelIsPrimary$$()">{{ leftLabelText$$() }}</span>
+      @if (middleLabelText$$()) {
+        <span class="value-middle"
+              [style.left]="middlePosition$$()">{{ middleLabelText$$() }}</span>
+      }
+      @if (shouldShowCurrentValue$$()) {
+        <span class="value-current"
+              [style.left]="valuePosition$$()">{{ currentValueText$$() }}</span>
+      }
+      <span class="value-edge"
+            [class.is-primary]="rightLabelIsPrimary$$()">{{ rightLabelText$$() }}</span>
+    </div>
+  }
+</div>
