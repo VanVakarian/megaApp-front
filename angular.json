@@ -47,7 +47,12 @@
               "sourceMap": true,
               "namedChunks": true
             },
-            "test": {},
+            "test": {
+              "optimization": false,
+              "extractLicenses": false,
+              "sourceMap": true,
+              "namedChunks": true
+            },
             "prod": {
               "budgets": [
                 {
