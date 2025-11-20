@@ -6,7 +6,7 @@ import { ddExpandDirection, DropdownItem, VDropdown } from '@app/shared/ui-kit/v
 import { IconName, VIcon } from '@app/shared/ui-kit/v-icon/v-icon';
 import { VInput } from '@app/shared/ui-kit/v-input/v-input';
 import { VModal } from '@app/shared/ui-kit/v-modal/v-modal';
-import { VProgress } from '@app/shared/ui-kit/v-progress/v-progress';
+import { ProgressBarStyle, VProgress } from '@app/shared/ui-kit/v-progress/v-progress';
 
 @Component({
   selector: 'other',
@@ -14,6 +14,7 @@ import { VProgress } from '@app/shared/ui-kit/v-progress/v-progress';
   imports: [VCard, VInput, VButton, VModal, VDropdown, VIcon, ReactiveFormsModule, VProgress],
 })
 export class Other {
+  protected readonly ProgressBarStyle = ProgressBarStyle;
   protected readonly inputComponent = viewChild.required<VInput>('testInput');
 
   protected isModalOpen = false;

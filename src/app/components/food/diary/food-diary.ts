@@ -32,6 +32,7 @@ import { AccordionService } from '@app/shared/ui-kit/v-expand/accordion.service'
 import { VExpand } from '@app/shared/ui-kit/v-expand/v-expand';
 import { VModal } from '@app/shared/ui-kit/v-modal/v-modal';
 import { CatalogueEntryEditForm } from './catalogue-entry-edit-form/catalogue-entry-edit-form';
+import { NutritionSummary } from './nutrition-summary/nutrition-summary';
 
 @Component({
   selector: 'food-diary',
@@ -46,13 +47,14 @@ import { CatalogueEntryEditForm } from './catalogue-entry-edit-form/catalogue-en
     CameraPreview,
     FoodSearch,
     CatalogueEntryEditForm,
+    BodyWeight,
+    NutritionSummary,
     VButton,
     VModal,
     VExpand,
     VCard,
     OuterShadowRoundedDirective,
     AccordionDirective,
-    BodyWeight,
   ],
 })
 export class FoodDiary implements AfterViewInit {
