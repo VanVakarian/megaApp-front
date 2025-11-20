@@ -241,7 +241,19 @@ export interface Diary {
       [id: number]: DiaryEntry;
     };
     ['bodyWeight']: number | null; // TODO[116]: Extract to a separate interface/signal
-    ['targetKcals']: number; // TODO[116]: This too? 🤔
+    ['nutrients']: {
+      // TODO[116]: This too? 🤔
+      targetKcals: number;
+      targetProtein: number;
+      targetFat: number;
+      targetCarbs: number;
+      targetFiber: number;
+      consumedKcals: number;
+      consumedProtein: number;
+      consumedFat: number;
+      consumedCarbs: number;
+      consumedFiber: number;
+    };
   };
 }
 
@@ -253,10 +265,18 @@ export interface DiaryEntryWithFullData extends DiaryEntry {
 }
 
 export interface DayTotals {
-  kcalsEaten: number;
+  kcalsConsumed: number;
   kcalsPercent: number;
   bodyWeight: number | null;
   targetKcals: number;
+  targetProtein: number;
+  targetFat: number;
+  targetCarbs: number;
+  targetFiber: number;
+  consumedProtein: number;
+  consumedFat: number;
+  consumedCarbs: number;
+  consumedFiber: number;
 }
 
 export interface UnifiedDiary {
@@ -299,6 +319,13 @@ export interface Catalogue {
 
 export interface Coefficients {
   [id: number]: number;
+}
+
+export interface NutrientDelta {
+  protein: number;
+  fat: number;
+  carbs: number;
+  fiber: number;
 }
 
 export interface BodyWeightInterface {

@@ -32,6 +32,7 @@ import { AccordionService } from '@app/shared/ui-kit/v-expand/accordion.service'
 import { VExpand } from '@app/shared/ui-kit/v-expand/v-expand';
 import { VModal } from '@app/shared/ui-kit/v-modal/v-modal';
 import { CatalogueEntryEditForm } from './catalogue-entry-edit-form/catalogue-entry-edit-form';
+import { NutritionSummary } from './nutrition-summary/nutrition-summary';
 
 @Component({
   selector: 'food-diary',
@@ -46,13 +47,14 @@ import { CatalogueEntryEditForm } from './catalogue-entry-edit-form/catalogue-en
     CameraPreview,
     FoodSearch,
     CatalogueEntryEditForm,
+    BodyWeight,
+    NutritionSummary,
     VButton,
     VModal,
     VExpand,
     VCard,
     OuterShadowRoundedDirective,
     AccordionDirective,
-    BodyWeight,
   ],
 })
 export class FoodDiary implements AfterViewInit {
@@ -76,20 +78,20 @@ export class FoodDiary implements AfterViewInit {
     return this.foodDiaryService.selectedDayTotals$$().kcalsPercent;
   });
 
-  protected readonly selectedDaysKcalsEaten$$ = computed(() => {
-    return this.foodDiaryService.selectedDayTotals$$().kcalsEaten;
+  protected readonly selectedDaysKcalsConsumed$$ = computed(() => {
+    return this.foodDiaryService.selectedDayTotals$$().kcalsConsumed;
   });
 
   protected readonly selectedDaysTargetKcals$$ = computed(() => {
     return this.foodDiaryService.selectedDayTotals$$().targetKcals;
   });
 
-  protected readonly selectedDaysFormattedEatenPercent$$ = computed(() => {
+  protected readonly selectedDaysFormattedConsumedPercent$$ = computed(() => {
     return Math.round(this.foodDiaryService.selectedDayTotals$$().kcalsPercent * 10) / 10;
   });
 
   protected readonly caloriesDisplayText$$ = computed(() => {
-    const percent = this.selectedDaysFormattedEatenPercent$$();
+    const percent = this.selectedDaysFormattedConsumedPercent$$();
     if (Number.isNaN(percent)) return '';
 
     return `Съедено ${percent}% от дневной нормы`;
