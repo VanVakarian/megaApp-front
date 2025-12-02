@@ -95,6 +95,10 @@ export class FoodSearch {
     this.foodAddModalService.takePhoto();
   }
 
+  protected onSearchClearClick(): void {
+    this.foodAddModalService.searchQuery$$.set('');
+  }
+
   protected selectProduct(product: CatalogueEntry): void {
     this.foodAddModalService.selectProduct(product);
   }

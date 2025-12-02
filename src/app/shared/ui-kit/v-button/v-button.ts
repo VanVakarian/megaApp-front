@@ -11,6 +11,9 @@ export interface VButtonConfig {
   padding?: CssUnitValue;
   paddingY?: CssUnitValue;
   paddingX?: CssUnitValue;
+  margin?: CssUnitValue;
+  marginY?: CssUnitValue;
+  marginX?: CssUnitValue;
   isDisabled?: boolean;
   isWithoutShadow?: boolean;
   bgOpacity?: '0' | '1' | `0.${number}`;
@@ -24,8 +27,11 @@ const DEFAULT_V_BUTTON_CONFIG: Required<VButtonConfig> = {
   width: undefined as unknown as string,
   borderRadius: 2,
   padding: undefined as unknown as CssUnitValue,
-  paddingX: 4,
   paddingY: 2,
+  paddingX: 4,
+  margin: undefined as unknown as CssUnitValue,
+  marginY: 0,
+  marginX: 0,
   isDisabled: false,
   isWithoutShadow: false,
   bgOpacity: '1',
@@ -53,8 +59,10 @@ const DEFAULT_V_BUTTON_CONFIG: Required<VButtonConfig> = {
     '[attr.no-shadow]': 'settings$$().isWithoutShadow ? "" : null',
     '[style.--v-button-border-radius]': 'borderRadiusString$$()',
     '[style.--v-button-bg-opacity]': 'settings$$().bgOpacity',
-    '[style.--v-button-padding-x]': 'paddingXString$$()',
     '[style.--v-button-padding-y]': 'paddingYString$$()',
+    '[style.--v-button-padding-x]': 'paddingXString$$()',
+    '[style.--v-button-margin-y]': 'marginYString$$()',
+    '[style.--v-button-margin-x]': 'marginXString$$()',
     '[attr.text-align]': 'settings$$().textAlign || null',
     '[attr.aria-disabled]': 'settings$$().isDisabled ? "true" : "false"',
   },
@@ -67,14 +75,18 @@ export class VButton {
     ...this.config(),
   }));
 
-  protected readonly paddingX$$ = computed(() => this.getPaddingX());
   protected readonly paddingY$$ = computed(() => this.getPaddingY());
+  protected readonly paddingX$$ = computed(() => this.getPaddingX());
+  protected readonly marginY$$ = computed(() => this.getMarginY());
+  protected readonly marginX$$ = computed(() => this.getMarginX());
 
   protected readonly onClick = output<MouseEvent>();
 
   protected readonly borderRadiusString$$ = computed(() => `var(--unit-${this.settings$$().borderRadius})`);
   protected readonly paddingYString$$ = computed(() => `var(--unit-${this.paddingY$$()})`);
   protected readonly paddingXString$$ = computed(() => `var(--unit-${this.paddingX$$()})`);
+  protected readonly marginYString$$ = computed(() => `var(--unit-${this.marginY$$()})`);
+  protected readonly marginXString$$ = computed(() => `var(--unit-${this.marginX$$()})`);
 
   public get isFlat(): boolean {
     return this.getActiveStyle() === ButtonStyle.Flat;
@@ -116,6 +128,13 @@ export class VButton {
     return ButtonStyle.Primary;
   }
 
+  private getPaddingY(): CssUnitValue {
+    const config = this.config();
+    if (config.paddingY !== undefined) return config.paddingY;
+    if (config.padding !== undefined) return config.padding;
+    return this.settings$$().paddingY;
+  }
+
   private getPaddingX(): CssUnitValue {
     const config = this.config();
     if (config.paddingX !== undefined) return config.paddingX;
@@ -123,10 +142,17 @@ export class VButton {
     return this.settings$$().paddingX;
   }
 
-  private getPaddingY(): CssUnitValue {
+  private getMarginY(): CssUnitValue {
     const config = this.config();
-    if (config.paddingY !== undefined) return config.paddingY;
-    if (config.padding !== undefined) return config.padding;
-    return this.settings$$().paddingY;
+    if (config.marginY !== undefined) return config.marginY;
+    if (config.margin !== undefined) return config.margin;
+    return this.settings$$().marginY;
+  }
+
+  private getMarginX(): CssUnitValue {
+    const config = this.config();
+    if (config.marginX !== undefined) return config.marginX;
+    if (config.margin !== undefined) return config.margin;
+    return this.settings$$().marginX;
   }
 }

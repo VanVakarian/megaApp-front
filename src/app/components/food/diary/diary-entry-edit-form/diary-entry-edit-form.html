@@ -81,6 +81,7 @@
                     paddingX: 2,
                     paddingY: 0,
                   }"
+                  (mousedown)="$event.preventDefault()"
                   (click)="onWeightNewResetClick()">
           <v-icon v-prefix
                   [name]="Icon.Close"
@@ -116,6 +117,7 @@
                     paddingX: 2,
                     paddingY: 0,
                   }"
+                  (mousedown)="$event.preventDefault()"
                   (click)="onWeightChangeResetClick()">
           <v-icon v-prefix
                   [name]="Icon.Close"

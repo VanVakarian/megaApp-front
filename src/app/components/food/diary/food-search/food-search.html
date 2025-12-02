@@ -1,39 +1,63 @@
 <div [class.mb-4]="searchResults$$().length === 0"
      class="flex justify-center gap-4 px-4 pt-4">
-  @if (isLegacySearch$$()) {
-    <v-button primary
-              tabindex="-1"
-              [config]="{
-                isLabelHidden: true,
-                padding: 2,
-              }"
-              (mousedown)="$event.preventDefault()"
-              (onClick)="toggleLegacySearch()">
-      <v-icon v-prefix
-              [name]="Icon.SwapHoriz"
-              [size]="7" />
-    </v-button>
-  }
-  @else {
-    <v-button raised
-              tabindex="-1"
-              [config]="{
-                isLabelHidden: true,
-                padding: 2,
-              }"
-              (mousedown)="$event.preventDefault()"
-              (onClick)="toggleLegacySearch()">
-      <v-icon v-prefix
-              [name]="Icon.SwapHoriz"
-              [size]="7" />
-    </v-button>
-  }
-
   <v-input class="catalogue-entry-name-input w-full"
            [config]="{
              type: 'text'
            }"
-           [(value)]="foodAddModalService.searchQuery$$" />
+           [(value)]="foodAddModalService.searchQuery$$">
+    @if (isLegacySearch$$()) {
+      <v-button primary
+                v-prefix
+                tabindex="-1"
+                [config]="{
+                  isLabelHidden: true,
+                  isWithoutShadow: true,
+                  padding: 1,
+                  marginX: 2,
+                }"
+                (mousedown)="$event.preventDefault()"
+                (click)="toggleLegacySearch()">
+        <v-icon v-prefix
+                [name]="Icon.SwapHoriz"
+                [size]="6" />
+      </v-button>
+    } @else {
+      <v-button raised
+                v-prefix
+                tabindex="-1"
+                [config]="{
+                  isLabelHidden: true,
+                  isWithoutShadow: true,
+                  padding: 1,
+                  marginX: 2,
+                }"
+                (mousedown)="$event.preventDefault()"
+                (click)="toggleLegacySearch()">
+        <v-icon v-prefix
+                [name]="Icon.SwapHoriz"
+                [size]="6" />
+      </v-button>
+    }
+
+    @if (foodAddModalService.searchQuery$$() !== '') {
+      <v-button flat
+                v-postfix
+                tabindex="-1"
+                [config]="{
+                  isWithoutShadow: true,
+                  isLabelHidden: true,
+                  bgOpacity: '0',
+                  paddingX: 2,
+                  paddingY: 0,
+                }"
+                (mousedown)="$event.preventDefault()"
+                (click)="onSearchClearClick()">
+        <v-icon v-prefix
+                [name]="Icon.Close"
+                [size]="6" />
+      </v-button>
+    }
+  </v-input>
 
   <!--
   @if (isRecording) {
