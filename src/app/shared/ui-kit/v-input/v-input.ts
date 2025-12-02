@@ -189,9 +189,10 @@ export class VInput implements ControlValueAccessor {
   }
 
   public focus(): void {
-    const element = this.inputElement();
-    if (element) {
-      element.nativeElement.focus();
-    }
+    this.inputElement().nativeElement.focus();
+  }
+
+  public blur(): void {
+    this.inputElement().nativeElement.blur();
   }
 }
