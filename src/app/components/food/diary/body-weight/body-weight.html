@@ -5,7 +5,8 @@
              [state]="currentState"
              [formControl]="form.controls.bodyWeight"
              [config]="{
-               type: 'number',
+               type: 'text',
+               inputmode: 'decimal',
                label: FormLabels.WEIGHT,
                fontSize: '20px',
                fontWeight: 500,
@@ -14,7 +15,8 @@
              (onInputChanged)="onInput()"
              (onEnterPressed)="onEnter()">
       <span v-postfix
-            class="ml-1 mr-3">кг</span>
+            class="ml-1 mr-3 cursor-pointer select-none"
+            (click)="focusInput()">{{ FormLabels.WEIGHT_UNIT }}</span>
     </v-input>
   </div>
 </div>

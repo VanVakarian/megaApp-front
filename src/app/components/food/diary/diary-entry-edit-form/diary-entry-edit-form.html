@@ -60,16 +60,17 @@
       [formGroup]="diaryEntryForm"
       (submit)="onSubmit()">
   <div class="flex justify-end gap-4 mt-0">
-    <v-input formControlName="foodWeightNew"
+    <v-input [formControl]="diaryEntryForm.controls.foodWeightNew"
              class="readable-text-bg w-1/3"
              [config]="{
-               type: 'number',
+               type: 'text',
+               inputmode: 'numeric',
                label: 'Новый вес',
                fontSize: '20px',
                fontWeight: 500,
                textAlign: 'right',
              }"
-             (input)="onNewWeightInput()">
+             (onInputChanged)="onNewWeightInput()">
       @if (foodWeightNewControl.value !== null) {
         <v-button flat
                   v-prefix
@@ -94,16 +95,17 @@
     </v-input>
 
     <v-input #foodWeightChangeElem
-             formControlName="foodWeightChange"
+             [formControl]="diaryEntryForm.controls.foodWeightChange"
              class="readable-text-bg w-1/3"
              [config]="{
-               type: 'number',
-               label: 'Изменить вес',
+               type: 'text',
+               inputmode: 'numeric',
+               label: 'Изменить на',
                fontSize: '20px',
                fontWeight: 500,
                textAlign: 'right'
              }"
-             (input)="onChangeWeightInput()">
+             (onInputChanged)="onChangeWeightInput()">
       @if (foodWeightChangeControl.value !== null) {
         <v-button flat
                   v-prefix

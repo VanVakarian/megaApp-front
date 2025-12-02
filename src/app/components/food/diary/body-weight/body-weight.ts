@@ -16,7 +16,7 @@ interface BodyWeightForm {
 
 enum FormLabels {
   WEIGHT = 'Вес',
-  KG = 'кг',
+  WEIGHT_UNIT = 'кг',
 }
 
 enum FormErrors {
@@ -48,13 +48,11 @@ export class BodyWeight {
 
   private weightSubmitDelay: ReturnType<typeof setTimeout> | null = null;
 
+  private isSubmitting = false;
+
   private weightFieldAnimationStateManager = new AnimationStateManager(AnimationState.IDLE, (state) => {
     this.currentState = state;
     this.cdRef.detectChanges();
-  });
-
-  private readonly applyWeightEffect$$ = effect(() => {
-    this.applyWeight();
   });
 
   private readonly foodDiaryService = inject(FoodDiaryService);
@@ -65,19 +63,25 @@ export class BodyWeight {
   }
 
   public onEnter(): void {
-    if (!this.form.valid) {
-      return;
+    if (!this.form.valid) return;
+
+    if (this.weightSubmitDelay) {
+      clearTimeout(this.weightSubmitDelay);
+      this.weightSubmitDelay = null;
     }
 
     if (this.currentState === AnimationState.COUNTDOWN) {
       this.weightFieldAnimationStateManager.toIdle();
     }
+
     this.submitValue();
   }
 
   public onInput(): void {
     const control = this.form.controls.bodyWeight;
     control.markAsTouched();
+
+    if (this.isSubmitting) return;
 
     if (this.form.valid && control.value !== String(this.previousValue)) {
       this.weightFieldAnimationStateManager.toIdle();
@@ -92,38 +96,49 @@ export class BodyWeight {
         if (this.currentState === AnimationState.COUNTDOWN) this.submitValue();
       }, DEFAULT_INPUT_FIELD_PROGRESS_TIMER);
     } else {
-      this.weightFieldAnimationStateManager.toIdle();
+      if (this.currentState !== AnimationState.SUCCESS && this.currentState !== AnimationState.ERROR) {
+        this.weightFieldAnimationStateManager.toIdle();
+      }
     }
   }
 
   private async submitValue(): Promise<void> {
     const selectedDateISO = this.foodDiaryService.selectedDayIso$$();
-    const weightValue = this.form.controls.bodyWeight.value;
-    const weightDelta = Number(weightValue) - Number(this.previousValue);
-    if (!weightValue) return;
+    const bodyWeightValue = this.form.controls.bodyWeight.value;
 
+    if (!bodyWeightValue) return;
+
+    this.isSubmitting = true;
     this.weightFieldAnimationStateManager.toSubmitting();
     this.form.disable();
 
     try {
-      const weight: BodyWeightI = {
-        bodyWeight: weightValue,
+      const normalizedBodyWeight = String(bodyWeightValue).replace(',', '.');
+      const bodyWeight: BodyWeightI = {
+        bodyWeight: normalizedBodyWeight,
         dateISO: selectedDateISO,
       };
 
-      const result = await this.foodDiaryService.setUserBodyWeight(weight);
+      const result = await this.foodDiaryService.setUserBodyWeight(bodyWeight);
+
       if (!result) throw new Error();
 
-      this.previousValue = weightValue;
+      this.previousValue = bodyWeightValue;
       this.weightFieldAnimationStateManager.toSuccess();
+      this.bodyWeightInput().blur();
     } catch {
       this.weightFieldAnimationStateManager.toError();
     } finally {
       this.form.enable();
+      this.isSubmitting = false;
     }
   }
 
-  private applyWeight(): void {
+  public focusInput(): void {
+    this.bodyWeightInput().focus();
+  }
+
+  private readonly applyWeightEffect$$ = effect(() => {
     const selectedDateISO = this.foodDiaryService.selectedDayIso$$();
     const weight = this.foodDiaryService.diary$$()?.[selectedDateISO]?.totals.bodyWeight;
 
@@ -134,14 +149,14 @@ export class BodyWeight {
 
     this.form.patchValue({ bodyWeight: String(weight) });
     this.previousValue = String(weight);
-  }
+  });
 
   public focusIfEmpty(): void {
     const control = this.form.controls.bodyWeight;
     if (!control.value || control.value === '') {
       setTimeout(() => {
         this.bodyWeightInput().focus();
-      }, 100);
+      }, 100); // Waiting for expansion panel to open
     }
   }
 }

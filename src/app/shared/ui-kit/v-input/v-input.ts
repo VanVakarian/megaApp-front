@@ -20,6 +20,8 @@ type InputValue = string | number | null;
 
 type InputType = 'text' | 'password' | 'email' | 'number' | 'tel' | 'url';
 
+type InputMode = 'none' | 'text' | 'numeric' | 'decimal' | 'tel' | 'email' | 'url' | 'search';
+
 type FontSize = `${number}px` | `${number}rem` | `${number}em` | `${number}%`;
 
 type FontWeight = 100 | 200 | 300 | 400 | 500 | 600 | 700 | 800 | 900;
@@ -30,6 +32,8 @@ export interface VInputConfig {
   isDisabled?: boolean;
   isReadonly?: boolean;
   type?: InputType;
+  inputmode?: InputMode;
+  pattern?: string;
   label?: string;
   placeholder?: string;
   errorMessage?: string;
@@ -47,6 +51,8 @@ const DEFAULT_V_INPUT_CONFIG: Required<VInputConfig> = {
   isDisabled: false,
   isReadonly: false,
   type: 'text',
+  inputmode: 'text',
+  pattern: '',
   label: '',
   placeholder: '',
   errorMessage: '',
@@ -153,22 +159,12 @@ export class VInput implements ControlValueAccessor {
 
     if (this.ngControl) {
       this.ngControlValue$$.set(newValue);
-      const outputValue = this.convertToOutputValue(newValue);
-      this.onChange(outputValue);
+      this.onChange(newValue);
     } else {
       this.value.set(newValue);
     }
 
     this.onInputChanged.emit(event);
-  }
-
-  private convertToOutputValue(inputValue: string): InputValue {
-    if (this.settings$$().type !== 'number' || inputValue.trim() === '') {
-      return inputValue;
-    }
-
-    const numValue = Number(inputValue);
-    return isNaN(numValue) ? inputValue : numValue;
   }
 
   protected onFocus(): void {
@@ -193,9 +189,10 @@ export class VInput implements ControlValueAccessor {
   }
 
   public focus(): void {
-    const element = this.inputElement();
-    if (element) {
-      element.nativeElement.focus();
-    }
+    this.inputElement().nativeElement.focus();
+  }
+
+  public blur(): void {
+    this.inputElement().nativeElement.blur();
   }
 }
