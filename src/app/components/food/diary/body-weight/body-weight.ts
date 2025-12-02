@@ -104,29 +104,28 @@ export class BodyWeight {
 
   private async submitValue(): Promise<void> {
     const selectedDateISO = this.foodDiaryService.selectedDayIso$$();
-    const weightValue = this.form.controls.bodyWeight.value;
-    const weightDelta = Number(weightValue) - Number(this.previousValue);
+    const bodyWeightValue = this.form.controls.bodyWeight.value;
 
-    if (!weightValue) return;
+    if (!bodyWeightValue) return;
 
     this.isSubmitting = true;
-
     this.weightFieldAnimationStateManager.toSubmitting();
     this.form.disable();
 
     try {
-      const normalizedWeight = String(weightValue).replace(',', '.');
-      const weight: BodyWeightI = {
-        bodyWeight: normalizedWeight,
+      const normalizedBodyWeight = String(bodyWeightValue).replace(',', '.');
+      const bodyWeight: BodyWeightI = {
+        bodyWeight: normalizedBodyWeight,
         dateISO: selectedDateISO,
       };
 
-      const result = await this.foodDiaryService.setUserBodyWeight(weight);
+      const result = await this.foodDiaryService.setUserBodyWeight(bodyWeight);
 
       if (!result) throw new Error();
 
-      this.previousValue = weightValue;
+      this.previousValue = bodyWeightValue;
       this.weightFieldAnimationStateManager.toSuccess();
+      this.bodyWeightInput().blur();
     } catch {
       this.weightFieldAnimationStateManager.toError();
     } finally {
@@ -157,7 +156,7 @@ export class BodyWeight {
     if (!control.value || control.value === '') {
       setTimeout(() => {
         this.bodyWeightInput().focus();
-      }, 100);
+      }, 100); // Waiting for expansion panel to open
     }
   }
 }
