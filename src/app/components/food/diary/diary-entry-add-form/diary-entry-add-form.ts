@@ -70,7 +70,7 @@ export class DiaryEntryAddForm implements AfterViewInit {
   }
 
   protected onFoodWeightInput(): void {
-    const weightValue = this.foodWeightControl.value || 0;
+    const weightValue = Number(this.foodWeightControl.value) || 0;
     this.updateProjectedDaysConsumedPercent(weightValue);
   }
 
@@ -106,8 +106,8 @@ export class DiaryEntryAddForm implements AfterViewInit {
       id: 0,
       dateISO: this.foodDiaryService.selectedDayIso$$(),
       foodCatalogueId: product.id,
-      foodWeight: foodWeight || 0,
-      history: [{ action: HistoryEntryAction.INIT, value: foodWeight || 0 }],
+      foodWeight: Number(foodWeight) || 0,
+      history: [{ action: HistoryEntryAction.INIT, value: Number(foodWeight) || 0 }],
     };
 
     const response = await this.foodDiaryService.createDiaryEntry(entry);

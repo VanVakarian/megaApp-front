@@ -22,8 +22,8 @@ import { VModal } from '@app/shared/ui-kit/v-modal/v-modal';
 
 interface DiaryEntryFormModel {
   id: FormControl<number>;
-  foodWeightNew: FormControl<number | null>;
-  foodWeightChange: FormControl<number | null>;
+  foodWeightNew: FormControl<string | null>;
+  foodWeightChange: FormControl<string | null>;
 }
 
 @Component({
@@ -72,8 +72,8 @@ export class DiaryEntryEditForm implements OnChanges {
 
   protected diaryEntryForm = new FormGroup<DiaryEntryFormModel>({
     id: new FormControl(0, { nonNullable: true }),
-    foodWeightNew: new FormControl<number | null>(null, [Validators.pattern(this.newWeightPattern)]),
-    foodWeightChange: new FormControl<number | null>(null, [
+    foodWeightNew: new FormControl<string | null>(null, [Validators.pattern(this.newWeightPattern)]),
+    foodWeightChange: new FormControl<string | null>(null, [
       Validators.pattern(this.editWeightPattern),
       this.positiveResultValidator(),
     ]),
@@ -140,15 +140,15 @@ export class DiaryEntryEditForm implements OnChanges {
 
   protected isFormValid(): boolean {
     if (!this.diaryEntryForm.valid) return false;
-    if ((this.foodWeightNewControl.value as any) === '') return false;
-    if ((this.foodWeightChangeControl.value as any) === '') return false;
+    if (this.foodWeightNewControl.value === '') return false;
+    if (this.foodWeightChangeControl.value === '') return false;
 
     const weightIfNew = this.foodWeightNewControl.value;
     const weightIfChange = this.foodWeightChangeControl.value;
 
     const hasValidChange =
-      (weightIfNew !== null && this.foodWeightInitial !== weightIfNew) ||
-      (weightIfChange !== null && weightIfChange !== 0);
+      (weightIfNew !== null && this.foodWeightInitial !== parseInt(weightIfNew)) ||
+      (weightIfChange !== null && parseInt(weightIfChange) !== 0);
 
     return hasValidChange && this.foodWeightFinal > 0;
   }
@@ -198,15 +198,17 @@ export class DiaryEntryEditForm implements OnChanges {
   }
 
   public async onSubmit(): Promise<void> {
-    const weightIfChange = this.foodWeightChangeControl.value;
-    const weightIfSet = this.diaryEntryForm.controls.foodWeightNew.value;
-    const foodWeight = weightIfChange ?? (weightIfSet ? weightIfSet - this.foodWeightInitial : 0);
-    const historyValue = weightIfChange ? Math.abs(foodWeight) : (weightIfSet ?? 0);
+    const weightIfChangeRaw = this.foodWeightChangeControl.value;
+    const weightIfSetRaw = this.diaryEntryForm.controls.foodWeightNew.value;
+    const weightIfChange = weightIfChangeRaw !== null ? parseInt(weightIfChangeRaw) : null;
+    const weightIfSet = weightIfSetRaw !== null ? parseInt(weightIfSetRaw) : null;
+    const foodWeight = weightIfChange ?? (weightIfSet !== null ? weightIfSet - this.foodWeightInitial : 0);
+    const historyValue = weightIfChange !== null ? Math.abs(foodWeight) : (weightIfSet ?? 0);
 
     if (weightIfChange === null) {
       this.historyAction = HistoryEntryAction.SET;
     } else {
-      this.historyAction = String(weightIfChange).includes('-') ? HistoryEntryAction.SUBTRACT : HistoryEntryAction.ADD;
+      this.historyAction = weightIfChangeRaw!.includes('-') ? HistoryEntryAction.SUBTRACT : HistoryEntryAction.ADD;
     }
 
     const history: HistoryEntry = { action: this.historyAction, value: historyValue };

@@ -13,6 +13,9 @@ enum FormMode {
   Edit = 'edit',
 }
 
+const POSITIVE_INTEGER_PATTERN = /^\d+$/;
+const POSITIVE_DECIMAL_PATTERN = /^\d*[.,]?\d*$/;
+
 @Component({
   selector: 'catalogue-entry-edit-form',
   templateUrl: './catalogue-entry-edit-form.html',
@@ -40,11 +43,36 @@ export class CatalogueEntryEditForm implements OnInit {
 
   protected catalogueEditForm: FormGroup = new FormGroup({
     name: new FormControl<string>('', [Validators.required, Validators.minLength(1), Validators.maxLength(100)]),
-    kcals: new FormControl<number | null>(null, [Validators.required, Validators.min(0), Validators.max(1000)]),
-    protein: new FormControl<number | null>(null, [Validators.required, Validators.min(0), Validators.max(100)]),
-    fat: new FormControl<number | null>(null, [Validators.required, Validators.min(0), Validators.max(100)]),
-    carbs: new FormControl<number | null>(null, [Validators.required, Validators.min(0), Validators.max(100)]),
-    fiber: new FormControl<number | null>(null, [Validators.required, Validators.min(0), Validators.max(50)]),
+    kcals: new FormControl<string | null>(null, [
+      Validators.required,
+      Validators.pattern(POSITIVE_INTEGER_PATTERN),
+      Validators.min(0),
+      Validators.max(1000),
+    ]),
+    protein: new FormControl<string | null>(null, [
+      Validators.required,
+      Validators.pattern(POSITIVE_DECIMAL_PATTERN),
+      Validators.min(0),
+      Validators.max(100),
+    ]),
+    fat: new FormControl<string | null>(null, [
+      Validators.required,
+      Validators.pattern(POSITIVE_DECIMAL_PATTERN),
+      Validators.min(0),
+      Validators.max(100),
+    ]),
+    carbs: new FormControl<string | null>(null, [
+      Validators.required,
+      Validators.pattern(POSITIVE_DECIMAL_PATTERN),
+      Validators.min(0),
+      Validators.max(100),
+    ]),
+    fiber: new FormControl<string | null>(null, [
+      Validators.required,
+      Validators.pattern(POSITIVE_DECIMAL_PATTERN),
+      Validators.min(0),
+      Validators.max(50),
+    ]),
     description: new FormControl<string>('', [
       Validators.required,
       Validators.minLength(1),
@@ -74,11 +102,11 @@ export class CatalogueEntryEditForm implements OnInit {
 
     this.catalogueEditForm.patchValue({
       name: product.name,
-      kcals: product.kcals,
-      protein: product.protein,
-      fat: product.fat,
-      carbs: product.carbs,
-      fiber: product.fiber,
+      kcals: String(product.kcals),
+      protein: String(product.protein),
+      fat: String(product.fat),
+      carbs: String(product.carbs),
+      fiber: String(product.fiber),
       description: product.description,
     });
 
@@ -110,11 +138,11 @@ export class CatalogueEntryEditForm implements OnInit {
   private fillFormWithPreviewData(data: ProductPreviewData): void {
     this.catalogueEditForm.patchValue({
       name: data.generalizedName,
-      kcals: data.kcals,
-      protein: data.protein,
-      fat: data.fat,
-      carbs: data.carbs,
-      fiber: data.fiber,
+      kcals: String(data.kcals),
+      protein: String(data.protein),
+      fat: String(data.fat),
+      carbs: String(data.carbs),
+      fiber: String(data.fiber),
       description: data.description,
     });
   }
@@ -139,10 +167,10 @@ export class CatalogueEntryEditForm implements OnInit {
       const productData: ProductSaveRequest = {
         name: formValue.name,
         kcals: Number(formValue.kcals) || 0,
-        protein: Number(formValue.protein) || 0,
-        fat: Number(formValue.fat) || 0,
-        carbs: Number(formValue.carbs) || 0,
-        fiber: Number(formValue.fiber) || 0,
+        protein: Number(String(formValue.protein).replace(',', '.')) || 0,
+        fat: Number(String(formValue.fat).replace(',', '.')) || 0,
+        carbs: Number(String(formValue.carbs).replace(',', '.')) || 0,
+        fiber: Number(String(formValue.fiber).replace(',', '.')) || 0,
         description: formValue.description,
       };
 

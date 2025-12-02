@@ -39,6 +39,8 @@
            [placeholder]="settings$$().placeholder"
            [disabled]="settings$$().isDisabled"
            [readonly]="settings$$().isReadonly"
+           [attr.inputmode]="settings$$().inputmode || null"
+           [attr.pattern]="settings$$().pattern || null"
            [style.text-align]="settings$$().textAlign"
            [style.--v-input-font-weight]="settings$$().fontWeight"
            [style.--v-input-font-size]="settings$$().fontSize"
