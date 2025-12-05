@@ -51,6 +51,7 @@ export class FoodAddModalService {
       [ModalEvent.SELECT_PRODUCT]: ModalState.ADD_DIARY_ENTRY,
       [ModalEvent.ADD_PRODUCT]: ModalState.CREATE_NEW_PRODUCT,
       [ModalEvent.TAKE_PHOTO]: ModalState.CAMERA_PREVIEW,
+      [ModalEvent.SUBMIT_SUCCESS]: ModalState.CLOSED,
       [ModalEvent.CLOSE]: ModalState.CLOSED,
     },
     [ModalState.ADD_DIARY_ENTRY]: {

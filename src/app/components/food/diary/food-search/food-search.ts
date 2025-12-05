@@ -1,12 +1,13 @@
 import { NgClass } from '@angular/common';
-import { Component, computed, effect, inject } from '@angular/core';
+import { Component, computed, effect, inject, signal } from '@angular/core';
 import { DeviceInfoService } from '@app/services/device-info.service';
 import { FoodAddModalService, ModalState } from '@app/services/food/food-add-modal.service';
 import { FoodCatalogueService } from '@app/services/food/food-catalogue.service';
+import { FoodDiaryService } from '@app/services/food/food-diary.service';
 import { VoiceRecordingService } from '@app/services/voice-recording.service';
 import { fadeScaleInAnimation } from '@app/shared/animations';
 import { FlipAnimateDirective } from '@app/shared/directives/flip-animate.directive';
-import { CatalogueEntry } from '@app/shared/interfaces';
+import { CatalogueEntry, DiaryEntry, HistoryEntryAction } from '@app/shared/interfaces';
 import { VButton } from '@app/shared/ui-kit/v-button/v-button';
 import { VCard } from '@app/shared/ui-kit/v-card/v-card';
 import { IconName, VIcon } from '@app/shared/ui-kit/v-icon/v-icon';
@@ -32,6 +33,8 @@ export class FoodSearch {
     }
   });
 
+  protected readonly extractedWeight$$ = signal<number | null>(null);
+
   private readonly clearSearchOnModalCloseEffect$$ = effect(() => {
     const currentState = this.foodAddModalService.currentState$$();
 
@@ -50,12 +53,16 @@ export class FoodSearch {
     const isLegacy = this.isLegacySearch$$();
 
     if (searchQuery && searchQuery.trim()) {
+      const { query, weight } = this.parseSearchQuery(searchQuery);
+      this.extractedWeight$$.set(weight);
+
       if (isLegacy) {
-        this.foodCatalogueService.legacySearchProducts(searchQuery);
+        this.foodCatalogueService.legacySearchProducts(query);
       } else {
-        this.foodCatalogueService.searchProducts(searchQuery);
+        this.foodCatalogueService.searchProducts(query);
       }
     } else {
+      this.extractedWeight$$.set(null);
       this.foodCatalogueService.clearSearch();
     }
   });
@@ -68,6 +75,7 @@ export class FoodSearch {
   protected readonly foodAddModalService = inject(FoodAddModalService);
   private readonly voiceRecordingService = inject(VoiceRecordingService);
   private readonly foodCatalogueService = inject(FoodCatalogueService);
+  private readonly foodDiaryService = inject(FoodDiaryService);
 
   private focusInput(): void {
     const inputEl = document.querySelector('v-input.catalogue-entry-name-input input') as HTMLInputElement;
@@ -95,8 +103,14 @@ export class FoodSearch {
     this.foodAddModalService.takePhoto();
   }
 
-  protected selectProduct(product: CatalogueEntry): void {
-    this.foodAddModalService.selectProduct(product);
+  protected async selectProduct(product: CatalogueEntry): Promise<void> {
+    const weight = this.extractedWeight$$();
+
+    if (weight !== null && weight > 0) {
+      await this.createDiaryEntryWithWeight(product, weight);
+    } else {
+      this.foodAddModalService.selectProduct(product);
+    }
   }
 
   protected addProduct(): void {
@@ -120,5 +134,51 @@ export class FoodSearch {
       return null;
     }
     return `/api/images/food/${catalogueEntry.id}-thumb-v${catalogueEntry.imageVersion}.webp`;
+  }
+
+  private parseSearchQuery(searchQuery: string): { query: string; weight: number | null } {
+    const trimmedQuery = searchQuery.trim();
+    const words = trimmedQuery.split(/\s+/); // Whitespaces
+
+    const lastWord = words[words.length - 1];
+    const weightMatch = lastWord?.match(/^(\d+)$/); // Digits only
+
+    if (weightMatch && words.length > 1) {
+      const weight = parseInt(weightMatch[1], 10);
+
+      if (weight > 0) {
+        const queryWithoutWeight = words.slice(0, -1).join(' ').trim();
+        return {
+          query: queryWithoutWeight,
+          weight: weight,
+        };
+      }
+    }
+
+    return {
+      query: trimmedQuery,
+      weight: null,
+    };
+  }
+
+  private async createDiaryEntryWithWeight(product: CatalogueEntry, weight: number): Promise<void> {
+    const entry: DiaryEntry = {
+      id: 0,
+      dateISO: this.foodDiaryService.selectedDayIso$$(),
+      foodCatalogueId: product.id,
+      foodWeight: weight,
+      history: [{ action: HistoryEntryAction.INIT, value: weight }],
+    };
+
+    try {
+      const response = await this.foodDiaryService.createDiaryEntry(entry);
+
+      if (response?.result && response.diaryId) {
+        this.foodAddModalService.submitSuccess();
+      }
+    } catch (error) {
+      console.error('Failed to create diary entry:', error);
+      this.foodAddModalService.selectProduct(product);
+    }
   }
 }
