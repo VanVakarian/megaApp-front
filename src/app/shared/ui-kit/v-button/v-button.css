@@ -1,6 +1,7 @@
 :host {
   display: inline-block;
   width: max-content;
+  margin: var(--v-button-margin-y, 0) var(--v-button-margin-x, 0);
 }
 
 button {

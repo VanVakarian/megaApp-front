@@ -103,6 +103,10 @@ export class FoodSearch {
     this.foodAddModalService.takePhoto();
   }
 
+  protected onSearchClearClick(): void {
+    this.foodAddModalService.searchQuery$$.set('');
+  }
+
   protected async selectProduct(product: CatalogueEntry): Promise<void> {
     const weight = this.extractedWeight$$();
 
