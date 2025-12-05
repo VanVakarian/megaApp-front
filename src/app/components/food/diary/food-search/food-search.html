@@ -100,8 +100,15 @@
                   minHeight: '104px'
                 }"
                 (click)="selectProduct(catalogueEntry)">
-          <div>
-            <span class="catalogue-entry-name">{{ getDisplayName(catalogueEntry) }}</span>
+          <div class="flex flex-col justify-between h-full">
+            <div>
+              <span class="catalogue-entry-name">{{ getDisplayName(catalogueEntry) }}</span>
+            </div>
+            @if (extractedWeight$$() !== null) {
+              <div class="flex justify-end">
+                <span class="catalogue-entry-weight">{{ extractedWeight$$() }} г.</span>
+              </div>
+            }
           </div>
         </v-card>
       }
