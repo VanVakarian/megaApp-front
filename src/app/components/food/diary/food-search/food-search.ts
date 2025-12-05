@@ -175,6 +175,8 @@ export class FoodSearch {
 
       if (response?.result && response.diaryId) {
         this.foodAddModalService.submitSuccess();
+      } else {
+        this.foodAddModalService.selectProduct(product);
       }
     } catch (error) {
       console.error('Failed to create diary entry:', error);
