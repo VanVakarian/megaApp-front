@@ -13,12 +13,12 @@ import { FoodCatalogueService } from '@app/services/food/food-catalogue.service'
 import { FoodCoefficientsService } from '@app/services/food/food-coefficients.service';
 import { FoodDiaryService } from '@app/services/food/food-diary.service';
 import { DiaryEntry, HistoryEntry, HistoryEntryAction } from '@app/shared/interfaces';
+import { VButton } from '@app/shared/ui-kit/components/v-button/v-button';
+import { VExpand } from '@app/shared/ui-kit/components/v-expand/v-expand';
+import { IconName, VIcon } from '@app/shared/ui-kit/components/v-icon/v-icon';
+import { VInput } from '@app/shared/ui-kit/components/v-input/v-input';
+import { VModal } from '@app/shared/ui-kit/components/v-modal/v-modal';
 import { UiProgressIcon } from '@app/shared/ui-kit/progress-icon/progress-icon.component';
-import { VButton } from '@app/shared/ui-kit/v-button/v-button';
-import { VExpand } from '@app/shared/ui-kit/v-expand/v-expand';
-import { IconName, VIcon } from '@app/shared/ui-kit/v-icon/v-icon';
-import { VInput } from '@app/shared/ui-kit/v-input/v-input';
-import { VModal } from '@app/shared/ui-kit/v-modal/v-modal';
 
 interface DiaryEntryFormModel {
   id: FormControl<number>;

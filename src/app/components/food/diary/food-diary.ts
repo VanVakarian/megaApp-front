@@ -23,14 +23,14 @@ import { FoodAddModalService, ModalState } from '@app/services/food/food-add-mod
 import { FoodCatalogueService } from '@app/services/food/food-catalogue.service';
 import { FoodDiaryService } from '@app/services/food/food-diary.service';
 
-import { OuterShadowRoundedDirective } from '@app/shared/ui-kit/shadow.directive';
+import { VButton } from '@app/shared/ui-kit/components/v-button/v-button';
+import { VCard } from '@app/shared/ui-kit/components/v-card/v-card';
+import { AccordionDirective } from '@app/shared/ui-kit/components/v-expand/accordion.directive';
+import { AccordionService } from '@app/shared/ui-kit/components/v-expand/accordion.service';
+import { VExpand } from '@app/shared/ui-kit/components/v-expand/v-expand';
+import { VModal } from '@app/shared/ui-kit/components/v-modal/v-modal';
+import { OuterShadowRoundedDirective } from '@app/shared/ui-kit/directives/shadow.directive';
 import { ButtonStyle } from '@app/shared/ui-kit/types';
-import { VButton } from '@app/shared/ui-kit/v-button/v-button';
-import { VCard } from '@app/shared/ui-kit/v-card/v-card';
-import { AccordionDirective } from '@app/shared/ui-kit/v-expand/accordion.directive';
-import { AccordionService } from '@app/shared/ui-kit/v-expand/accordion.service';
-import { VExpand } from '@app/shared/ui-kit/v-expand/v-expand';
-import { VModal } from '@app/shared/ui-kit/v-modal/v-modal';
 import { CatalogueEntryEditForm } from './catalogue-entry-edit-form/catalogue-entry-edit-form';
 import { NutritionSummary } from './nutrition-summary/nutrition-summary';
 

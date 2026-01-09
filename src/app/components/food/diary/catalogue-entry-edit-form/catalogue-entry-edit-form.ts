@@ -4,9 +4,9 @@ import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { FoodAddModalService } from '@app/services/food/food-add-modal.service';
 import { FoodCatalogueService } from '@app/services/food/food-catalogue.service';
 import { ProductPreviewData, ProductSaveRequest } from '@app/shared/interfaces';
-import { VButton } from '@app/shared/ui-kit/v-button/v-button';
-import { IconName, VIcon } from '@app/shared/ui-kit/v-icon/v-icon';
-import { VInput } from '@app/shared/ui-kit/v-input/v-input';
+import { VButton } from '@app/shared/ui-kit/components/v-button/v-button';
+import { IconName, VIcon } from '@app/shared/ui-kit/components/v-icon/v-icon';
+import { VInput } from '@app/shared/ui-kit/components/v-input/v-input';
 
 enum FormMode {
   Create = 'create',
