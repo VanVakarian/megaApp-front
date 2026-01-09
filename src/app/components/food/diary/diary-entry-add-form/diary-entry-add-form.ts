@@ -6,10 +6,10 @@ import { FoodCoefficientsService } from '@app/services/food/food-coefficients.se
 import { FoodDiaryService } from '@app/services/food/food-diary.service';
 import { FoodStatsService } from '@app/services/food/food-stats.service';
 import { DiaryEntry, HistoryEntryAction } from '@app/shared/interfaces';
+import { VButton } from '@app/shared/ui-kit/components/v-button/v-button';
+import { IconName, VIcon } from '@app/shared/ui-kit/components/v-icon/v-icon';
+import { VInput } from '@app/shared/ui-kit/components/v-input/v-input';
 import { UiProgressIcon } from '@app/shared/ui-kit/progress-icon/progress-icon.component';
-import { VButton } from '@app/shared/ui-kit/v-button/v-button';
-import { IconName, VIcon } from '@app/shared/ui-kit/v-icon/v-icon';
-import { VInput } from '@app/shared/ui-kit/v-input/v-input';
 
 @Component({
   selector: 'diary-entry-add-form',

@@ -6,8 +6,8 @@ import { MatInputModule } from '@angular/material/input';
 import { AuthService } from '@app/services/auth.service';
 import { DeviceInfoService } from '@app/services/device-info.service';
 import { FoodDiaryService } from '@app/services/food/food-diary.service';
-import { VButton } from '@app/shared/ui-kit/v-button/v-button';
-import { IconName, VIcon } from '@app/shared/ui-kit/v-icon/v-icon';
+import { VButton } from '@app/shared/ui-kit/components/v-button/v-button';
+import { IconName, VIcon } from '@app/shared/ui-kit/components/v-icon/v-icon';
 import { calcDateWithUserTimeShift, dateToIsoNoTimeNoTZ, epochToIsoNoTimeNoTZ } from '@app/shared/utils';
 
 @Component({

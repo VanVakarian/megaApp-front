@@ -8,7 +8,7 @@ import {
   FieldStateAnimationsDirective,
 } from '@app/shared/directives/field-state-animations.directive';
 import { BodyWeightInterface as BodyWeightI } from '@app/shared/interfaces';
-import { VInput } from '@app/shared/ui-kit/v-input/v-input';
+import { VInput } from '@app/shared/ui-kit/components/v-input/v-input';
 
 interface BodyWeightForm {
   bodyWeight: FormControl<string | null>;

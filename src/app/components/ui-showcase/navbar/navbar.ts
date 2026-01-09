@@ -1,9 +1,9 @@
 import { Component, DestroyRef, OnInit } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router } from '@angular/router';
+import { VButton } from '@app/shared/ui-kit/components/v-button/v-button';
+import { IconName, VIcon } from '@app/shared/ui-kit/components/v-icon/v-icon';
 import { ButtonStyle } from '@app/shared/ui-kit/types';
-import { VButton } from '@app/shared/ui-kit/v-button/v-button';
-import { IconName, VIcon } from '@app/shared/ui-kit/v-icon/v-icon';
 import { filter } from 'rxjs';
 
 enum SelectedPage {
