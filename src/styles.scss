@@ -6,6 +6,13 @@
 
 @import '@app/shared/ui-kit/styles/vars.css';
 
+:root {
+  /* Animation durations fallback - primary source is ui-kit/vars.css */
+  --animation-duration-fast: 125ms;
+  --animation-duration-medium: 250ms;
+  --animation-duration-slow: 400ms;
+}
+
 @include mat.core();
 
 $light-primary: mat.define-palette(mat.$indigo-palette);
