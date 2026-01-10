@@ -1,8 +1,9 @@
 @if (authService.isAuthenticated$$() || forceShowOnUiShowcasePage$$()) {
   @if (isDesktop$$()) {
     <nav class="fixed top-0 left-0 z-40 flex flex-col h-screen gap-2 pt-2 pb-2 pl-2 pr-2 transition-[width] duration-[var(--animation-duration-medium)] ease-in-out"
-         [style.width.px]="mainMenuService.navbarWidth$$()">
+         [style.width.px]="navigationService.navbarWidth$$()">
 
+      <!-- main menu buttons -->
       <div class="flex flex-col gap-2">
         @for (button of visibleButtons$$(); track button.label) {
           @if (button.label !== "DarkThemeSwitch" && button.label !== "Настройки") {
@@ -10,14 +11,14 @@
                         buttonStyle: getButtonStyle(button),
                         width: '100%',
                         padding: 2,
-                        isLabelHidden: mainMenuService.isCollapsed$$(),
+                        isLabelHidden: navigationService.isCollapsed$$(),
                         labelAnimationDuration: 125,
                         textAlign: 'left',
                       }"
                       class="menu-item"
                       (click)="navigateToLink(button.link)">
               <v-icon v-prefix
-                      [name]="getButtonIcon(button)"
+                      [name]="button.iconName"
                       [size]="7" />
               {{ button.label }}
             </v-button>
@@ -29,12 +30,13 @@
           <div class="bg-slate-400 dark:bg-slate-600 w-full h-[2px] my-1"></div>
         }
 
+        <!-- ui showcase buttons -->
         @for (button of uiShowcaseButtons$$(); track button.label) {
           <v-button [config]="{
-                      buttonStyle: button.selected ? ButtonStyle.Primary : ButtonStyle.Flat,
+                      buttonStyle: getButtonStyle(button),
                       width: '100%',
                       padding: 2,
-                      isLabelHidden: mainMenuService.isCollapsed$$(),
+                      isLabelHidden: navigationService.isCollapsed$$(),
                       labelAnimationDuration: 125,
                       textAlign: 'left',
                     }"
@@ -48,6 +50,7 @@
         }
       </div>
 
+      <!-- collapse sidebar button -->
       <div class="flex flex-col gap-2 mt-auto">
         <v-button [config]="{
                     buttonStyle: ButtonStyle.Flat,
@@ -61,22 +64,24 @@
                   [size]="7" />
         </v-button>
 
+        <!-- dark theme switch button -->
         <!-- <app-dark-switch /> -->
 
+        <!-- settings button -->
         @for (button of visibleButtons$$(); track button.label) {
           @if (button.label === "Настройки") {
             <v-button [config]="{
                         buttonStyle: getButtonStyle(button),
                         width: '100%',
                         padding: 2,
-                        isLabelHidden: mainMenuService.isCollapsed$$(),
+                        isLabelHidden: navigationService.isCollapsed$$(),
                         labelAnimationDuration: 125,
                         textAlign: 'left',
                       }"
                       class="menu-item"
                       (click)="navigateToLink(button.link)">
               <v-icon v-prefix
-                      [name]="getButtonIcon(button)"
+                      [name]="button.iconName"
                       [size]="7" />
               {{ button.label }}
             </v-button>
@@ -106,7 +111,7 @@
                    class="menu-btn-bg absolute bottom-[-17px] right-[8px] h-full w-full"></div>
 
               <v-icon v-prefix
-                      [name]="getButtonIcon(button)"
+                      [name]="button.iconName"
                       [size]="7" />
 
               {{ button.label }}
