@@ -4,13 +4,21 @@ on:
   push:
     branches:
       - release
+  workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: 'Specific commit SHA (optional, leave empty for latest)'
+        required: false
+        type: string
 
 jobs:
   deploy:
     uses: ./.github/workflows/build-and-deploy.yml
     with:
+      branch: 'release'
       build-config: 'prod'
       server-path: '/var/www/megaapp'
+      commit_sha: ${{ inputs.commit_sha }}
     secrets:
       HOST: ${{ secrets.HOST }}
       USER: ${{ secrets.USER }}
