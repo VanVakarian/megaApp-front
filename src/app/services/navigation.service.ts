@@ -4,6 +4,7 @@ import { DeviceInfoService } from '@app/services/device-info.service';
 import { RouterService } from '@app/services/router.service';
 import { SettingsService } from '@app/services/settings.service';
 import { SettingsChapterNames } from '@app/shared/interfaces';
+import { IconName } from '@app/shared/ui-kit/components/v-icon/v-icon';
 
 enum MenuPlace {
   Mobile = 'mobile',
@@ -16,23 +17,31 @@ enum MenuWidthPx {
   Expanded = 242,
 }
 
-interface MenuButton {
+export interface MenuButton {
   label: string;
   place: MenuPlace;
   link: string | string[];
   selected?: boolean;
   chapterSettingName?: SettingsChapterNames;
-  iconName?: string;
+  iconName: IconName;
   bgClass?: string;
+}
+
+export interface UiShowcaseButton {
+  label: string;
+  link: string;
+  iconName: IconName;
+  selected: boolean;
 }
 
 @Injectable({
   providedIn: 'root',
 })
-export class MainMenuService {
+export class NavigationService {
   private readonly COLLAPSE_STORAGE_KEY = 'navbar-collapsed';
 
   private readonly isNavbarCollapsed$$ = signal(true);
+  private readonly currentRoute$signal = signal('');
   private readonly deviceInfoService = inject(DeviceInfoService);
 
   public readonly isCollapsed$$ = computed(() => this.isNavbarCollapsed$$());
@@ -42,6 +51,16 @@ export class MainMenuService {
     return this.isNavbarCollapsed$$() ? MenuWidthPx.Collapsed : MenuWidthPx.Expanded;
   });
 
+  public readonly currentRoute$$ = computed(() => this.currentRoute$signal());
+
+  public readonly shouldShowUiShowcaseButtons$$ = computed(() => {
+    return this.currentRoute$$().startsWith('/ui-showcase');
+  });
+
+  public readonly visibleUiShowcaseButtons$$ = computed(() => {
+    return this.shouldShowUiShowcaseButtons$$() ? this.uiShowcaseButtons : [];
+  });
+
   private readonly buttons: MenuButton[] = [
     {
       label: 'Дневник питания',
@@ -49,7 +68,7 @@ export class MainMenuService {
       link: ['/food', 'diary'],
       selected: false,
       chapterSettingName: 'selectedChapterFood',
-      iconName: 'restaurant',
+      iconName: IconName.Restaurant,
       bgClass: 'food-bg',
     },
     {
@@ -57,7 +76,7 @@ export class MainMenuService {
       place: MenuPlace.Mobile,
       link: ['/food', 'stats'],
       chapterSettingName: 'selectedChapterFood',
-      iconName: 'analytics',
+      iconName: IconName.Analytics,
       bgClass: 'food-bg',
     },
     // {
@@ -65,7 +84,7 @@ export class MainMenuService {
     //   place: MenuPlace.Mobile,
     //   link: ['/food', 'catalogue'],
     //   chapterSettingName: 'selectedChapterFood',
-    //   iconName: 'menu_book',
+    //   iconName: IconName.Article,
     //   bgClass: 'food-bg',
     // },
     {
@@ -74,21 +93,49 @@ export class MainMenuService {
       link: '/money',
       selected: false,
       chapterSettingName: 'selectedChapterMoney',
-      iconName: 'remove_red_eye',
+      iconName: IconName.Paid,
       bgClass: 'money-bg',
     },
     {
       label: 'DarkThemeSwitch',
       place: MenuPlace.Desktop,
       link: '',
+      iconName: IconName.QuestionMark, // TODO [136]: implement dark mode
     },
     {
       label: 'Настройки',
       place: MenuPlace.Both,
       link: '/settings',
       selected: false,
-      iconName: 'settings',
+      iconName: IconName.Settings,
       bgClass: 'settings-bg',
+    },
+  ];
+
+  private readonly uiShowcaseButtons: UiShowcaseButton[] = [
+    {
+      label: 'Dishes',
+      link: '/ui-showcase/dishes',
+      iconName: IconName.Restaurant,
+      selected: false,
+    },
+    {
+      label: 'Finance',
+      link: '/ui-showcase/finance',
+      iconName: IconName.Paid,
+      selected: false,
+    },
+    {
+      label: 'Icons',
+      link: '/ui-showcase/icons',
+      iconName: IconName.ViewCozy,
+      selected: false,
+    },
+    {
+      label: 'Other',
+      link: '/ui-showcase/other',
+      iconName: IconName.Article,
+      selected: false,
     },
   ];
 
@@ -113,13 +160,15 @@ export class MainMenuService {
   public prepButtons(place: 'mobile' | 'desktop'): MenuButton[] {
     return this.buttons.filter((button) => {
       const chapterName: SettingsChapterNames = button.chapterSettingName as SettingsChapterNames;
-      const chapterSelected = chapterName ? this.settingsService.settings$$()[chapterName] : true; // showing button if there's no chapterSettingName setting in buttons
+      const chapterSelected = chapterName ? this.settingsService.settings$$()[chapterName] : true;
       return (button.place === place || button.place === 'both') && chapterSelected;
     });
   }
 
   private subscribeToRouteChanges() {
     this.routerService.currentRoute$.subscribe((route) => {
+      this.currentRoute$signal.set(route);
+
       this.buttons.forEach((btn) => {
         if (btn.hasOwnProperty('selected')) {
           if (Array.isArray(btn.link)) {
@@ -128,6 +177,10 @@ export class MainMenuService {
             btn.selected = route.includes(btn.link);
           }
         }
+      });
+
+      this.uiShowcaseButtons.forEach((btn) => {
+        btn.selected = route.includes(btn.link);
       });
     });
   }

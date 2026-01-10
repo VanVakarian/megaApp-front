@@ -2,9 +2,9 @@ import { Component, inject, OnInit } from '@angular/core';
 import { DateAdapter, MatNativeDateModule } from '@angular/material/core';
 import { MatPaginatorIntl } from '@angular/material/paginator';
 import { RouterOutlet } from '@angular/router';
-import { MainNavbar } from '@app/components/main-menu/navbar/navbar';
+import { Navigation } from '@app/components/navigation/navigation';
 import { PaginatorLocalisation } from '@app/paginator-localisation';
-import { MainMenuService } from '@app/services/main-menu.service';
+import { NavigationService } from '@app/services/navigation.service';
 import { NetworkMonitor } from '@app/services/network-monitor.service';
 
 @Component({
@@ -16,12 +16,12 @@ import { NetworkMonitor } from '@app/services/network-monitor.service';
       useClass: PaginatorLocalisation,
     },
   ],
-  imports: [MainNavbar, RouterOutlet, MatNativeDateModule],
+  imports: [Navigation, RouterOutlet, MatNativeDateModule],
 })
 export class MainAppComponent implements OnInit {
+  protected readonly navigationService = inject(NavigationService);
   private readonly dateAdapter = inject(DateAdapter<Date>);
   private readonly networkMonitorService = inject(NetworkMonitor);
-  protected readonly mainMenuService = inject(MainMenuService);
 
   constructor() {
     this.networkMonitorService.initNetworkEvents();
