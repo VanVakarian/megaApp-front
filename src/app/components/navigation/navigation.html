@@ -1,0 +1,146 @@
+@if (authService.isAuthenticated$$() || forceShowOnUiShowcasePage$$()) {
+  @if (isDesktop$$()) {
+    <nav class="fixed top-0 left-0 z-40 flex flex-col h-screen gap-2 pt-2 pb-2 pl-2 pr-2 transition-[width] duration-[var(--animation-duration-medium)] ease-in-out"
+         [style.width.px]="navigationService.navbarWidth$$()">
+
+      <!-- main menu buttons -->
+      <div class="flex flex-col gap-2">
+        @for (button of visibleButtons$$(); track button.label) {
+          @if (button.label !== "DarkThemeSwitch" && button.label !== "Настройки") {
+            <v-button [config]="{
+                        buttonStyle: getButtonStyle(button),
+                        width: '100%',
+                        padding: 2,
+                        isLabelHidden: navigationService.isCollapsed$$(),
+                        labelAnimationDuration: 125,
+                        textAlign: 'left',
+                      }"
+                      class="menu-item"
+                      (click)="navigateToLink(button.link)">
+              <v-icon v-prefix
+                      [name]="button.iconName"
+                      [size]="7" />
+              {{ button.label }}
+            </v-button>
+          }
+        }
+
+        <!-- divider -->
+        @if (uiShowcaseButtons$$().length > 0 && authService.isAuthenticated$$() ) {
+          <div class="bg-slate-400 dark:bg-slate-600 w-full h-[2px] my-1"></div>
+        }
+
+        <!-- ui showcase buttons -->
+        @for (button of uiShowcaseButtons$$(); track button.label) {
+          <v-button [config]="{
+                      buttonStyle: getButtonStyle(button),
+                      width: '100%',
+                      padding: 2,
+                      isLabelHidden: navigationService.isCollapsed$$(),
+                      labelAnimationDuration: 125,
+                      textAlign: 'left',
+                    }"
+                    class="menu-item"
+                    (click)="navigateToLink(button.link)">
+            <v-icon v-prefix
+                    [name]="button.iconName"
+                    [size]="7" />
+            {{ button.label }}
+          </v-button>
+        }
+      </div>
+
+      <!-- collapse sidebar button -->
+      <div class="flex flex-col gap-2 mt-auto">
+        <v-button [config]="{
+                    buttonStyle: ButtonStyle.Flat,
+                    padding: 2,
+                    isLabelHidden: true,
+                  }"
+                  class="menu-item"
+                  (click)="toggleMenuCollapse()">
+          <v-icon v-prefix
+                  [name]="getCollapseIconName()"
+                  [size]="7" />
+        </v-button>
+
+        <!-- dark theme switch button -->
+        <!-- <app-dark-switch /> -->
+
+        <!-- settings button -->
+        @for (button of visibleButtons$$(); track button.label) {
+          @if (button.label === "Настройки") {
+            <v-button [config]="{
+                        buttonStyle: getButtonStyle(button),
+                        width: '100%',
+                        padding: 2,
+                        isLabelHidden: navigationService.isCollapsed$$(),
+                        labelAnimationDuration: 125,
+                        textAlign: 'left',
+                      }"
+                      class="menu-item"
+                      (click)="navigateToLink(button.link)">
+              <v-icon v-prefix
+                      [name]="button.iconName"
+                      [size]="7" />
+              {{ button.label }}
+            </v-button>
+          }
+        }
+      </div>
+    </nav>
+  }
+
+  @if (!isDesktop$$()) {
+    <div [@menuSlide]="isMobileMenuOpen$$() ? 'open' : 'closed'"
+         class="h-dvh fixed top-0 right-0 z-40 pointer-events-none">
+      <div class="flex flex-col justify-end h-full gap-4 mx-4 pointer-events-none">
+        @for (button of visibleButtons$$(); track button.label) {
+          @if (button.label !== "DarkThemeSwitch") {
+            <v-button primary
+                      class="side-menu-button h-12 overflow-hidden pointer-events-auto"
+                      [config]="{
+                        width: '100%',
+                        gap: 3,
+                        textAlign: 'left',
+                        isWithoutShadow: true,
+                      }"
+                      (click)="navigateToLink(button.link); closeMobileMenu()">
+
+              <div [ngClass]="[button.bgClass]"
+                   class="menu-btn-bg absolute bottom-[-17px] right-[8px] h-full w-full"></div>
+
+              <v-icon v-prefix
+                      [name]="button.iconName"
+                      [size]="7" />
+
+              {{ button.label }}
+            </v-button>
+          }
+        }
+        <div class="h-20"></div>
+      </div>
+    </div>
+
+    <div #fader
+         [@fadeInOut]="isMobileMenuOpen$$() ? 'fadeIn' : 'fadeOut'"
+         class="h-dvh w-dvw fixed top-0 left-0 z-30 hidden bg-black"
+         (click)="closeMobileMenu()">
+    </div>
+
+    <div class="fixed bottom-0 right-0 z-50 block mb-4 mr-4">
+      <v-button [config]="{
+                  buttonStyle: isMobileMenuOpen$$() ? ButtonStyle.Danger : ButtonStyle.Primary,
+                  isLabelHidden: true,
+                  padding: 3,
+                  borderRadius: 7,
+                  isWithoutShadow: true,
+                }"
+                (click)="toggleMobileMenu()">
+        <v-icon v-prefix
+                [name]="isMobileMenuOpen$$() ? Icon.Close : Icon.Menu"
+                [size]="8" />
+      </v-button>
+    </div>
+  }
+}

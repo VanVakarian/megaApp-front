@@ -39,10 +39,11 @@ export const routes: Routes = [
   {
     path: 'ui-showcase',
     component: UiShowcase,
+    resolve: { auth: authResolver },
     data: { allowUnauthenticated: true },
     children: [
-      { path: 'food', component: Food },
-      { path: 'money', component: Money },
+      { path: 'dishes', component: Food },
+      { path: 'finance', component: Money },
       { path: 'icons', component: Icons },
       { path: 'other', component: Other },
       { path: 'settings', component: Settings },

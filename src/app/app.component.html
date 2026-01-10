@@ -1,16 +1,8 @@
-@if(!getIsNavbarHidden()) {
-  <app-navbar-desktop />
-  <app-navbar-mobile />
-}
+<div class="flex">
+  <navigation />
 
-<main class="flex flex-col">
-  @if (!getIsNavbarHidden()) {
-    <div class="hidden lg:block h-[46px]">
-      <!-- Desktop navbar offset... -->
-    </div>
-  }
-
-  <div>
+  <main class="flex flex-col flex-grow w-0 min-w-0 transition-[margin-left] duration-[var(--animation-duration-medium)] ease-in-out"
+        [style.margin-left.px]="navigationService.navbarWidth$$()">
     <router-outlet />
-  </div>
-</main>
+  </main>
+</div>
