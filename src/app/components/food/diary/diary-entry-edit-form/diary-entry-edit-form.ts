@@ -59,12 +59,17 @@ export class DiaryEntryEditForm implements OnChanges {
   protected readonly Icon = IconName;
 
   private newWeightPattern = /^(?!0+$)\d+$/; // Digits only, but not zero
-  private editWeightPattern = /^[-+]?\d+$/; // Digits only with or without a plus or a minus
+  private editWeightPattern = /^[-+]?\d*$/; // Digits only with or without a plus or a minus
 
   private positiveResultValidator(): ValidatorFn {
     return (control: AbstractControl): ValidationErrors | null => {
       if (!control.value) return null;
-      const changeValue = parseInt(String(control.value));
+      const rawValue = String(control.value);
+      if (rawValue === '-' || rawValue === '+') return null;
+
+      const changeValue = parseInt(rawValue);
+      if (!Number.isFinite(changeValue)) return null;
+
       const newWeight = this.foodWeightInitial + changeValue;
       return newWeight > 0 ? null : { negativeResult: true };
     };
@@ -146,9 +151,12 @@ export class DiaryEntryEditForm implements OnChanges {
     const weightIfNew = this.foodWeightNewControl.value;
     const weightIfChange = this.foodWeightChangeControl.value;
 
+    const nextWeightIfNew = weightIfNew !== null ? parseInt(weightIfNew) : null;
+    const nextWeightIfChange = weightIfChange !== null ? parseInt(weightIfChange) : null;
+
     const hasValidChange =
-      (weightIfNew !== null && this.foodWeightInitial !== parseInt(weightIfNew)) ||
-      (weightIfChange !== null && parseInt(weightIfChange) !== 0);
+      (nextWeightIfNew !== null && Number.isFinite(nextWeightIfNew) && this.foodWeightInitial !== nextWeightIfNew) ||
+      (nextWeightIfChange !== null && Number.isFinite(nextWeightIfChange) && nextWeightIfChange !== 0);
 
     return hasValidChange && this.foodWeightFinal > 0;
   }
@@ -175,16 +183,36 @@ export class DiaryEntryEditForm implements OnChanges {
   protected onChangeWeightInput() {
     this.diaryEntryForm.controls.foodWeightNew.setValue(null);
     const foodWeightChangeStr = String(this.foodWeightChangeControl.value);
+    if (
+      foodWeightChangeStr === 'null' ||
+      foodWeightChangeStr === '' ||
+      foodWeightChangeStr === '-' ||
+      foodWeightChangeStr === '+'
+    ) {
+      // Intermediate input state: reset projection to avoid showing stale calculated result.
+      this.foodWeightFinal = this.foodWeightInitial;
+      this.updateProjectedDaysConsumedPercent();
+      return;
+    }
+
     const foodWeightChangeInt = parseInt(foodWeightChangeStr);
+    if (!Number.isFinite(foodWeightChangeInt)) {
+      // Invalid numeric input: fall back to initial weight to keep UI consistent.
+      this.foodWeightFinal = this.foodWeightInitial;
+      this.updateProjectedDaysConsumedPercent();
+      return;
+    }
 
     if (this.editWeightPattern.test(foodWeightChangeStr)) {
       const newWeight = this.foodWeightInitial + foodWeightChangeInt;
       if (newWeight > 0) {
         this.foodWeightFinal = newWeight;
       } else {
+        // Prevent non-positive result.
         this.foodWeightFinal = 0;
       }
     } else {
+      // Pattern mismatch: do not apply delta.
       this.foodWeightFinal = this.foodWeightInitial;
     }
 
@@ -200,9 +228,16 @@ export class DiaryEntryEditForm implements OnChanges {
   public async onSubmit(): Promise<void> {
     const weightIfChangeRaw = this.foodWeightChangeControl.value;
     const weightIfSetRaw = this.diaryEntryForm.controls.foodWeightNew.value;
-    const weightIfChange = weightIfChangeRaw !== null ? parseInt(weightIfChangeRaw) : null;
-    const weightIfSet = weightIfSetRaw !== null ? parseInt(weightIfSetRaw) : null;
+
+    const weightIfChangeParsed = weightIfChangeRaw !== null ? parseInt(weightIfChangeRaw) : null;
+    const weightIfSetParsed = weightIfSetRaw !== null ? parseInt(weightIfSetRaw) : null;
+
+    const weightIfChange =
+      weightIfChangeParsed !== null && Number.isFinite(weightIfChangeParsed) ? weightIfChangeParsed : null;
+    const weightIfSet = weightIfSetParsed !== null && Number.isFinite(weightIfSetParsed) ? weightIfSetParsed : null;
+
     const foodWeight = weightIfChange ?? (weightIfSet !== null ? weightIfSet - this.foodWeightInitial : 0);
+
     const historyValue = weightIfChange !== null ? Math.abs(foodWeight) : (weightIfSet ?? 0);
 
     if (weightIfChange === null) {
