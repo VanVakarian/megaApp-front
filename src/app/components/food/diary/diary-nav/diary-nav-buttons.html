@@ -13,7 +13,7 @@
     </v-button>
   }
 
-  <div class="grow overflow-hidden whitespace-nowrap pt-[6px] text-center text-xl">
+  <div class="grow whitespace-nowrap overflow-hidden text-xl text-center">
     {{ selectedDateFormatted$$() }}
   </div>
 
@@ -64,12 +64,12 @@
                 borderRadius: 7,
                 isWithoutShadow: true,
                 isLabelHidden: true,
-                padding: 3,
+                padding: 2,
               }"
               (click)="goToPreviousDay()">
       <v-icon v-prefix
               [name]="Icon.KeyboardArrowLeft"
-              [size]="8" />
+              [size]="10" />
     </v-button>
 
     <v-button primary
@@ -90,12 +90,12 @@
                 borderRadius: 7,
                 isWithoutShadow: true,
                 isLabelHidden: true,
-                padding: 3,
+                padding: 2,
               }"
               (click)="goToNextDay()">
       <v-icon v-prefix
               [name]="Icon.KeyboardArrowRight"
-              [size]="8" />
+              [size]="10" />
     </v-button>
 
     <div class="w-14 h-14">

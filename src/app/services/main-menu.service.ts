@@ -1,5 +1,6 @@
-import { inject, Injectable } from '@angular/core';
+import { computed, inject, Injectable, signal } from '@angular/core';
 
+import { DeviceInfoService } from '@app/services/device-info.service';
 import { RouterService } from '@app/services/router.service';
 import { SettingsService } from '@app/services/settings.service';
 import { SettingsChapterNames } from '@app/shared/interfaces';
@@ -8,6 +9,11 @@ enum MenuPlace {
   Mobile = 'mobile',
   Desktop = 'desktop',
   Both = 'both',
+}
+
+enum MenuWidthPx {
+  Collapsed = 60,
+  Expanded = 242,
 }
 
 interface MenuButton {
@@ -24,6 +30,18 @@ interface MenuButton {
   providedIn: 'root',
 })
 export class MainMenuService {
+  private readonly COLLAPSE_STORAGE_KEY = 'navbar-collapsed';
+
+  private readonly isNavbarCollapsed$$ = signal(true);
+  private readonly deviceInfoService = inject(DeviceInfoService);
+
+  public readonly isCollapsed$$ = computed(() => this.isNavbarCollapsed$$());
+
+  public readonly navbarWidth$$ = computed(() => {
+    if (!this.deviceInfoService.isDesktopScreen$$()) return 0;
+    return this.isNavbarCollapsed$$() ? MenuWidthPx.Collapsed : MenuWidthPx.Expanded;
+  });
+
   private readonly buttons: MenuButton[] = [
     {
       label: 'Дневник питания',
@@ -39,17 +57,17 @@ export class MainMenuService {
       place: MenuPlace.Mobile,
       link: ['/food', 'stats'],
       chapterSettingName: 'selectedChapterFood',
-      iconName: 'insights',
+      iconName: 'analytics',
       bgClass: 'food-bg',
     },
-    {
-      label: 'Каталог еды',
-      place: MenuPlace.Mobile,
-      link: ['/food', 'catalogue'],
-      chapterSettingName: 'selectedChapterFood',
-      iconName: 'menu_book',
-      bgClass: 'food-bg',
-    },
+    // {
+    //   label: 'Каталог еды',
+    //   place: MenuPlace.Mobile,
+    //   link: ['/food', 'catalogue'],
+    //   chapterSettingName: 'selectedChapterFood',
+    //   iconName: 'menu_book',
+    //   bgClass: 'food-bg',
+    // },
     {
       label: 'Дневник финансов',
       place: MenuPlace.Both,
@@ -79,6 +97,17 @@ export class MainMenuService {
 
   constructor() {
     this.subscribeToRouteChanges();
+    this.initCollapseState();
+  }
+
+  public toggleCollapse(): void {
+    this.isNavbarCollapsed$$.set(!this.isNavbarCollapsed$$());
+    localStorage.setItem(this.COLLAPSE_STORAGE_KEY, String(this.isNavbarCollapsed$$()));
+  }
+
+  private initCollapseState(): void {
+    const saved = localStorage.getItem(this.COLLAPSE_STORAGE_KEY);
+    this.isNavbarCollapsed$$.set(saved === null ? true : saved === 'true');
   }
 
   public prepButtons(place: 'mobile' | 'desktop'): MenuButton[] {

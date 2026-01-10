@@ -1,10 +1,10 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, inject, OnInit } from '@angular/core';
 import { DateAdapter, MatNativeDateModule } from '@angular/material/core';
 import { MatPaginatorIntl } from '@angular/material/paginator';
-import { Router, RouterOutlet } from '@angular/router';
-import { NavbarDesktopComponent } from '@app/components/main-menu/navbar-desktop/navbar-desktop.component';
-import { NavbarMobileComponent } from '@app/components/main-menu/navbar-mobile/navbar-mobile.component';
+import { RouterOutlet } from '@angular/router';
+import { MainNavbar } from '@app/components/main-menu/navbar/navbar';
 import { PaginatorLocalisation } from '@app/paginator-localisation';
+import { MainMenuService } from '@app/services/main-menu.service';
 import { NetworkMonitor } from '@app/services/network-monitor.service';
 
 @Component({
@@ -16,26 +16,22 @@ import { NetworkMonitor } from '@app/services/network-monitor.service';
       useClass: PaginatorLocalisation,
     },
   ],
-  imports: [NavbarMobileComponent, NavbarDesktopComponent, RouterOutlet, MatNativeDateModule],
+  imports: [MainNavbar, RouterOutlet, MatNativeDateModule],
 })
 export class MainAppComponent implements OnInit {
-  constructor(
-    private dateAdapter: DateAdapter<Date>,
-    private networkMonitorService: NetworkMonitor,
-    private router: Router,
-  ) {
+  private readonly dateAdapter = inject(DateAdapter<Date>);
+  private readonly networkMonitorService = inject(NetworkMonitor);
+  protected readonly mainMenuService = inject(MainMenuService);
+
+  constructor() {
     this.networkMonitorService.initNetworkEvents();
   }
 
   public ngOnInit(): void {
-    this.makeMondayFirstDayOfWeek();
+    this.makeMondayFirstDayOfTheWeek();
   }
 
-  protected getIsNavbarHidden(): boolean {
-    return this.router.url.startsWith('/ui-showcase');
-  }
-
-  private makeMondayFirstDayOfWeek() {
+  private makeMondayFirstDayOfTheWeek() {
     this.dateAdapter.setLocale('ru-RU');
     this.dateAdapter.getFirstDayOfWeek = () => 1;
   }
