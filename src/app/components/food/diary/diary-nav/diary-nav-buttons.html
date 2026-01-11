@@ -1,7 +1,8 @@
 <div class="flex w-full gap-2">
-  <div class="grow whitespace-nowrap overflow-hidden text-xl text-center">
-    {{ selectedDateFormatted$$() }}
-  </div>
+  <div class="grow whitespace-nowrap place-content-center overflow-hidden text-xl text-center"
+       fitTextOnOverflow
+       [fullText]="selectedDateLongFormatted$$()"
+       [shortText]="selectedDateShortFormatted$$()"></div>
 
   <div class="flex flex-col">
     <v-button primary

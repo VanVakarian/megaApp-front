@@ -4,6 +4,7 @@ import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { MatDatepicker, MatDatepickerInputEvent, MatDatepickerModule } from '@angular/material/datepicker';
 import { MatInputModule } from '@angular/material/input';
 import { FoodDiaryService } from '@app/services/food/food-diary.service';
+import { FitTextOnOverflowDirective } from '@app/shared/directives/fit-text-on-overflow.directive';
 import { VButton } from '@app/shared/ui-kit/components/v-button/v-button';
 import { IconName, VIcon } from '@app/shared/ui-kit/components/v-icon/v-icon';
 import {
@@ -16,7 +17,15 @@ import {
 @Component({
   selector: 'diary-nav-buttons',
   templateUrl: './diary-nav-buttons.html',
-  imports: [CommonModule, MatDatepickerModule, ReactiveFormsModule, MatInputModule, VButton, VIcon],
+  imports: [
+    CommonModule,
+    MatDatepickerModule,
+    ReactiveFormsModule,
+    MatInputModule,
+    FitTextOnOverflowDirective,
+    VButton,
+    VIcon,
+  ],
 })
 export class DiaryNavButtons {
   protected readonly picker = viewChild.required<MatDatepicker<Date>>('picker');
@@ -27,7 +36,13 @@ export class DiaryNavButtons {
     nonNullable: true,
   });
 
-  protected selectedDateFormatted$$: Signal<string> = computed(() => this.formatDate(this.foodDiaryService.selectedDayIso$$())); // prettier-ignore
+  protected readonly selectedDateLongFormatted$$: Signal<string> = computed(() =>
+    this.formatDate(this.foodDiaryService.selectedDayIso$$(), 'long'),
+  );
+
+  protected readonly selectedDateShortFormatted$$: Signal<string> = computed(() =>
+    this.formatDate(this.foodDiaryService.selectedDayIso$$(), 'short'),
+  );
 
   protected readonly isTodaySelected$$: Signal<boolean> = computed(() => {
     return this.foodDiaryService.selectedDayIso$$() === calculateTodayIsoWithUserTimeShift();
@@ -43,9 +58,9 @@ export class DiaryNavButtons {
 
   private readonly foodDiaryService = inject(FoodDiaryService);
 
-  protected formatDate(dateIso: string): string {
+  protected formatDate(dateIso: string, monthStyle: 'long' | 'short'): string {
     const date = new Date(dateIso);
-    const result = date.toLocaleDateString('ru-RU', { weekday: 'long', month: 'long', day: 'numeric' });
+    const result = date.toLocaleDateString('ru-RU', { weekday: 'long', month: monthStyle, day: 'numeric' });
     return result[0].toUpperCase() + result.slice(1);
   }
 
