@@ -106,14 +106,16 @@
   }
 </div>
 
-<v-button class="pt-4"
-          [config]="{
-            width: '100%',
-            buttonStyle: addDiaryEntryButtonStyle$$()
-          }"
-          (onClick)="openAddFoodModal()">
-  Добавить запись
-</v-button>
+@if (deviceInfoService.isDesktopScreen$$()) {
+  <v-button class="pt-4"
+            [config]="{
+              width: '100%',
+              buttonStyle: addDiaryEntryButtonStyle$$()
+            }"
+            (onClick)="openAddFoodModal()">
+    Добавить запись
+  </v-button>
+}
 
 <div class="h-[50vh]"></div>
 
