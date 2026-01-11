@@ -1,14 +1,17 @@
 import { animate, state, style, transition, trigger } from '@angular/animations';
 import { NgClass } from '@angular/common';
 import { Component, computed, ElementRef, inject, OnInit, signal, viewChild } from '@angular/core';
-import { Router } from '@angular/router';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { NavigationEnd, Router } from '@angular/router';
 import { AuthService } from '@app/services/auth.service';
 import { DeviceInfoService } from '@app/services/device-info.service';
+import { FoodAddModalService } from '@app/services/food/food-add-modal.service';
 import { MenuButton, NavigationService, UiShowcaseButton } from '@app/services/navigation.service';
 import { ANIMATION_DURATION_MS, ANIMATION_DURATION_MS_STRING } from '@app/shared/animations';
 import { VButton } from '@app/shared/ui-kit/components/v-button/v-button';
 import { IconName, VIcon } from '@app/shared/ui-kit/components/v-icon/v-icon';
 import { ButtonStyle } from '@app/shared/ui-kit/types';
+import { filter, map, startWith } from 'rxjs/operators';
 
 @Component({
   selector: 'navigation',
@@ -28,6 +31,11 @@ import { ButtonStyle } from '@app/shared/ui-kit/types';
       state('fadeIn', style({ opacity: 0.75 })),
       transition('fadeOut <=> fadeIn', [animate(`${ANIMATION_DURATION_MS_STRING.MEDIUM} ease-in-out`)]),
     ]),
+    trigger('fabSlide', [
+      state('visible', style({ transform: 'translateX(0)' })),
+      state('hidden', style({ transform: 'translateX(200%)' })),
+      transition('visible <=> hidden', [animate(`${ANIMATION_DURATION_MS_STRING.MEDIUM} ease-in-out`)]),
+    ]),
   ],
 })
 export class Navigation implements OnInit {
@@ -40,10 +48,29 @@ export class Navigation implements OnInit {
 
   protected readonly navigationService = inject(NavigationService);
   protected readonly authService = inject(AuthService);
+  protected readonly foodAddModalService = inject(FoodAddModalService);
   private readonly deviceInfoService = inject(DeviceInfoService);
   private readonly router = inject(Router);
 
   protected readonly isDesktop$$ = computed(() => this.deviceInfoService.isDesktopScreen$$());
+
+  protected readonly shouldHideFabButtons$$ = computed(
+    () => !this.isDesktop$$() && this.deviceInfoService.isKeyboardOpen$$(),
+  );
+
+  private readonly currentUrl$$ = toSignal(
+    this.router.events.pipe(
+      filter((event) => event instanceof NavigationEnd),
+      map((event) => (event as NavigationEnd).urlAfterRedirects),
+      startWith(this.router.url),
+    ),
+    { initialValue: this.router.url },
+  );
+
+  protected readonly isOnFoodDiaryPage$$ = computed(() => {
+    const url = this.currentUrl$$();
+    return url === '/food' || url.startsWith('/food/diary') || url === '/food/';
+  });
 
   protected readonly visibleButtons$$ = computed(() => {
     const place = this.isDesktop$$() ? 'desktop' : 'mobile';
@@ -91,5 +118,9 @@ export class Navigation implements OnInit {
 
   protected getCollapseIconName(): IconName {
     return this.navigationService.isCollapsed$$() ? IconName.LeftPanelOpen : IconName.LeftPanelClose;
+  }
+
+  protected openAddFoodModal(): void {
+    this.foodAddModalService.openModal();
   }
 }

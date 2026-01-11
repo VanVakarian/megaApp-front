@@ -128,7 +128,26 @@
          (click)="closeMobileMenu()">
     </div>
 
-    <div class="fixed bottom-0 right-0 z-50 block mb-4 mr-4">
+    @if (isOnFoodDiaryPage$$()) {
+      <div [@fabSlide]="shouldHideFabButtons$$() ? 'hidden' : 'visible'"
+           class="fixed bottom-[88px] right-0 z-20 mr-4">
+        <v-button [config]="{
+                    buttonStyle: ButtonStyle.Primary,
+                    isLabelHidden: true,
+                    padding: 3,
+                    borderRadius: 7,
+                    isWithoutShadow: true,
+                  }"
+                  (click)="openAddFoodModal()">
+          <v-icon v-prefix
+                  [name]="Icon.Add"
+                  [size]="8" />
+        </v-button>
+      </div>
+    }
+
+    <div [@fabSlide]="shouldHideFabButtons$$() ? 'hidden' : 'visible'"
+         class="fixed bottom-0 right-0 z-50 mb-4 mr-4">
       <v-button [config]="{
                   buttonStyle: isMobileMenuOpen$$() ? ButtonStyle.Danger : ButtonStyle.Primary,
                   isLabelHidden: true,

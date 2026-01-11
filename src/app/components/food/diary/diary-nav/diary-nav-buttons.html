@@ -1,5 +1,7 @@
 <div class="flex w-full gap-2">
   <div class="grow whitespace-nowrap place-content-center overflow-hidden text-xl text-center"
+       [class.font-bold]="isTodaySelected$$()"
+       [style.color]="isTodaySelected$$() ? 'var(--color-primary)' : null"
        fitTextOnOverflow
        [fullText]="selectedDateLongFormatted$$()"
        [shortText]="selectedDateShortFormatted$$()"></div>
