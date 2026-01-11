@@ -1,45 +1,66 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, inject, Signal } from '@angular/core';
+import { Component, computed, inject, Signal, viewChild } from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
-import { MatDatepickerInputEvent, MatDatepickerModule } from '@angular/material/datepicker';
+import { MatDatepicker, MatDatepickerInputEvent, MatDatepickerModule } from '@angular/material/datepicker';
 import { MatInputModule } from '@angular/material/input';
-import { AuthService } from '@app/services/auth.service';
-import { DeviceInfoService } from '@app/services/device-info.service';
 import { FoodDiaryService } from '@app/services/food/food-diary.service';
+import { FitTextOnOverflowDirective } from '@app/shared/directives/fit-text-on-overflow.directive';
 import { VButton } from '@app/shared/ui-kit/components/v-button/v-button';
 import { IconName, VIcon } from '@app/shared/ui-kit/components/v-icon/v-icon';
-import { calcDateWithUserTimeShift, dateToIsoNoTimeNoTZ, epochToIsoNoTimeNoTZ } from '@app/shared/utils';
+import {
+  calcDateWithUserTimeShift,
+  calculateTodayIsoWithUserTimeShift,
+  dateToIsoNoTimeNoTZ,
+  epochToIsoNoTimeNoTZ,
+} from '@app/shared/utils';
 
 @Component({
   selector: 'diary-nav-buttons',
   templateUrl: './diary-nav-buttons.html',
-  styleUrl: './diary-nav-buttons.scss',
-  imports: [CommonModule, MatDatepickerModule, ReactiveFormsModule, MatInputModule, VButton, VIcon],
+  imports: [
+    CommonModule,
+    MatDatepickerModule,
+    ReactiveFormsModule,
+    MatInputModule,
+    FitTextOnOverflowDirective,
+    VButton,
+    VIcon,
+  ],
 })
 export class DiaryNavButtons {
+  protected readonly picker = viewChild.required<MatDatepicker<Date>>('picker');
+
   protected initDateTodayWithUserHourShift: Date = calcDateWithUserTimeShift(new Date());
 
   protected formCalendarSelectedDay: FormControl<Date> = new FormControl<Date>(this.initDateTodayWithUserHourShift, {
     nonNullable: true,
   });
 
-  protected selectedDateFormatted$$: Signal<string> = computed(() => this.formatDate(this.foodDiaryService.selectedDayIso$$())); // prettier-ignore
+  protected readonly selectedDateLongFormatted$$: Signal<string> = computed(() =>
+    this.formatDate(this.foodDiaryService.selectedDayIso$$(), 'long'),
+  );
+
+  protected readonly selectedDateShortFormatted$$: Signal<string> = computed(() =>
+    this.formatDate(this.foodDiaryService.selectedDayIso$$(), 'short'),
+  );
+
+  protected readonly isTodaySelected$$: Signal<boolean> = computed(() => {
+    return this.foodDiaryService.selectedDayIso$$() === calculateTodayIsoWithUserTimeShift();
+  });
+
+  protected readonly primaryActionIcon$$: Signal<IconName> = computed(() => {
+    return this.isTodaySelected$$() ? IconName.CalendarMonth : IconName.Undo;
+  });
 
   protected readonly Icon = IconName;
 
   private selectedDateMsWithUserHourShift: number = this.initDateTodayWithUserHourShift.getTime();
 
-  protected readonly deviceInfoService = inject(DeviceInfoService);
-  protected readonly authService = inject(AuthService);
   private readonly foodDiaryService = inject(FoodDiaryService);
 
-  protected get isAuthenticated(): boolean {
-    return this.authService.isAuthenticated$$();
-  }
-
-  protected formatDate(dateIso: string): string {
+  protected formatDate(dateIso: string, monthStyle: 'long' | 'short'): string {
     const date = new Date(dateIso);
-    const result = date.toLocaleDateString('ru-RU', { weekday: 'long', month: 'long', day: 'numeric' });
+    const result = date.toLocaleDateString('ru-RU', { weekday: 'long', month: monthStyle, day: 'numeric' });
     return result[0].toUpperCase() + result.slice(1);
   }
 
@@ -51,12 +72,36 @@ export class DiaryNavButtons {
     this.foodDiaryService.selectedDayIso$$.set(newDateIso);
   }
 
+  protected onDateControlClick(): void {
+    if (this.isTodaySelected$$()) {
+      this.refreshTodayReference();
+      this.picker().open();
+      return;
+    }
+
+    this.goToToday();
+  }
+
   protected goToPreviousDay(): void {
     this.switchCurrentDay(-1);
   }
 
   protected goToNextDay(): void {
     this.switchCurrentDay(1);
+  }
+
+  protected goToToday(): void {
+    const todayDate = this.refreshTodayReference();
+    this.formCalendarSelectedDay.setValue(todayDate);
+
+    this.selectedDateMsWithUserHourShift = todayDate.getTime();
+    this.foodDiaryService.selectedDayIso$$.set(calculateTodayIsoWithUserTimeShift());
+  }
+
+  private refreshTodayReference(): Date {
+    const todayDate = calcDateWithUserTimeShift(new Date());
+    this.initDateTodayWithUserHourShift = todayDate;
+    return todayDate;
   }
 
   private switchCurrentDay(dayShift: number): void {
