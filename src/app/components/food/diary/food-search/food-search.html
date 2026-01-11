@@ -4,6 +4,7 @@
            [config]="{
              type: 'text'
            }"
+           (onEnterPressed)="onSearchEnterPressed($event)"
            [(value)]="foodAddModalService.searchQuery$$">
     @if (isLegacySearch$$()) {
       <v-button primary
@@ -60,31 +61,6 @@
   </v-input>
 
   <!--
-  @if (isRecording) {
-    <v-button primary
-              [config]="{
-                padding: 2,
-                isLabelHidden: true,
-              }"
-              (click)="toggleVoiceRecording()">
-      <v-icon v-prefix
-              class="animate-pulse"
-              [name]="Icon.Mic"
-              [size]="7" />
-    </v-button>
-  } @else {
-    <v-button raised
-              [config]="{
-                padding: 2,
-                isLabelHidden: true,
-              }"
-              (click)="toggleVoiceRecording()">
-      <v-icon v-prefix
-              [name]="Icon.Mic"
-              [size]="7" />
-    </v-button>
-  }
-
   @if (deviceInfoService.hasCameras$$() && deviceInfoService.isMobileDevice$$()) {
     <v-button raised
               [config]="{

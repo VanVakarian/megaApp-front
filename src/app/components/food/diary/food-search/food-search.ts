@@ -107,6 +107,21 @@ export class FoodSearch {
     this.foodAddModalService.searchQuery$$.set('');
   }
 
+  protected onSearchEnterPressed(event: KeyboardEvent): void {
+    if (this.foodAddModalService.currentState$$() !== ModalState.SEARCH) return;
+
+    if (event.isComposing) return;
+
+    const results = this.searchResults$$();
+    const first = results?.[0];
+    if (!first) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    this.selectProduct(first);
+  }
+
   protected async selectProduct(product: CatalogueEntry): Promise<void> {
     const weight = this.extractedWeight$$();
 
