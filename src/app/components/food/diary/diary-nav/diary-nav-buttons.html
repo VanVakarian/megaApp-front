@@ -1,11 +1,4 @@
-<div class="flex w-full gap-2">
-  <div class="grow whitespace-nowrap place-content-center overflow-hidden text-xl text-center"
-       [class.font-bold]="isTodaySelected$$()"
-       [style.color]="isTodaySelected$$() ? 'var(--color-primary)' : null"
-       fitTextOnOverflow
-       [fullText]="selectedDateLongFormatted$$()"
-       [shortText]="selectedDateShortFormatted$$()"></div>
-
+<div class="flex w-full gap-3 px-1">
   <div class="flex flex-col">
     <v-button primary
               [config]="{
@@ -16,7 +9,7 @@
               (click)="onDateControlClick()">
       <v-icon v-prefix
               [name]="primaryActionIcon$$()"
-              [size]="5" />
+              [size]="7" />
     </v-button>
 
     <mat-form-field class="w-0 h-0">
@@ -30,6 +23,16 @@
     </mat-form-field>
   </div>
 
+  <div class="grow flex justify-between overflow-hidden text-xl"
+       [class.font-bold]="isTodaySelected$$()"
+       [style.color]="isTodaySelected$$() ? 'var(--color-primary)' : null">
+    <div class="place-content-center whitespace-nowrap overflow-hidden"
+         fitTextOnOverflow
+         [fullText]="weekdayFull$$()"
+         [shortText]="weekdayShort$$()"></div>
+    <div class="place-content-center whitespace-nowrap">{{ dateFormatted$$() }}</div>
+  </div>
+
   <v-button primary
             [config]="{
               isWithoutShadow: true,
@@ -39,7 +42,7 @@
             (click)="goToPreviousDay()">
     <v-icon v-prefix
             [name]="Icon.KeyboardArrowLeft"
-            [size]="7" />
+            [size]="9" />
   </v-button>
 
   <v-button primary
@@ -51,6 +54,6 @@
             (click)="goToNextDay()">
     <v-icon v-prefix
             [name]="Icon.KeyboardArrowRight"
-            [size]="7" />
+            [size]="9" />
   </v-button>
 </div>

@@ -36,12 +36,16 @@ export class DiaryNavButtons {
     nonNullable: true,
   });
 
-  protected readonly selectedDateLongFormatted$$: Signal<string> = computed(() =>
-    this.formatDate(this.foodDiaryService.selectedDayIso$$(), 'long'),
+  protected readonly weekdayFull$$: Signal<string> = computed(() =>
+    this.formatWeekday(this.foodDiaryService.selectedDayIso$$(), 'long'),
   );
 
-  protected readonly selectedDateShortFormatted$$: Signal<string> = computed(() =>
-    this.formatDate(this.foodDiaryService.selectedDayIso$$(), 'short'),
+  protected readonly weekdayShort$$: Signal<string> = computed(() =>
+    this.formatWeekday(this.foodDiaryService.selectedDayIso$$(), 'short'),
+  );
+
+  protected readonly dateFormatted$$: Signal<string> = computed(() =>
+    this.formatDayMonth(this.foodDiaryService.selectedDayIso$$()),
   );
 
   protected readonly isTodaySelected$$: Signal<boolean> = computed(() => {
@@ -58,10 +62,16 @@ export class DiaryNavButtons {
 
   private readonly foodDiaryService = inject(FoodDiaryService);
 
-  protected formatDate(dateIso: string, monthStyle: 'long' | 'short'): string {
+  protected formatWeekday(dateIso: string, weekdayStyle: 'long' | 'short'): string {
     const date = new Date(dateIso);
-    const result = date.toLocaleDateString('ru-RU', { weekday: 'long', month: monthStyle, day: 'numeric' });
+    const result = date.toLocaleDateString('ru-RU', { weekday: weekdayStyle });
     return result[0].toUpperCase() + result.slice(1);
+  }
+
+  protected formatDayMonth(dateIso: string): string {
+    const date = new Date(dateIso);
+    const result = date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+    return result;
   }
 
   protected onDatePicked(event: MatDatepickerInputEvent<Date>): void {
