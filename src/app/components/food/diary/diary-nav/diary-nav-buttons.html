@@ -1,56 +1,135 @@
 <div class="flex w-full gap-2">
-  <div class="grow whitespace-nowrap place-content-center overflow-hidden text-xl text-center"
-       [class.font-bold]="isTodaySelected$$()"
-       [style.color]="isTodaySelected$$() ? 'var(--color-primary)' : null"
-       fitTextOnOverflow
-       [fullText]="selectedDateLongFormatted$$()"
-       [shortText]="selectedDateShortFormatted$$()"></div>
-
-  <div class="flex flex-col">
+  @if(deviceInfoService.isDesktopScreen$$()) {
     <v-button primary
               [config]="{
-              isWithoutShadow: true,
-              isLabelHidden: true,
-              padding: 2,
-            }"
+                isWithoutShadow: true,
+                isLabelHidden: true,
+                padding: 1,
+              }"
+              (click)="goToPreviousDay()">
+      <v-icon v-prefix
+              [name]="Icon.KeyboardArrowLeft"
+              [size]="7" />
+    </v-button>
+  }
+
+  <div class="grow flex justify-between gap-2 overflow-hidden text-xl"
+       [class.mx-2]="deviceInfoService.isMobileScreen$$()"
+       [style.color]="!isTodaySelected$$() ? 'var(--color-primary)' : null">
+    <div class="place-content-center whitespace-nowrap overflow-hidden"
+         fitTextOnOverflow
+         [fullText]="weekdayFull$$()"
+         [shortText]="weekdayShort$$()"></div>
+    <div class="place-content-center whitespace-nowrap">{{ dateFormatted$$() }}</div>
+  </div>
+
+  @if(deviceInfoService.isDesktopScreen$$()) {
+    <div class="flex flex-col">
+      <v-button primary
+                [config]="{
+                  isWithoutShadow: true,
+                  isLabelHidden: true,
+                  padding: 2,
+                }"
+                (click)="onDateControlClick()">
+        <v-icon v-prefix
+                [name]="primaryActionIcon$$()"
+                [size]="5" />
+      </v-button>
+
+      <mat-form-field class="w-0 h-0">
+        <input matInput
+               [matDatepicker]="pickerDesktop"
+               [formControl]="formCalendarSelectedDay"
+               [max]="initDateTodayWithUserHourShift"
+               (dateChange)="onDatePicked($event)" />
+        <mat-datepicker-toggle [for]="pickerDesktop" />
+        <mat-datepicker #pickerDesktop />
+      </mat-form-field>
+    </div>
+
+    <v-button primary
+              [config]="{
+                isWithoutShadow: true,
+                isLabelHidden: true,
+                padding: 1,
+              }"
+              (click)="goToNextDay()">
+      <v-icon v-prefix
+              [name]="Icon.KeyboardArrowRight"
+              [size]="7" />
+    </v-button>
+  }
+</div>
+
+@if (authService.isAuthenticated$$() && !deviceInfoService.isDesktopScreen$$()) {
+  <div [@fabHideSlideRight]="shouldHideFabButtons$$() ? 'hidden' : 'visible'"
+       class="fixed bottom-[88px] right-0 z-20 mr-4">
+    <v-button [config]="{
+                buttonStyle: ButtonStyle.Primary,
+                isLabelHidden: true,
+                padding: 3,
+                borderRadius: 7,
+                isWithoutShadow: true,
+              }"
+              (click)="openAddFoodModal()">
+      <v-icon v-prefix
+              [name]="Icon.Add"
+              [size]="8" />
+    </v-button>
+  </div>
+
+  <div [@fabHideSlideDown]="shouldHideFabButtons$$() ? 'hidden' : 'visible'"
+       class="fixed bottom-4 right-[88px] flex gap-5"
+       style="z-index: 10">
+    <v-button primary
+              [config]="{
+                borderRadius: 7,
+                isWithoutShadow: true,
+                isLabelHidden: true,
+                padding: 3,
+              }"
               (click)="onDateControlClick()">
       <v-icon v-prefix
               [name]="primaryActionIcon$$()"
-              [size]="5" />
+              [size]="8" />
     </v-button>
 
-    <mat-form-field class="w-0 h-0">
-      <input matInput
-             [matDatepicker]="picker"
-             [formControl]="formCalendarSelectedDay"
-             [max]="initDateTodayWithUserHourShift"
-             (dateChange)="onDatePicked($event)" />
-      <mat-datepicker-toggle [for]="picker" />
-      <mat-datepicker #picker />
-    </mat-form-field>
+    <v-button primary
+              [config]="{
+                borderRadius: 7,
+                isWithoutShadow: true,
+                isLabelHidden: true,
+                padding: 2,
+              }"
+              (click)="goToPreviousDay()">
+      <v-icon v-prefix
+              [name]="Icon.KeyboardArrowLeft"
+              [size]="10" />
+    </v-button>
+
+    <v-button primary
+              [config]="{
+                borderRadius: 7,
+                isWithoutShadow: true,
+                isLabelHidden: true,
+                padding: 2,
+              }"
+              (click)="goToNextDay()">
+      <v-icon v-prefix
+              [name]="Icon.KeyboardArrowRight"
+              [size]="10" />
+    </v-button>
   </div>
+}
 
-  <v-button primary
-            [config]="{
-              isWithoutShadow: true,
-              isLabelHidden: true,
-              padding: 1,
-            }"
-            (click)="goToPreviousDay()">
-    <v-icon v-prefix
-            [name]="Icon.KeyboardArrowLeft"
-            [size]="7" />
-  </v-button>
-
-  <v-button primary
-            [config]="{
-              isWithoutShadow: true,
-              isLabelHidden: true,
-              padding: 1,
-            }"
-            (click)="goToNextDay()">
-    <v-icon v-prefix
-            [name]="Icon.KeyboardArrowRight"
-            [size]="7" />
-  </v-button>
-</div>
+<mat-form-field class="hide-form">
+  <input matInput
+         [matDatepicker]="pickerTouch"
+         [formControl]="formCalendarSelectedDay"
+         [max]="initDateTodayWithUserHourShift"
+         (dateChange)="onDatePicked($event)" />
+  <mat-datepicker-toggle [for]="pickerTouch" />
+  <mat-datepicker #pickerTouch
+                  touchUi />
+</mat-form-field>

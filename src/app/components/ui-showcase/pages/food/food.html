@@ -1,4 +1,5 @@
-<v-expand accordion
+<v-expand accordion="food-menu"
+          accordionId="bmi-showcase"
           outer-shadow-rounded
           class="BMI">
   <div v-header
@@ -45,7 +46,8 @@
   </v-expand>
 </v-card>
 
-<v-expand accordion
+<v-expand accordion="food-menu"
+          accordionId="pizza-menu"
           outer-shadow-rounded>
   <h3 v-header
       class="p-2">🍕 Pizza Menu</h3>
@@ -57,7 +59,8 @@
   </div>
 </v-expand>
 
-<v-expand accordion
+<v-expand accordion="food-menu"
+          accordionId="daily-specials"
           inner-shadow-rounded>
   <h3 v-header
       class="p-2">🥗 Daily Specials</h3>
@@ -78,6 +81,7 @@
      class="items">
   @for (i of [0,1,2]; track i) {
     <v-expand accordion="test-group"
+              [accordionId]="'test-item-' + i"
               class="item">
       <div v-header
            class="p-2">
