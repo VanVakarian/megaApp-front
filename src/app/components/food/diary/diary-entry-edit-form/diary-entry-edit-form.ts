@@ -13,14 +13,14 @@ import { FoodCatalogueService } from '@app/services/food/food-catalogue.service'
 import { FoodCoefficientsService } from '@app/services/food/food-coefficients.service';
 import { FoodDiaryService } from '@app/services/food/food-diary.service';
 import { DiaryEntry, HistoryEntry, HistoryEntryAction } from '@app/shared/interfaces';
-import { VButton } from '@app/shared/ui-kit/components/v-button/v-button';
-import { AccordionDirective } from '@app/shared/ui-kit/components/v-expand/accordion.directive';
-import { AccordionService } from '@app/shared/ui-kit/components/v-expand/accordion.service';
-import { VExpand } from '@app/shared/ui-kit/components/v-expand/v-expand';
-import { IconName, VIcon } from '@app/shared/ui-kit/components/v-icon/v-icon';
-import { VInput } from '@app/shared/ui-kit/components/v-input/v-input';
-import { VModal } from '@app/shared/ui-kit/components/v-modal/v-modal';
-import { UiProgressIcon } from '@app/shared/ui-kit/progress-icon/progress-icon.component';
+import { VButton } from '@ui-kit/components/v-button/v-button';
+import { AccordionDirective } from '@ui-kit/components/v-expand/accordion.directive';
+import { AccordionService } from '@ui-kit/components/v-expand/accordion.service';
+import { VExpand } from '@ui-kit/components/v-expand/v-expand';
+import { IconName, VIcon } from '@ui-kit/components/v-icon/v-icon';
+import { VInput } from '@ui-kit/components/v-input/v-input';
+import { VModal } from '@ui-kit/components/v-modal/v-modal';
+import { UiProgressIcon } from '@ui-kit/progress-icon/progress-icon.component';
 
 interface DiaryEntryFormModel {
   id: FormControl<number>;

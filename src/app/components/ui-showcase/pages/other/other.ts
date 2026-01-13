@@ -1,12 +1,12 @@
 import { afterNextRender, Component, viewChild } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { VButton } from '@app/shared/ui-kit/components/v-button/v-button';
-import { VCard } from '@app/shared/ui-kit/components/v-card/v-card';
-import { ddExpandDirection, DropdownItem, VDropdown } from '@app/shared/ui-kit/components/v-dropdown/v-dropdown';
-import { IconName, VIcon } from '@app/shared/ui-kit/components/v-icon/v-icon';
-import { VInput } from '@app/shared/ui-kit/components/v-input/v-input';
-import { VModal } from '@app/shared/ui-kit/components/v-modal/v-modal';
-import { ProgressBarStyle, VProgress } from '@app/shared/ui-kit/components/v-progress/v-progress';
+import { VButton } from '@ui-kit/components/v-button/v-button';
+import { VCard } from '@ui-kit/components/v-card/v-card';
+import { ddExpandDirection, DropdownItem, VDropdown } from '@ui-kit/components/v-dropdown/v-dropdown';
+import { IconName, VIcon } from '@ui-kit/components/v-icon/v-icon';
+import { VInput } from '@ui-kit/components/v-input/v-input';
+import { VModal } from '@ui-kit/components/v-modal/v-modal';
+import { ProgressBarStyle, VProgress } from '@ui-kit/components/v-progress/v-progress';
 
 @Component({
   selector: 'other',

@@ -1,6 +1,6 @@
 import { Component } from '@angular/core';
-import { VCard } from '@app/shared/ui-kit/components/v-card/v-card';
-import { IconName, VIcon } from '@app/shared/ui-kit/components/v-icon/v-icon';
+import { VCard } from '@ui-kit/components/v-card/v-card';
+import { IconName, VIcon } from '@ui-kit/components/v-icon/v-icon';
 
 @Component({
   selector: 'icons',
