@@ -1,17 +1,17 @@
 import { Component, OnInit } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { BMI } from '@app/components/food/diary/bmi/bmi';
-import { VButton } from '@app/shared/ui-kit/components/v-button/v-button';
-import { VCard } from '@app/shared/ui-kit/components/v-card/v-card';
-import { ddExpandDirection, DropdownItem, VDropdown } from '@app/shared/ui-kit/components/v-dropdown/v-dropdown';
-import { AccordionDirective } from '@app/shared/ui-kit/components/v-expand/accordion.directive';
-import { VExpand } from '@app/shared/ui-kit/components/v-expand/v-expand';
-import { VInput } from '@app/shared/ui-kit/components/v-input/v-input';
-import { weightValidator } from '@app/shared/ui-kit/components/v-input/validators';
+import { VButton } from '@ui-kit/components/v-button/v-button';
+import { VCard } from '@ui-kit/components/v-card/v-card';
+import { ddExpandDirection, DropdownItem, VDropdown } from '@ui-kit/components/v-dropdown/v-dropdown';
+import { AccordionDirective } from '@ui-kit/components/v-expand/accordion.directive';
+import { VExpand } from '@ui-kit/components/v-expand/v-expand';
+import { VInput } from '@ui-kit/components/v-input/v-input';
+import { weightValidator } from '@ui-kit/components/v-input/validators';
 import {
   InnerShadowRoundedDirective,
   OuterShadowRoundedDirective,
-} from '@app/shared/ui-kit/directives/shadow.directive';
+} from '@ui-kit/directives/shadow.directive';
 
 @Component({
   selector: 'food',

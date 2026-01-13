@@ -8,10 +8,10 @@ import { VoiceRecordingService } from '@app/services/voice-recording.service';
 import { fadeScaleInAnimation } from '@app/shared/animations';
 import { FlipAnimateDirective } from '@app/shared/directives/flip-animate.directive';
 import { CatalogueEntry, DiaryEntry, HistoryEntryAction } from '@app/shared/interfaces';
-import { VButton } from '@app/shared/ui-kit/components/v-button/v-button';
-import { VCard } from '@app/shared/ui-kit/components/v-card/v-card';
-import { IconName, VIcon } from '@app/shared/ui-kit/components/v-icon/v-icon';
-import { VInput } from '@app/shared/ui-kit/components/v-input/v-input';
+import { VButton } from '@ui-kit/components/v-button/v-button';
+import { VCard } from '@ui-kit/components/v-card/v-card';
+import { IconName, VIcon } from '@ui-kit/components/v-icon/v-icon';
+import { VInput } from '@ui-kit/components/v-input/v-input';
 
 @Component({
   selector: 'food-search',

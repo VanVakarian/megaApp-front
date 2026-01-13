@@ -4,7 +4,7 @@ import { DeviceInfoService } from '@app/services/device-info.service';
 import { RouterService } from '@app/services/router.service';
 import { SettingsService } from '@app/services/settings.service';
 import { SettingsChapterNames } from '@app/shared/interfaces';
-import { IconName } from '@app/shared/ui-kit/components/v-icon/v-icon';
+import { IconName } from '@ui-kit/components/v-icon/v-icon';
 
 enum MenuPlace {
   Mobile = 'mobile',

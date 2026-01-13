@@ -25,6 +25,9 @@
     "paths": {
       "@app/*": [
         "src/app/*"
+      ],
+      "@ui-kit/*": [
+        "src/ui-kit/*"
       ]
     }
   },

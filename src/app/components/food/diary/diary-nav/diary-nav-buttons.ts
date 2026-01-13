@@ -10,9 +10,9 @@ import { FoodAddModalService } from '@app/services/food/food-add-modal.service';
 import { FoodDiaryService } from '@app/services/food/food-diary.service';
 import { ANIMATION_DURATION_MS_STRING } from '@app/shared/animations';
 import { FitTextOnOverflowDirective } from '@app/shared/directives/fit-text-on-overflow.directive';
-import { VButton } from '@app/shared/ui-kit/components/v-button/v-button';
-import { IconName, VIcon } from '@app/shared/ui-kit/components/v-icon/v-icon';
-import { ButtonStyle } from '@app/shared/ui-kit/types';
+import { VButton } from '@ui-kit/components/v-button/v-button';
+import { IconName, VIcon } from '@ui-kit/components/v-icon/v-icon';
+import { ButtonStyle } from '@ui-kit/types';
 import {
   calcDateWithUserTimeShift,
   calculateTodayIsoWithUserTimeShift,
