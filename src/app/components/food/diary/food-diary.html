@@ -17,6 +17,7 @@
 
 <v-expand outer-shadow-rounded
           accordion="food-group"
+          accordionId="bmi-panel"
           class="BMI mb-2"
           (onOpened)="onBMIExpandOpened($event)">
   <div v-header
@@ -55,6 +56,7 @@
      [shadowBorderRadius]="2">
   @for (food of selectedDayDiaryEntries$$(); track food.id; let isFirst = $first; let isLast = $last) {
     <v-expand accordion="food-group"
+              [accordionId]="'food-entry-' + food.id"
               class="item"
               (onOpened)="onVExpandOpened($event, food.id)">
       @if (foodCatalogueService.getCornerImageUrl(food.foodCatalogueId); as cornerImageUrl) {

@@ -1,4 +1,4 @@
-<div class="flex w-full gap-3 px-1">
+<div class="flex w-full gap-2">
   <div class="flex flex-col">
     <v-button primary
               [config]="{
@@ -9,7 +9,7 @@
               (click)="onDateControlClick()">
       <v-icon v-prefix
               [name]="primaryActionIcon$$()"
-              [size]="7" />
+              [size]="5" />
     </v-button>
 
     <mat-form-field class="w-0 h-0">
@@ -42,7 +42,7 @@
             (click)="goToPreviousDay()">
     <v-icon v-prefix
             [name]="Icon.KeyboardArrowLeft"
-            [size]="9" />
+            [size]="7" />
   </v-button>
 
   <v-button primary
@@ -54,6 +54,6 @@
             (click)="goToNextDay()">
     <v-icon v-prefix
             [name]="Icon.KeyboardArrowRight"
-            [size]="9" />
+            [size]="7" />
   </v-button>
 </div>

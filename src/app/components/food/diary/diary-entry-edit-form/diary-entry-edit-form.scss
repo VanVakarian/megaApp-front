@@ -1,3 +1,8 @@
+:host {
+  display: flex;
+  flex-direction: column;
+}
+
 ::ng-deep {
   v-expand.history-list {
     div.body {
@@ -8,7 +13,6 @@
 }
 
 .readable-text-bg {
-  padding: 1px 0px;
   background: color-mix(in srgb, var(--color-bg-default) 80%, transparent);
   border-radius: 4px;
   box-decoration-break: clone;
