@@ -43,8 +43,7 @@
             [accordionId]="infoPanelId">
     <div v-body
          class="readable-text-bg p-2">
-      <p>Product information panel</p>
-      <p>Proteins, fats, carbs, etc.</p>
+      <diary-entry-product-info [diaryEntry]="diaryEntry" />
     </div>
   </v-expand>
 
@@ -56,8 +55,7 @@
             [accordionId]="chartsPanelId">
     <div v-body
          class="readable-text-bg p-2">
-      <p>Charts panel</p>
-      <p>Daily nutrition contribution charts</p>
+      <nutrition-summary [diaryEntry]="diaryEntry" />
     </div>
   </v-expand>
 
