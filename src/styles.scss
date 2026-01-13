@@ -4,7 +4,7 @@
 // Angular material themes
 @use '@angular/material' as mat;
 
-@import '@app/shared/ui-kit/styles/vars.css';
+@import '@ui-kit/styles/vars.css';
 
 :root {
   /* Animation durations fallback - primary source is ui-kit/vars.css */
