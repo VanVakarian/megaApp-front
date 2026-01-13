@@ -1,12 +1,18 @@
+import { animate, state, style, transition, trigger } from '@angular/animations';
 import { CommonModule } from '@angular/common';
 import { Component, computed, inject, Signal, viewChild } from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { MatDatepicker, MatDatepickerInputEvent, MatDatepickerModule } from '@angular/material/datepicker';
 import { MatInputModule } from '@angular/material/input';
+import { AuthService } from '@app/services/auth.service';
+import { DeviceInfoService } from '@app/services/device-info.service';
+import { FoodAddModalService } from '@app/services/food/food-add-modal.service';
 import { FoodDiaryService } from '@app/services/food/food-diary.service';
+import { ANIMATION_DURATION_MS_STRING } from '@app/shared/animations';
 import { FitTextOnOverflowDirective } from '@app/shared/directives/fit-text-on-overflow.directive';
 import { VButton } from '@app/shared/ui-kit/components/v-button/v-button';
 import { IconName, VIcon } from '@app/shared/ui-kit/components/v-icon/v-icon';
+import { ButtonStyle } from '@app/shared/ui-kit/types';
 import {
   calcDateWithUserTimeShift,
   calculateTodayIsoWithUserTimeShift,
@@ -17,6 +23,7 @@ import {
 @Component({
   selector: 'diary-nav-buttons',
   templateUrl: './diary-nav-buttons.html',
+  styleUrl: './diary-nav-buttons.scss',
   imports: [
     CommonModule,
     MatDatepickerModule,
@@ -26,9 +33,22 @@ import {
     VButton,
     VIcon,
   ],
+  animations: [
+    trigger('fabHideSlideDown', [
+      state('visible', style({ transform: 'translateY(0)' })),
+      state('hidden', style({ transform: 'translateY(200%)' })),
+      transition('visible <=> hidden', [animate(`${ANIMATION_DURATION_MS_STRING.MEDIUM} ease-in-out`)]),
+    ]),
+    trigger('fabHideSlideRight', [
+      state('visible', style({ transform: 'translateX(0)' })),
+      state('hidden', style({ transform: 'translateX(200%)' })),
+      transition('visible <=> hidden', [animate(`${ANIMATION_DURATION_MS_STRING.MEDIUM} ease-in-out`)]),
+    ]),
+  ],
 })
 export class DiaryNavButtons {
-  protected readonly picker = viewChild.required<MatDatepicker<Date>>('picker');
+  protected readonly pickerDesktop = viewChild<MatDatepicker<Date>>('pickerDesktop');
+  protected readonly pickerTouch = viewChild<MatDatepicker<Date>>('pickerTouch');
 
   protected initDateTodayWithUserHourShift: Date = calcDateWithUserTimeShift(new Date());
 
@@ -57,10 +77,18 @@ export class DiaryNavButtons {
   });
 
   protected readonly Icon = IconName;
+  protected readonly ButtonStyle = ButtonStyle;
 
   private selectedDateMsWithUserHourShift: number = this.initDateTodayWithUserHourShift.getTime();
 
+  protected readonly authService = inject(AuthService);
+  protected readonly deviceInfoService = inject(DeviceInfoService);
   private readonly foodDiaryService = inject(FoodDiaryService);
+  private readonly foodAddModalService = inject(FoodAddModalService);
+
+  protected readonly shouldHideFabButtons$$ = computed(
+    () => !this.deviceInfoService.isDesktopScreen$$() && this.deviceInfoService.isKeyboardOpen$$(),
+  );
 
   protected formatWeekday(dateIso: string, weekdayStyle: 'long' | 'short'): string {
     const date = new Date(dateIso);
@@ -70,7 +98,7 @@ export class DiaryNavButtons {
 
   protected formatDayMonth(dateIso: string): string {
     const date = new Date(dateIso);
-    const result = date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+    const result = date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
     return result;
   }
 
@@ -85,7 +113,11 @@ export class DiaryNavButtons {
   protected onDateControlClick(): void {
     if (this.isTodaySelected$$()) {
       this.refreshTodayReference();
-      this.picker().open();
+      if (this.deviceInfoService.isDesktopScreen$$()) {
+        this.pickerDesktop()?.open();
+      } else {
+        this.pickerTouch()?.open();
+      }
       return;
     }
 
@@ -123,5 +155,9 @@ export class DiaryNavButtons {
     this.selectedDateMsWithUserHourShift = newDate.getTime();
     const newDateIso = epochToIsoNoTimeNoTZ(this.selectedDateMsWithUserHourShift);
     this.foodDiaryService.selectedDayIso$$.set(newDateIso);
+  }
+
+  protected openAddFoodModal(): void {
+    this.foodAddModalService.openModal();
   }
 }

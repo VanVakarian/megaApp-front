@@ -41,6 +41,7 @@ export class DiaryEntryEditForm implements OnChanges {
   @Output()
   public onServerSuccessfullEditResponse = new EventEmitter<void>();
 
+  protected readonly foodWeightNewElem = viewChild.required<VInput>('foodWeightNewElem');
   protected readonly foodWeightChangeElem = viewChild.required<VInput>('foodWeightChangeElem');
 
   protected isDeleteConfirmOpen = false;
@@ -261,6 +262,8 @@ export class DiaryEntryEditForm implements OnChanges {
 
     const history: HistoryEntry = { action: this.historyAction, value: historyValue };
     this.diaryEntryForm.disable();
+    this.foodWeightNewElem().blur();
+    this.foodWeightChangeElem().blur();
 
     const preppedFormValues: DiaryEntry = {
       id: this.diaryEntryForm.getRawValue().id,
