@@ -1,4 +1,4 @@
-import { Component, effect, EventEmitter, inject, Input, OnChanges, Output, viewChild } from '@angular/core';
+import { Component, computed, effect, EventEmitter, inject, Input, OnChanges, Output, viewChild } from '@angular/core';
 import {
   AbstractControl,
   FormControl,
@@ -14,6 +14,8 @@ import { FoodCoefficientsService } from '@app/services/food/food-coefficients.se
 import { FoodDiaryService } from '@app/services/food/food-diary.service';
 import { DiaryEntry, HistoryEntry, HistoryEntryAction } from '@app/shared/interfaces';
 import { VButton } from '@app/shared/ui-kit/components/v-button/v-button';
+import { AccordionDirective } from '@app/shared/ui-kit/components/v-expand/accordion.directive';
+import { AccordionService } from '@app/shared/ui-kit/components/v-expand/accordion.service';
 import { VExpand } from '@app/shared/ui-kit/components/v-expand/v-expand';
 import { IconName, VIcon } from '@app/shared/ui-kit/components/v-icon/v-icon';
 import { VInput } from '@app/shared/ui-kit/components/v-input/v-input';
@@ -30,7 +32,7 @@ interface DiaryEntryFormModel {
   selector: 'diary-entry-edit-form',
   templateUrl: './diary-entry-edit-form.html',
   styleUrl: './diary-entry-edit-form.scss',
-  imports: [ReactiveFormsModule, UiProgressIcon, VButton, VIcon, VExpand, VInput, VModal],
+  imports: [ReactiveFormsModule, UiProgressIcon, VButton, VIcon, VExpand, AccordionDirective, VInput, VModal],
 })
 export class DiaryEntryEditForm implements OnChanges {
   @Input()
@@ -39,11 +41,15 @@ export class DiaryEntryEditForm implements OnChanges {
   @Output()
   public onServerSuccessfullEditResponse = new EventEmitter<void>();
 
+  protected readonly foodWeightNewElem = viewChild.required<VInput>('foodWeightNewElem');
   protected readonly foodWeightChangeElem = viewChild.required<VInput>('foodWeightChangeElem');
 
   protected isDeleteConfirmOpen = false;
-  protected isHistoryExpanded: boolean = false;
-  protected disableHistoryAnimationTemporaroly: boolean = false;
+  protected accordionGroupId = '';
+  protected infoPanelId = 'info-panel';
+  protected chartsPanelId = 'charts-panel';
+  protected historyPanelId = 'history-panel';
+  protected disablePanelsAnimationTemporarily = false;
   private historyAction: HistoryEntryAction = HistoryEntryAction.SET;
 
   private selectedDaysTargerKcals = 0;
@@ -57,6 +63,11 @@ export class DiaryEntryEditForm implements OnChanges {
   protected foodWeightFinal: number = 0;
 
   protected readonly Icon = IconName;
+
+  protected readonly hasOpenPanel$$ = computed(() => {
+    const openedId = this.accordionService.openedIds$$().get(this.accordionGroupId);
+    return openedId !== null && openedId !== undefined;
+  });
 
   private newWeightPattern = /^(?!0+$)\d+$/; // Digits only, but not zero
   private editWeightPattern = /^[-+]?\d*$/; // Digits only with or without a plus or a minus
@@ -105,7 +116,7 @@ export class DiaryEntryEditForm implements OnChanges {
     setTimeout(() => {
       if (resetId === this.diaryEntryForm.value.id) {
         this.resetForm();
-        this.collapseHistory();
+        this.closePanels();
       }
     }, 50); // Waiting for the panel to close, otherwise the reset is visually janky
   });
@@ -128,6 +139,7 @@ export class DiaryEntryEditForm implements OnChanges {
   private readonly foodDiaryService = inject(FoodDiaryService);
   private readonly foodCatalogueService = inject(FoodCatalogueService);
   private readonly foodCoefficientsService = inject(FoodCoefficientsService);
+  private readonly accordionService = inject(AccordionService);
 
   public ngOnChanges(): void {
     if (this.diaryEntry) {
@@ -136,6 +148,8 @@ export class DiaryEntryEditForm implements OnChanges {
       });
       this.foodWeightInitial = this.diaryEntry.foodWeight;
       this.foodWeightFinal = this.diaryEntry.foodWeight;
+
+      this.accordionGroupId = `diary-entry-${this.diaryEntry.id}`;
 
       setTimeout(() => {
         this.updateProjectedDaysConsumedPercent();
@@ -248,6 +262,8 @@ export class DiaryEntryEditForm implements OnChanges {
 
     const history: HistoryEntry = { action: this.historyAction, value: historyValue };
     this.diaryEntryForm.disable();
+    this.foodWeightNewElem().blur();
+    this.foodWeightChangeElem().blur();
 
     const preppedFormValues: DiaryEntry = {
       id: this.diaryEntryForm.getRawValue().id,
@@ -282,10 +298,6 @@ export class DiaryEntryEditForm implements OnChanges {
     this.isDeleteConfirmOpen = false;
   }
 
-  protected toggleHistory() {
-    this.isHistoryExpanded = !this.isHistoryExpanded;
-  }
-
   protected formHistoryEntry(historyEntry: HistoryEntry) {
     switch (historyEntry.action) {
       case HistoryEntryAction.INIT:
@@ -310,6 +322,18 @@ export class DiaryEntryEditForm implements OnChanges {
       case HistoryEntryAction.SUBTRACT:
         return this.Icon.Remove;
     }
+  }
+
+  protected toggleInfoPanel(): void {
+    this.accordionService.toggle(this.accordionGroupId, this.infoPanelId);
+  }
+
+  protected toggleChartsPanel(): void {
+    this.accordionService.toggle(this.accordionGroupId, this.chartsPanelId);
+  }
+
+  protected toggleHistoryPanel(): void {
+    this.accordionService.toggle(this.accordionGroupId, this.historyPanelId);
   }
 
   private async deleteDiaryEntry(): Promise<void> {
@@ -356,11 +380,11 @@ export class DiaryEntryEditForm implements OnChanges {
     this.updateProjectedDaysConsumedPercent();
   }
 
-  private collapseHistory(): void {
-    this.disableHistoryAnimationTemporaroly = true;
-    this.isHistoryExpanded = false;
+  private closePanels(): void {
+    this.disablePanelsAnimationTemporarily = true;
+    this.accordionService.closeGroup(this.accordionGroupId);
     setTimeout(() => {
-      this.disableHistoryAnimationTemporaroly = false;
-    }, 100); // Disabling history v-expand animation temporarily for the duration of collapse a parent v-expand animation, they otherwise conflict
+      this.disablePanelsAnimationTemporarily = false;
+    }, 100);
   }
 }

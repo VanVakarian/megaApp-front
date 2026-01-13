@@ -2,7 +2,6 @@ import { Directive, ElementRef, OnDestroy, OnInit, effect, input } from '@angula
 
 @Directive({
   selector: '[fitTextOnOverflow]',
-  standalone: true,
 })
 export class FitTextOnOverflowDirective implements OnInit, OnDestroy {
   public readonly fullText = input.required<string>();
