@@ -6,9 +6,9 @@ import { AuthService } from '@app/services/auth.service';
 import { DeviceInfoService } from '@app/services/device-info.service';
 import { MenuButton, NavigationService, UiShowcaseButton } from '@app/services/navigation.service';
 import { ANIMATION_DURATION_MS, ANIMATION_DURATION_MS_STRING } from '@app/shared/animations';
-import { VButton } from '@app/shared/ui-kit/components/v-button/v-button';
-import { IconName, VIcon } from '@app/shared/ui-kit/components/v-icon/v-icon';
-import { ButtonStyle } from '@app/shared/ui-kit/types';
+import { VButton } from '@ui-kit/components/v-button/v-button';
+import { IconName, VIcon } from '@ui-kit/components/v-icon/v-icon';
+import { ButtonStyle } from '@ui-kit/types';
 
 @Component({
   selector: 'navigation',

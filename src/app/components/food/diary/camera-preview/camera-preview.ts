@@ -12,8 +12,8 @@ import {
 import { FoodAddModalService } from '@app/services/food/food-add-modal.service';
 import { PhotoCaptureService } from '@app/services/photo-capture.service';
 import { CapturedPhoto } from '@app/shared/interfaces';
-import { VButton } from '@app/shared/ui-kit/components/v-button/v-button';
-import { IconName, VIcon } from '@app/shared/ui-kit/components/v-icon/v-icon';
+import { VButton } from '@ui-kit/components/v-button/v-button';
+import { IconName, VIcon } from '@ui-kit/components/v-icon/v-icon';
 
 @Component({
   selector: 'camera-preview',
