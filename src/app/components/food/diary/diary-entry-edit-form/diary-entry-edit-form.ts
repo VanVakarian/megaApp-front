@@ -21,6 +21,8 @@ import { IconName, VIcon } from '@ui-kit/components/v-icon/v-icon';
 import { VInput } from '@ui-kit/components/v-input/v-input';
 import { VModal } from '@ui-kit/components/v-modal/v-modal';
 import { UiProgressIcon } from '@ui-kit/progress-icon/progress-icon.component';
+import { DiaryEntryProductInfo } from '../diary-entry-product-info/diary-entry-product-info';
+import { NutritionSummary } from '../nutrition-summary/nutrition-summary';
 
 interface DiaryEntryFormModel {
   id: FormControl<number>;
@@ -32,7 +34,18 @@ interface DiaryEntryFormModel {
   selector: 'diary-entry-edit-form',
   templateUrl: './diary-entry-edit-form.html',
   styleUrl: './diary-entry-edit-form.scss',
-  imports: [ReactiveFormsModule, UiProgressIcon, VButton, VIcon, VExpand, AccordionDirective, VInput, VModal],
+  imports: [
+    ReactiveFormsModule,
+    UiProgressIcon,
+    VButton,
+    VIcon,
+    VExpand,
+    AccordionDirective,
+    VInput,
+    VModal,
+    DiaryEntryProductInfo,
+    NutritionSummary,
+  ],
 })
 export class DiaryEntryEditForm implements OnChanges {
   @Input()

@@ -1,6 +1,7 @@
-import { Component, computed, inject } from '@angular/core';
+import { Component, computed, inject, input } from '@angular/core';
+import { FoodCatalogueService } from '@app/services/food/food-catalogue.service';
 import { FoodDiaryService } from '@app/services/food/food-diary.service';
-import { DayTotals } from '@app/shared/interfaces';
+import { DayTotals, DiaryEntry } from '@app/shared/interfaces';
 import { ProgressBarStyle, VProgress, VProgressConfig } from '@ui-kit/components/v-progress/v-progress';
 
 export enum NutrientType {
@@ -14,13 +15,22 @@ export enum NutrientType {
   selector: 'nutrition-summary',
   templateUrl: './nutrition-summary.html',
   imports: [VProgress],
+  standalone: true,
 })
 export class NutritionSummary {
   private readonly foodDiaryService = inject(FoodDiaryService);
+  private readonly foodCatalogueService = inject(FoodCatalogueService);
 
   protected readonly NutrientType = NutrientType;
+  public readonly diaryEntry = input<DiaryEntry | undefined>(undefined);
 
-  protected readonly totals$$ = computed(() => this.foodDiaryService.selectedDayTotals$$());
+  protected readonly totals$$ = computed(() => {
+    const entry = this.diaryEntry();
+    if (entry) {
+      return this.calculateEntryTotals(entry);
+    }
+    return this.foodDiaryService.selectedDayTotals$$();
+  });
 
   private readonly NUTRIENT_KEYS: Record<NutrientType, { consumed: keyof DayTotals; target: keyof DayTotals }> = {
     [NutrientType.Protein]: { consumed: 'consumedProtein', target: 'targetProtein' },
@@ -58,15 +68,15 @@ export class NutritionSummary {
 
   /**
    * Calculates the progress bar color based on nutrient percentage.
-   * - 0-100%: Transitions from low (blue) to target (green)
-   * - 100%+: Transitions from target (green) to high (red), capped at 200%
+   * - 0-125%: Blue color
+   * - 125-200%: Gradient from orange to red
    */
   private calculateBarColor(percent: number): string {
-    if (percent <= 100) {
-      return `color-mix(in srgb, var(--color-nutrient-target) ${percent}%, var(--color-nutrient-low))`;
+    if (percent <= 125) {
+      return `var(--color-nutrient-low)`;
     } else {
-      const redPercent = Math.min(percent - 100, 100);
-      return `color-mix(in srgb, var(--color-nutrient-high) ${redPercent}%, var(--color-nutrient-target))`;
+      const redPercent = Math.min(percent - 125, 75);
+      return `color-mix(in srgb, var(--color-nutrient-high) ${redPercent}%, var(--color-nutrient-warning))`;
     }
   }
 
@@ -81,5 +91,44 @@ export class NutritionSummary {
 
     const percent = Math.round((consumed / target) * 100);
     return `${percent}%`;
+  }
+
+  private calculateEntryTotals(entry: DiaryEntry): DayTotals {
+    const dayTotals = this.foodDiaryService.selectedDayTotals$$();
+    const product = this.foodCatalogueService.catalogue$$()?.[entry.foodCatalogueId];
+
+    if (!product) {
+      return {
+        kcalsConsumed: 0,
+        kcalsPercent: 0,
+        bodyWeight: null,
+        targetKcals: dayTotals.targetKcals,
+        targetProtein: dayTotals.targetProtein,
+        targetFat: dayTotals.targetFat,
+        targetCarbs: dayTotals.targetCarbs,
+        targetFiber: dayTotals.targetFiber,
+        consumedProtein: 0,
+        consumedFat: 0,
+        consumedCarbs: 0,
+        consumedFiber: 0,
+      };
+    }
+
+    const portionMultiplier = entry.foodWeight / 100;
+
+    return {
+      kcalsConsumed: product.kcals * portionMultiplier,
+      kcalsPercent: 0,
+      bodyWeight: null,
+      targetKcals: dayTotals.targetKcals,
+      targetProtein: dayTotals.targetProtein,
+      targetFat: dayTotals.targetFat,
+      targetCarbs: dayTotals.targetCarbs,
+      targetFiber: dayTotals.targetFiber,
+      consumedProtein: product.protein * portionMultiplier,
+      consumedFat: product.fat * portionMultiplier,
+      consumedCarbs: product.carbs * portionMultiplier,
+      consumedFiber: product.fiber * portionMultiplier,
+    };
   }
 }
