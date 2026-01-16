@@ -1,6 +1,6 @@
 import { animate, state, style, transition, trigger } from '@angular/animations';
 import { NgClass } from '@angular/common';
-import { Component, computed, ElementRef, inject, OnInit, signal, viewChild } from '@angular/core';
+import { Component, computed, effect, ElementRef, inject, OnInit, signal, viewChild } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService } from '@app/services/auth.service';
 import { DeviceInfoService } from '@app/services/device-info.service';
@@ -36,6 +36,7 @@ import { ButtonStyle } from '@ui-kit/types';
   ],
 })
 export class Navigation implements OnInit {
+  protected readonly desktopNav = viewChild<ElementRef>('desktopNav');
   protected readonly fader = viewChild.required<ElementRef>('fader');
 
   protected readonly Icon = IconName;
@@ -47,6 +48,41 @@ export class Navigation implements OnInit {
   protected readonly authService = inject(AuthService);
   private readonly deviceInfoService = inject(DeviceInfoService);
   private readonly router = inject(Router);
+
+  private resizeObserver: ResizeObserver | null = null;
+  private readonly navbarResizeObserverEffect$$ = effect((onCleanup) => {
+    console.log('Setting up navbar resize observer');
+    const navElement = this.desktopNav()?.nativeElement;
+    const isDesktop = this.isDesktop$$();
+
+    if (!isDesktop || !navElement) {
+      this.navigationService.setNavbarWidthPx(0);
+      if (this.resizeObserver) {
+        this.resizeObserver.disconnect();
+      }
+      return;
+    }
+
+    if (!this.resizeObserver) {
+      this.resizeObserver = new ResizeObserver((entries) => {
+        const entry = entries[0];
+        if (!entry) return;
+        const target = entry.target as HTMLElement;
+        this.navigationService.setNavbarWidthPx(target.getBoundingClientRect().width);
+        console.log('Navbar width updated:', target.getBoundingClientRect().width);
+      });
+    }
+
+    this.resizeObserver.disconnect();
+    this.resizeObserver.observe(navElement);
+    this.navigationService.setNavbarWidthPx(navElement.getBoundingClientRect().width);
+
+    onCleanup(() => {
+      if (this.resizeObserver) {
+        this.resizeObserver.disconnect();
+      }
+    });
+  });
 
   protected readonly isDesktop$$ = computed(() => this.deviceInfoService.isDesktopScreen$$());
 

@@ -1,8 +1,8 @@
 <div class="flex">
   <navigation />
 
-  <main class="flex flex-col flex-grow w-0 min-w-0 transition-[margin-left] duration-[var(--animation-duration-medium)] ease-in-out"
-        [style.margin-left.px]="navigationService.navbarWidth$$()">
+  <main class="flex flex-col flex-grow w-0 min-w-0"
+        [style.margin-left]="navigationService.navbarWidth$$()">
     <router-outlet />
   </main>
 </div>

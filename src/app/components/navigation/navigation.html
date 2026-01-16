@@ -1,7 +1,7 @@
 @if (authService.isAuthenticated$$() || forceShowOnUiShowcasePage$$()) {
   @if (isDesktop$$()) {
-    <nav class="fixed top-0 left-0 z-40 flex flex-col h-screen gap-2 pt-2 pb-2 pl-2 pr-2 transition-[width] duration-[var(--animation-duration-medium)] ease-in-out"
-         [style.width.px]="navigationService.navbarWidth$$()">
+    <nav #desktopNav
+         class="fixed top-0 left-0 z-40 flex flex-col h-screen gap-2 pt-2 pb-2 pl-2 pr-2">
 
       <!-- main menu buttons -->
       <div class="flex flex-col gap-2">
@@ -12,7 +12,6 @@
                         width: '100%',
                         padding: 2,
                         isLabelHidden: navigationService.isCollapsed$$(),
-                        labelAnimationDuration: 125,
                         textAlign: 'left',
                       }"
                       class="menu-item"
@@ -37,7 +36,6 @@
                       width: '100%',
                       padding: 2,
                       isLabelHidden: navigationService.isCollapsed$$(),
-                      labelAnimationDuration: 125,
                       textAlign: 'left',
                     }"
                     class="menu-item"
@@ -75,7 +73,6 @@
                         width: '100%',
                         padding: 2,
                         isLabelHidden: navigationService.isCollapsed$$(),
-                        labelAnimationDuration: 125,
                         textAlign: 'left',
                       }"
                       class="menu-item"

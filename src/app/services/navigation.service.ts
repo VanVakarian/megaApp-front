@@ -1,6 +1,5 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
 
-import { DeviceInfoService } from '@app/services/device-info.service';
 import { RouterService } from '@app/services/router.service';
 import { SettingsService } from '@app/services/settings.service';
 import { SettingsChapterNames } from '@app/shared/interfaces';
@@ -10,11 +9,6 @@ enum MenuPlace {
   Mobile = 'mobile',
   Desktop = 'desktop',
   Both = 'both',
-}
-
-enum MenuWidthPx {
-  Collapsed = 60,
-  Expanded = 242,
 }
 
 export interface MenuButton {
@@ -42,13 +36,12 @@ export class NavigationService {
 
   private readonly isNavbarCollapsed$$ = signal(true);
   private readonly currentRoute$signal = signal('');
-  private readonly deviceInfoService = inject(DeviceInfoService);
+  private readonly navbarWidthPx$$ = signal(0);
 
   public readonly isCollapsed$$ = computed(() => this.isNavbarCollapsed$$());
 
   public readonly navbarWidth$$ = computed(() => {
-    if (!this.deviceInfoService.isDesktopScreen$$()) return 0;
-    return this.isNavbarCollapsed$$() ? MenuWidthPx.Collapsed : MenuWidthPx.Expanded;
+    return `${this.navbarWidthPx$$()}px`;
   });
 
   public readonly currentRoute$$ = computed(() => this.currentRoute$signal());
@@ -150,6 +143,10 @@ export class NavigationService {
   public toggleCollapse(): void {
     this.isNavbarCollapsed$$.set(!this.isNavbarCollapsed$$());
     localStorage.setItem(this.COLLAPSE_STORAGE_KEY, String(this.isNavbarCollapsed$$()));
+  }
+
+  public setNavbarWidthPx(width: number): void {
+    this.navbarWidthPx$$.set(Math.max(0, Math.ceil(width)));
   }
 
   private initCollapseState(): void {
