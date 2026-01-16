@@ -5,6 +5,8 @@
 @use '@angular/material' as mat;
 
 @import '@ui-kit/styles/vars.css';
+@import '@ui-kit/styles/themes/neumorphic-blue.css';
+@import '@ui-kit/styles/styles/neumorphic-style.css';
 
 :root {
   /* Animation durations fallback - primary source is ui-kit/vars.css */
@@ -59,15 +61,6 @@ $dark-theme: mat.define-dark-theme((color: (primary: $dark-primary, accent: $dar
   .tw-bg-color-80 {
     // @apply bg-slate-100/90 dark:bg-slate-900/90
     background: #ebf3fa;
-  }
-
-  .tw-bg-color {
-    // @apply bg-slate-100 dark:bg-slate-900
-    background: #ebf3fa;
-  }
-
-  .tw-text-color {
-    @apply dark:text-slate-300
   }
 
   .tw-card-bg-color {
