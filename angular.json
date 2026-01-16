@@ -30,8 +30,8 @@
               "src/assets",
               {
                 "glob": "**/*",
-                "input": "src/ui-kit/assets",
-                "output": "/ui-kit-assets"
+                "input": "src/ui-kit/icons",
+                "output": "/ui-kit-assets/icons"
               }
             ],
             "styles": [
