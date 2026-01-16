@@ -51,7 +51,6 @@ export class Navigation implements OnInit {
 
   private resizeObserver: ResizeObserver | null = null;
   private readonly navbarResizeObserverEffect$$ = effect((onCleanup) => {
-    console.log('Setting up navbar resize observer');
     const navElement = this.desktopNav()?.nativeElement;
     const isDesktop = this.isDesktop$$();
 
@@ -69,7 +68,6 @@ export class Navigation implements OnInit {
         if (!entry) return;
         const target = entry.target as HTMLElement;
         this.navigationService.setNavbarWidthPx(target.getBoundingClientRect().width);
-        console.log('Navbar width updated:', target.getBoundingClientRect().width);
       });
     }
 
