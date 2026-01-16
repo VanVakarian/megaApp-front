@@ -73,10 +73,10 @@ export class NutritionSummary {
    */
   private calculateBarColor(percent: number): string {
     if (percent <= 125) {
-      return `var(--color-nutrient-low)`;
+      return `var(--v-color-accent)`;
     } else {
       const redPercent = Math.min(percent - 125, 75);
-      return `color-mix(in srgb, var(--color-nutrient-high) ${redPercent}%, var(--color-nutrient-warning))`;
+      return `color-mix(in srgb, var(--v-color-danger) ${redPercent}%, var(--v-color-warning))`;
     }
   }
 
