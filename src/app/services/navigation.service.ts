@@ -21,13 +21,6 @@ export interface MenuButton {
   bgClass?: string;
 }
 
-export interface UiShowcaseButton {
-  label: string;
-  link: string;
-  iconName: IconName;
-  selected: boolean;
-}
-
 @Injectable({
   providedIn: 'root',
 })
@@ -45,14 +38,6 @@ export class NavigationService {
   });
 
   public readonly currentRoute$$ = computed(() => this.currentRoute$signal());
-
-  public readonly shouldShowUiShowcaseButtons$$ = computed(() => {
-    return this.currentRoute$$().startsWith('/ui-showcase');
-  });
-
-  public readonly visibleUiShowcaseButtons$$ = computed(() => {
-    return this.shouldShowUiShowcaseButtons$$() ? this.uiShowcaseButtons : [];
-  });
 
   private readonly buttons: MenuButton[] = [
     {
@@ -105,33 +90,6 @@ export class NavigationService {
     },
   ];
 
-  private readonly uiShowcaseButtons: UiShowcaseButton[] = [
-    {
-      label: 'Dishes',
-      link: '/ui-showcase/dishes',
-      iconName: IconName.Restaurant,
-      selected: false,
-    },
-    {
-      label: 'Finance',
-      link: '/ui-showcase/finance',
-      iconName: IconName.Paid,
-      selected: false,
-    },
-    {
-      label: 'Icons',
-      link: '/ui-showcase/icons',
-      iconName: IconName.ViewCozy,
-      selected: false,
-    },
-    {
-      label: 'Other',
-      link: '/ui-showcase/other',
-      iconName: IconName.Article,
-      selected: false,
-    },
-  ];
-
   private readonly routerService = inject(RouterService);
   private readonly settingsService = inject(SettingsService);
 
@@ -174,10 +132,6 @@ export class NavigationService {
             btn.selected = route.includes(btn.link);
           }
         }
-      });
-
-      this.uiShowcaseButtons.forEach((btn) => {
-        btn.selected = route.includes(btn.link);
       });
     });
   }

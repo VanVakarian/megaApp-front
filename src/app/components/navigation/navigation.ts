@@ -4,7 +4,7 @@ import { Component, computed, effect, ElementRef, inject, OnInit, signal, viewCh
 import { Router } from '@angular/router';
 import { AuthService } from '@app/services/auth.service';
 import { DeviceInfoService } from '@app/services/device-info.service';
-import { MenuButton, NavigationService, UiShowcaseButton } from '@app/services/navigation.service';
+import { MenuButton, NavigationService } from '@app/services/navigation.service';
 import { ANIMATION_DURATION_MS, ANIMATION_DURATION_MS_STRING } from '@app/shared/animations';
 import { VButton } from '@ui-kit/components/v-button/v-button';
 import { IconName, VIcon } from '@ui-kit/components/v-icon/v-icon';
@@ -95,12 +95,9 @@ export class Navigation implements OnInit {
     return this.navigationService.prepButtons(place);
   });
 
-  protected readonly uiShowcaseButtons$$ = this.navigationService.visibleUiShowcaseButtons$$;
-  protected readonly forceShowOnUiShowcasePage$$ = this.navigationService.shouldShowUiShowcaseButtons$$;
-
   public ngOnInit(): void {}
 
-  protected getButtonStyle(button: MenuButton | UiShowcaseButton): ButtonStyle {
+  protected getButtonStyle(button: MenuButton): ButtonStyle {
     return button.selected ? ButtonStyle.Raised : ButtonStyle.Flat;
   }
 
