@@ -63,8 +63,6 @@ export class FoodStatsService {
   }
 
   private setupInitialDateRange() {
-    // Hack to ensure mat slider to init in correct position
-    setTimeout(() => this.clipDateRange(91), 0);
     setTimeout(() => this.clipDateRange(90), 1);
   }
 
