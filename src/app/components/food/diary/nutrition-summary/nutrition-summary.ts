@@ -2,7 +2,8 @@ import { Component, computed, inject, input } from '@angular/core';
 import { FoodCatalogueService } from '@app/services/food/food-catalogue.service';
 import { FoodDiaryService } from '@app/services/food/food-diary.service';
 import { DayTotals, DiaryEntry } from '@app/shared/interfaces';
-import { ProgressBarStyle, VProgress, VProgressConfig } from '@ui-kit/components/v-progress/v-progress';
+import { ProgressBarStyle } from '@ui-kit/components/types';
+import { VProgress, VProgressConfig } from '@ui-kit/components/v-progress/v-progress';
 
 export enum NutrientType {
   Protein = 'protein',
