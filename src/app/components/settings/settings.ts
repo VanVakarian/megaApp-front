@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, effect, inject, signal, viewChild } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 
-import { AuthFormComponent } from '@app/components/settings/auth-form/auth-form.component';
+import { AuthForm } from '@app/components/settings/auth-form/auth-form';
 import { AuthService } from '@app/services/auth.service';
 import { SettingsService } from '@app/services/settings.service';
 import { KeyOfUserSettings, UserSettings } from '@app/shared/interfaces';
@@ -22,7 +22,7 @@ type FormFields = keyof SettingsForm;
 @Component({
   selector: 'settings',
   templateUrl: './settings.html',
-  imports: [CommonModule, ReactiveFormsModule, AuthFormComponent, VCard, VCheckbox, VInput],
+  imports: [CommonModule, ReactiveFormsModule, AuthForm, VCard, VCheckbox, VInput],
 })
 export class Settings {
   protected readonly KeyOfSettings = KeyOfUserSettings;
