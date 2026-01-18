@@ -199,7 +199,7 @@ export interface ServerResponseProductSave extends ServerResponseBasic {
 
 //                                                                      SETTINGS
 
-export interface Settings {
+export interface UserSettings {
   selectedChapterFood: boolean;
   selectedChapterMoney: boolean;
   darkTheme: boolean;
@@ -209,7 +209,7 @@ export interface Settings {
   isUserAdmin?: boolean; // TODO[068]: Think of a better way to work with admin privileges
 }
 
-export enum KeyOfSettings {
+export enum KeyOfUserSettings {
   selectedChapterFood = 'selectedChapterFood',
   selectedChapterMoney = 'selectedChapterMoney',
   darkTheme = 'darkTheme',
@@ -221,7 +221,7 @@ export enum KeyOfSettings {
 
 export type SettingsChapterNames = 'selectedChapterFood' | 'selectedChapterMoney' | '';
 
-export type LocalStorageSettings = Settings | null;
+export type LocalStorageSettings = UserSettings | null;
 
 //                                                                       NAVBARS
 
