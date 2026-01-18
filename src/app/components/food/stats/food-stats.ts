@@ -1,20 +1,29 @@
 import { CommonModule } from '@angular/common';
-import { AfterViewInit, Component, ElementRef, OnInit, ViewChild, effect } from '@angular/core';
-import { FormsModule } from '@angular/forms';
-import { MatButtonModule } from '@angular/material/button';
+import {
+  AfterViewInit,
+  Component,
+  ElementRef,
+  OnInit,
+  computed,
+  effect,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
-import { MatSliderModule } from '@angular/material/slider';
+import { DeviceInfoService } from '@app/services/device-info.service';
 import { FoodStatsService } from '@app/services/food/food-stats.service';
-import { SettingsService } from '@app/services/settings.service';
 import { KCALS_CHART_SETTINGS, WEIGHT_CHART_SETTINGS } from '@app/shared/const';
 import { StatsChartData } from '@app/shared/interfaces';
-import { debounce, formatDateTicks, getRuDeclension, throttle } from '@app/shared/utils';
+import { formatDateTicks, getRuDeclension } from '@app/shared/utils';
+import { VButton } from '@ui-kit/components/v-button/v-button';
+import { VCard } from '@ui-kit/components/v-card/v-card';
+import { VSlider, VSliderRangeValue } from '@ui-kit/components/v-slider/v-slider';
 import {
   BarController,
   BarElement,
   CategoryScale,
   Chart,
-  ChartConfiguration,
   Legend,
   LineController,
   LineElement,
@@ -37,155 +46,141 @@ Chart.register(
   Legend,
 );
 
+const CHART_UPDATES_PER_SECOND = 10;
+const CHART_UPDATE_INTERVAL_MS = Math.round(1000 / CHART_UPDATES_PER_SECOND);
+
+/**
+ * Food stats charts flow:
+ * - Raw daily stats are loaded into a service and transformed into full and clipped datasets.
+ * - The slider range and range buttons update start/end indices immediately; labels and day count are derived from those indices.
+ * - Slider positions are based on the date index list to snap selection to existing days.
+ * - Charts are updated from clipped datasets; updates are throttled with a trailing flush so the final fast-drag state is rendered.
+ * - Lite mode only toggles kcal axis ticks and tooltip visibility, without changing data.
+ * - Charts are created once and then kept in sync through reactive updates.
+ */
 @Component({
   selector: 'food-stats',
   templateUrl: './food-stats.html',
-  imports: [CommonModule, MatCardModule, MatSliderModule, FormsModule, MatButtonModule],
+  imports: [VButton, VCard, VSlider, CommonModule, MatCardModule],
 })
 export class FoodStats implements OnInit, AfterViewInit {
-  @ViewChild('weightChartCanvas')
-  protected weightChartCanvas!: ElementRef;
+  protected readonly weightChartCanvas = viewChild.required<ElementRef<HTMLCanvasElement>>('weightChartCanvas');
+  protected readonly kcalsChartCanvas = viewChild.required<ElementRef<HTMLCanvasElement>>('kcalsChartCanvas');
 
-  @ViewChild('kcalsChartCanvas')
-  protected kcalsChartCanvas!: ElementRef;
+  protected readonly weightChart$$ = signal<Chart | null>(null);
+  protected readonly kcalsChart$$ = signal<Chart | null>(null);
 
-  protected weightChart!: Chart;
-  protected kcalsChart!: Chart;
+  private readonly dates$$ = computed(() => this.foodStatsService.statsChartData$$().dates);
 
-  protected selectedDateIdxStart: number = 0;
-  protected selectedDateIdxEnd: number = 0;
+  private readonly selectedRangeInfo$$ = computed(() => {
+    const dates = this.dates$$();
+    const startIdx = this.foodStatsService.selectedDateIdxStart$$();
+    const endIdx = this.foodStatsService.selectedDateIdxEnd$$();
 
-  protected sliderStartLabel: string = '';
-  protected sliderEndLabel: string = '';
-  protected selectedRangeLabel: string = '';
+    if (dates.length === 0 || startIdx < 0 || endIdx < 0 || startIdx >= dates.length || endIdx >= dates.length) {
+      return { startLabel: '', endLabel: '', rangeLabel: '' };
+    }
 
-  protected get maxSliderValue(): number {
-    return this.foodStatsService.statsChartData$$().dates.length - 1;
-  }
+    const selectedLowDate = dates[startIdx];
+    const selectedHighDate = dates[endIdx];
+    if (!selectedLowDate || !selectedHighDate) return { startLabel: '', endLabel: '', rangeLabel: '' };
 
-  constructor(
-    private foodStatsService: FoodStatsService,
-    private settingsService: SettingsService,
-  ) {
-    const throttledUpdate = this.createThrottledChartUpdater();
-    const debouncedUpdate = this.createDebouncedChartUpdater();
+    const selectedDaysCount = endIdx - startIdx + 1;
 
-    effect(() => {
-      // Generating labels
-      const dates = this.foodStatsService.statsChartData$$().dates;
-      const startIdx = this.foodStatsService.selectedDateIdxStart$$();
-      const endIdx = this.foodStatsService.selectedDateIdxEnd$$();
+    return {
+      startLabel: formatDateTicks(selectedLowDate),
+      endLabel: formatDateTicks(selectedHighDate),
+      rangeLabel: this.formatSelectedRange(selectedDaysCount),
+    };
+  });
 
-      if (dates.length === 0 || startIdx < 0 || endIdx < 0 || startIdx >= dates.length || endIdx >= dates.length) {
-        this.sliderStartLabel = '';
-        this.sliderEndLabel = '';
-        this.selectedRangeLabel = '';
-        return;
-      }
+  protected readonly sliderStartLabel$$ = computed(() => this.selectedRangeInfo$$().startLabel);
+  protected readonly sliderEndLabel$$ = computed(() => this.selectedRangeInfo$$().endLabel);
+  protected readonly selectedRangeLabel$$ = computed(() => this.selectedRangeInfo$$().rangeLabel);
 
-      const selectedLowDate = dates[startIdx];
-      const selectedHighDate = dates[endIdx];
-      if (!selectedLowDate || !selectedHighDate) return;
+  protected readonly sliderValueList$$ = computed(() => {
+    return this.dates$$().map((_, index) => index);
+  });
 
-      this.sliderStartLabel = formatDateTicks(selectedLowDate);
-      this.sliderEndLabel = formatDateTicks(selectedHighDate);
-      this.selectedRangeLabel = this.formatSelectedRange();
-    });
+  protected readonly selectedRange$$ = computed(() => {
+    return [
+      this.foodStatsService.selectedDateIdxStart$$(),
+      this.foodStatsService.selectedDateIdxEnd$$(),
+    ] as VSliderRangeValue;
+  });
 
-    effect(() => {
-      this.selectedDateIdxStart = this.foodStatsService.selectedDateIdxStart$$();
-      this.selectedDateIdxEnd = this.foodStatsService.selectedDateIdxEnd$$();
-    });
+  protected readonly maxSliderValue$$ = computed(() => {
+    return this.dates$$().length - 1;
+  });
 
-    effect(() => {
-      const data = this.foodStatsService.statsChartDataClipped$$();
-      throttledUpdate(data);
-      debouncedUpdate(data);
-    });
+  protected readonly deviceInfoService = inject(DeviceInfoService);
+  private readonly foodStatsService = inject(FoodStatsService);
 
-    effect(() => {
-      const isLiteVersion = this.settingsService.settings$$()?.liteVersion;
-      this.updateKcalsChartAxisVisibility(isLiteVersion);
-    });
-  }
+  private readonly throttledUpdate = this.createThrottledChartUpdater();
+
+  private readonly chartsUpdateEffect = effect(() => {
+    const data = this.foodStatsService.statsChartDataClipped$$();
+    this.throttledUpdate(data);
+  });
 
   public async ngOnInit(): Promise<void> {
     this.foodStatsService.getStats();
 
-    const isLiteVersion = this.settingsService.settings$$()?.liteVersion;
-    this.initializeCharts(isLiteVersion);
+    this.initializeCharts();
   }
 
   public ngAfterViewInit(): void {
-    if (this.weightChartCanvas) {
-      this.weightChartCanvas.nativeElement.getContext('2d').canvas.height = 250;
+    const weightContext = this.weightChartCanvas().nativeElement.getContext('2d');
+    if (weightContext) {
+      weightContext.canvas.height = 250;
     }
-    if (this.kcalsChartCanvas) {
-      this.kcalsChartCanvas.nativeElement.getContext('2d').canvas.height = 250;
+
+    const kcalsContext = this.kcalsChartCanvas().nativeElement.getContext('2d');
+    if (kcalsContext) {
+      kcalsContext.canvas.height = 250;
     }
   }
 
-  public sliderChangeStart(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    const valueInt = parseInt(input.value);
-    const delta = this.foodStatsService.selectedDateIdxEnd$$() - valueInt;
-    if (delta > 0) {
-      this.foodStatsService.selectedDateIdxStart$$.set(valueInt);
-    }
+  protected onRangeChange(range: VSliderRangeValue): void {
+    const [start, end] = range;
+    if (end <= start) return;
+    this.foodStatsService.selectedDateIdxStart$$.set(start);
+    this.foodStatsService.selectedDateIdxEnd$$.set(end);
   }
 
-  public sliderChangeEnd(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    const valueInt = parseInt(input.value);
-    const delta = valueInt - this.foodStatsService.selectedDateIdxStart$$();
-    if (delta > 0) {
-      this.foodStatsService.selectedDateIdxEnd$$.set(valueInt);
-    }
-  }
-
-  public clipDateRange(daysAmtToShow: number): void {
+  protected clipDateRange(daysAmtToShow: number): void {
     this.foodStatsService.clipDateRange(daysAmtToShow);
   }
 
-  private updateWeightChart(data: StatsChartData, chartUpdateMode: 'none' | undefined = undefined) {
-    if (this.weightChart?.data) {
-      this.weightChart.data.labels = data.dates;
-      this.weightChart.data.datasets[0].data = data.weights;
-      this.weightChart.data.datasets[1].data = data.weightsAvg;
-      this.weightChart.update(chartUpdateMode);
+  private updateWeightChart(data: StatsChartData) {
+    const chart = this.weightChart$$();
+    if (chart?.data) {
+      chart.data.labels = data.dates;
+      chart.data.datasets[0].data = data.weights;
+      chart.data.datasets[1].data = data.weightsAvg;
+      chart.update('none');
     }
   }
 
-  private updateKcalsChart(data: StatsChartData, chartUpdateMode: 'none' | undefined = undefined) {
-    if (this.kcalsChart?.data) {
-      this.kcalsChart.data.labels = data.dates;
-      this.kcalsChart.data.datasets[0].data = data.kcals;
-      this.kcalsChart.data.datasets[1].data = data.kcalsTarget;
-      this.kcalsChart.update(chartUpdateMode);
+  private updateKcalsChart(data: StatsChartData) {
+    const chart = this.kcalsChart$$();
+    if (chart?.data) {
+      chart.data.labels = data.dates;
+      chart.data.datasets[0].data = data.kcals;
+      chart.data.datasets[1].data = data.kcalsTarget;
+      chart.update('none');
     }
   }
 
   private createThrottledChartUpdater() {
-    return throttle((data: StatsChartData) => {
-      this.updateWeightChart(data, 'none');
-      this.updateKcalsChart(data, 'none');
-    }, 100);
-  }
-
-  private createDebouncedChartUpdater() {
-    return debounce((data: StatsChartData) => {
+    return this.throttleLatest(CHART_UPDATE_INTERVAL_MS, (data) => {
       this.updateWeightChart(data);
       this.updateKcalsChart(data);
-    }, 100);
+    });
   }
 
-  private formatSelectedRange(): string {
-    // caluclating total selected days
-    const firstSelectedDay = this.foodStatsService.selectedDateIdxStart$$();
-    const lastSelectedDay = this.foodStatsService.selectedDateIdxEnd$$();
-    const selectedDaysCount = lastSelectedDay - firstSelectedDay + 1;
-
-    const DAYS_IN_YEAR = 360;
+  private formatSelectedRange(selectedDaysCount: number): string {
+    const DAYS_IN_YEAR = 365;
     const DAYS_IN_MONTH = 30;
 
     // converting days to years, months and days
@@ -216,56 +211,40 @@ export class FoodStats implements OnInit, AfterViewInit {
     return parts.join(' ');
   }
 
-  private initializeCharts(isLiteVersion: boolean): void {
-    this.weightChart = new Chart('WeightChart', WEIGHT_CHART_SETTINGS);
-
-    const kcalsSettings = this.createKcalsChartSettings(isLiteVersion);
-    this.kcalsChart = new Chart('KcalsChart', kcalsSettings);
+  private initializeCharts(): void {
+    this.weightChart$$.set(new Chart('WeightChart', WEIGHT_CHART_SETTINGS));
+    this.kcalsChart$$.set(new Chart('KcalsChart', KCALS_CHART_SETTINGS));
   }
 
-  private createKcalsChartSettings(isLiteVersion: boolean): ChartConfiguration {
-    const settings = { ...KCALS_CHART_SETTINGS };
-    if (settings.options?.scales?.['y']) {
-      settings.options.scales['y'].ticks = {
-        ...settings.options.scales['y'].ticks,
-        display: !isLiteVersion,
-        stepSize: 500,
-      };
-    }
+  private throttleLatest(delay: number, fn: (data: StatsChartData) => void): (data: StatsChartData) => void {
+    let lastCall = 0;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    let pendingData: StatsChartData | null = null;
 
-    if (!settings.options) {
-      settings.options = {};
-    }
-    if (!settings.options.plugins) {
-      settings.options.plugins = {};
-    }
-    settings.options.plugins.tooltip = {
-      ...settings.options.plugins.tooltip,
-      enabled: !isLiteVersion,
+    return (data: StatsChartData) => {
+      const now = Date.now();
+      pendingData = data;
+      const elapsed = now - lastCall;
+
+      if (elapsed >= delay) {
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+          timeoutId = null;
+        }
+        lastCall = now;
+        fn(data);
+        return;
+      }
+
+      if (!timeoutId) {
+        const remaining = delay - elapsed;
+        timeoutId = setTimeout(() => {
+          timeoutId = null;
+          if (!pendingData) return;
+          lastCall = Date.now();
+          fn(pendingData);
+        }, remaining);
+      }
     };
-
-    return settings;
-  }
-
-  private updateKcalsChartAxisVisibility(isLiteVersion: boolean): void {
-    if (this.kcalsChart?.options?.scales) {
-      const yScale = this.kcalsChart.options.scales['y'];
-      if (yScale?.ticks) {
-        yScale.ticks = {
-          ...yScale.ticks,
-          display: !isLiteVersion,
-        };
-      }
-
-      if (!this.kcalsChart.options.plugins) {
-        this.kcalsChart.options.plugins = {};
-      }
-      this.kcalsChart.options.plugins.tooltip = {
-        ...this.kcalsChart.options.plugins.tooltip,
-        enabled: !isLiteVersion,
-      };
-
-      this.kcalsChart.update();
-    }
   }
 }

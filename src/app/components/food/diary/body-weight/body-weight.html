@@ -1,22 +1,21 @@
 <div class="flex flex-col gap-4">
   <div class="flex justify-end">
-    <v-input fieldStateAnimations
-             class="w-1/3"
-             [state]="currentState"
+    <v-input class="w-1/3"
              [formControl]="form.controls.bodyWeight"
              [config]="{
                type: 'text',
                inputmode: 'decimal',
-               label: FormLabels.WEIGHT,
+               label: 'Вес',
                fontSize: '20px',
                fontWeight: 500,
                textAlign: 'right',
+               isAutoSubmitEnabled: true,
+               autoSubmitResult: autoSubmitResult$$(),
              }"
-             (onInputChanged)="onInput()"
-             (onEnterPressed)="onEnter()">
+             (onAutoSubmit)="onAutoSubmit()">
       <span v-postfix
             class="ml-1 mr-3 cursor-pointer select-none"
-            (click)="focusInput()">{{ FormLabels.WEIGHT_UNIT }}</span>
+            (click)="focusInput()"> кг </span>
     </v-input>
   </div>
 </div>

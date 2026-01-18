@@ -1,7 +1,7 @@
 import { Routes } from '@angular/router';
 import { FoodScreen } from '@app/components/food/food-screen';
 import { MoneyScreen } from '@app/components/money/money-screen';
-import { SettingsPageComponent } from '@app/components/settings/settings-page.component';
+import { Settings } from '@app/components/settings/settings';
 import { authResolver } from '@app/services/auth.resolver';
 import { isChapterSelected } from '@app/services/is-chapter-selected.guard';
 
@@ -26,7 +26,7 @@ export const routes: Routes = [
   },
   {
     path: 'settings',
-    component: SettingsPageComponent,
+    component: Settings,
     resolve: { auth: authResolver },
     data: { allowUnauthenticated: true },
   },

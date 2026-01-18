@@ -1,5 +1,5 @@
 import { ChartConfiguration } from 'chart.js';
-import { Settings } from './interfaces';
+import { UserSettings } from './interfaces';
 
 export const FETCH_DAYS_RANGE_OFFSET: number = 10; // TODO: create settings item out of this constant
 
@@ -88,14 +88,23 @@ export const KCALS_CHART_SETTINGS: ChartConfiguration = {
   options: {
     animation: false,
     maintainAspectRatio: false,
+    events: [],
+    plugins: {
+      tooltip: {
+        enabled: false,
+      },
+      legend: {
+        display: false,
+      },
+    },
     scales: {
       x: {
         ticks: {},
       },
       y: {
-        display: true,
+        display: false,
         ticks: {
-          display: true, // for configuring show/hide of kcals on y axis for lite version
+          display: false,
           stepSize: 500,
         },
       },
@@ -145,7 +154,7 @@ export const DEFAULT_INPUT_FIELD_PROGRESS_TIMER: number = 2000;
 
 export const DEFAULT_REQUEST_STATUS_FADE_OUT_TIMER: number = 3000;
 
-export const DEFAULT_SETTINGS: Settings = {
+export const DEFAULT_SETTINGS: UserSettings = {
   selectedChapterFood: false,
   selectedChapterMoney: false,
   darkTheme: false,
