@@ -37,15 +37,7 @@
                 [size]="5" />
       </v-button>
 
-      <mat-form-field class="w-0 h-0">
-        <input matInput
-               [matDatepicker]="pickerDesktop"
-               [formControl]="formCalendarSelectedDay"
-               [max]="initDateTodayWithUserHourShift"
-               (dateChange)="onDatePicked($event)" />
-        <mat-datepicker-toggle [for]="pickerDesktop" />
-        <mat-datepicker #pickerDesktop />
-      </mat-form-field>
+      <ng-container [ngTemplateOutlet]="dateInputTemplate" />
     </div>
 
     <v-button primary
@@ -121,15 +113,16 @@
               [size]="10" />
     </v-button>
   </div>
+
+  <ng-container [ngTemplateOutlet]="dateInputTemplate" />
 }
 
-<mat-form-field class="hide-form">
-  <input matInput
-         [matDatepicker]="pickerTouch"
+<ng-template #dateInputTemplate>
+  <input #dateInputElem
+         id="date-picker-input"
+         type="date"
+         class="hide-input"
          [formControl]="formCalendarSelectedDay"
-         [max]="initDateTodayWithUserHourShift"
-         (dateChange)="onDatePicked($event)" />
-  <mat-datepicker-toggle [for]="pickerTouch" />
-  <mat-datepicker #pickerTouch
-                  touchUi />
-</mat-form-field>
+         [max]="maxDateIso"
+         (change)="onDatePicked($event)" />
+</ng-template>
