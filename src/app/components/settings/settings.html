@@ -50,10 +50,7 @@
           <div class="font-bold text-right"> Настройки дневника питания </div>
 
           <div class="w-1/3 mt-4">
-            <v-input fieldStateAnimations
-                     formControlName="height"
-                     class="field-with-progress-animations"
-                     [state]="heightFieldState()"
+            <v-input formControlName="height"
                      [config]="{
                        type: 'text',
                        inputmode: 'numeric',
@@ -62,13 +59,15 @@
                        fontWeight: 500,
                        textAlign: 'right',
                        errorMessage: isHeightValid ? '' : 'XXX',
+                       isAutoSubmitEnabled: true,
+                       autoSubmitResult: heightAutoSubmitResult$$(),
                      }"
-                     (onInputChanged)="onHeightInput()"
-                     (onEnterPressed)="onHeightEnter()">
+                     (onFocused)="onHeightFocus()"
+                     (onBlurred)="onHeightBlur()"
+                     (onAutoSubmit)="onHeightAutoSubmit()">
               <span v-postfix
                     class="ml-1 mr-3 cursor-pointer select-none"
-                    (click)="focusHeightInput()"
-                    [class.invalid-suffix]="!isHeightValid"> см </span>
+                    (click)="focusHeightInput()"> см </span>
             </v-input>
           </div>
         </v-card>
