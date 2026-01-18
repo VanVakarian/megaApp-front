@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Injectable, signal, WritableSignal } from '@angular/core';
 import { DEFAULT_SETTINGS } from '@app/shared/const';
-import { Settings } from '@app/shared/interfaces';
+import { UserSettings } from '@app/shared/interfaces';
 import { catchError, firstValueFrom, of } from 'rxjs';
 import { LocalStorageService } from './local-storage.service';
 import { NetworkService } from './network.service';
@@ -14,7 +14,7 @@ import { SyncOperationType, SyncQueueService } from './sync-queue.service';
 export class SettingsService {
   private readonly SETTINGS_STORAGE_KEY = 'settings';
 
-  public readonly settings$$: WritableSignal<Settings> = signal(DEFAULT_SETTINGS);
+  public readonly settings$$: WritableSignal<UserSettings> = signal(DEFAULT_SETTINGS);
 
   private readonly http = inject(HttpClient);
   private readonly localStorage = inject(LocalStorageService);
@@ -28,7 +28,7 @@ export class SettingsService {
   }
 
   private initializeFromLocalStorage(): void {
-    const localSettings = this.localStorage.get<Settings>(this.SETTINGS_STORAGE_KEY);
+    const localSettings = this.localStorage.get<UserSettings>(this.SETTINGS_STORAGE_KEY);
     if (localSettings) {
       this.settings$$.set(localSettings);
       this.applyTheme(localSettings.darkTheme);
@@ -42,7 +42,7 @@ export class SettingsService {
 
     try {
       const serverSettings = await firstValueFrom(
-        this.http.get<Settings>('/api/settings/').pipe(
+        this.http.get<UserSettings>('/api/settings/').pipe(
           catchError((error) => {
             console.error('Failed to fetch settings from server:', error);
             return of(null);
@@ -66,7 +66,7 @@ export class SettingsService {
     }
   }
 
-  async updateSetting<K extends keyof Settings>(key: K, value: Settings[K]): Promise<boolean> {
+  async updateSetting<K extends keyof UserSettings>(key: K, value: UserSettings[K]): Promise<boolean> {
     if (!this.networkService.isNetworkAvailable$$()) {
       return false;
     }
@@ -94,7 +94,7 @@ export class SettingsService {
     return true;
   }
 
-  private rollbackSetting<K extends keyof Settings>(key: K, previousValue: Settings[K]): void {
+  private rollbackSetting<K extends keyof UserSettings>(key: K, previousValue: UserSettings[K]): void {
     const currentSettings = this.settings$$();
     const rolledBackSettings = { ...currentSettings, [key]: previousValue };
 
@@ -114,8 +114,8 @@ export class SettingsService {
     }
   }
 
-  async saveSetting(setting: Partial<Settings>): Promise<boolean> {
-    const key = Object.keys(setting)[0] as keyof Settings;
+  async saveSetting(setting: Partial<UserSettings>): Promise<boolean> {
+    const key = Object.keys(setting)[0] as keyof UserSettings;
     const value = setting[key];
 
     if (value !== undefined) {

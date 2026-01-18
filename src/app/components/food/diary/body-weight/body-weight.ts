@@ -1,14 +1,8 @@
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, effect, inject, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, effect, inject, signal, viewChild } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { FoodDiaryService } from '@app/services/food/food-diary.service';
-import { DEFAULT_INPUT_FIELD_PROGRESS_TIMER } from '@app/shared/const';
-import {
-  AnimationState,
-  AnimationStateManager,
-  FieldStateAnimationsDirective,
-} from '@app/shared/directives/field-state-animations.directive';
 import { BodyWeightInterface as BodyWeightI } from '@app/shared/interfaces';
-import { VInput } from '@ui-kit/components/v-input/v-input';
+import { VInput, VInputAutoSubmitResult } from '@ui-kit/components/v-input/v-input';
 
 interface BodyWeightForm {
   bodyWeight: FormControl<string | null>;
@@ -26,9 +20,8 @@ enum FormErrors {
 @Component({
   selector: 'body-weight',
   templateUrl: './body-weight.html',
-  styleUrl: './body-weight.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule, FieldStateAnimationsDirective, VInput],
+  imports: [ReactiveFormsModule, VInput],
 })
 export class BodyWeight {
   protected readonly bodyWeightInput = viewChild.required(VInput);
@@ -42,64 +35,17 @@ export class BodyWeight {
     }),
   });
 
-  protected currentState: AnimationState = AnimationState.IDLE;
-
-  private previousValue: string = '';
-
-  private weightSubmitDelay: ReturnType<typeof setTimeout> | null = null;
-
-  private isSubmitting = false;
-
-  private weightFieldAnimationStateManager = new AnimationStateManager(AnimationState.IDLE, (state) => {
-    this.currentState = state;
-    this.cdRef.detectChanges();
-  });
+  protected readonly autoSubmitResult$$ = signal<VInputAutoSubmitResult | null>(null);
 
   private readonly foodDiaryService = inject(FoodDiaryService);
-  private readonly cdRef = inject(ChangeDetectorRef);
 
   protected get isFormValid(): boolean {
     return this.form.valid || this.form.disabled || this.form.pristine;
   }
 
-  public onEnter(): void {
+  public onAutoSubmit(): void {
     if (!this.form.valid) return;
-
-    if (this.weightSubmitDelay) {
-      clearTimeout(this.weightSubmitDelay);
-      this.weightSubmitDelay = null;
-    }
-
-    if (this.currentState === AnimationState.COUNTDOWN) {
-      this.weightFieldAnimationStateManager.toIdle();
-    }
-
     this.submitValue();
-  }
-
-  public onInput(): void {
-    const control = this.form.controls.bodyWeight;
-    control.markAsTouched();
-
-    if (this.isSubmitting) return;
-
-    if (this.form.valid && control.value !== String(this.previousValue)) {
-      this.weightFieldAnimationStateManager.toIdle();
-      setTimeout(() => {
-        this.weightFieldAnimationStateManager.toCountdown();
-        this.cdRef.detectChanges();
-      });
-
-      if (this.weightSubmitDelay) clearTimeout(this.weightSubmitDelay);
-
-      this.weightSubmitDelay = setTimeout(() => {
-        if (this.currentState === AnimationState.COUNTDOWN) this.submitValue();
-      }, DEFAULT_INPUT_FIELD_PROGRESS_TIMER);
-    } else {
-      if (this.currentState !== AnimationState.SUCCESS && this.currentState !== AnimationState.ERROR) {
-        this.weightFieldAnimationStateManager.toIdle();
-      }
-    }
   }
 
   private async submitValue(): Promise<void> {
@@ -108,8 +54,6 @@ export class BodyWeight {
 
     if (!bodyWeightValue) return;
 
-    this.isSubmitting = true;
-    this.weightFieldAnimationStateManager.toSubmitting();
     this.form.disable();
 
     try {
@@ -123,14 +67,13 @@ export class BodyWeight {
 
       if (!result) throw new Error();
 
-      this.previousValue = bodyWeightValue;
-      this.weightFieldAnimationStateManager.toSuccess();
+      this.autoSubmitResult$$.set(VInputAutoSubmitResult.Success);
       this.bodyWeightInput().blur();
     } catch {
-      this.weightFieldAnimationStateManager.toError();
+      this.autoSubmitResult$$.set(VInputAutoSubmitResult.Error);
     } finally {
       this.form.enable();
-      this.isSubmitting = false;
+      setTimeout(() => this.autoSubmitResult$$.set(null), 1);
     }
   }
 
@@ -148,7 +91,6 @@ export class BodyWeight {
     }
 
     this.form.patchValue({ bodyWeight: String(weight) });
-    this.previousValue = String(weight);
   });
 
   public focusIfEmpty(): void {

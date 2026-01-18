@@ -1,0 +1,13 @@
+<div class="">
+  <v-button class="main-menu-button-darkTheme w-9"
+            [config]="{
+              buttonStyle: ButtonStyle.Flat,
+              isLabelHidden: true,
+            }"
+            (click)="switchTheme()">
+    <v-icon v-prefix
+            class="left-[6px] scale-125"
+            [name]="iconName$$()"
+            [size]="7" />
+  </v-button>
+</div>

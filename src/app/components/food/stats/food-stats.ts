@@ -13,7 +13,6 @@ import {
 import { MatCardModule } from '@angular/material/card';
 import { DeviceInfoService } from '@app/services/device-info.service';
 import { FoodStatsService } from '@app/services/food/food-stats.service';
-import { SettingsService } from '@app/services/settings.service';
 import { KCALS_CHART_SETTINGS, WEIGHT_CHART_SETTINGS } from '@app/shared/const';
 import { StatsChartData } from '@app/shared/interfaces';
 import { formatDateTicks, getRuDeclension } from '@app/shared/utils';
@@ -25,7 +24,6 @@ import {
   BarElement,
   CategoryScale,
   Chart,
-  ChartConfiguration,
   Legend,
   LineController,
   LineElement,
@@ -117,7 +115,6 @@ export class FoodStats implements OnInit, AfterViewInit {
 
   protected readonly deviceInfoService = inject(DeviceInfoService);
   private readonly foodStatsService = inject(FoodStatsService);
-  private readonly settingsService = inject(SettingsService);
 
   private readonly throttledUpdate = this.createThrottledChartUpdater();
 
@@ -126,16 +123,10 @@ export class FoodStats implements OnInit, AfterViewInit {
     this.throttledUpdate(data);
   });
 
-  private readonly kcalsAxisVisibilityEffect = effect(() => {
-    const isLiteVersion = this.settingsService.settings$$()?.liteVersion;
-    this.updateKcalsChartAxisVisibility(isLiteVersion);
-  });
-
   public async ngOnInit(): Promise<void> {
     this.foodStatsService.getStats();
 
-    const isLiteVersion = this.settingsService.settings$$()?.liteVersion;
-    this.initializeCharts(isLiteVersion);
+    this.initializeCharts();
   }
 
   public ngAfterViewInit(): void {
@@ -220,58 +211,9 @@ export class FoodStats implements OnInit, AfterViewInit {
     return parts.join(' ');
   }
 
-  private initializeCharts(isLiteVersion: boolean): void {
+  private initializeCharts(): void {
     this.weightChart$$.set(new Chart('WeightChart', WEIGHT_CHART_SETTINGS));
-
-    const kcalsSettings = this.createKcalsChartSettings(isLiteVersion);
-    this.kcalsChart$$.set(new Chart('KcalsChart', kcalsSettings));
-  }
-
-  private createKcalsChartSettings(isLiteVersion: boolean): ChartConfiguration {
-    const settings = { ...KCALS_CHART_SETTINGS };
-    if (settings.options?.scales?.['y']) {
-      settings.options.scales['y'].ticks = {
-        ...settings.options.scales['y'].ticks,
-        display: !isLiteVersion,
-        stepSize: 500,
-      };
-    }
-
-    if (!settings.options) {
-      settings.options = {};
-    }
-    if (!settings.options.plugins) {
-      settings.options.plugins = {};
-    }
-    settings.options.plugins.tooltip = {
-      ...settings.options.plugins.tooltip,
-      enabled: !isLiteVersion,
-    };
-
-    return settings;
-  }
-
-  private updateKcalsChartAxisVisibility(isLiteVersion: boolean): void {
-    const chart = this.kcalsChart$$();
-    if (chart?.options?.scales) {
-      const yScale = chart.options.scales['y'];
-      if (yScale?.ticks) {
-        yScale.ticks = {
-          ...yScale.ticks,
-          display: !isLiteVersion,
-        };
-      }
-
-      if (!chart.options.plugins) {
-        chart.options.plugins = {};
-      }
-      chart.options.plugins.tooltip = {
-        ...chart.options.plugins.tooltip,
-        enabled: !isLiteVersion,
-      };
-
-      chart.update();
-    }
+    this.kcalsChart$$.set(new Chart('KcalsChart', KCALS_CHART_SETTINGS));
   }
 
   private throttleLatest(delay: number, fn: (data: StatsChartData) => void): (data: StatsChartData) => void {
