@@ -116,7 +116,7 @@
   }
 
   @if (searchResults$$().length > 0) {
-    <v-card @fadeScaleIn
+    <v-card [animate.enter]="AnimationClass.FADE_SCALE_IN"
             class="cursor-pointer"
             [config]="{
               padding: 2

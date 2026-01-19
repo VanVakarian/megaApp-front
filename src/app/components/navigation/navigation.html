@@ -67,7 +67,7 @@
   }
 
   @if (!isDesktop$$()) {
-    <div [@menuSlide]="isMobileMenuOpen$$() ? 'open' : 'closed'"
+    <div [class]="isMobileMenuOpen$$() ? 'menu-slide-open' : 'menu-slide-closed'"
          class="h-dvh fixed top-0 right-0 z-40 pointer-events-none">
       <div class="flex flex-col justify-end h-full gap-4 mx-4 pointer-events-none">
         @for (button of visibleButtons$$(); track button.label) {
@@ -98,12 +98,12 @@
     </div>
 
     <div #fader
-         [@fadeInOut]="isMobileMenuOpen$$() ? 'fadeIn' : 'fadeOut'"
+         [class]="isMobileMenuOpen$$() ? 'fade-in' : 'fade-out'"
          class="h-dvh w-dvw fixed top-0 left-0 z-30 hidden bg-black"
          (click)="closeMobileMenu()">
     </div>
 
-    <div [@fabSlideDiagonal]="shouldHideFabButtons$$() ? 'hidden' : 'visible'"
+    <div [class]="shouldHideFabButtons$$() ? 'fab-slide-hidden' : 'fab-slide-visible'"
          class="fixed bottom-0 right-0 z-50 mb-4 mr-4">
       <v-button [config]="{
                   buttonStyle: isMobileMenuOpen$$() ? ButtonStyle.Danger : ButtonStyle.Primary,

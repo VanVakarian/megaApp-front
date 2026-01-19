@@ -55,7 +55,7 @@
 </div>
 
 @if (authService.isAuthenticated$$() && !deviceInfoService.isDesktopScreen$$()) {
-  <div [@fabHideSlideRight]="shouldHideFabButtons$$() ? 'hidden' : 'visible'"
+  <div [class]="shouldHideFabButtons$$() ? 'fab-hide-slide-right-hidden' : 'fab-hide-slide-right-visible'"
        class="fixed bottom-[88px] right-0 z-20 mr-4">
     <v-button [config]="{
                 buttonStyle: ButtonStyle.Primary,
@@ -71,7 +71,7 @@
     </v-button>
   </div>
 
-  <div [@fabHideSlideDown]="shouldHideFabButtons$$() ? 'hidden' : 'visible'"
+  <div [class]="shouldHideFabButtons$$() ? 'fab-hide-slide-down-hidden' : 'fab-hide-slide-down-visible'"
        class="fixed bottom-4 right-[88px] flex gap-5"
        style="z-index: 10">
     <v-button primary

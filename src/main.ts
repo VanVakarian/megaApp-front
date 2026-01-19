@@ -1,7 +1,6 @@
 import { HTTP_INTERCEPTORS, provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
 import { importProvidersFrom, provideZoneChangeDetection } from '@angular/core';
 import { bootstrapApplication } from '@angular/platform-browser';
-import { provideAnimations } from '@angular/platform-browser/animations';
 import { provideRouter } from '@angular/router';
 import { routes } from '@app/app-routes';
 import { MainAppComponent } from '@app/app.component';
@@ -14,7 +13,6 @@ bootstrapApplication(MainAppComponent, {
     provideZoneChangeDetection(),
     provideHttpClient(withInterceptorsFromDi()),
     provideRouter(routes),
-    provideAnimations(),
     importProvidersFrom(
       JwtModule.forRoot({
         config: {
