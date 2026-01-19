@@ -1,4 +1,3 @@
-import { CommonModule } from '@angular/common';
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { FoodAddModalService } from '@app/services/food/food-add-modal.service';
@@ -19,7 +18,7 @@ const POSITIVE_DECIMAL_PATTERN = /^\d*[.,]?\d*$/;
 @Component({
   selector: 'catalogue-entry-edit-form',
   templateUrl: './catalogue-entry-edit-form.html',
-  imports: [CommonModule, ReactiveFormsModule, VButton, VIcon, VInput],
+  imports: [ReactiveFormsModule, VButton, VIcon, VInput],
 })
 export class CatalogueEntryEditForm implements OnInit {
   protected readonly Icon = IconName;

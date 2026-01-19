@@ -1,4 +1,3 @@
-import { CommonModule } from '@angular/common';
 import { Component, effect, inject, signal, viewChild } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 
@@ -22,7 +21,7 @@ type FormFields = keyof SettingsForm;
 @Component({
   selector: 'settings',
   templateUrl: './settings.html',
-  imports: [CommonModule, ReactiveFormsModule, AuthForm, VCard, VCheckbox, VInput],
+  imports: [ReactiveFormsModule, AuthForm, VCard, VCheckbox, VInput],
 })
 export class Settings {
   protected readonly KeyOfSettings = KeyOfUserSettings;

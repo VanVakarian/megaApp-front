@@ -1,4 +1,3 @@
-import { CommonModule } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -13,7 +12,7 @@ import { firstValueFrom } from 'rxjs';
 @Component({
   selector: 'auth-form',
   templateUrl: './auth-form.html',
-  imports: [CommonModule, ReactiveFormsModule, VCard, VInput, VButton],
+  imports: [ReactiveFormsModule, VCard, VInput, VButton],
 })
 export class AuthForm implements OnInit {
   protected readonly submitted$$ = signal(false);

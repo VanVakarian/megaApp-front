@@ -1,4 +1,3 @@
-import { CommonModule } from '@angular/common';
 import {
   AfterViewInit,
   Component,
@@ -60,7 +59,7 @@ const CHART_UPDATE_INTERVAL_MS = Math.round(1000 / CHART_UPDATES_PER_SECOND);
 @Component({
   selector: 'food-stats',
   templateUrl: './food-stats.html',
-  imports: [VButton, VCard, VSlider, CommonModule],
+  imports: [VButton, VCard, VSlider],
 })
 export class FoodStats implements OnInit, AfterViewInit {
   protected readonly weightChartCanvas = viewChild.required<ElementRef<HTMLCanvasElement>>('weightChartCanvas');

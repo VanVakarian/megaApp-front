@@ -1,4 +1,3 @@
-import { CommonModule } from '@angular/common';
 import {
   AfterViewInit,
   ApplicationRef,
@@ -23,7 +22,7 @@ interface TransactionGroup {
   selector: 'transactions-list',
   templateUrl: './transactions-list.html',
   standalone: true,
-  imports: [CommonModule],
+  imports: [],
 })
 export class TransactionsList implements AfterViewInit, OnDestroy {
   protected currencies$$ = computed(() => this.moneyService.currencies$$());

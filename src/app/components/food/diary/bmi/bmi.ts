@@ -1,4 +1,3 @@
-import { CommonModule } from '@angular/common';
 import { Component, computed, inject, OnInit, Signal } from '@angular/core';
 import { FoodDiaryService } from '@app/services/food/food-diary.service';
 import { SettingsService } from '@app/services/settings.service';
@@ -12,7 +11,7 @@ interface BmiSegment {
 @Component({
   selector: 'bmi',
   templateUrl: './bmi.html',
-  imports: [CommonModule, VIcon],
+  imports: [VIcon],
 })
 export class BMI implements OnInit {
   protected readonly Icon = IconName;
