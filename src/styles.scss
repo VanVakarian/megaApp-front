@@ -50,6 +50,12 @@
     @apply bg-slate-300 dark:bg-slate-700 bg-gradient-to-r from-black dark:from-slate-300 via-black dark:via-slate-300 to-transparent bg-clip-text text-transparent
   }
 
+  .readable-text-bg {
+    background: color-mix(in srgb, var(--v-color-surface) 80%, transparent);
+    border-radius: 4px;
+    box-decoration-break: clone;
+  }
+
 }
 
 html,

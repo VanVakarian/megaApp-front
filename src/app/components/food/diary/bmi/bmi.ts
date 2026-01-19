@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, computed, inject, OnInit, Signal } from '@angular/core';
 import { FoodDiaryService } from '@app/services/food/food-diary.service';
 import { SettingsService } from '@app/services/settings.service';
+import { IconName, VIcon } from '@ui-kit/components/v-icon/v-icon';
 
 interface BmiSegment {
   twSegmentClasses: string;
@@ -11,10 +12,11 @@ interface BmiSegment {
 @Component({
   selector: 'bmi',
   templateUrl: './bmi.html',
-  styleUrl: './bmi.scss',
-  imports: [CommonModule],
+  imports: [CommonModule, VIcon],
 })
 export class BMI implements OnInit {
+  protected readonly Icon = IconName;
+
   protected readonly bmiSegments: BmiSegment[] = [
     {
       twSegmentClasses: 'relative h-2 rounded-l-md bg-yellow-300',
