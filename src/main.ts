@@ -1,7 +1,7 @@
 import { HTTP_INTERCEPTORS, provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
 import { importProvidersFrom } from '@angular/core';
 import { bootstrapApplication } from '@angular/platform-browser';
-import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
+import { provideAnimations } from '@angular/platform-browser/animations';
 import { provideRouter } from '@angular/router';
 import { routes } from '@app/app-routes';
 import { MainAppComponent } from '@app/app.component';
@@ -13,8 +13,8 @@ bootstrapApplication(MainAppComponent, {
   providers: [
     provideHttpClient(withInterceptorsFromDi()),
     provideRouter(routes),
+    provideAnimations(),
     importProvidersFrom(
-      BrowserAnimationsModule,
       JwtModule.forRoot({
         config: {
           tokenGetter,
