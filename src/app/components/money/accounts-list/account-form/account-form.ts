@@ -1,4 +1,3 @@
-import { CommonModule } from '@angular/common';
 import { Component, input, OnInit, output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MoneyService } from '@app/services/money.service';
@@ -8,7 +7,7 @@ import { Account, AccountKind, Category, Currency } from '@app/shared/interfaces
   selector: 'account-form',
   templateUrl: './account-form.html',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [FormsModule],
 })
 export class AccountForm implements OnInit {
   public readonly account = input<Account | null>(null);

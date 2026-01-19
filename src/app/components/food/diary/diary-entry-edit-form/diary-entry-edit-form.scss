@@ -1,8 +1,3 @@
-:host {
-  display: flex;
-  flex-direction: column;
-}
-
 ::ng-deep {
   v-expand.history-list {
     div.body {
@@ -10,10 +5,4 @@
       place-content: flex-end;
     }
   }
-}
-
-.readable-text-bg {
-  background: color-mix(in srgb, var(--v-color-surface) 80%, transparent);
-  border-radius: 4px;
-  box-decoration-break: clone;
 }

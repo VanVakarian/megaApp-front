@@ -1,0 +1,115 @@
+.fade-scale-in-animation {
+  animation: fade-scale-in var(--animation-duration-medium) ease-out;
+}
+
+@keyframes fade-scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.8) translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0px);
+  }
+}
+
+.slide-in-right-animation {
+  animation: slide-in-right var(--animation-duration-fast) ease-in-out;
+}
+
+@keyframes slide-in-right {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateX(0%);
+    opacity: 1;
+  }
+}
+
+.slide-out-right-animation {
+  opacity: 0;
+  transform: translateX(100%);
+  transition:
+    transform var(--animation-duration-fast) ease-in-out,
+    opacity var(--animation-duration-fast) ease-in-out;
+}
+
+.slide-in-left-animation {
+  animation: slide-in-left var(--animation-duration-fast) ease-in-out;
+}
+
+@keyframes slide-in-left {
+  from {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateX(0%);
+    opacity: 1;
+  }
+}
+
+.slide-out-left-animation {
+  opacity: 0;
+  transform: translateX(-100%);
+  transition:
+    transform var(--animation-duration-fast) ease-in-out,
+    opacity var(--animation-duration-fast) ease-in-out;
+}
+
+// Navigation component animations
+.menu-slide-open {
+  transform: translateX(0);
+  transition: transform var(--animation-duration-medium) cubic-bezier(0.68, -0.6, 0.32, 1.6);
+}
+
+.menu-slide-closed {
+  transform: translateX(100%);
+  transition: transform var(--animation-duration-medium) cubic-bezier(0.68, -0.6, 0.32, 1.6);
+}
+
+.fade-in {
+  opacity: 0.75;
+  transition: opacity var(--animation-duration-medium) ease-in-out;
+}
+
+.fade-out {
+  opacity: 0;
+  transition: opacity var(--animation-duration-medium) ease-in-out;
+}
+
+.fab-slide-visible {
+  transform: translate(0, 0);
+  transition: transform var(--animation-duration-medium) ease-in-out;
+}
+
+.fab-slide-hidden {
+  transform: translate(200%, 200%);
+  transition: transform var(--animation-duration-medium) ease-in-out;
+}
+
+// Diary nav buttons animations
+.fab-hide-slide-down-visible {
+  transform: translateY(0);
+  transition: transform var(--animation-duration-medium) ease-in-out;
+}
+
+.fab-hide-slide-down-hidden {
+  transform: translateY(200%);
+  transition: transform var(--animation-duration-medium) ease-in-out;
+}
+
+.fab-hide-slide-right-visible {
+  transform: translateX(0);
+  transition: transform var(--animation-duration-medium) ease-in-out;
+}
+
+.fab-hide-slide-right-hidden {
+  transform: translateX(200%);
+  transition: transform var(--animation-duration-medium) ease-in-out;
+}

@@ -1,4 +1,3 @@
-import { CommonModule } from '@angular/common';
 import { Component, input, OnInit, output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MoneyService } from '@app/services/money.service';
@@ -8,7 +7,7 @@ import { Category, UsedFor } from '@app/shared/interfaces';
   selector: 'category-form',
   templateUrl: './category-form.html',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [FormsModule],
 })
 export class CategoryForm implements OnInit {
   public readonly category = input<Category | null>(null);

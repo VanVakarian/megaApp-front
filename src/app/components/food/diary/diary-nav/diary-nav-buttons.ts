@@ -1,4 +1,3 @@
-import { animate, state, style, transition, trigger } from '@angular/animations';
 import { CommonModule } from '@angular/common';
 import { Component, computed, ElementRef, inject, Signal, viewChild } from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
@@ -6,7 +5,6 @@ import { AuthService } from '@app/services/auth.service';
 import { DeviceInfoService } from '@app/services/device-info.service';
 import { FoodAddModalService } from '@app/services/food/food-add-modal.service';
 import { FoodDiaryService } from '@app/services/food/food-diary.service';
-import { ANIMATION_DURATION_MS_STRING } from '@app/shared/animations';
 import { FitTextOnOverflowDirective } from '@app/shared/directives/fit-text-on-overflow.directive';
 import { calcDateWithUserTimeShift, calculateTodayIsoWithUserTimeShift, dateToIsoNoTimeNoTZ } from '@app/shared/utils';
 import { VButton } from '@ui-kit/components/v-button/v-button';
@@ -18,18 +16,6 @@ import { ButtonStyle } from '@ui-kit/types';
   templateUrl: './diary-nav-buttons.html',
   styleUrl: './diary-nav-buttons.scss',
   imports: [CommonModule, ReactiveFormsModule, FitTextOnOverflowDirective, VButton, VIcon],
-  animations: [
-    trigger('fabHideSlideDown', [
-      state('visible', style({ transform: 'translateY(0)' })),
-      state('hidden', style({ transform: 'translateY(200%)' })),
-      transition('visible <=> hidden', [animate(`${ANIMATION_DURATION_MS_STRING.MEDIUM} ease-in-out`)]),
-    ]),
-    trigger('fabHideSlideRight', [
-      state('visible', style({ transform: 'translateX(0)' })),
-      state('hidden', style({ transform: 'translateX(200%)' })),
-      transition('visible <=> hidden', [animate(`${ANIMATION_DURATION_MS_STRING.MEDIUM} ease-in-out`)]),
-    ]),
-  ],
 })
 export class DiaryNavButtons {
   protected readonly dateInputElem = viewChild<ElementRef<HTMLInputElement>>('dateInputElem');

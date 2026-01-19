@@ -1,4 +1,3 @@
-import { CommonModule } from '@angular/common';
 import { Component, inject, OnInit } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { FoodDiary } from '@app/components/food/diary/food-diary';
@@ -9,7 +8,7 @@ import { FoodDiaryService } from '@app/services/food/food-diary.service';
 @Component({
   selector: 'food-screen',
   templateUrl: './food-screen.html',
-  imports: [CommonModule, FoodStats, FoodDiary],
+  imports: [FoodStats, FoodDiary],
 })
 export class FoodScreen implements OnInit {
   protected selectedFoodSection = '';

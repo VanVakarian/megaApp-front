@@ -1,4 +1,3 @@
-import { CommonModule } from '@angular/common';
 import { Component, effect, input, output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MoneyService } from '@app/services/money.service';
@@ -8,7 +7,7 @@ import { Account, Category, Transaction, TransactionKind, UsedFor } from '@app/s
   selector: 'transaction-form',
   templateUrl: './transaction-form.html',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [FormsModule],
 })
 export class TransactionForm {
   public readonly dateIsoInput = input<string | null>(null);

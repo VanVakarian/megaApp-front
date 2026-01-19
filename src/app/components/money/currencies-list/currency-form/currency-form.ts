@@ -1,4 +1,3 @@
-import { CommonModule } from '@angular/common';
 import { Component, input, OnInit, output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MoneyService } from '../../../../services/money.service';
@@ -8,7 +7,7 @@ import { Currency, SymbolPosition } from '../../../../shared/interfaces';
   selector: 'currency-form',
   templateUrl: './currency-form.html',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [FormsModule],
 })
 export class CurrencyForm implements OnInit {
   public readonly currency = input<Currency | null>(null);

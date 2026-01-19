@@ -1,4 +1,3 @@
-import { CommonModule } from '@angular/common';
 import {
   AfterViewInit,
   Component,
@@ -10,7 +9,6 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
-import { MatCardModule } from '@angular/material/card';
 import { DeviceInfoService } from '@app/services/device-info.service';
 import { FoodStatsService } from '@app/services/food/food-stats.service';
 import { KCALS_CHART_SETTINGS, WEIGHT_CHART_SETTINGS } from '@app/shared/const';
@@ -61,7 +59,7 @@ const CHART_UPDATE_INTERVAL_MS = Math.round(1000 / CHART_UPDATES_PER_SECOND);
 @Component({
   selector: 'food-stats',
   templateUrl: './food-stats.html',
-  imports: [VButton, VCard, VSlider, CommonModule, MatCardModule],
+  imports: [VButton, VCard, VSlider],
 })
 export class FoodStats implements OnInit, AfterViewInit {
   protected readonly weightChartCanvas = viewChild.required<ElementRef<HTMLCanvasElement>>('weightChartCanvas');

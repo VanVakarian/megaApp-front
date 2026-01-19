@@ -1,4 +1,3 @@
-import { CommonModule } from '@angular/common';
 import { Component, computed } from '@angular/core';
 import { MoneyService } from '@app/services/money.service';
 import { Account, AccountKind, Category, UsedFor } from '@app/shared/interfaces';
@@ -8,7 +7,7 @@ import { AccountForm } from './account-form/account-form';
   selector: 'accounts-list',
   templateUrl: './accounts-list.html',
   standalone: true,
-  imports: [CommonModule, AccountForm],
+  imports: [AccountForm],
 })
 export class AccountsList {
   protected accounts$$ = computed(() => this.moneyService.accounts$$());
