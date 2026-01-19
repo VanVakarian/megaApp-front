@@ -5,7 +5,7 @@ import { FoodAddModalService, ModalState } from '@app/services/food/food-add-mod
 import { FoodCatalogueService } from '@app/services/food/food-catalogue.service';
 import { FoodDiaryService } from '@app/services/food/food-diary.service';
 import { VoiceRecordingService } from '@app/services/voice-recording.service';
-import { fadeScaleInAnimation } from '@app/shared/animations';
+import { ANIMATION_CLASSES } from '@app/shared/animations';
 import { FlipAnimateDirective } from '@app/shared/directives/flip-animate.directive';
 import { CatalogueEntry, DiaryEntry, HistoryEntryAction } from '@app/shared/interfaces';
 import { VButton } from '@ui-kit/components/v-button/v-button';
@@ -18,10 +18,10 @@ import { VInput } from '@ui-kit/components/v-input/v-input';
   templateUrl: './food-search.html',
   styleUrl: './food-search.scss',
   imports: [VInput, VButton, VIcon, VCard, FlipAnimateDirective, NgClass],
-  animations: [fadeScaleInAnimation],
 })
 export class FoodSearch {
   protected readonly Icon = IconName;
+  protected readonly AnimationClass = ANIMATION_CLASSES;
 
   protected readonly isLegacySearch$$ = computed(() => this.foodCatalogueService.isLegacySearch$$());
 

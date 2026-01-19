@@ -14,7 +14,6 @@ import { UiProgressIcon } from '@ui-kit/progress-icon/progress-icon.component';
 @Component({
   selector: 'diary-entry-add-form',
   templateUrl: './diary-entry-add-form.html',
-  styleUrl: './diary-entry-add-form.scss',
   imports: [ReactiveFormsModule, UiProgressIcon, VButton, VIcon, VInput],
 })
 export class DiaryEntryAddForm implements AfterViewInit {

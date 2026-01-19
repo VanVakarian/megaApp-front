@@ -33,7 +33,9 @@ interface DiaryEntryFormModel {
 @Component({
   selector: 'diary-entry-edit-form',
   templateUrl: './diary-entry-edit-form.html',
-  styleUrl: './diary-entry-edit-form.scss',
+  host: {
+    style: 'display: flex; flex-direction: column;',
+  },
   imports: [
     ReactiveFormsModule,
     UiProgressIcon,

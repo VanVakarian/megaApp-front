@@ -1,4 +1,3 @@
-import { CommonModule } from '@angular/common';
 import { Component, computed } from '@angular/core';
 import { MoneyService } from '../../../services/money.service';
 import { Currency } from '../../../shared/interfaces';
@@ -8,7 +7,7 @@ import { CurrencyForm } from './currency-form/currency-form';
   selector: 'currencies-list',
   templateUrl: './currencies-list.html',
   standalone: true,
-  imports: [CommonModule, CurrencyForm],
+  imports: [CurrencyForm],
 })
 export class CurrenciesList {
   protected currencies$$ = computed(() => this.moneyService.currencies$$());
