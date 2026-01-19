@@ -1,6 +1,5 @@
 import { CommonModule } from '@angular/common';
 import { Component, computed, inject, OnInit, Signal } from '@angular/core';
-import { MatIconModule } from '@angular/material/icon';
 import { FoodDiaryService } from '@app/services/food/food-diary.service';
 import { SettingsService } from '@app/services/settings.service';
 
@@ -13,7 +12,7 @@ interface BmiSegment {
   selector: 'bmi',
   templateUrl: './bmi.html',
   styleUrl: './bmi.scss',
-  imports: [CommonModule, MatIconModule],
+  imports: [CommonModule],
 })
 export class BMI implements OnInit {
   protected readonly bmiSegments: BmiSegment[] = [
