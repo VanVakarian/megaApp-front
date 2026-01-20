@@ -82,7 +82,12 @@ export class FoodStatsService {
   }
 
   private setupInitialDateRange() {
-    setTimeout(() => this.clipDateRange(90), 1);
+    setTimeout(() => {
+      const totalDaysAvailable = this.statsChartData$$().dates.length;
+      if (totalDaysAvailable === 0) return;
+      this.selectedDateIdxEnd$$.set(totalDaysAvailable - 1);
+      this.clipDateRange(90);
+    }, 1);
   }
 
   private prepareChartData(): StatsChartData {
@@ -335,13 +340,37 @@ export class FoodStatsService {
   }
 
   public clipDateRange(daysAmtToShow: number) {
+    const [start, end] = this.getClipRange(daysAmtToShow);
+    this.selectedDateIdxStart$$.set(start);
+    this.selectedDateIdxEnd$$.set(end);
+  }
+
+  public getClipRange(daysAmtToShow: number): [number, number] {
     const totalDaysAvailable = this.statsChartData$$().dates.length;
     const isShowAllDays = daysAmtToShow === -1;
     const hasEnoughDaysForDisplay = totalDaysAvailable > daysAmtToShow;
-    const firstDayIndex = isShowAllDays || !hasEnoughDaysForDisplay ? 0 : totalDaysAvailable - daysAmtToShow;
+    const lastDayIndex = totalDaysAvailable - 1;
 
-    this.selectedDateIdxStart$$.set(firstDayIndex);
-    this.selectedDateIdxEnd$$.set(totalDaysAvailable - 1);
+    if (totalDaysAvailable === 0) {
+      return [0, 0];
+    }
+
+    if (isShowAllDays || !hasEnoughDaysForDisplay) {
+      return [0, lastDayIndex];
+    }
+
+    const currentEnd = this.selectedDateIdxEnd$$();
+    const boundedEnd = currentEnd < 0 || currentEnd > lastDayIndex ? lastDayIndex : currentEnd;
+    const desiredLength = daysAmtToShow;
+    const desiredStart = boundedEnd - desiredLength + 1;
+
+    if (desiredStart >= 0) {
+      return [desiredStart, boundedEnd];
+    }
+
+    const missingLeft = Math.abs(desiredStart);
+    const shiftedEnd = Math.min(lastDayIndex, boundedEnd + missingLeft);
+    return [0, shiftedEnd];
   }
 
   private saveStatsToLocalStorage(): void {
