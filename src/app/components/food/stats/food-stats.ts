@@ -44,9 +44,6 @@ Chart.register(
   Legend,
 );
 
-const CHART_UPDATES_PER_SECOND = 10;
-const CHART_UPDATE_INTERVAL_MS = Math.round(1000 / CHART_UPDATES_PER_SECOND);
-
 /**
  * Food stats charts flow:
  * - Raw daily stats are loaded into a service and transformed into full and clipped datasets.
@@ -114,11 +111,10 @@ export class FoodStats implements OnInit, AfterViewInit {
   protected readonly deviceInfoService = inject(DeviceInfoService);
   private readonly foodStatsService = inject(FoodStatsService);
 
-  private readonly throttledUpdate = this.createThrottledChartUpdater();
-
   private readonly chartsUpdateEffect = effect(() => {
     const data = this.foodStatsService.statsChartDataClipped$$();
-    this.throttledUpdate(data);
+    this.updateWeightChart(data);
+    this.updateKcalsChart(data);
   });
 
   public async ngOnInit(): Promise<void> {
@@ -170,13 +166,6 @@ export class FoodStats implements OnInit, AfterViewInit {
     }
   }
 
-  private createThrottledChartUpdater() {
-    return this.throttleLatest(CHART_UPDATE_INTERVAL_MS, (data) => {
-      this.updateWeightChart(data);
-      this.updateKcalsChart(data);
-    });
-  }
-
   private formatSelectedRange(selectedDaysCount: number): string {
     const DAYS_IN_YEAR = 365;
     const DAYS_IN_MONTH = 30;
@@ -212,37 +201,5 @@ export class FoodStats implements OnInit, AfterViewInit {
   private initializeCharts(): void {
     this.weightChart$$.set(new Chart('WeightChart', WEIGHT_CHART_SETTINGS));
     this.kcalsChart$$.set(new Chart('KcalsChart', KCALS_CHART_SETTINGS));
-  }
-
-  private throttleLatest(delay: number, fn: (data: StatsChartData) => void): (data: StatsChartData) => void {
-    let lastCall = 0;
-    let timeoutId: ReturnType<typeof setTimeout> | null = null;
-    let pendingData: StatsChartData | null = null;
-
-    return (data: StatsChartData) => {
-      const now = Date.now();
-      pendingData = data;
-      const elapsed = now - lastCall;
-
-      if (elapsed >= delay) {
-        if (timeoutId) {
-          clearTimeout(timeoutId);
-          timeoutId = null;
-        }
-        lastCall = now;
-        fn(data);
-        return;
-      }
-
-      if (!timeoutId) {
-        const remaining = delay - elapsed;
-        timeoutId = setTimeout(() => {
-          timeoutId = null;
-          if (!pendingData) return;
-          lastCall = Date.now();
-          fn(pendingData);
-        }, remaining);
-      }
-    };
   }
 }
