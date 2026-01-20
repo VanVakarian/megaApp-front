@@ -11,14 +11,14 @@
     </div>
   }
 
-  <div class="chart-container h-[250px]">
+  <div class="chart-container h-[200px]">
     <canvas #weightChartCanvas
             id="WeightChart">
       {{ weightChart$$() }}
     </canvas>
   </div>
 
-  <div class="chart-container h-[250px]">
+  <div class="chart-container pl-[22px] h-[200px]">
     <canvas #kcalsChartCanvas
             id="KcalsChart">
       {{ kcalsChart$$() }}
@@ -54,15 +54,15 @@
   <div class="flex gap-3">
     <v-button raised
               class="grow"
-              (onClick)="clipDateRange(-1)"> Выбрать всё </v-button>
+              (onClick)="animateClipDateRange(-1)"> Выбрать всё </v-button>
 
     <v-button raised
               class="grow"
-              (onClick)="clipDateRange(360)"> 1 год </v-button>
+              (onClick)="animateClipDateRange(360)"> 1 год </v-button>
 
     <v-button raised
               class="grow"
-              (onClick)="clipDateRange(90)"> 3 месяца </v-button>
+              (onClick)="animateClipDateRange(90)"> 3 месяца </v-button>
   </div>
 
   <div class="h-[40vh]"></div>
