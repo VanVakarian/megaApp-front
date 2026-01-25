@@ -1,5 +1,5 @@
 <div class="flex justify-end gap-2 mb-2">
-  <v-button raised
+  <v-button class="v-raised"
             [config]="{
               isLabelHidden: true,
               padding: 2,
@@ -10,7 +10,7 @@
             [size]="6" />
   </v-button>
 
-  <v-button raised
+  <v-button class="v-raised"
             [config]="{
               isLabelHidden: true,
               padding: 2,
@@ -21,7 +21,7 @@
             [size]="6" />
   </v-button>
 
-  <v-button raised
+  <v-button class="v-raised"
             [config]="{
               isLabelHidden: true,
               padding: 2,
@@ -115,7 +115,7 @@
              }"
              (onInputChanged)="onNewWeightInput()">
       @if (foodWeightNewControl.value !== null) {
-        <v-button flat
+        <v-button class="v-link v-link-static"
                   v-prefix
                   tabindex="-1"
                   [config]="{
@@ -152,7 +152,7 @@
              }"
              (onInputChanged)="onChangeWeightInput()">
       @if (foodWeightChangeControl.value !== null) {
-        <v-button flat
+        <v-button class="v-link v-link-static"
                   v-prefix
                   tabindex="-1"
                   [config]="{
@@ -178,8 +178,7 @@
   </div>
 
   <div class="flex w-full gap-4">
-    <v-button danger
-              class="text-lg"
+    <v-button class="v-danger text-lg"
               [config]="{
                 type: 'button',
               }"
@@ -187,8 +186,7 @@
       Удалить
     </v-button>
 
-    <v-button primary
-              class="grow w-full text-lg"
+    <v-button class="v-primary grow w-full text-lg"
               [config]="{
                 type: 'submit',
                 isDisabled: !isFormValid(),
@@ -213,14 +211,15 @@
     </div>
 
     <div class="flex gap-4">
-      <v-button [config]="{
+      <v-button class="v-flat"
+                [config]="{
                   width: '100%'
                 }"
                 (onClick)="closeConfirmationModal()">
         Нет
       </v-button>
 
-      <v-button danger
+      <v-button class="v-danger"
                 [config]="{
                   width: '100%'
                 }"

@@ -88,7 +88,8 @@
     </div>
 
     <div class="flex justify-between gap-4 mt-0">
-      <v-button [config]="{
+      <v-button class="v-link v-link-static"
+                [config]="{
                   isLabelHidden: true,
                   padding: 0,
                 }"
@@ -98,7 +99,8 @@
                 [size]="10" />
       </v-button>
 
-      <v-button type="submit"
+      <v-button class="v-primary"
+                type="submit"
                 [config]="{
                   type: 'submit',
                   isDisabled: !isFormValid() || isSaving$$(),

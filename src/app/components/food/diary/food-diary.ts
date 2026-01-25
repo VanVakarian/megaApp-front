@@ -30,7 +30,6 @@ import { AccordionService } from '@ui-kit/components/v-expand/accordion.service'
 import { VExpand } from '@ui-kit/components/v-expand/v-expand';
 import { VModal } from '@ui-kit/components/v-modal/v-modal';
 import { OuterShadowRoundedDirective } from '@ui-kit/directives/shadow.directive';
-import { ButtonStyle } from '@ui-kit/types';
 import { CatalogueEntryEditForm } from './catalogue-entry-edit-form/catalogue-entry-edit-form';
 import { NutritionSummary } from './nutrition-summary/nutrition-summary';
 
@@ -97,13 +96,13 @@ export class FoodDiary implements AfterViewInit {
     return `Съедено ${percent}% от дневной нормы`;
   });
 
-  protected readonly addDiaryEntryButtonStyle$$ = computed(() => {
-    if (this.deviceInfoService.isDesktopScreen$$()) return ButtonStyle.Primary;
+  protected readonly addDiaryEntryButtonVariant$$ = computed(() => {
+    if (this.deviceInfoService.isDesktopScreen$$()) return 'primary';
 
     const openedIds = this.accordionService.openedIds$$();
     const openedId = openedIds.get('food-group');
     const isAnyAccordionOpen = openedId !== null && openedId !== undefined;
-    return isAnyAccordionOpen ? ButtonStyle.Raised : ButtonStyle.Primary;
+    return isAnyAccordionOpen ? 'raised' : 'primary';
   });
 
   private readonly columnWidthsSyncEffect$$ = effect(() => {

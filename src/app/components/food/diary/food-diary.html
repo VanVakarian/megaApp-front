@@ -111,9 +111,10 @@
 
 @if (deviceInfoService.isDesktopScreen$$()) {
   <v-button class="mt-4"
+            [class.v-primary]="addDiaryEntryButtonVariant$$() === 'primary'"
+            [class.v-raised]="addDiaryEntryButtonVariant$$() === 'raised'"
             [config]="{
-              width: '100%',
-              buttonStyle: addDiaryEntryButtonStyle$$()
+              width: '100%'
             }"
             (onClick)="openAddFoodModal()">
     Добавить запись

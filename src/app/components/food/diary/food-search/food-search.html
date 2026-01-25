@@ -7,10 +7,9 @@
            (onEnterPressed)="onSearchEnterPressed($event)"
            [(value)]="foodAddModalService.searchQuery$$">
     @if (isLegacySearch$$()) {
-      <v-button primary
+      <v-button class="v-primary mx-2"
                 v-prefix
                 tabindex="-1"
-                class="mx-2"
                 [config]="{
                   isLabelHidden: true,
                   isWithoutShadow: true,
@@ -23,10 +22,9 @@
                 [size]="6" />
       </v-button>
     } @else {
-      <v-button raised
+      <v-button class="v-raised mx-2"
                 v-prefix
                 tabindex="-1"
-                class="mx-2"
                 [config]="{
                   isLabelHidden: true,
                   isWithoutShadow: true,
@@ -41,7 +39,7 @@
     }
 
     @if (foodAddModalService.searchQuery$$() !== '') {
-      <v-button flat
+      <v-button class="v-link v-link-static"
                 v-postfix
                 tabindex="-1"
                 [config]="{
@@ -132,7 +130,7 @@
 
 @if (searchResults$$().length > 0 && this.deviceInfoService.isMobileScreen$$()) {
   <div class="sticky bottom-0 flex justify-start px-4 pb-4">
-    <v-button danger
+    <v-button class="v-danger"
               [config]="{
                 isWithoutShadow: true,
                 isLabelHidden: true,

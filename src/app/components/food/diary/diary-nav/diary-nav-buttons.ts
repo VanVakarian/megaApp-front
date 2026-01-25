@@ -9,7 +9,6 @@ import { FitTextOnOverflowDirective } from '@app/shared/directives/fit-text-on-o
 import { calcDateWithUserTimeShift, calculateTodayIsoWithUserTimeShift, dateToIsoNoTimeNoTZ } from '@app/shared/utils';
 import { VButton } from '@ui-kit/components/v-button/v-button';
 import { IconName, VIcon } from '@ui-kit/components/v-icon/v-icon';
-import { ButtonStyle } from '@ui-kit/types';
 
 @Component({
   selector: 'diary-nav-buttons',
@@ -49,8 +48,6 @@ export class DiaryNavButtons {
   });
 
   protected readonly Icon = IconName;
-  protected readonly ButtonStyle = ButtonStyle;
-
   private selectedDateMsWithUserHourShift: number = this.initDateTodayWithUserHourShift.getTime();
 
   protected readonly authService = inject(AuthService);

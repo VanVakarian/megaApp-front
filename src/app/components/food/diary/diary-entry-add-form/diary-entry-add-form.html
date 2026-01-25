@@ -16,8 +16,7 @@
         </span>
       </div>
 
-      <v-button raised
-                class="self-start"
+      <v-button class="v-raised self-start"
                 [config]="{
                   isLabelHidden: true,
                   padding: 2,
@@ -59,7 +58,7 @@
     </div>
 
     <div class="flex justify-end gap-4">
-      <v-button primary
+      <v-button class="v-primary"
                 [config]="{
                   isLabelHidden: true,
                   padding: 1,
@@ -70,7 +69,8 @@
                 [size]="9" />
       </v-button>
 
-      <v-button [config]="{
+      <v-button class="v-primary"
+                [config]="{
                   type: 'submit',
                   isDisabled: !isFormValid(),
                 }">

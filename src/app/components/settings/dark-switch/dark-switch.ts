@@ -3,7 +3,6 @@ import { Component, computed, inject } from '@angular/core';
 import { SettingsService } from '@app/services/settings.service';
 import { VButton } from '@ui-kit/components/v-button/v-button';
 import { IconName, VIcon } from '@ui-kit/components/v-icon/v-icon';
-import { ButtonStyle } from '@ui-kit/types';
 
 @Component({
   selector: 'dark-switch',
@@ -11,8 +10,6 @@ import { ButtonStyle } from '@ui-kit/types';
   imports: [CommonModule, VButton, VIcon],
 })
 export class DarkSwitch {
-  protected readonly ButtonStyle = ButtonStyle;
-
   protected readonly settingsService = inject(SettingsService);
 
   protected readonly iconName$$ = computed(() => {
