@@ -14,8 +14,6 @@ import { FoodCoefficientsService } from '@app/services/food/food-coefficients.se
 import { FoodDiaryService } from '@app/services/food/food-diary.service';
 import { DiaryEntry, HistoryEntry, HistoryEntryAction } from '@app/shared/interfaces';
 import { VButton } from '@ui-kit/components/v-button/v-button';
-import { AccordionDirective } from '@ui-kit/components/v-expand/accordion.directive';
-import { AccordionService } from '@ui-kit/components/v-expand/accordion.service';
 import { VExpand } from '@ui-kit/components/v-expand/v-expand';
 import { IconName, VIcon } from '@ui-kit/components/v-icon/v-icon';
 import { VInput } from '@ui-kit/components/v-input/v-input';
@@ -42,7 +40,6 @@ interface DiaryEntryFormModel {
     VButton,
     VIcon,
     VExpand,
-    AccordionDirective,
     VInput,
     VModal,
     DiaryEntryProductInfo,
@@ -58,12 +55,11 @@ export class DiaryEntryEditForm implements OnChanges {
 
   protected readonly foodWeightNewElem = viewChild.required<VInput>('foodWeightNewElem');
   protected readonly foodWeightChangeElem = viewChild.required<VInput>('foodWeightChangeElem');
+  protected readonly infoPanelElem = viewChild.required<VExpand>('infoPanelElem');
+  protected readonly chartsPanelElem = viewChild.required<VExpand>('chartsPanelElem');
+  protected readonly historyPanelElem = viewChild.required<VExpand>('historyPanelElem');
 
   protected isDeleteConfirmOpen = false;
-  protected accordionGroupId = '';
-  protected infoPanelId = 'info-panel';
-  protected chartsPanelId = 'charts-panel';
-  protected historyPanelId = 'history-panel';
   protected disablePanelsAnimationTemporarily = false;
   private historyAction: HistoryEntryAction = HistoryEntryAction.SET;
 
@@ -80,8 +76,11 @@ export class DiaryEntryEditForm implements OnChanges {
   protected readonly Icon = IconName;
 
   protected readonly hasOpenPanel$$ = computed(() => {
-    const openedId = this.accordionService.openedIds$$().get(this.accordionGroupId);
-    return openedId !== null && openedId !== undefined;
+    return (
+      this.infoPanelElem().isPanelExpanded() ||
+      this.chartsPanelElem().isPanelExpanded() ||
+      this.historyPanelElem().isPanelExpanded()
+    );
   });
 
   private newWeightPattern = /^(?!0+$)\d+$/; // Digits only, but not zero
@@ -154,7 +153,6 @@ export class DiaryEntryEditForm implements OnChanges {
   private readonly foodDiaryService = inject(FoodDiaryService);
   private readonly foodCatalogueService = inject(FoodCatalogueService);
   private readonly foodCoefficientsService = inject(FoodCoefficientsService);
-  private readonly accordionService = inject(AccordionService);
 
   public ngOnChanges(): void {
     if (this.diaryEntry) {
@@ -163,8 +161,6 @@ export class DiaryEntryEditForm implements OnChanges {
       });
       this.foodWeightInitial = this.diaryEntry.foodWeight;
       this.foodWeightFinal = this.diaryEntry.foodWeight;
-
-      this.accordionGroupId = `diary-entry-${this.diaryEntry.id}`;
 
       setTimeout(() => {
         this.updateProjectedDaysConsumedPercent();
@@ -340,15 +336,36 @@ export class DiaryEntryEditForm implements OnChanges {
   }
 
   protected toggleInfoPanel(): void {
-    this.accordionService.toggle(this.accordionGroupId, this.infoPanelId);
+    const isExpanded = this.infoPanelElem().isPanelExpanded();
+
+    if (!isExpanded) {
+      this.chartsPanelElem().setExpanded(false);
+      this.historyPanelElem().setExpanded(false);
+    }
+
+    this.infoPanelElem().setExpanded(!isExpanded);
   }
 
   protected toggleChartsPanel(): void {
-    this.accordionService.toggle(this.accordionGroupId, this.chartsPanelId);
+    const isExpanded = this.chartsPanelElem().isPanelExpanded();
+
+    if (!isExpanded) {
+      this.infoPanelElem().setExpanded(false);
+      this.historyPanelElem().setExpanded(false);
+    }
+
+    this.chartsPanelElem().setExpanded(!isExpanded);
   }
 
   protected toggleHistoryPanel(): void {
-    this.accordionService.toggle(this.accordionGroupId, this.historyPanelId);
+    const isExpanded = this.historyPanelElem().isPanelExpanded();
+
+    if (!isExpanded) {
+      this.infoPanelElem().setExpanded(false);
+      this.chartsPanelElem().setExpanded(false);
+    }
+
+    this.historyPanelElem().setExpanded(!isExpanded);
   }
 
   private async deleteDiaryEntry(): Promise<void> {
@@ -397,7 +414,9 @@ export class DiaryEntryEditForm implements OnChanges {
 
   private closePanels(): void {
     this.disablePanelsAnimationTemporarily = true;
-    this.accordionService.closeGroup(this.accordionGroupId);
+    this.infoPanelElem().setExpanded(false);
+    this.chartsPanelElem().setExpanded(false);
+    this.historyPanelElem().setExpanded(false);
     setTimeout(() => {
       this.disablePanelsAnimationTemporarily = false;
     }, 100);

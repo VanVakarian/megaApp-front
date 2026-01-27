@@ -9,7 +9,7 @@ import { FitTextOnOverflowDirective } from '@app/shared/directives/fit-text-on-o
 import { calcDateWithUserTimeShift, calculateTodayIsoWithUserTimeShift, dateToIsoNoTimeNoTZ } from '@app/shared/utils';
 import { VButton } from '@ui-kit/components/v-button/v-button';
 import { IconName, VIcon } from '@ui-kit/components/v-icon/v-icon';
-import { ButtonStyle } from '@ui-kit/types';
+import { AccordionGroupService } from '@ui-kit/services/accordion-group.service';
 
 @Component({
   selector: 'diary-nav-buttons',
@@ -18,6 +18,8 @@ import { ButtonStyle } from '@ui-kit/types';
   imports: [CommonModule, ReactiveFormsModule, FitTextOnOverflowDirective, VButton, VIcon],
 })
 export class DiaryNavButtons {
+  private readonly accordionGroupService = inject(AccordionGroupService);
+
   protected readonly dateInputElem = viewChild<ElementRef<HTMLInputElement>>('dateInputElem');
 
   protected initDateTodayWithUserHourShift: Date = calcDateWithUserTimeShift(new Date());
@@ -49,8 +51,6 @@ export class DiaryNavButtons {
   });
 
   protected readonly Icon = IconName;
-  protected readonly ButtonStyle = ButtonStyle;
-
   private selectedDateMsWithUserHourShift: number = this.initDateTodayWithUserHourShift.getTime();
 
   protected readonly authService = inject(AuthService);
@@ -147,6 +147,7 @@ export class DiaryNavButtons {
   }
 
   protected openAddFoodModal(): void {
+    this.accordionGroupService.closeAll('food-diary-section');
     this.foodAddModalService.openModal();
   }
 }

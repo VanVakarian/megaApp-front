@@ -30,8 +30,7 @@
                }">
       </v-input>
 
-      <v-button primary
-                class="w-full text-lg"
+      <v-button class="v-primary w-full text-lg"
                 [config]="{
                   type: 'submit',
                   isDisabled: authForm.invalid || submitted$$(),
@@ -42,7 +41,7 @@
 
     <div class="flex justify-end gap-2 mt-6 mb-6 text-right">
       <div class="mt-2">{{ isLoginMode$$() ? "Нет аккаунта?" : "Уже есть аккаунт?" }}</div>
-      <v-button primary
+      <v-button class="v-primary"
                 [config]="{
                   type: 'button',
                 }"
@@ -53,8 +52,7 @@
   } @else {
     <div class="flex flex-col gap-2">
       <div class="text-lg font-bold">Аккаунт: {{ settingsService.settings$$().userName }}</div>
-      <v-button primary
-                class="text-lg"
+      <v-button class="v-primary text-lg"
                 [config]="{
                   type: 'button',
                 }"
