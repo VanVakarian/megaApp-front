@@ -2,7 +2,6 @@ import { Component, computed, inject, input } from '@angular/core';
 import { FoodCatalogueService } from '@app/services/food/food-catalogue.service';
 import { FoodDiaryService } from '@app/services/food/food-diary.service';
 import { DayTotals, DiaryEntry } from '@app/shared/interfaces';
-import { ProgressBarStyle } from '@ui-kit/components/types';
 import { VProgress, VProgressConfig } from '@ui-kit/components/v-progress/v-progress';
 
 export enum NutrientType {
@@ -16,7 +15,6 @@ export enum NutrientType {
   selector: 'nutrition-summary',
   templateUrl: './nutrition-summary.html',
   imports: [VProgress],
-  standalone: true,
 })
 export class NutritionSummary {
   private readonly foodDiaryService = inject(FoodDiaryService);
@@ -62,7 +60,6 @@ export class NutritionSummary {
     return {
       barGap: 1,
       value: percent,
-      barStyle: ProgressBarStyle.Raised,
       barColor: this.calculateBarColor(percent),
     };
   }
@@ -74,7 +71,7 @@ export class NutritionSummary {
    */
   private calculateBarColor(percent: number): string {
     if (percent <= 125) {
-      return `var(--v-color-accent)`;
+      return `var(--v-color-primary)`;
     } else {
       const redPercent = Math.min(percent - 125, 75);
       return `color-mix(in srgb, var(--v-color-danger) ${redPercent}%, var(--v-color-warning))`;

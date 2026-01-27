@@ -25,11 +25,10 @@ import { FoodDiaryService } from '@app/services/food/food-diary.service';
 
 import { VButton } from '@ui-kit/components/v-button/v-button';
 import { VCard } from '@ui-kit/components/v-card/v-card';
-import { AccordionDirective } from '@ui-kit/components/v-expand/accordion.directive';
-import { AccordionService } from '@ui-kit/components/v-expand/accordion.service';
+import { VAccordion } from '@ui-kit/components/v-expand/v-accordion';
 import { VExpand } from '@ui-kit/components/v-expand/v-expand';
 import { VModal } from '@ui-kit/components/v-modal/v-modal';
-import { OuterShadowRoundedDirective } from '@ui-kit/directives/shadow.directive';
+import { AccordionGroupService } from '@ui-kit/services/accordion-group.service';
 import { CatalogueEntryEditForm } from './catalogue-entry-edit-form/catalogue-entry-edit-form';
 import { NutritionSummary } from './nutrition-summary/nutrition-summary';
 
@@ -50,10 +49,9 @@ import { NutritionSummary } from './nutrition-summary/nutrition-summary';
     NutritionSummary,
     VButton,
     VModal,
+    VAccordion,
     VExpand,
     VCard,
-    OuterShadowRoundedDirective,
-    AccordionDirective,
   ],
 })
 export class FoodDiary implements AfterViewInit {
@@ -98,11 +96,7 @@ export class FoodDiary implements AfterViewInit {
 
   protected readonly addDiaryEntryButtonVariant$$ = computed(() => {
     if (this.deviceInfoService.isDesktopScreen$$()) return 'primary';
-
-    const openedIds = this.accordionService.openedIds$$();
-    const openedId = openedIds.get('food-group');
-    const isAnyAccordionOpen = openedId !== null && openedId !== undefined;
-    return isAnyAccordionOpen ? 'raised' : 'primary';
+    return this.openedDiaryEntryId$$() !== null ? 'raised' : 'primary';
   });
 
   private readonly columnWidthsSyncEffect$$ = effect(() => {
@@ -114,8 +108,8 @@ export class FoodDiary implements AfterViewInit {
   protected readonly foodDiaryService = inject(FoodDiaryService);
   protected readonly foodAddModalService = inject(FoodAddModalService);
   protected readonly deviceInfoService = inject(DeviceInfoService);
-  private readonly accordionService = inject(AccordionService);
   protected readonly foodCatalogueService = inject(FoodCatalogueService);
+  private readonly accordionGroupService = inject(AccordionGroupService);
   private readonly ngZone = inject(NgZone);
 
   public ngAfterViewInit(): void {
@@ -126,23 +120,11 @@ export class FoodDiary implements AfterViewInit {
     this.shouldRecalcColumns$$.update((val) => val + 1);
   }
 
-  protected setBackgroundStyle(
-    percent: number,
-    isFirst: boolean = false,
-    isLast: boolean = false,
-  ): { [key: string]: string } {
+  protected setBackgroundStyle(percent: number): { [key: string]: string } {
     const percentCapped = percent <= 100 ? percent : 100;
     return {
       background: `linear-gradient(to left, var(--gradient-color) ${percentCapped}%, var(--gradient-bg) ${percentCapped}%)`,
-      'border-top-left-radius': isFirst ? 'var(--unit-2)' : '0',
-      'border-top-right-radius': isFirst ? 'var(--unit-2)' : '0',
-      'border-bottom-left-radius': isLast ? 'var(--unit-2)' : '0',
-      'border-bottom-right-radius': isLast ? 'var(--unit-2)' : '0',
     };
-  }
-
-  protected accordionCollapse() {
-    this.accordionService.closeGroup('food-group');
   }
 
   protected closeModal() {
@@ -151,7 +133,7 @@ export class FoodDiary implements AfterViewInit {
   }
 
   protected openAddFoodModal() {
-    this.accordionCollapse();
+    this.closeAllAccordions();
     this.foodAddModalService.openModal();
   }
 
@@ -240,5 +222,9 @@ export class FoodDiary implements AfterViewInit {
     if ($event.detail) {
       this.bodyWeightComponent().focusIfEmpty();
     }
+  }
+
+  protected closeAllAccordions(): void {
+    this.accordionGroupService.closeAll('food-diary-section');
   }
 }

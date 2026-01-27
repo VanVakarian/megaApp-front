@@ -7,8 +7,10 @@
       <div class="flex flex-col gap-2">
         @for (button of visibleButtons$$(); track button.label) {
           @if (button.label !== "DarkThemeSwitch" && button.label !== "Настройки") {
-            <v-button class="v-link menu-item"
-                      [class.v-primary]="button.selected"
+            <v-button class="menu-item"
+                      [class.v-link]="!button.selected"
+                      [class.v-link-static]="!button.selected"
+                      [class.v-flat]="button.selected"
                       [config]="{
                         width: '100%',
                         padding: 2,
@@ -28,7 +30,7 @@
 
       <!-- collapse sidebar button -->
       <div class="flex flex-col gap-2 mt-auto">
-        <v-button class="v-link menu-item"
+        <v-button class="v-link v-link-static menu-item"
                   [config]="{
                     padding: 2,
                     isLabelHidden: true,
@@ -40,13 +42,15 @@
         </v-button>
 
         <!-- dark theme switch button -->
-        <!-- <app-dark-switch /> -->
+        <dark-switch />
 
         <!-- settings button -->
         @for (button of visibleButtons$$(); track button.label) {
           @if (button.label === "Настройки") {
-            <v-button class="v-link menu-item"
-                      [class.v-primary]="button.selected"
+            <v-button class="menu-item"
+                      [class.v-link]="!button.selected"
+                      [class.v-link-static]="!button.selected"
+                      [class.v-flat]="button.selected"
                       [config]="{
                         width: '100%',
                         padding: 2,

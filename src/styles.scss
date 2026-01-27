@@ -2,58 +2,13 @@
 @use 'tw-colors';
 @use '@app/shared/animations.scss';
 
-@import '@ui-kit/styles/vars.css';
-@import '@ui-kit/styles/neumorphic-blue.css';
-@import '@ui-kit/styles/neumorphic-style.css';
-@import '@ui-kit/styles/flat-style.css';
-@import '@ui-kit/styles/flat-blue.css';
-
-:root {
-  /* Animation durations fallback - primary source is ui-kit/vars.css */
-  --animation-duration-fast: 125ms;
-  --animation-duration-medium: 250ms;
-  --animation-duration-slow: 400ms;
-}
-
 //                                                             TAILWIND SETTINGS
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-@layer components {
-
-  //                                                LOGIN AND REGISTRATION FORMS
-  .input-field-label {
-    @apply text-xl mt-2;
-  }
-
-  .input-field {
-    @apply rounded-lg border-2 border-blue-100 bg-blue-50 text-xl w-full;
-  }
-
-  .input-field-errors {
-    @apply text-red-800;
-  }
-
-  .input-field-button {
-    @apply bg-blue-500 text-white hover:bg-blue-600 text-xl w-full rounded-md h-10 mt-4;
-  }
-
-  .tw-bg-color-80 {
-    // @apply bg-slate-100/90 dark:bg-slate-900/90
-    background: #ebf3fa;
-  }
-
-  .tw-card-bg-color {
-    @apply bg-white dark:bg-slate-700
-  }
-
-  .tw-card-food-entry {
-    @apply bg-slate-300 dark:bg-slate-700 bg-gradient-to-r from-black dark:from-slate-300 via-black dark:via-slate-300 to-transparent bg-clip-text text-transparent
-  }
-
-}
+@layer components {}
 
 html,
 body {

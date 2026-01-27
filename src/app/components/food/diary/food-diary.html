@@ -15,54 +15,53 @@
   </div>
 </div>
 
-<v-expand outer-shadow-rounded
-          accordion="food-group"
-          accordionId="bmi-panel"
-          class="BMI mb-2"
-          (onOpened)="onBMIExpandOpened($event)">
-  <div v-header
-       class="v-header w-full p-2 text-center"
-       [ngStyle]="setBackgroundStyle(selectedDaysKcalsPercent$$(), true, true)">
-    <span class=" font-normal">{{ caloriesDisplayText$$() }}</span>
-  </div>
+<v-accordion groupId="food-diary-section">
+  <v-expand class="BMI mb-2"
+            (onOpened)="onBMIExpandOpened($event)">
+    <div v-header
+         class="v-header w-full p-2 text-center"
+         [ngStyle]="setBackgroundStyle(selectedDaysKcalsPercent$$())">
+      <span class=" font-normal">{{ caloriesDisplayText$$() }}</span>
+    </div>
 
-  <div v-body
-       class="flex flex-col gap-2 p-4">
-    <bmi />
-    <body-weight #bodyWeight />
-    <nutrition-summary />
-  </div>
-</v-expand>
+    <div v-body
+         class="flex flex-col gap-2 p-4">
+      <bmi />
+      <body-weight #bodyWeight />
+      <nutrition-summary />
+    </div>
+  </v-expand>
+</v-accordion>
 
-<div #foodCont
-     class="whitespace-nowrap flex w-full gap-1 px-2 overflow-hidden text-base font-normal">
-  <div #foodName
-       class="tw-card-food-entry grow whitespace-nowrap overflow-hidden text-center">
-    Блюдо:
-  </div>
+<!-- @for (food of selectedDayDiaryEntries$$(); track food.id) { -->
+@if (selectedDayDiaryEntries$$().length > 0) {
+  <div #foodCont
+       class="whitespace-nowrap flex w-full gap-1 px-2 overflow-hidden text-base font-normal">
+    <div #foodName
+         class="tw-card-food-entry grow whitespace-nowrap overflow-hidden text-center">
+      Блюдо:
+    </div>
 
-  <div #foodWeight
-       class="text-center">
-    г.
-  </div>
+    <div #foodWeight
+         class="text-center">
+      г.
+    </div>
 
-  <div #foodPercent
-       class="text-center">
-    %
+    <div #foodPercent
+         class="text-center">
+      %
+    </div>
   </div>
-</div>
+}
 
-<div outer-shadow-rounded
-     [shadowBorderRadius]="2">
-  @for (food of selectedDayDiaryEntries$$(); track food.id; let isFirst = $first; let isLast = $last) {
-    <v-expand accordion="food-group"
-              [accordionId]="'food-entry-' + food.id"
-              class="item"
+<v-accordion groupId="food-diary-section">
+  @for (food of selectedDayDiaryEntries$$(); track food.id) {
+    <v-expand class="item"
               (onOpened)="onVExpandOpened($event, food.id)">
       @if (foodCatalogueService.getCornerImageUrl(food.foodCatalogueId); as cornerImageUrl) {
         <ng-container v-corner-pic>
           <img [src]="cornerImageUrl"
-               class="absolute top-[-3px] left-[-3px] w-[185px] h-[185px] pointer-events-none z-[-1]"
+               class="absolute top-[-3px] left-[-3px] w-[185px] h-[185px] pointer-events-none"
                [class.hidden]="!isEntryExpanded(food.id)">
         </ng-container>
       }
@@ -70,11 +69,11 @@
       <div v-header
            #diaryEntryHeader
            class="relative p-2"
-           [ngStyle]="setBackgroundStyle(food.foodKcalPercentageOfDaysNorm, isFirst, isLast)">
+           [ngStyle]="setBackgroundStyle(food.foodKcalPercentageOfDaysNorm)">
 
         @if (foodCatalogueService.getSquircleImageUrl(food.foodCatalogueId); as squircleImageUrl) {
           <img [src]="squircleImageUrl"
-               class="absolute top-0 left-0 w-[40px] h-[40px] pointer-events-none z-[-1]"
+               class="absolute top-0 left-0 w-[40px] h-[40px] pointer-events-none"
                [class.hidden]="isEntryExpanded(food.id)">
         }
 
@@ -102,12 +101,17 @@
            class="p-4">
         @defer (on timer(300)) {
           <diary-entry-edit-form [diaryEntry]="food"
-                                 (onServerSuccessfullEditResponse)="accordionCollapse()" />
+                                 (onServerSuccessfullEditResponse)="closeAllAccordions()" />
         }
       </div>
     </v-expand>
   }
-</div>
+  @empty {
+    <div class="text-slate-500 p-4 text-center">
+      Записей за этот день ещё нет
+    </div>
+  }
+</v-accordion>
 
 @if (deviceInfoService.isDesktopScreen$$()) {
   <v-button class="mt-4"
@@ -121,7 +125,8 @@
   </v-button>
 }
 
-<div class="h-[50vh]"></div>
+<div class="h-[50vh]"
+     (click)="closeAllAccordions()"></div>
 
 <v-modal [config]="{
            isOpen: foodAddModalService.currentState$$() !== ModalViewMode.CLOSED,
