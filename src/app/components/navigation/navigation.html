@@ -7,14 +7,16 @@
       <div class="flex flex-col gap-2">
         @for (button of visibleButtons$$(); track button.label) {
           @if (button.label !== "DarkThemeSwitch" && button.label !== "Настройки") {
-            <v-button [config]="{
-                        buttonStyle: getButtonStyle(button),
+            <v-button class="menu-item"
+                      [class.v-link]="!button.selected"
+                      [class.v-link-static]="!button.selected"
+                      [class.v-flat]="button.selected"
+                      [config]="{
                         width: '100%',
                         padding: 2,
                         isLabelHidden: navigationService.isCollapsed$$(),
                         textAlign: 'left',
                       }"
-                      class="menu-item"
                       (click)="navigateToLink(button.link)">
               <v-icon v-prefix
                       [name]="button.iconName"
@@ -28,12 +30,11 @@
 
       <!-- collapse sidebar button -->
       <div class="flex flex-col gap-2 mt-auto">
-        <v-button [config]="{
-                    buttonStyle: ButtonStyle.Flat,
+        <v-button class="v-link v-link-static menu-item"
+                  [config]="{
                     padding: 2,
                     isLabelHidden: true,
                   }"
-                  class="menu-item"
                   (click)="toggleMenuCollapse()">
           <v-icon v-prefix
                   [name]="getCollapseIconName()"
@@ -41,19 +42,21 @@
         </v-button>
 
         <!-- dark theme switch button -->
-        <!-- <app-dark-switch /> -->
+        <dark-switch />
 
         <!-- settings button -->
         @for (button of visibleButtons$$(); track button.label) {
           @if (button.label === "Настройки") {
-            <v-button [config]="{
-                        buttonStyle: getButtonStyle(button),
+            <v-button class="menu-item"
+                      [class.v-link]="!button.selected"
+                      [class.v-link-static]="!button.selected"
+                      [class.v-flat]="button.selected"
+                      [config]="{
                         width: '100%',
                         padding: 2,
                         isLabelHidden: navigationService.isCollapsed$$(),
                         textAlign: 'left',
                       }"
-                      class="menu-item"
                       (click)="navigateToLink(button.link)">
               <v-icon v-prefix
                       [name]="button.iconName"
@@ -72,8 +75,7 @@
       <div class="flex flex-col justify-end h-full gap-4 mx-4 pointer-events-none">
         @for (button of visibleButtons$$(); track button.label) {
           @if (button.label !== "DarkThemeSwitch") {
-            <v-button primary
-                      class="side-menu-button h-12 overflow-hidden pointer-events-auto"
+            <v-button class="v-primary side-menu-button h-12 overflow-hidden pointer-events-auto"
                       [config]="{
                         width: '100%',
                         gap: 3,
@@ -105,8 +107,9 @@
 
     <div [class]="shouldHideFabButtons$$() ? 'fab-slide-hidden' : 'fab-slide-visible'"
          class="fixed bottom-0 right-0 z-50 mb-4 mr-4">
-      <v-button [config]="{
-                  buttonStyle: isMobileMenuOpen$$() ? ButtonStyle.Danger : ButtonStyle.Primary,
+      <v-button [class.v-danger]="isMobileMenuOpen$$()"
+                [class.v-primary]="!isMobileMenuOpen$$()"
+                [config]="{
                   isLabelHidden: true,
                   padding: 3,
                   borderRadius: 7,

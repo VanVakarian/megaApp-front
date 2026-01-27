@@ -1,6 +1,6 @@
 <div class="flex w-full gap-2">
   @if(deviceInfoService.isDesktopScreen$$()) {
-    <v-button primary
+    <v-button class="v-primary"
               [config]="{
                 isWithoutShadow: true,
                 isLabelHidden: true,
@@ -25,7 +25,7 @@
 
   @if(deviceInfoService.isDesktopScreen$$()) {
     <div class="flex flex-col">
-      <v-button primary
+      <v-button class="v-primary"
                 [config]="{
                   isWithoutShadow: true,
                   isLabelHidden: true,
@@ -40,7 +40,7 @@
       <ng-container [ngTemplateOutlet]="dateInputTemplate" />
     </div>
 
-    <v-button primary
+    <v-button class="v-primary"
               [config]="{
                 isWithoutShadow: true,
                 isLabelHidden: true,
@@ -57,8 +57,8 @@
 @if (authService.isAuthenticated$$() && !deviceInfoService.isDesktopScreen$$()) {
   <div [class]="shouldHideFabButtons$$() ? 'fab-hide-slide-right-hidden' : 'fab-hide-slide-right-visible'"
        class="fixed bottom-[88px] right-0 z-20 mr-4">
-    <v-button [config]="{
-                buttonStyle: ButtonStyle.Primary,
+    <v-button class="v-primary"
+              [config]="{
                 isLabelHidden: true,
                 padding: 3,
                 borderRadius: 7,
@@ -74,7 +74,7 @@
   <div [class]="shouldHideFabButtons$$() ? 'fab-hide-slide-down-hidden' : 'fab-hide-slide-down-visible'"
        class="fixed bottom-4 right-[88px] flex gap-5"
        style="z-index: 10">
-    <v-button primary
+    <v-button class="v-primary"
               [config]="{
                 borderRadius: 7,
                 isWithoutShadow: true,
@@ -87,7 +87,7 @@
               [size]="8" />
     </v-button>
 
-    <v-button primary
+    <v-button class="v-primary"
               [config]="{
                 borderRadius: 7,
                 isWithoutShadow: true,
@@ -100,7 +100,7 @@
               [size]="10" />
     </v-button>
 
-    <v-button primary
+    <v-button class="v-primary"
               [config]="{
                 borderRadius: 7,
                 isWithoutShadow: true,
