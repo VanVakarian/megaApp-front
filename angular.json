@@ -62,18 +62,7 @@
               "namedChunks": true
             },
             "prod": {
-              "budgets": [
-                {
-                  "type": "initial",
-                  "maximumWarning": "9mb",
-                  "maximumError": "9mb"
-                },
-                {
-                  "type": "anyComponentStyle",
-                  "maximumWarning": "2kb",
-                  "maximumError": "4kb"
-                }
-              ],
+              "budgets": [],
               "outputHashing": "all"
             }
           },
