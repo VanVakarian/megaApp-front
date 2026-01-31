@@ -105,6 +105,19 @@ export class FoodDiary implements AfterViewInit {
     setTimeout(() => this.syncColumnWidths(), 0);
   });
 
+  private readonly closeFoodEntriesOnDayChangeEffect$$ = effect(() => {
+    const currentDay = this.foodDiaryService.selectedDayIso$$();
+
+    if (this.previousSelectedDay !== currentDay) {
+      this.previousSelectedDay = currentDay;
+
+      if (this.openedDiaryEntryId$$() !== null) {
+        this.closeAllAccordions();
+        this.openedDiaryEntryId$$.set(null);
+      }
+    }
+  });
+
   protected readonly foodDiaryService = inject(FoodDiaryService);
   protected readonly foodAddModalService = inject(FoodAddModalService);
   protected readonly deviceInfoService = inject(DeviceInfoService);
@@ -189,6 +202,7 @@ export class FoodDiary implements AfterViewInit {
   }
 
   private readonly openedDiaryEntryId$$ = signal<number | null>(null);
+  private previousSelectedDay: string | null = null;
 
   protected onVExpandOpened($event: CustomEvent<boolean>, expandingDiaryEntryId: number): void {
     if ($event.detail) {
