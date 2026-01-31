@@ -30,8 +30,9 @@
                  type: 'text'
                }" />
 
-      <div class="flex gap-3">
+      <div class="flex gap-3 *:flex-1">
         <v-input formControlName="kcals"
+                 class=""
                  [config]="{
                    label: 'Калории (на 100г)',
                    placeholder: '0',
@@ -50,7 +51,7 @@
                  }" />
       </div>
 
-      <div class="flex gap-3">
+      <div class="flex gap-3 *:flex-1">
         <v-input formControlName="protein"
                  [config]="{
                    label: 'Белки',

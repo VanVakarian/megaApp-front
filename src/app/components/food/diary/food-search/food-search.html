@@ -12,7 +12,6 @@
                 tabindex="-1"
                 [config]="{
                   isLabelHidden: true,
-                  isWithoutShadow: true,
                   padding: 1,
                 }"
                 (mousedown)="$event.preventDefault()"
@@ -22,12 +21,11 @@
                 [size]="6" />
       </v-button>
     } @else {
-      <v-button class="v-raised mx-2"
+      <v-button class="v-flat mx-2"
                 v-prefix
                 tabindex="-1"
                 [config]="{
                   isLabelHidden: true,
-                  isWithoutShadow: true,
                   padding: 1,
                 }"
                 (mousedown)="$event.preventDefault()"
@@ -43,7 +41,6 @@
                 v-postfix
                 tabindex="-1"
                 [config]="{
-                  isWithoutShadow: true,
                   isLabelHidden: true,
                   bgOpacity: '0',
                   paddingX: 2,
@@ -90,7 +87,7 @@
          class="contents">
       @for (catalogueEntry of searchResults$$(); track catalogueEntry.id) {
         <v-card [attr.data-flip-key]="'catalogue-' + catalogueEntry.id"
-                class="cursor-pointer"
+                class="w-full cursor-pointer"
                 [config]="{
                   padding: 1,
                   backgroundImageUrl: getImageUrl(catalogueEntry),
@@ -115,7 +112,7 @@
 
   @if (searchResults$$().length > 0) {
     <v-card [animate.enter]="AnimationClass.FADE_SCALE_IN"
-            class="cursor-pointer"
+            class="w-full h-full cursor-pointer"
             [config]="{
               padding: 2
             }"
@@ -132,7 +129,6 @@
   <div class="sticky bottom-0 flex justify-start px-4 pb-4">
     <v-button class="v-danger"
               [config]="{
-                isWithoutShadow: true,
                 isLabelHidden: true,
                 padding: 1,
               }"
