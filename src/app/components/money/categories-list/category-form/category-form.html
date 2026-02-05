@@ -1,49 +1,42 @@
-<div class="bg-gray-50 p-6 rounded-lg">
-  <h3 class="mb-4 text-lg font-semibold">{{ isEditing() ? 'Edit Category' : 'Add New Category' }}</h3>
+<v-card [config]="{
+          padding: 4,
+          borderRadius: 2,
+        }">
+  <div class="mb-4 text-lg font-semibold">{{ isEditing() ? 'Edit Category' : 'Add New Category' }}</div>
 
-  <div class="space-y-4">
-    <div>
-      <label class="block mb-1 text-sm font-medium text-gray-700">Name <span class="text-red-500">*</span>:</label>
-      <input type="text"
-             placeholder="Food & Restaurants"
-             class="focus:outline-none focus:ring-2 focus:ring-blue-500 w-full px-3 py-2 border border-gray-300 rounded-md"
-             [(ngModel)]="name">
-    </div>
+  <div class="flex flex-col gap-4">
+    <v-input [config]="{
+               label: 'Name',
+               placeholder: 'Food & Restaurants',
+               type: 'text',
+             }"
+             [(ngModel)]="name" />
 
-    <div>
-      <label class="block mb-1 text-sm font-medium text-gray-700">Type <span class="text-red-500">*</span>:</label>
-      <select class="focus:outline-none focus:ring-2 focus:ring-blue-500 w-full px-3 py-2 border border-gray-300 rounded-md"
-              [(ngModel)]="categoryType"
-              (ngModelChange)="onCategoryTypeChange()">
-        @for (value of getCategoryTypeValues(); track value) {
-          <option [value]="value">
-            {{ getCategoryTypeDisplayName(value) }}
-          </option>
-        }
-      </select>
-    </div>
+    <v-dropdown [label]="'Type'"
+                [placeholder]="'Select type'"
+                [items]="categoryTypeItems()"
+                [isRequired]="true"
+                [(ngModel)]="categoryType"
+                (ngModelChange)="onCategoryTypeChange()"></v-dropdown>
 
-    <div>
-      <label class="block mb-1 text-sm font-medium text-gray-700">Parent category (optional):</label>
-      <select class="focus:outline-none focus:ring-2 focus:ring-blue-500 w-full px-3 py-2 border border-gray-300 rounded-md"
-              [(ngModel)]="parentId">
-        <option [value]="null">No parent</option>
-        @for (parentCategory of getParentCategories(); track parentCategory.id) {
-          <option [value]="parentCategory.id">{{ parentCategory.name }}</option>
-        }
-      </select>
-    </div>
+    <v-dropdown [label]="'Parent category (optional)'"
+                [placeholder]="'No parent'"
+                [items]="parentCategoryItems()"
+                [(ngModel)]="parentId"></v-dropdown>
 
     <div class="flex gap-2">
-      <button [disabled]="!name || !categoryType"
-              class="hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-400 disabled:cursor-not-allowed px-3 py-2 text-white bg-blue-600 rounded-md"
-              (click)="save()">
+      <v-button class="v-flat"
+                [config]="{
+                  isDisabled: !name || !categoryType,
+                }"
+                (onClick)="save()">
         {{ isEditing() ? 'Update' : 'Create' }}
-      </button>
-      <button class="hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 px-3 py-2 text-white bg-gray-600 rounded-md"
-              (click)="cancel()">
+      </v-button>
+
+      <v-button class="v-flat"
+                (onClick)="cancel()">
         Cancel
-      </button>
+      </v-button>
     </div>
   </div>
-</div>
+</v-card>

@@ -1,72 +1,81 @@
 <div class="max-w-4xl mx-auto">
-  <div class="p-4 bg-white border border-gray-200 rounded-lg">
+  <v-card [config]="{
+            padding: 4,
+            borderRadius: 2,
+          }">
     @for (group of groupedTransactions$$(); track group.date; let groupIndex = $index) {
       <div class="mb-6">
-        <div class="bg-gray-50 top-0 z-10 py-2 mb-4 border-gray-200">
+        <div class="py-2 mb-4">
           <div class="flex items-center justify-between">
-            <h4 class="text-lg font-semibold text-gray-800">{{ group.dateDisplay }}</h4>
-            <button (click)="showTransactionForm(formPlace, group.date, undefined)"
-                    class="hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 w-8 h-8 text-white bg-blue-600 rounded-md">
+            <div class="text-lg font-semibold">{{ group.dateDisplay }}</div>
+            <v-button class="v-flat"
+                      [config]="{
+                        isLabelHidden: true,
+                        padding: 1,
+                      }"
+                      (onClick)="showTransactionForm(formPlace, group.date, undefined)">
               +
-            </button>
+            </v-button>
           </div>
         </div>
 
         <div #formPlace></div>
 
         @for (transaction of group.transactions; track transaction.id; let transIndex = $index) {
-          <div class="last:border-b-0 py-3 border-b border-gray-100">
-            <div class="flex items-start justify-between">
+          <div class="last:border-b-0 py-3 border-b border-[color:var(--v-outline-color)]">
+            <div class="flex items-start justify-between gap-4">
               <div class="flex-1">
-
                 <div class="mb-2">
                   <div class="flex items-center gap-2">
-                    <span class="text-gray-600">{{ getAccountTitle(transaction.accountId) }}</span>
+                    <span class="opacity-70">{{ getAccountTitle(transaction.accountId) }}</span>
                   </div>
                 </div>
 
-                <div class="flex items-center gap-2 mb-2">
-                  <span class="text-lg font-bold"
+                <div class="flex items-center gap-3 mb-2">
+                  <span class="text-lg font-semibold"
                         [class]="transactionKindIsIncome(transaction) ? 'text-green-600' : 'text-red-600'">
                     {{ formatAmount(transaction) }}
                   </span>
 
-                  <span class="px-2 py-1 text-xs rounded"
-                        [class]="transactionKindIsIncome(transaction) ? 'text-green-700 bg-green-200' : 'text-red-700 bg-red-200'">
+                  <span class="text-xs opacity-70">
                     {{ getKindDisplayName(transaction.kind) }}
                   </span>
 
                   @if (transaction.isGift) {
-                    <span class="px-2 py-1 text-xs text-purple-700 bg-purple-200 rounded">
-                      Gift
-                    </span>
+                    <span class="text-xs opacity-70">Gift</span>
                   }
                 </div>
 
                 @if (getCategoryName(transaction.categoryId)) {
-                  <div class="flex flex-wrap gap-1 mb-2">
-                    <span class="px-2 py-1 text-xs text-gray-700 bg-gray-200 rounded">
-                      {{ getCategoryName(transaction.categoryId) }}
-                    </span>
+                  <div class="flex flex-wrap gap-2 mb-2 text-xs opacity-70">
+                    <span>{{ getCategoryName(transaction.categoryId) }}</span>
                   </div>
                 }
 
                 @if (transaction.notes) {
-                  <div class="text-sm text-gray-600">
+                  <div class="text-sm opacity-70">
                     {{ transaction.notes }}
                   </div>
                 }
               </div>
 
-              <div class="flex gap-2 ml-4">
-                <button (click)="showTransactionForm(formPlace, undefined, transaction)"
-                        class="hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500 px-3 py-1 text-sm text-blue-700 bg-blue-100 rounded">
+              <div class="flex gap-2">
+                <v-button class="v-flat"
+                          [config]="{
+                            paddingY: 1,
+                            paddingX: 2,
+                          }"
+                          (onClick)="showTransactionForm(formPlace, undefined, transaction)">
                   Edit
-                </button>
-                <button (click)="deleteTransaction(transaction.id!)"
-                        class="hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-red-500 px-3 py-1 text-sm text-red-700 bg-red-100 rounded">
+                </v-button>
+                <v-button class="v-danger"
+                          [config]="{
+                            paddingY: 1,
+                            paddingX: 2,
+                          }"
+                          (onClick)="deleteTransaction(transaction.id!)">
                   Delete
-                </button>
+                </v-button>
               </div>
             </div>
           </div>
@@ -75,10 +84,10 @@
         }
       </div>
     } @empty {
-      <div class="py-8 text-center text-gray-500">
+      <div class="py-8 text-center opacity-70">
         No transactions found.
       </div>
     }
 
-  </div>
+  </v-card>
 </div>

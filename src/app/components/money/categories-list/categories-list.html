@@ -1,7 +1,7 @@
 <div class="max-w-4xl mx-auto">
 
   @if (showForm) {
-    <div class="mb-8">
+    <div class="mb-4">
       <category-form [category]="editingCategory"
                      [categories]="categories$$()"
                      (saved)="onSaved()"
@@ -10,54 +10,65 @@
     </div>
   }
 
-  <div class="p-4 bg-white border border-gray-200 rounded-lg">
+  <v-card [config]="{
+            padding: 4,
+            borderRadius: 2,
+          }">
     <div class="flex items-center justify-between mb-4">
-      <h3 class="text-lg font-semibold">Categories</h3>
+      <div class="text-lg font-semibold">Categories</div>
       @if (!showForm) {
-        <button class="hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 px-3 py-2 text-white bg-blue-600 rounded-md"
-                (click)="showCreateForm()">
+        <v-button class="v-flat"
+                  (onClick)="showCreateForm()">
           Add New Category
-        </button>
+        </v-button>
       }
     </div>
 
     @if (categories$$().length === 0) {
-      <div class="py-8 text-center text-gray-500">
+      <div class="py-8 text-center opacity-70">
         No categories found.
       </div>
     }
 
     @for (categoryType of getCategoryTypes(); track categoryType) {
       <div class="mb-6">
-        <h4 class="pb-2 mb-3 text-lg font-semibold text-gray-800 border-b-2 border-blue-200">
+        <div class="pb-2 mb-3 text-lg font-semibold border-b border-[color:var(--v-outline-color)]">
           {{ getCategoryTypeDisplayName(categoryType) }}
-        </h4>
+        </div>
 
         @if (getRootCategories(categoryType).length === 0) {
-          <div class="py-3 text-sm text-gray-500">
+          <div class="py-3 text-sm opacity-70">
             No categories for this type.
           </div>
         } @else {
           @for (parentCategory of getRootCategories(categoryType); track parentCategory.id) {
             <div class="mb-4">
-              <div class="last:border-b-0 py-3 border-b border-gray-100">
-                <div class="flex items-start justify-between">
+              <div class="last:border-b-0 py-3 border-b border-[color:var(--v-outline-color)]">
+                <div class="flex items-start justify-between gap-4">
                   <div class="flex-1">
                     <div class="mb-1">
-                      <span class="font-medium text-gray-900">{{ parentCategory.name }}</span>
+                      <span class="font-medium">{{ parentCategory.name }}</span>
                     </div>
                   </div>
 
-                  <div class="flex gap-2 ml-4">
-                    <button class="hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500 px-2 py-1 text-sm text-blue-700 bg-blue-100 rounded"
-                            (click)="editCategory(parentCategory)">
+                  <div class="flex gap-2">
+                    <v-button class="v-flat"
+                              [config]="{
+                                paddingY: 1,
+                                paddingX: 2,
+                              }"
+                              (onClick)="editCategory(parentCategory)">
                       Edit
-                    </button>
+                    </v-button>
 
-                    <button class="hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-red-500 px-2 py-1 text-sm text-red-700 bg-red-100 rounded"
-                            (click)="deleteCategory(parentCategory.id!)">
+                    <v-button class="v-danger"
+                              [config]="{
+                                paddingY: 1,
+                                paddingX: 2,
+                              }"
+                              (onClick)="deleteCategory(parentCategory.id!)">
                       Delete
-                    </button>
+                    </v-button>
                   </div>
                 </div>
               </div>
@@ -65,22 +76,30 @@
               @if (getChildCategories(parentCategory.id!).length > 0) {
                 <div class="ml-6">
                   @for (childCategory of getChildCategories(parentCategory.id!); track childCategory.id) {
-                    <div class="last:border-b-0 py-2 border-b border-gray-100">
-                      <div class="flex items-start justify-between">
+                    <div class="last:border-b-0 py-2 border-b border-[color:var(--v-outline-color)]">
+                      <div class="flex items-start justify-between gap-4">
                         <div class="flex-1">
-                          <span class="text-gray-800">{{ childCategory.name }}</span>
+                          <span>{{ childCategory.name }}</span>
                         </div>
 
-                        <div class="flex gap-2 ml-4">
-                          <button class="hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500 px-2 py-1 text-sm text-blue-700 bg-blue-100 rounded"
-                                  (click)="editCategory(childCategory)">
+                        <div class="flex gap-2">
+                          <v-button class="v-flat"
+                                    [config]="{
+                                      paddingY: 1,
+                                      paddingX: 2,
+                                    }"
+                                    (onClick)="editCategory(childCategory)">
                             Edit
-                          </button>
+                          </v-button>
 
-                          <button class="hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-red-500 px-2 py-1 text-sm text-red-700 bg-red-100 rounded"
-                                  (click)="deleteCategory(childCategory.id!)">
+                          <v-button class="v-danger"
+                                    [config]="{
+                                      paddingY: 1,
+                                      paddingX: 2,
+                                    }"
+                                    (onClick)="deleteCategory(childCategory.id!)">
                             Delete
-                          </button>
+                          </v-button>
                         </div>
                       </div>
                     </div>
@@ -92,6 +111,6 @@
         }
       </div>
     }
-  </div>
+  </v-card>
 
 </div>

@@ -10,6 +10,8 @@ import {
 } from '@angular/core';
 import { MoneyService } from '@app/services/money.service';
 import { SymbolPosition, Transaction, TransactionKind } from '@app/shared/types';
+import { VButton } from '@ui-kit/components/v-button/v-button';
+import { VCard } from '@ui-kit/components/v-card/v-card';
 import { TransactionForm } from './transaction-form/transaction-form';
 
 interface TransactionGroup {
@@ -22,7 +24,7 @@ interface TransactionGroup {
   selector: 'transactions-list',
   templateUrl: './transactions-list.html',
   standalone: true,
-  imports: [],
+  imports: [VButton, VCard],
 })
 export class TransactionsList implements AfterViewInit, OnDestroy {
   protected currencies$$ = computed(() => this.moneyService.currencies$$());

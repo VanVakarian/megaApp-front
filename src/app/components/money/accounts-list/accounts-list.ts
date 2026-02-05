@@ -1,13 +1,15 @@
 import { Component, computed } from '@angular/core';
 import { MoneyService } from '@app/services/money.service';
 import { Account, AccountKind } from '@app/shared/types';
+import { VButton } from '@ui-kit/components/v-button/v-button';
+import { VCard } from '@ui-kit/components/v-card/v-card';
 import { AccountForm } from './account-form/account-form';
 
 @Component({
   selector: 'accounts-list',
   templateUrl: './accounts-list.html',
   standalone: true,
-  imports: [AccountForm],
+  imports: [AccountForm, VButton, VCard],
 })
 export class AccountsList {
   protected accounts$$ = computed(() => this.moneyService.accounts$$());

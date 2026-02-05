@@ -1,94 +1,81 @@
-<div class="bg-gray-50 p-6 rounded-lg">
-  <h3 class="mb-4 text-lg font-semibold">{{ isEditing() ? 'Edit Transaction' : 'Add New Transaction' }}</h3>
+<v-card [config]="{
+          padding: 4,
+          borderRadius: 2,
+        }">
+  <div class="mb-4 text-lg font-semibold">{{ isEditing() ? 'Edit Transaction' : 'Add New Transaction' }}</div>
 
-  <div class="space-y-4">
-    <div>
-      <label class="block mb-1 text-sm font-medium text-gray-700">Date <span class="text-red-500">*</span>:</label>
-      <input type="date"
-             [(ngModel)]="dateISO"
-             class="focus:outline-none focus:ring-2 focus:ring-blue-500 w-full px-3 py-2 border border-gray-300 rounded-md">
-    </div>
+  <div class="flex flex-col gap-4">
+    <v-input [config]="{
+               label: 'Date',
+               placeholder: 'YYYY-MM-DD',
+               type: 'text',
+               inputmode: 'numeric',
+             }"
+             [(ngModel)]="dateISO" />
+
+    <v-dropdown [label]="'Account'"
+                [placeholder]="'Select an account'"
+                [items]="accountItems()"
+                [isRequired]="true"
+                [(ngModel)]="accountId"></v-dropdown>
 
     <div>
-      <label class="block mb-1 text-sm font-medium text-gray-700">Account <span class="text-red-500">*</span>:</label>
-      <select [(ngModel)]="accountId"
-              class="focus:outline-none focus:ring-2 focus:ring-blue-500 w-full px-3 py-2 border border-gray-300 rounded-md">
-        <option [value]="null">Select an account</option>
-        @for (account of getAccounts(); track account.id) {
-          <option [value]="account.id">{{ account.title }}</option>
-        }
-      </select>
-    </div>
+      <v-input [config]="{
+                 label: 'Amount',
+                 placeholder: '0.00',
+                 type: 'number',
+                 inputmode: 'decimal',
+                 textAlign: 'right',
+               }"
+               [(ngModel)]="amount" />
 
-    <div>
-      <label class="block mb-1 text-sm font-medium text-gray-700">Amount <span class="text-red-500">*</span>:</label>
-      <input type="number"
-             step="0.01"
-             min="0"
-             placeholder="0.00"
-             [(ngModel)]="amount"
-             class="focus:outline-none focus:ring-2 focus:ring-blue-500 w-full px-3 py-2 border border-gray-300 rounded-md">
-      <p class="mt-1 text-xs text-gray-500">
+      <div class="opacity-70 mt-1 text-xs">
         Enter positive amount - it will be automatically
         <span [class]="kind === 'expense' ? 'text-red-600' : 'text-green-600'">
           {{ kind === 'expense' ? 'subtracted' : 'added' }}
         </span>
         based on transaction type
-      </p>
+      </div>
     </div>
 
-    <div>
-      <label class="block mb-1 text-sm font-medium text-gray-700">Type <span class="text-red-500">*</span>:</label>
-      <select [(ngModel)]="kind"
-              (ngModelChange)="onKindChange()"
-              class="focus:outline-none focus:ring-2 focus:ring-blue-500 w-full px-3 py-2 border border-gray-300 rounded-md">
-        @for (kindOption of getKindValues(); track kindOption) {
-          <option [value]="kindOption">{{ getKindDisplayName(kindOption) }}</option>
-        }
-      </select>
-    </div>
+    <v-dropdown [label]="'Type'"
+                [placeholder]="'Select type'"
+                [items]="kindItems()"
+                [isRequired]="true"
+                [(ngModel)]="kind"
+                (ngModelChange)="onKindChange()"></v-dropdown>
 
-    <div class="flex items-center">
-      <input type="checkbox"
-             [(ngModel)]="isGift"
-             class="focus:ring-blue-500 w-4 h-4 mr-2 text-blue-600 border-gray-300 rounded">
-      <label class="text-sm font-medium text-gray-700">
-        This is a gift
-      </label>
-    </div>
+    <v-checkbox [value]="isGift"
+                (valueChange)="isGift = $event">
+      This is a gift
+    </v-checkbox>
 
-    <div>
-      <label class="block mb-1 text-sm font-medium text-gray-700">Notes (optional):</label>
-      <textarea [(ngModel)]="notes"
-                placeholder="Add any notes about this transaction..."
-                rows="3"
-                class="focus:outline-none focus:ring-2 focus:ring-blue-500 w-full px-3 py-2 border border-gray-300 rounded-md resize-none"></textarea>
-    </div>
+    <v-input [config]="{
+               label: 'Notes (optional)',
+               placeholder: 'Add any notes about this transaction...',
+               isTextarea: true,
+               rows: 3,
+             }"
+             [(ngModel)]="notes" />
 
-    <div>
-      <label class="block mb-1 text-sm font-medium text-gray-700">Category (optional):</label>
-      <select [(ngModel)]="categoryId"
-              class="focus:outline-none focus:ring-2 focus:ring-blue-500 w-full px-3 py-2 border border-gray-300 rounded-md">
-        <option [value]="null">No category</option>
-        @for (category of getTransactionCategories(); track category.id) {
-          <option [value]="category.id">{{ getCategoryLabel(category) }}</option>
-        }
-      </select>
-    </div>
+    <v-dropdown [label]="'Category (optional)'"
+                [placeholder]="'No category'"
+                [items]="categoryItems()"
+                [(ngModel)]="categoryId"></v-dropdown>
 
     <div class="flex gap-2">
-      <button [disabled]="!isFormValid()"
-              class="hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-400 disabled:cursor-not-allowed px-4 py-2 text-white bg-blue-600 rounded-md"
-              (click)="save()"
-              type="button">
+      <v-button class="v-flat"
+                [config]="{
+                  isDisabled: !isFormValid(),
+                }"
+                (onClick)="save()">
         {{ isEditing() ? 'Update' : 'Create' }}
-      </button>
+      </v-button>
 
-      <button class="hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 px-4 py-2 text-white bg-gray-600 rounded-md"
-              (click)="cancel()"
-              type="button">
+      <v-button class="v-flat"
+                (onClick)="cancel()">
         Cancel
-      </button>
+      </v-button>
     </div>
   </div>
-</div>
+</v-card>

@@ -1,13 +1,15 @@
 import { Component, computed } from '@angular/core';
 import { MoneyService } from '@app/services/money.service';
 import { Category, CategoryType } from '@app/shared/types';
+import { VButton } from '@ui-kit/components/v-button/v-button';
+import { VCard } from '@ui-kit/components/v-card/v-card';
 import { CategoryForm } from './category-form/category-form';
 
 @Component({
   selector: 'categories-list',
   templateUrl: './categories-list.html',
   standalone: true,
-  imports: [CategoryForm],
+  imports: [CategoryForm, VButton, VCard],
 })
 export class CategoriesList {
   protected categories$$ = computed(() => this.moneyService.categories$$());

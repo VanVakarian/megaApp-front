@@ -2,12 +2,17 @@ import { Component, effect, input, output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MoneyService } from '@app/services/money.service';
 import { Account, Category, CategoryType, Transaction, TransactionKind } from '@app/shared/types';
+import { VButton } from '@ui-kit/components/v-button/v-button';
+import { VCard } from '@ui-kit/components/v-card/v-card';
+import { VCheckbox } from '@ui-kit/components/v-checkbox/v-checkbox';
+import { DropdownItem, VDropdown } from '@ui-kit/components/v-dropdown/v-dropdown';
+import { VInput } from '@ui-kit/components/v-input/v-input';
 
 @Component({
   selector: 'transaction-form',
   templateUrl: './transaction-form.html',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, VButton, VCard, VDropdown, VCheckbox, VInput],
 })
 export class TransactionForm {
   public readonly dateIsoInput = input<string | null>(null);
@@ -18,12 +23,12 @@ export class TransactionForm {
 
   // Form fields
   protected dateISO = '';
-  protected accountId: number | null = null;
-  protected amount: number | null = null;
+  protected accountId: string | null = null;
+  protected amount = '';
   protected kind: TransactionKind = TransactionKind.EXPENSE;
   protected isGift = false;
   protected notes = '';
-  protected categoryId: number | null = null;
+  protected categoryId: string | null = null;
 
   constructor(private moneyService: MoneyService) {
     effect(() => {
@@ -41,14 +46,17 @@ export class TransactionForm {
   protected save(): void {
     if (!this.isFormValid()) return;
 
+    const parsedAmount = this.parseAmount();
+    if (parsedAmount === null) return;
+
     const transactionData: Transaction = {
       dateISO: this.dateISO,
       accountId: Number(this.accountId),
-      amount: this.amount!,
+      amount: parsedAmount,
       kind: this.kind,
       isGift: this.isGift,
       notes: this.notes || undefined,
-      categoryId: this.categoryId || null,
+      categoryId: this.categoryId ? Number(this.categoryId) : null,
     };
 
     const currentTransaction = this.transactionInput();
@@ -79,7 +87,22 @@ export class TransactionForm {
   }
 
   protected isFormValid(): boolean {
-    return Boolean(this.dateISO && this.accountId && this.amount && this.amount > 0 && this.kind);
+    const amount = this.parseAmount();
+    return Boolean(this.dateISO && this.accountId && amount && amount > 0 && this.kind);
+  }
+
+  protected accountItems(): DropdownItem[] {
+    return this.getAccounts().map((account) => ({
+      value: String(account.id),
+      label: account.title,
+    }));
+  }
+
+  protected kindItems(): DropdownItem[] {
+    return this.getKindValues().map((kind) => ({
+      value: kind,
+      label: this.getKindDisplayName(kind),
+    }));
   }
 
   protected getKindValues(): TransactionKind[] {
@@ -119,6 +142,16 @@ export class TransactionForm {
     return categories.filter((category) => !parentsWithChildren.has(category.id!));
   }
 
+  protected categoryItems(): DropdownItem[] {
+    return [
+      { value: '', label: 'No category' },
+      ...this.getTransactionCategories().map((category) => ({
+        value: String(category.id),
+        label: this.getCategoryLabel(category),
+      })),
+    ];
+  }
+
   protected getCategoryLabel(category: Category): string {
     if (!category.parentId) return category.name;
 
@@ -130,21 +163,27 @@ export class TransactionForm {
 
   private prepFormWithTransaction(transaction: Transaction): void {
     this.dateISO = transaction.dateISO;
-    this.accountId = transaction.accountId;
-    this.amount = transaction.amount;
+    this.accountId = String(transaction.accountId);
+    this.amount = String(transaction.amount);
     this.kind = transaction.kind;
     this.isGift = transaction.isGift;
     this.notes = transaction.notes || '';
-    this.categoryId = transaction.categoryId || null;
+    this.categoryId = transaction.categoryId ? String(transaction.categoryId) : null;
   }
 
   private prepFormWithDate(dateInput: string): void {
     this.dateISO = dateInput;
     this.accountId = null;
-    this.amount = null;
+    this.amount = '';
     this.kind = TransactionKind.EXPENSE;
     this.isGift = false;
     this.notes = '';
     this.categoryId = null;
+  }
+
+  private parseAmount(): number | null {
+    if (!this.amount) return null;
+    const parsed = Number(this.amount);
+    return Number.isFinite(parsed) ? parsed : null;
   }
 }

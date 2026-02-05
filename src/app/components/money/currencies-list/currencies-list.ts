@@ -1,4 +1,6 @@
 import { Component, computed } from '@angular/core';
+import { VButton } from '@ui-kit/components/v-button/v-button';
+import { VCard } from '@ui-kit/components/v-card/v-card';
 import { MoneyService } from '../../../services/money.service';
 import { Currency } from '../../../shared/types';
 import { CurrencyForm } from './currency-form/currency-form';
@@ -7,7 +9,7 @@ import { CurrencyForm } from './currency-form/currency-form';
   selector: 'currencies-list',
   templateUrl: './currencies-list.html',
   standalone: true,
-  imports: [CurrencyForm],
+  imports: [CurrencyForm, VButton, VCard],
 })
 export class CurrenciesList {
   protected currencies$$ = computed(() => this.moneyService.currencies$$());

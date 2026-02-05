@@ -1,5 +1,10 @@
 import { Component, input, OnInit, output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { VButton } from '@ui-kit/components/v-button/v-button';
+import { VCard } from '@ui-kit/components/v-card/v-card';
+import { VCheckbox } from '@ui-kit/components/v-checkbox/v-checkbox';
+import { DropdownItem, VDropdown } from '@ui-kit/components/v-dropdown/v-dropdown';
+import { VInput } from '@ui-kit/components/v-input/v-input';
 import { MoneyService } from '../../../../services/money.service';
 import { Currency, SymbolPosition } from '../../../../shared/types';
 
@@ -7,7 +12,7 @@ import { Currency, SymbolPosition } from '../../../../shared/types';
   selector: 'currency-form',
   templateUrl: './currency-form.html',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, VButton, VCard, VDropdown, VCheckbox, VInput],
 })
 export class CurrencyForm implements OnInit {
   public readonly currency = input<Currency | null>(null);
@@ -73,5 +78,12 @@ export class CurrencyForm implements OnInit {
 
   protected isEditing(): boolean {
     return Boolean(this.currency()?.id);
+  }
+
+  protected symbolPositionItems(): DropdownItem[] {
+    return [
+      { value: SymbolPosition.BEFORE, label: 'Before' },
+      { value: SymbolPosition.AFTER, label: 'After' },
+    ];
   }
 }

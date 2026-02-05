@@ -1,33 +1,65 @@
-<div class="flex items-stretch justify-center w-full gap-2">
+<div class="flex items-stretch justify-center w-full gap-2 pl-2">
 
-  <div class="w-96 flex-shrink-0">
-    <div class="p-2 mb-2 bg-white border border-gray-200 rounded-lg">
+  <div class="w-96 flex flex-col flex-shrink-0 gap-2">
+    <v-card [config]="{
+              padding: 2,
+              borderRadius: 2,
+            }">
       <div class="flex gap-2">
-        <button (click)="setActiveTab(MoneyTab.Currencies)"
-                [class]="'flex-1 px-4 py-2 text-sm font-medium rounded-md transition-colors ' +
-                        (activeTab === MoneyTab.Currencies ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-100')">
-          💱
-        </button>
+        <v-button [class.v-flat]="activeTab === MoneyTab.Currencies"
+                  [class.v-link]="activeTab !== MoneyTab.Currencies"
+                  [class.v-link-static]="activeTab !== MoneyTab.Currencies"
+                  [config]="{
+                    padding: 2,
+                    isLabelHidden: true,
+                  }"
+                  (onClick)="setActiveTab(MoneyTab.Currencies)">
+          <v-icon v-prefix
+                  [name]="Icon.UniversalCurrency"
+                  [size]="7"></v-icon>
+        </v-button>
 
-        <button (click)="setActiveTab(MoneyTab.Categories)"
-                [class]="'flex-1 px-4 py-2 text-sm font-medium rounded-md transition-colors ' +
-                        (activeTab === MoneyTab.Categories ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-100')">
-          🗂️
-        </button>
+        <v-button [class.v-flat]="activeTab === MoneyTab.Categories"
+                  [class.v-link]="activeTab !== MoneyTab.Categories"
+                  [class.v-link-static]="activeTab !== MoneyTab.Categories"
+                  [config]="{
+                    padding: 2,
+                    isLabelHidden: true,
+                  }"
+                  (onClick)="setActiveTab(MoneyTab.Categories)">
+          <v-icon v-prefix
+                  [name]="Icon.Category"
+                  [size]="7"></v-icon>
+        </v-button>
 
-        <button (click)="setActiveTab(MoneyTab.Accounts)"
-                [class]="'flex-1 px-4 py-2 text-sm font-medium rounded-md transition-colors ' +
-                        (activeTab === MoneyTab.Accounts ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-100')">
-          🏦
-        </button>
+        <v-button [class.v-flat]="activeTab === MoneyTab.Accounts"
+                  [class.v-link]="activeTab !== MoneyTab.Accounts"
+                  [class.v-link-static]="activeTab !== MoneyTab.Accounts"
+                  [config]="{
+                    padding: 2,
+                    isLabelHidden: true,
+                  }"
+                  (onClick)="setActiveTab(MoneyTab.Accounts)">
+          <v-icon v-prefix
+                  [name]="Icon.AccontBalanceWallet"
+                  [size]="7"></v-icon>
+        </v-button>
 
-        <button (click)="setActiveTab(MoneyTab.Transactions)"
-                [class]="'flex-1 px-4 py-2 text-sm font-medium rounded-md transition-colors ' +
-                        (activeTab === MoneyTab.Transactions ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-100')">
+        <v-button class="grow"
+                  [class.v-flat]="activeTab === MoneyTab.Transactions"
+                  [class.v-link]="activeTab !== MoneyTab.Transactions"
+                  [class.v-link-static]="activeTab !== MoneyTab.Transactions"
+                  [config]="{
+                    padding: 2,
+                  }"
+                  (onClick)="setActiveTab(MoneyTab.Transactions)">
+          <v-icon v-prefix
+                  [name]="Icon.List"
+                  [size]="7"></v-icon>
           Transactions
-        </button>
+        </v-button>
       </div>
-    </div>
+    </v-card>
 
     @if (activeTab === MoneyTab.Currencies) {
       <currencies-list />
@@ -46,10 +78,15 @@
     }
   </div>
 
-  <div class="w-full flex gap-2 flex-wrap border-0 border-[#4051B5]">
-    <!-- Future dashboard -->
+  <div class="flex flex-wrap w-full gap-2">
     @for (item of [].constructor(4); track $index) {
-      <div class="w-96 flex flex-shrink-0 border-2 border-[#4051B5]">Card {{ $index }}</div>
+      <v-card class="w-96 flex flex-shrink-0"
+              [config]="{
+                padding: 2,
+                borderRadius: 2,
+              }">
+        Card {{ $index }}
+      </v-card>
     }
   </div>
 

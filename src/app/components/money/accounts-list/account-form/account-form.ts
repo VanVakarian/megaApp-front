@@ -2,12 +2,17 @@ import { Component, input, OnInit, output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MoneyService } from '@app/services/money.service';
 import { Account, AccountKind, Currency } from '@app/shared/types';
+import { VButton } from '@ui-kit/components/v-button/v-button';
+import { VCard } from '@ui-kit/components/v-card/v-card';
+import { VCheckbox } from '@ui-kit/components/v-checkbox/v-checkbox';
+import { DropdownItem, VDropdown } from '@ui-kit/components/v-dropdown/v-dropdown';
+import { VInput } from '@ui-kit/components/v-input/v-input';
 
 @Component({
   selector: 'account-form',
   templateUrl: './account-form.html',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, VButton, VCard, VDropdown, VCheckbox, VInput],
 })
 export class AccountForm implements OnInit {
   public readonly account = input<Account | null>(null);
@@ -17,9 +22,9 @@ export class AccountForm implements OnInit {
   public readonly cancelled = output<void>();
 
   protected title = '';
-  protected currencyId: number | null = null;
+  protected currencyId: string | null = null;
   protected invest = false;
-  protected kind: AccountKind | null = null;
+  protected kind: AccountKind | '' = '';
 
   constructor(private moneyService: MoneyService) {}
 
@@ -35,9 +40,9 @@ export class AccountForm implements OnInit {
 
     const accountData: Account = {
       title: this.title,
-      currencyId: this.currencyId!,
+      currencyId: Number(this.currencyId),
       invest: this.invest,
-      kind: this.kind!,
+      kind: this.kind as AccountKind,
     };
 
     const currentAccount = this.account();
@@ -69,6 +74,20 @@ export class AccountForm implements OnInit {
     return Boolean(this.title && this.currencyId && this.kind);
   }
 
+  protected currencyItems(): DropdownItem[] {
+    return this.currencies().map((currency) => ({
+      value: String(currency.id),
+      label: `${currency.title} (${currency.ticker})`,
+    }));
+  }
+
+  protected kindItems(): DropdownItem[] {
+    return this.getKindValues().map((kind) => ({
+      value: kind,
+      label: this.getKindDisplayName(kind),
+    }));
+  }
+
   protected getKindValues(): AccountKind[] {
     return Object.values(AccountKind);
   }
@@ -94,7 +113,7 @@ export class AccountForm implements OnInit {
 
   private fillForm(account: Account): void {
     this.title = account.title;
-    this.currencyId = account.currencyId;
+    this.currencyId = String(account.currencyId);
     this.invest = account.invest;
     this.kind = account.kind;
   }

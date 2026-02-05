@@ -1,4 +1,7 @@
 import { Component, OnInit } from '@angular/core';
+import { VButton } from '@ui-kit/components/v-button/v-button';
+import { VCard } from '@ui-kit/components/v-card/v-card';
+import { IconName, VIcon } from '@ui-kit/components/v-icon/v-icon';
 import { firstValueFrom } from 'rxjs';
 import { MoneyService } from '../../services/money.service';
 import { AccountsList } from './accounts-list/accounts-list';
@@ -17,9 +20,10 @@ enum MoneyTab {
   selector: 'money-screen',
   templateUrl: './money-screen.html',
   standalone: true,
-  imports: [CurrenciesList, CategoriesList, AccountsList, TransactionsList],
+  imports: [CurrenciesList, CategoriesList, AccountsList, TransactionsList, VButton, VCard, VIcon],
 })
 export class MoneyScreen implements OnInit {
+  protected readonly Icon = IconName;
   public readonly MoneyTab = MoneyTab;
   public activeTab: MoneyTab = MoneyTab.Transactions;
 

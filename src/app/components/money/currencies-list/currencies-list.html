@@ -1,7 +1,7 @@
 <div class="max-w-4xl mx-auto">
 
   @if (showForm) {
-    <div class="mb-8">
+    <div class="mb-4">
       <currency-form [currency]="editingCurrency"
                      (saved)="onSaved()"
                      (cancelled)="onCancelled()">
@@ -9,35 +9,38 @@
     </div>
   }
 
-  <div class="p-4 bg-white border border-gray-200 rounded-lg">
+  <v-card [config]="{
+            padding: 4,
+            borderRadius: 2,
+          }">
     <div class="flex items-center justify-between mb-4">
-      <h3 class="text-lg font-semibold">Currency List</h3>
+      <div class="text-lg font-semibold">Currency List</div>
       @if (!showForm) {
-        <button (click)="showCreateForm()"
-                class="hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 px-4 py-2 text-white bg-blue-600 rounded-md">
+        <v-button class="v-flat"
+                  (onClick)="showCreateForm()">
           Add New Currency
-        </button>
+        </v-button>
       }
     </div>
 
     @if (currencies$$().length === 0) {
-      <div class="py-8 text-center text-gray-500">
+      <div class="py-8 text-center opacity-70">
         No currencies found.
       </div>
     }
 
     @for (currency of currencies$$(); track currency.id) {
-      <div class="last:border-b-0 py-4 border-b border-gray-100">
-        <div class="flex items-start justify-between">
+      <div class="last:border-b-0 py-4 border-b border-[color:var(--v-outline-color)]">
+        <div class="flex items-start justify-between gap-4">
           <div class="flex-1">
             <div class="mb-2">
-              <span class="font-semibold text-gray-900">{{ currency.title }}</span>
-              <span class="ml-2 text-gray-600">{{ currency.ticker }}</span>
-              <span class="ml-2 text-gray-800">{{ currency.symbol }}</span>
+              <span class="font-semibold">{{ currency.title }}</span>
+              <span class="ml-2 opacity-70">{{ currency.ticker }}</span>
+              <span class="ml-2">{{ currency.symbol }}</span>
             </div>
 
-            <div class="flex gap-2">
-              <span class="px-2 py-1 text-xs text-gray-700 bg-gray-200 rounded">
+            <div class="flex gap-3 text-xs opacity-70">
+              <span>
                 @if (currency.symbolPosEnum === 'after') {
                   After
                 } @else {
@@ -45,7 +48,7 @@
                 }
               </span>
 
-              <span class="px-2 py-1 text-xs text-gray-700 bg-gray-200 rounded">
+              <span>
                 @if (currency.whitespace) {
                   With whitespace
                 } @else {
@@ -55,19 +58,27 @@
             </div>
           </div>
 
-          <div class="flex gap-2 ml-4">
-            <button (click)="editCurrency(currency)"
-                    class="hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500 px-3 py-1 text-sm text-blue-700 bg-blue-100 rounded">
+          <div class="flex gap-2">
+            <v-button class="v-flat"
+                      [config]="{
+                        paddingY: 1,
+                        paddingX: 2,
+                      }"
+                      (onClick)="editCurrency(currency)">
               Edit
-            </button>
+            </v-button>
 
-            <button (click)="deleteCurrency(currency.id!)"
-                    class="hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-red-500 px-3 py-1 text-sm text-red-700 bg-red-100 rounded">
+            <v-button class="v-danger"
+                      [config]="{
+                        paddingY: 1,
+                        paddingX: 2,
+                      }"
+                      (onClick)="deleteCurrency(currency.id!)">
               Delete
-            </button>
+            </v-button>
           </div>
         </div>
       </div>
     }
-  </div>
+  </v-card>
 </div>
