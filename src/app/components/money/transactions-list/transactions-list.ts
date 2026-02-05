@@ -68,14 +68,10 @@ export class TransactionsList implements AfterViewInit, OnDestroy {
     return account ? account.title : 'Unknown Account';
   }
 
-  protected getCategoryNames(categoryIds: number[]): string[] {
-    if (!categoryIds || categoryIds.length === 0) return [];
-    return categoryIds
-      .map((id) => {
-        const category = this.categories$$().find((c) => c.id === id);
-        return category ? category.name : 'Unknown Category';
-      })
-      .filter(Boolean);
+  protected getCategoryName(categoryId?: number | null): string | null {
+    if (!categoryId) return null;
+    const category = this.categories$$().find((c) => c.id === categoryId);
+    return category ? category.name : 'Unknown Category';
   }
 
   protected formatAmount(transaction: Transaction): string {

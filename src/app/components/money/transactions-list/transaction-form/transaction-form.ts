@@ -1,7 +1,7 @@
 import { Component, effect, input, output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MoneyService } from '@app/services/money.service';
-import { Account, Category, Transaction, TransactionKind, UsedFor } from '@app/shared/interfaces';
+import { Account, Category, CategoryType, Transaction, TransactionKind } from '@app/shared/interfaces';
 
 @Component({
   selector: 'transaction-form',
@@ -23,7 +23,7 @@ export class TransactionForm {
   protected kind: TransactionKind = TransactionKind.EXPENSE;
   protected isGift = false;
   protected notes = '';
-  protected selectedCategoryIds: number[] = [];
+  protected categoryId: number | null = null;
 
   constructor(private moneyService: MoneyService) {
     effect(() => {
@@ -48,7 +48,7 @@ export class TransactionForm {
       kind: this.kind,
       isGift: this.isGift,
       notes: this.notes || undefined,
-      categoryIds: this.selectedCategoryIds,
+      categoryId: this.categoryId || null,
     };
 
     const currentTransaction = this.transactionInput();
@@ -86,6 +86,10 @@ export class TransactionForm {
     return Object.values(TransactionKind);
   }
 
+  protected onKindChange(): void {
+    this.categoryId = null;
+  }
+
   protected getKindDisplayName(kind: TransactionKind): string {
     switch (kind) {
       case TransactionKind.INCOME:
@@ -102,22 +106,26 @@ export class TransactionForm {
   }
 
   protected getTransactionCategories(): Category[] {
-    return this.moneyService.categories$$().filter((category) => category.usedFor === UsedFor.TRANSACTION);
-  }
+    const categoryType = this.kind === TransactionKind.INCOME ? CategoryType.INCOME : CategoryType.EXPENSE;
+    const categories = this.moneyService.categories$$().filter((category) => category.categoryType === categoryType);
+    const parentsWithChildren = new Set<number>();
 
-  protected isCategorySelected(categoryId: number): boolean {
-    return this.selectedCategoryIds.includes(categoryId);
-  }
-
-  protected toggleCategory(categoryId: number, event: Event): void {
-    const checkbox = event.target as HTMLInputElement;
-    if (checkbox.checked) {
-      if (!this.selectedCategoryIds.includes(categoryId)) {
-        this.selectedCategoryIds.push(categoryId);
+    categories.forEach((category) => {
+      if (category.parentId) {
+        parentsWithChildren.add(category.parentId);
       }
-    } else {
-      this.selectedCategoryIds = this.selectedCategoryIds.filter((id) => id !== categoryId);
-    }
+    });
+
+    return categories.filter((category) => !parentsWithChildren.has(category.id!));
+  }
+
+  protected getCategoryLabel(category: Category): string {
+    if (!category.parentId) return category.name;
+
+    const parentCategory = this.moneyService.categories$$().find((parent) => parent.id === category.parentId);
+    if (!parentCategory) return category.name;
+
+    return `${parentCategory.name} / ${category.name}`;
   }
 
   private prepFormWithTransaction(transaction: Transaction): void {
@@ -127,7 +135,7 @@ export class TransactionForm {
     this.kind = transaction.kind;
     this.isGift = transaction.isGift;
     this.notes = transaction.notes || '';
-    this.selectedCategoryIds = [...(transaction.categoryIds || [])];
+    this.categoryId = transaction.categoryId || null;
   }
 
   private prepFormWithDate(dateInput: string): void {
@@ -137,6 +145,6 @@ export class TransactionForm {
     this.kind = TransactionKind.EXPENSE;
     this.isGift = false;
     this.notes = '';
-    this.selectedCategoryIds = [];
+    this.categoryId = null;
   }
 }

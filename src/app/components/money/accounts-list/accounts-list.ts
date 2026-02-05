@@ -1,6 +1,6 @@
 import { Component, computed } from '@angular/core';
 import { MoneyService } from '@app/services/money.service';
-import { Account, AccountKind, Category, UsedFor } from '@app/shared/interfaces';
+import { Account, AccountKind } from '@app/shared/interfaces';
 import { AccountForm } from './account-form/account-form';
 
 @Component({
@@ -12,7 +12,6 @@ import { AccountForm } from './account-form/account-form';
 export class AccountsList {
   protected accounts$$ = computed(() => this.moneyService.accounts$$());
   protected currencies$$ = computed(() => this.moneyService.currencies$$());
-  protected categories$$ = computed(() => this.moneyService.categories$$());
   protected showForm = false;
   protected editingAccount: Account | null = null;
 
@@ -64,14 +63,5 @@ export class AccountsList {
   protected getCurrencySymbol(currencyId: number): string {
     const currency = this.currencies$$().find((c) => c.id === currencyId);
     return currency ? currency.symbol : '';
-  }
-
-  protected getCategoryName(categoryId: number): string {
-    const category = this.categories$$().find((c) => c.id === categoryId);
-    return category ? category.name : '';
-  }
-
-  protected getAccountCategories(): Category[] {
-    return this.categories$$().filter((category) => category.usedFor === UsedFor.ACCOUNT);
   }
 }

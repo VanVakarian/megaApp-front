@@ -40,6 +40,7 @@
     <div>
       <label class="block mb-1 text-sm font-medium text-gray-700">Type <span class="text-red-500">*</span>:</label>
       <select [(ngModel)]="kind"
+              (ngModelChange)="onKindChange()"
               class="focus:outline-none focus:ring-2 focus:ring-blue-500 w-full px-3 py-2 border border-gray-300 rounded-md">
         @for (kindOption of getKindValues(); track kindOption) {
           <option [value]="kindOption">{{ getKindDisplayName(kindOption) }}</option>
@@ -65,29 +66,14 @@
     </div>
 
     <div>
-      <label class="block mb-2 text-sm font-medium text-gray-700">Categories (optional):</label>
-      <div class="max-h-32 p-3 space-y-2 overflow-y-auto border border-gray-300 rounded-md">
-        @if (getTransactionCategories().length === 0) {
-          <p class="text-sm italic text-gray-500">No transaction categories available</p>
-        } @else {
-          @for (category of getTransactionCategories(); track category.id) {
-            <div class="flex items-center">
-              <input type="checkbox"
-                     [id]="'category-' + category.id"
-                     [checked]="isCategorySelected(category.id!)"
-                     (change)="toggleCategory(category.id!, $event)"
-                     class="focus:ring-blue-500 w-4 h-4 mr-2 text-blue-600 border-gray-300 rounded">
-              <label [for]="'category-' + category.id"
-                     class="text-sm text-gray-700">
-                {{ category.name }}
-                @if (category.groupKey) {
-                  <span class="text-gray-500">({{ category.groupKey }})</span>
-                }
-              </label>
-            </div>
-            }
-            }
-      </div>
+      <label class="block mb-1 text-sm font-medium text-gray-700">Category (optional):</label>
+      <select [(ngModel)]="categoryId"
+              class="focus:outline-none focus:ring-2 focus:ring-blue-500 w-full px-3 py-2 border border-gray-300 rounded-md">
+        <option [value]="null">No category</option>
+        @for (category of getTransactionCategories(); track category.id) {
+          <option [value]="category.id">{{ getCategoryLabel(category) }}</option>
+        }
+      </select>
     </div>
 
     <div class="flex gap-2">

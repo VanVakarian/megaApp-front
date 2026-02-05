@@ -52,9 +52,7 @@ export class MoneyService {
     // effect(() => { console.log('TRANSACTIONS:', this.transactions$$()) }); // prettier-ignore
   }
 
-  // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  // ~                                                ~~~ CURRENCIES ~~~                                               ~
-  // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  //                                                          ~~~ CURRENCIES ~~~
 
   public getCurrencies(): Observable<Currency[]> {
     return this.http.get<CurrenciesResponse>('/api/money/currencies').pipe(
@@ -158,9 +156,7 @@ export class MoneyService {
     );
   }
 
-  // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  // ~                                                ~~~ CATEGORIES ~~~                                               ~
-  // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  //                                                          ~~~ CATEGORIES ~~~
 
   public getCategories(): Observable<Category[]> {
     return this.http.get<CategoriesResponse>('/api/money/categories').pipe(
@@ -264,20 +260,14 @@ export class MoneyService {
     );
   }
 
-  // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  // ~                                                 ~~~ ACCOUNTS ~~~                                                ~
-  // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  //                                                            ~~~ ACCOUNTS ~~~
 
   public getAccounts(): Observable<Account[]> {
     return this.http.get<AccountsResponse>('/api/money/accounts').pipe(
       map((response: AccountsResponse) => {
         if (response.success && response.data) {
-          const accounts = response.data.map((account: any) => ({
-            ...account,
-            categoryIds: account.categoryIds ? JSON.parse(account.categoryIds) : [],
-          }));
-          this.accounts$$.set(accounts);
-          return accounts;
+          this.accounts$$.set(response.data);
+          return response.data;
         }
         return [];
       }),
@@ -290,12 +280,7 @@ export class MoneyService {
   }
 
   public createAccount(accountData: Account): Observable<boolean> {
-    const requestData = {
-      ...accountData,
-      categoryIds: accountData.categoryIds || [],
-    };
-
-    return this.http.post<CreateAccountResponse>('/api/money/accounts', requestData).pipe(
+    return this.http.post<CreateAccountResponse>('/api/money/accounts', accountData).pipe(
       map((response: CreateAccountResponse) => {
         if (response.success && response.data?.id) {
           const newAccount: Account = {
@@ -324,12 +309,7 @@ export class MoneyService {
       return of(false);
     }
 
-    const requestData = {
-      ...accountData,
-      categoryIds: accountData.categoryIds || [],
-    };
-
-    return this.http.put<BasicResponse>(`/api/money/accounts/${accountData.id}`, requestData).pipe(
+    return this.http.put<BasicResponse>(`/api/money/accounts/${accountData.id}`, accountData).pipe(
       map((response: BasicResponse) => {
         if (response.success) {
           this.updateAccountInState(accountData);
@@ -382,20 +362,14 @@ export class MoneyService {
     this.accounts$$.update((accounts: Account[]) => accounts.filter((account: Account) => account.id !== accountId));
   }
 
-  // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  // ~                                               ~~~ TRANSACTIONS ~~~                                              ~
-  // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  //                                                        ~~~ TRANSACTIONS ~~~
 
   public getTransactions(): Observable<Transaction[]> {
     return this.http.get<TransactionsResponse>('/api/money/transactions').pipe(
       map((response: TransactionsResponse) => {
         if (response.success && response.data) {
-          const transactions = response.data.map((transaction: any) => ({
-            ...transaction,
-            categoryIds: transaction.categoryIds ? JSON.parse(transaction.categoryIds) : [],
-          }));
-          this.transactions$$.set(transactions);
-          return transactions;
+          this.transactions$$.set(response.data);
+          return response.data;
         }
         return [];
       }),
@@ -408,12 +382,7 @@ export class MoneyService {
   }
 
   public createTransaction(transactionData: Transaction): Observable<boolean> {
-    const requestData = {
-      ...transactionData,
-      categoryIds: transactionData.categoryIds || [],
-    };
-
-    return this.http.post<CreateTransactionResponse>('/api/money/transactions', requestData).pipe(
+    return this.http.post<CreateTransactionResponse>('/api/money/transactions', transactionData).pipe(
       map((response: CreateTransactionResponse) => {
         if (response.success && response.data?.id) {
           const newTransaction: Transaction = {
@@ -442,12 +411,7 @@ export class MoneyService {
       return of(false);
     }
 
-    const requestData = {
-      ...transactionData,
-      categoryIds: transactionData.categoryIds || [],
-    };
-
-    return this.http.put<BasicResponse>(`/api/money/transactions/${transactionData.id}`, requestData).pipe(
+    return this.http.put<BasicResponse>(`/api/money/transactions/${transactionData.id}`, transactionData).pipe(
       map((response: BasicResponse) => {
         if (response.success) {
           this.updateTransactionInState(transactionData);

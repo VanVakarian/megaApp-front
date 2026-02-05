@@ -363,17 +363,16 @@ export interface Currency {
   whitespace: boolean;
 }
 
-export enum UsedFor {
-  TRANSACTION = 'transaction',
-  ACCOUNT = 'account',
-  ASSET = 'asset',
+export enum CategoryType {
+  INCOME = 'income',
+  EXPENSE = 'expense',
 }
 
 export interface Category {
   id?: number;
   name: string;
-  usedFor: UsedFor;
-  groupKey: string;
+  parentId?: number | null;
+  categoryType: CategoryType;
 }
 
 export enum AccountKind {
@@ -391,7 +390,6 @@ export interface Account {
   currencyId: number;
   invest: boolean;
   kind: AccountKind;
-  categoryIds: number[];
 }
 
 export enum TransactionKind {
@@ -404,7 +402,7 @@ export interface Transaction {
   dateISO: string;
   accountId: number;
   amount: number;
-  categoryIds: number[];
+  categoryId?: number | null;
   kind: TransactionKind;
   isGift: boolean;
   notes?: string;

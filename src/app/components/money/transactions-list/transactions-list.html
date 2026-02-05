@@ -43,13 +43,11 @@
                   }
                 </div>
 
-                @if (getCategoryNames(transaction.categoryIds).length > 0) {
+                @if (getCategoryName(transaction.categoryId)) {
                   <div class="flex flex-wrap gap-1 mb-2">
-                    @for (categoryName of getCategoryNames(transaction.categoryIds); track categoryName) {
-                      <span class="px-2 py-1 text-xs text-gray-700 bg-gray-200 rounded">
-                        {{ categoryName }}
-                      </span>
-                    }
+                    <span class="px-2 py-1 text-xs text-gray-700 bg-gray-200 rounded">
+                      {{ getCategoryName(transaction.categoryId) }}
+                    </span>
                   </div>
                 }
 

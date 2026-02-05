@@ -1,7 +1,7 @@
 import { Component, input, OnInit, output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MoneyService } from '@app/services/money.service';
-import { Account, AccountKind, Category, Currency } from '@app/shared/interfaces';
+import { Account, AccountKind, Currency } from '@app/shared/interfaces';
 
 @Component({
   selector: 'account-form',
@@ -12,7 +12,6 @@ import { Account, AccountKind, Category, Currency } from '@app/shared/interfaces
 export class AccountForm implements OnInit {
   public readonly account = input<Account | null>(null);
   public readonly currencies = input<Currency[]>([]);
-  public readonly categories = input<Category[]>([]);
 
   public readonly saved = output<void>();
   public readonly cancelled = output<void>();
@@ -21,7 +20,6 @@ export class AccountForm implements OnInit {
   protected currencyId: number | null = null;
   protected invest = false;
   protected kind: AccountKind | null = null;
-  protected selectedCategoryIds: number[] = [];
 
   constructor(private moneyService: MoneyService) {}
 
@@ -40,7 +38,6 @@ export class AccountForm implements OnInit {
       currencyId: this.currencyId!,
       invest: this.invest,
       kind: this.kind!,
-      categoryIds: this.selectedCategoryIds,
     };
 
     const currentAccount = this.account();
@@ -95,26 +92,10 @@ export class AccountForm implements OnInit {
     }
   }
 
-  protected isCategorySelected(categoryId: number): boolean {
-    return this.selectedCategoryIds.includes(categoryId);
-  }
-
-  protected toggleCategory(categoryId: number, event: Event): void {
-    const checkbox = event.target as HTMLInputElement;
-    if (checkbox.checked) {
-      if (!this.selectedCategoryIds.includes(categoryId)) {
-        this.selectedCategoryIds.push(categoryId);
-      }
-    } else {
-      this.selectedCategoryIds = this.selectedCategoryIds.filter((id) => id !== categoryId);
-    }
-  }
-
   private fillForm(account: Account): void {
     this.title = account.title;
     this.currencyId = account.currencyId;
     this.invest = account.invest;
     this.kind = account.kind;
-    this.selectedCategoryIds = [...(account.categoryIds || [])];
   }
 }
