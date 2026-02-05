@@ -1,7 +1,7 @@
 import { Component, input, OnInit, output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MoneyService } from '../../../../services/money.service';
-import { Currency, SymbolPosition } from '../../../../shared/interfaces';
+import { Currency, SymbolPosition } from '../../../../shared/types';
 
 @Component({
   selector: 'currency-form',

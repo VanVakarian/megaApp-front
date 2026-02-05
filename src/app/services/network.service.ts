@@ -1,6 +1,6 @@
 import { Injectable, WritableSignal, computed, inject, signal } from '@angular/core';
 import { tokenGetter } from '@app/services/auth.service';
-import { IncomingWsMessage, OutgoingWsMessage, WebSocketMessageType } from '@app/shared/interfaces';
+import { IncomingWsMessage, OutgoingWsMessage, WebSocketMessageType } from '@app/shared/types';
 import { EMPTY, Subject, timer } from 'rxjs';
 import { catchError, retry, tap } from 'rxjs/operators';
 import { WebSocketSubject, webSocket } from 'rxjs/webSocket';

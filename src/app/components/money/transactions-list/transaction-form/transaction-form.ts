@@ -1,7 +1,7 @@
 import { Component, effect, input, output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MoneyService } from '@app/services/money.service';
-import { Account, Category, CategoryType, Transaction, TransactionKind } from '@app/shared/interfaces';
+import { Account, Category, CategoryType, Transaction, TransactionKind } from '@app/shared/types';
 
 @Component({
   selector: 'transaction-form',

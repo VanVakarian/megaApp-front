@@ -1,6 +1,6 @@
 import { Component, computed } from '@angular/core';
 import { MoneyService } from '@app/services/money.service';
-import { Account, AccountKind } from '@app/shared/interfaces';
+import { Account, AccountKind } from '@app/shared/types';
 import { AccountForm } from './account-form/account-form';
 
 @Component({

@@ -1,7 +1,7 @@
 import { Component, input, OnInit, output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MoneyService } from '@app/services/money.service';
-import { Account, AccountKind, Currency } from '@app/shared/interfaces';
+import { Account, AccountKind, Currency } from '@app/shared/types';
 
 @Component({
   selector: 'account-form',

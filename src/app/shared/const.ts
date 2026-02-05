@@ -1,4 +1,4 @@
-import { UserSettings } from './interfaces';
+import { UserSettings } from './types';
 
 export const FETCH_DAYS_RANGE_OFFSET: number = 10; // TODO: create settings item out of this constant
 

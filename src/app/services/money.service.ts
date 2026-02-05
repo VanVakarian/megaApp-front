@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, signal, WritableSignal } from '@angular/core';
 import { Observable, of, Subject } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
-import { Account, Category, Currency, ServerResponseBasic, Transaction } from '../shared/interfaces';
+import { Account, Category, Currency, ServerResponseBasic, Transaction } from '../shared/types';
 
 interface BaseResponse {
   success: boolean;

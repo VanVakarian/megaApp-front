@@ -19,7 +19,7 @@ import {
   MonthLabelsPluginOptions,
   WEIGHT_CHART_SETTINGS,
 } from '@app/shared/chart-config';
-import { StatsChartData } from '@app/shared/interfaces';
+import { StatsChartData } from '@app/shared/types';
 import { formatDateTicks, getRuDeclension } from '@app/shared/utils';
 import { VButton } from '@ui-kit/components/v-button/v-button';
 import { VCard } from '@ui-kit/components/v-card/v-card';

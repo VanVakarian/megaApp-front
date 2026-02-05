@@ -3,7 +3,7 @@ import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { Router } from '@angular/router';
 import { AuthService } from '@app/services/auth.service';
 import { SettingsService } from '@app/services/settings.service';
-import { UserCreds } from '@app/shared/interfaces';
+import { UserCreds } from '@app/shared/types';
 import { VButton } from '@ui-kit/components/v-button/v-button';
 import { VCard } from '@ui-kit/components/v-card/v-card';
 import { VInput } from '@ui-kit/components/v-input/v-input';

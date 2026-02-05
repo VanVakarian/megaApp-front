@@ -1,6 +1,6 @@
 import { Component, computed } from '@angular/core';
 import { MoneyService } from '../../../services/money.service';
-import { Currency } from '../../../shared/interfaces';
+import { Currency } from '../../../shared/types';
 import { CurrencyForm } from './currency-form/currency-form';
 
 @Component({

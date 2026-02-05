@@ -1,6 +1,6 @@
 import { Component, computed } from '@angular/core';
 import { MoneyService } from '@app/services/money.service';
-import { Category, CategoryType } from '@app/shared/interfaces';
+import { Category, CategoryType } from '@app/shared/types';
 import { CategoryForm } from './category-form/category-form';
 
 @Component({

@@ -18,7 +18,7 @@ import {
   UnifiedDiary,
   UserDataLastModifiedTs,
   WebSocketMessageType,
-} from '@app/shared/interfaces';
+} from '@app/shared/types';
 import { calculateTodayIsoWithUserTimeShift } from '@app/shared/utils';
 import { firstValueFrom, Subject } from 'rxjs';
 import { LocalStorageService } from '../local-storage.service';

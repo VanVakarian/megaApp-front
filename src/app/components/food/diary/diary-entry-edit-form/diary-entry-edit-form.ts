@@ -12,7 +12,7 @@ import { DeviceInfoService } from '@app/services/device-info.service';
 import { FoodCatalogueService } from '@app/services/food/food-catalogue.service';
 import { FoodCoefficientsService } from '@app/services/food/food-coefficients.service';
 import { FoodDiaryService } from '@app/services/food/food-diary.service';
-import { DiaryEntry, HistoryEntry, HistoryEntryAction } from '@app/shared/interfaces';
+import { DiaryEntry, HistoryEntry, HistoryEntryAction } from '@app/shared/types';
 import { VButton } from '@ui-kit/components/v-button/v-button';
 import { VExpand } from '@ui-kit/components/v-expand/v-expand';
 import { IconName, VIcon } from '@ui-kit/components/v-icon/v-icon';

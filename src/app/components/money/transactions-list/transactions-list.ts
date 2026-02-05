@@ -9,7 +9,7 @@ import {
   createComponent,
 } from '@angular/core';
 import { MoneyService } from '@app/services/money.service';
-import { SymbolPosition, Transaction, TransactionKind } from '@app/shared/interfaces';
+import { SymbolPosition, Transaction, TransactionKind } from '@app/shared/types';
 import { TransactionForm } from './transaction-form/transaction-form';
 
 interface TransactionGroup {
