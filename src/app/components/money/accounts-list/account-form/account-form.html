@@ -10,22 +10,25 @@
                placeholder: 'My Bank Account',
                type: 'text',
              }"
-             [(ngModel)]="title" />
+             [ngModel]="title$$()"
+             (ngModelChange)="title$$.set($event)" />
 
     <v-dropdown [label]="'Currency'"
                 [placeholder]="'Select currency'"
                 [items]="currencyItems()"
                 [isRequired]="true"
-                [(ngModel)]="currencyId"></v-dropdown>
+                [ngModel]="currencyId$$()"
+                (ngModelChange)="currencyId$$.set($event)"></v-dropdown>
 
     <v-dropdown [label]="'Account Type'"
                 [placeholder]="'Select type'"
                 [items]="kindItems()"
                 [isRequired]="true"
-                [(ngModel)]="kind"></v-dropdown>
+                [ngModel]="kind$$()"
+                (ngModelChange)="kind$$.set($event)"></v-dropdown>
 
-    <v-checkbox [value]="invest"
-                (valueChange)="invest = $event">
+    <v-checkbox [value]="invest$$()"
+                (valueChange)="invest$$.set($event)">
       Investment account
     </v-checkbox>
 

@@ -1,11 +1,11 @@
 <div class="max-w-4xl mx-auto">
 
-  @if (showForm) {
+  @if (showForm$$()) {
     <div class="mb-4">
-      <account-form [account]="editingAccount"
-                    [currencies]="currencies$$()"
-                    (saved)="onSaved()"
-                    (cancelled)="onCancelled()" />
+      <account-form [accountInput]="editingAccount$$()"
+                    [currenciesInput]="currencies$$()"
+                    (savedOutput)="onSaved()"
+                    (cancelledOutput)="onCancelled()" />
     </div>
   }
 
@@ -15,7 +15,7 @@
           }">
     <div class="flex items-center justify-between mb-4">
       <div class="text-lg font-semibold">Accounts</div>
-      @if (!showForm) {
+      @if (!showForm$$()) {
         <v-button class="v-flat"
                   (onClick)="showCreateForm()">
           Add New Account
@@ -73,7 +73,7 @@
   </v-card>
 </div>
 
-<default-modal [isModalOpen]="isDeleteConfirmOpen"
+<default-modal [isModalOpen]="isDeleteConfirmOpen$$()"
                [modalTitle]="'Are you sure you want to delete this account?'"
                [confirmButtonLabel]="'Yes'"
                [cancelButtonLabel]="'No'"

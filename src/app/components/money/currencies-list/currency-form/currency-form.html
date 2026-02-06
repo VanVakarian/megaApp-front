@@ -10,36 +10,40 @@
                placeholder: 'US Dollar',
                type: 'text',
              }"
-             [(ngModel)]="title" />
+             [ngModel]="title$$()"
+             (ngModelChange)="title$$.set($event)" />
 
     <v-input [config]="{
                label: 'Ticker',
                placeholder: 'USD',
                type: 'text',
              }"
-             [(ngModel)]="ticker" />
+             [ngModel]="ticker$$()"
+             (ngModelChange)="ticker$$.set($event)" />
 
     <v-input [config]="{
                label: 'Symbol',
                placeholder: '$',
                type: 'text',
              }"
-             [(ngModel)]="symbol" />
+             [ngModel]="symbol$$()"
+             (ngModelChange)="symbol$$.set($event)" />
 
     <v-dropdown [label]="'Symbol Position'"
                 [placeholder]="'Select position'"
                 [items]="symbolPositionItems()"
-                [(ngModel)]="symbolPosEnum"></v-dropdown>
+                [ngModel]="symbolPosEnum$$()"
+                (ngModelChange)="symbolPosEnum$$.set($event)"></v-dropdown>
 
-    <v-checkbox [value]="whitespace"
-                (valueChange)="whitespace = $event">
+    <v-checkbox [value]="whitespace$$()"
+                (valueChange)="whitespace$$.set($event)">
       Whitespace between symbol and amount
     </v-checkbox>
 
     <div class="flex gap-2">
       <v-button class="v-flat"
                 [config]="{
-                  isDisabled: !title || !ticker || !symbol,
+                  isDisabled: !title$$() || !ticker$$() || !symbol$$(),
                 }"
                 (onClick)="save()">
         {{ isEditing() ? 'Update' : 'Create' }}

@@ -38,12 +38,12 @@ interface BasicResponse extends MessageResponse {}
   providedIn: 'root',
 })
 export class MoneyService {
-  public currencies$$: WritableSignal<Currency[]> = signal([]);
-  public categories$$: WritableSignal<Category[]> = signal([]);
-  public accounts$$: WritableSignal<Account[]> = signal([]);
-  public transactions$$: WritableSignal<Transaction[]> = signal([]);
+  public readonly currencies$$: WritableSignal<Currency[]> = signal([]);
+  public readonly categories$$: WritableSignal<Category[]> = signal([]);
+  public readonly accounts$$: WritableSignal<Account[]> = signal([]);
+  public readonly transactions$$: WritableSignal<Transaction[]> = signal([]);
 
-  public requestResult$ = new Subject<ServerResponseBasic>();
+  public readonly requestResult$ = new Subject<ServerResponseBasic>();
 
   constructor(private http: HttpClient) {
     // effect(() => { console.log('CURRENCIES:', this.currencies$$()) }); // prettier-ignore

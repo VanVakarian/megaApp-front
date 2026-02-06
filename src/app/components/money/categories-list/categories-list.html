@@ -1,11 +1,11 @@
 <div class="max-w-4xl mx-auto">
 
-  @if (showForm) {
+  @if (showForm$$()) {
     <div class="mb-4">
-      <category-form [category]="editingCategory"
-                     [categories]="categories$$()"
-                     (saved)="onSaved()"
-                     (cancelled)="onCancelled()">
+      <category-form [categoryInput]="editingCategory$$()"
+                     [categoriesInput]="categories$$()"
+                     (savedOutput)="onSaved()"
+                     (cancelledOutput)="onCancelled()">
       </category-form>
     </div>
   }
@@ -16,7 +16,7 @@
           }">
     <div class="flex items-center justify-between mb-4">
       <div class="text-lg font-semibold">Categories</div>
-      @if (!showForm) {
+      @if (!showForm$$()) {
         <v-button class="v-flat"
                   (onClick)="showCreateForm()">
           Add New Category
@@ -115,7 +115,7 @@
 
 </div>
 
-<default-modal [isModalOpen]="isDeleteConfirmOpen"
+<default-modal [isModalOpen]="isDeleteConfirmOpen$$()"
                [modalTitle]="'Are you sure you want to delete this category?'"
                [confirmButtonLabel]="'Yes'"
                [cancelButtonLabel]="'No'"

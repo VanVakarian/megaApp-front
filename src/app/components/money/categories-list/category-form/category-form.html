@@ -10,24 +10,26 @@
                placeholder: 'Food & Restaurants',
                type: 'text',
              }"
-             [(ngModel)]="name" />
+             [ngModel]="name$$()"
+             (ngModelChange)="name$$.set($event)" />
 
     <v-dropdown [label]="'Type'"
                 [placeholder]="'Select type'"
                 [items]="categoryTypeItems()"
                 [isRequired]="true"
-                [(ngModel)]="categoryType"
-                (ngModelChange)="onCategoryTypeChange()"></v-dropdown>
+                [ngModel]="categoryType$$()"
+                (ngModelChange)="categoryType$$.set($event); onCategoryTypeChange()"></v-dropdown>
 
     <v-dropdown [label]="'Parent category (optional)'"
                 [placeholder]="'No parent'"
                 [items]="parentCategoryItems()"
-                [(ngModel)]="parentId"></v-dropdown>
+                [ngModel]="parentId$$()"
+                (ngModelChange)="parentId$$.set($event)"></v-dropdown>
 
     <div class="flex gap-2">
       <v-button class="v-flat"
                 [config]="{
-                  isDisabled: !name || !categoryType,
+                  isDisabled: !name$$() || !categoryType$$(),
                 }"
                 (onClick)="save()">
         {{ isEditing() ? 'Update' : 'Create' }}

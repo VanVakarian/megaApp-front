@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, signal } from '@angular/core';
 import { VButton } from '@ui-kit/components/v-button/v-button';
 import { VCard } from '@ui-kit/components/v-card/v-card';
 import { IconName, VIcon } from '@ui-kit/components/v-icon/v-icon';
@@ -19,13 +19,13 @@ enum MoneyTab {
 @Component({
   selector: 'money-screen',
   templateUrl: './money-screen.html',
-  standalone: true,
   imports: [CurrenciesList, CategoriesList, AccountsList, TransactionsList, VButton, VCard, VIcon],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class MoneyScreen implements OnInit {
   protected readonly Icon = IconName;
-  public readonly MoneyTab = MoneyTab;
-  public activeTab: MoneyTab = MoneyTab.Transactions;
+  protected readonly MoneyTab = MoneyTab;
+  protected readonly activeTab$$ = signal<MoneyTab>(MoneyTab.Transactions);
 
   constructor(private moneyService: MoneyService) {}
 
@@ -36,7 +36,7 @@ export class MoneyScreen implements OnInit {
     firstValueFrom(this.moneyService.getTransactions());
   }
 
-  public setActiveTab(tab: MoneyTab): void {
-    this.activeTab = tab;
+  protected setActiveTab(tab: MoneyTab): void {
+    this.activeTab$$.set(tab);
   }
 }

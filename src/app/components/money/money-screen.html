@@ -6,9 +6,9 @@
               borderRadius: 2,
             }">
       <div class="flex gap-2">
-        <v-button [class.v-flat]="activeTab === MoneyTab.Currencies"
-                  [class.v-link]="activeTab !== MoneyTab.Currencies"
-                  [class.v-link-static]="activeTab !== MoneyTab.Currencies"
+        <v-button [class.v-flat]="activeTab$$() === MoneyTab.Currencies"
+                  [class.v-link]="activeTab$$() !== MoneyTab.Currencies"
+                  [class.v-link-static]="activeTab$$() !== MoneyTab.Currencies"
                   [config]="{
                     padding: 2,
                     isLabelHidden: true,
@@ -19,9 +19,9 @@
                   [size]="7"></v-icon>
         </v-button>
 
-        <v-button [class.v-flat]="activeTab === MoneyTab.Categories"
-                  [class.v-link]="activeTab !== MoneyTab.Categories"
-                  [class.v-link-static]="activeTab !== MoneyTab.Categories"
+        <v-button [class.v-flat]="activeTab$$() === MoneyTab.Categories"
+                  [class.v-link]="activeTab$$() !== MoneyTab.Categories"
+                  [class.v-link-static]="activeTab$$() !== MoneyTab.Categories"
                   [config]="{
                     padding: 2,
                     isLabelHidden: true,
@@ -32,9 +32,9 @@
                   [size]="7"></v-icon>
         </v-button>
 
-        <v-button [class.v-flat]="activeTab === MoneyTab.Accounts"
-                  [class.v-link]="activeTab !== MoneyTab.Accounts"
-                  [class.v-link-static]="activeTab !== MoneyTab.Accounts"
+        <v-button [class.v-flat]="activeTab$$() === MoneyTab.Accounts"
+                  [class.v-link]="activeTab$$() !== MoneyTab.Accounts"
+                  [class.v-link-static]="activeTab$$() !== MoneyTab.Accounts"
                   [config]="{
                     padding: 2,
                     isLabelHidden: true,
@@ -46,9 +46,9 @@
         </v-button>
 
         <v-button class="grow"
-                  [class.v-flat]="activeTab === MoneyTab.Transactions"
-                  [class.v-link]="activeTab !== MoneyTab.Transactions"
-                  [class.v-link-static]="activeTab !== MoneyTab.Transactions"
+                  [class.v-flat]="activeTab$$() === MoneyTab.Transactions"
+                  [class.v-link]="activeTab$$() !== MoneyTab.Transactions"
+                  [class.v-link-static]="activeTab$$() !== MoneyTab.Transactions"
                   [config]="{
                     padding: 2,
                   }"
@@ -61,19 +61,19 @@
       </div>
     </v-card>
 
-    @if (activeTab === MoneyTab.Currencies) {
+    @if (activeTab$$() === MoneyTab.Currencies) {
       <currencies-list />
     }
 
-    @if (activeTab === MoneyTab.Categories) {
+    @if (activeTab$$() === MoneyTab.Categories) {
       <categories-list />
     }
 
-    @if (activeTab === MoneyTab.Accounts) {
+    @if (activeTab$$() === MoneyTab.Accounts) {
       <accounts-list />
     }
 
-    @if (activeTab === MoneyTab.Transactions) {
+    @if (activeTab$$() === MoneyTab.Transactions) {
       <transactions-list />
     }
   </div>

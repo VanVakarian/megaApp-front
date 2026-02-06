@@ -1,12 +1,14 @@
 import {
   AfterViewInit,
   ApplicationRef,
+  ChangeDetectionStrategy,
   Component,
   ComponentRef,
   EnvironmentInjector,
   OnDestroy,
   computed,
   createComponent,
+  signal,
 } from '@angular/core';
 import { MoneyService } from '@app/services/money.service';
 import { DefaultModal } from '@app/shared/components/default-modal/default-modal';
@@ -25,18 +27,18 @@ interface TransactionGroup {
 @Component({
   selector: 'transactions-list',
   templateUrl: './transactions-list.html',
-  standalone: true,
   imports: [DefaultModal, VButton, VCard, VIcon],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class TransactionsList implements AfterViewInit, OnDestroy {
   protected readonly Icon = IconName;
-  protected currencies$$ = computed(() => this.moneyService.currencies$$());
-  protected categories$$ = computed(() => this.moneyService.categories$$());
-  protected accounts$$ = computed(() => this.moneyService.accounts$$());
-  protected groupedTransactions$$ = computed(() => this.groupTransactionsByDate());
+  private readonly currencies$$ = computed(() => this.moneyService.currencies$$());
+  private readonly categories$$ = computed(() => this.moneyService.categories$$());
+  private readonly accounts$$ = computed(() => this.moneyService.accounts$$());
+  protected readonly groupedTransactions$$ = computed(() => this.groupTransactionsByDate());
 
-  protected isDeleteConfirmOpen = false;
-  protected pendingDeleteId: number | null = null;
+  protected readonly isDeleteConfirmOpen$$ = signal(false);
+  private readonly pendingDeleteId$$ = signal<number | null>(null);
 
   private formRef: ComponentRef<TransactionForm> | null = null;
   private activeFormTarget: HTMLElement | null = null;
@@ -108,20 +110,20 @@ export class TransactionsList implements AfterViewInit, OnDestroy {
     this.openConfirmationModal(id);
   }
 
-  protected openConfirmationModal(id: number): void {
-    this.pendingDeleteId = id;
-    this.isDeleteConfirmOpen = true;
+  private openConfirmationModal(id: number): void {
+    this.pendingDeleteId$$.set(id);
+    this.isDeleteConfirmOpen$$.set(true);
   }
 
   protected closeConfirmationModal(): void {
-    this.isDeleteConfirmOpen = false;
-    this.pendingDeleteId = null;
+    this.isDeleteConfirmOpen$$.set(false);
+    this.pendingDeleteId$$.set(null);
   }
 
   protected onDeleteConfirmed(): void {
-    const id = this.pendingDeleteId;
-    this.isDeleteConfirmOpen = false;
-    this.pendingDeleteId = null;
+    const id = this.pendingDeleteId$$();
+    this.isDeleteConfirmOpen$$.set(false);
+    this.pendingDeleteId$$.set(null);
     if (!id) return;
     this.moneyService.deleteTransaction(id).subscribe((success) => {});
   }
@@ -142,8 +144,8 @@ export class TransactionsList implements AfterViewInit, OnDestroy {
     this.formRef = createComponent(TransactionForm, {
       environmentInjector: this.injector,
     });
-    this.formRef.instance.onSaved.subscribe(() => this.hideForm());
-    this.formRef.instance.onCancelled.subscribe(() => this.hideForm());
+    this.formRef.instance.savedOutput.subscribe(() => this.hideForm());
+    this.formRef.instance.cancelledOutput.subscribe(() => this.hideForm());
     this.appRef.attachView(this.formRef.hostView);
   }
 

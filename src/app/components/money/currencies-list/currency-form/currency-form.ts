@@ -1,4 +1,4 @@
-import { Component, input, OnInit, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, effect, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { VButton } from '@ui-kit/components/v-button/v-button';
 import { VCard } from '@ui-kit/components/v-card/v-card';
@@ -11,73 +11,74 @@ import { Currency, SymbolPosition } from '../../../../shared/types';
 @Component({
   selector: 'currency-form',
   templateUrl: './currency-form.html',
-  standalone: true,
   imports: [FormsModule, VButton, VCard, VDropdown, VCheckbox, VInput],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class CurrencyForm implements OnInit {
-  public readonly currency = input<Currency | null>(null);
+export class CurrencyForm {
+  public readonly currencyInput = input<Currency | null>(null);
 
-  public readonly saved = output<void>();
-  public readonly cancelled = output<void>();
+  public readonly savedOutput = output<void>();
+  public readonly cancelledOutput = output<void>();
 
-  // Form fields
-  protected title = '';
-  protected ticker = '';
-  protected symbol = '';
-  protected symbolPosEnum: SymbolPosition = SymbolPosition.BEFORE;
-  protected whitespace = false;
+  protected readonly title$$ = signal('');
+  protected readonly ticker$$ = signal('');
+  protected readonly symbol$$ = signal('');
+  protected readonly symbolPosEnum$$ = signal<SymbolPosition>(SymbolPosition.BEFORE);
+  protected readonly whitespace$$ = signal(false);
 
-  constructor(private moneyService: MoneyService) {}
-
-  public ngOnInit(): void {
-    const currentCurrency = this.currency();
-    if (currentCurrency) {
-      this.fillForm(currentCurrency);
-    }
+  constructor(private moneyService: MoneyService) {
+    effect(() => {
+      const currentCurrency = this.currencyInput();
+      if (currentCurrency) {
+        this.fillForm(currentCurrency);
+      } else {
+        this.resetForm();
+      }
+    });
   }
 
   private fillForm(currency: Currency): void {
-    this.title = currency.title;
-    this.ticker = currency.ticker;
-    this.symbol = currency.symbol;
-    this.symbolPosEnum = currency.symbolPosEnum;
-    this.whitespace = Boolean(currency.whitespace);
+    this.title$$.set(currency.title);
+    this.ticker$$.set(currency.ticker);
+    this.symbol$$.set(currency.symbol);
+    this.symbolPosEnum$$.set(currency.symbolPosEnum);
+    this.whitespace$$.set(Boolean(currency.whitespace));
   }
 
   protected save(): void {
-    if (!this.title || !this.ticker || !this.symbol) return;
+    if (!this.title$$() || !this.ticker$$() || !this.symbol$$()) return;
 
     const currencyData: Currency = {
-      title: this.title,
-      ticker: this.ticker,
-      symbol: this.symbol,
-      symbolPosEnum: this.symbolPosEnum,
-      whitespace: Boolean(this.whitespace),
+      title: this.title$$(),
+      ticker: this.ticker$$(),
+      symbol: this.symbol$$(),
+      symbolPosEnum: this.symbolPosEnum$$(),
+      whitespace: Boolean(this.whitespace$$()),
     };
 
-    const currentCurrency = this.currency();
+    const currentCurrency = this.currencyInput();
     if (currentCurrency?.id) {
       currencyData.id = currentCurrency.id;
       this.moneyService.updateCurrency(currencyData).subscribe((success) => {
         if (success) {
-          this.saved.emit();
+          this.savedOutput.emit();
         }
       });
     } else {
       this.moneyService.createCurrency(currencyData).subscribe((success) => {
         if (success) {
-          this.saved.emit();
+          this.savedOutput.emit();
         }
       });
     }
   }
 
   protected cancel(): void {
-    this.cancelled.emit();
+    this.cancelledOutput.emit();
   }
 
   protected isEditing(): boolean {
-    return Boolean(this.currency()?.id);
+    return Boolean(this.currencyInput()?.id);
   }
 
   protected symbolPositionItems(): DropdownItem[] {
@@ -85,5 +86,13 @@ export class CurrencyForm implements OnInit {
       { value: SymbolPosition.BEFORE, label: 'Before' },
       { value: SymbolPosition.AFTER, label: 'After' },
     ];
+  }
+
+  private resetForm(): void {
+    this.title$$.set('');
+    this.ticker$$.set('');
+    this.symbol$$.set('');
+    this.symbolPosEnum$$.set(SymbolPosition.BEFORE);
+    this.whitespace$$.set(false);
   }
 }

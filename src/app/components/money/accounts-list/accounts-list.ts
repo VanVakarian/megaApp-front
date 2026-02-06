@@ -1,4 +1,4 @@
-import { Component, computed } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, signal } from '@angular/core';
 import { MoneyService } from '@app/services/money.service';
 import { DefaultModal } from '@app/shared/components/default-modal/default-modal';
 import { Account, AccountKind } from '@app/shared/types';
@@ -9,59 +9,59 @@ import { AccountForm } from './account-form/account-form';
 @Component({
   selector: 'accounts-list',
   templateUrl: './accounts-list.html',
-  standalone: true,
   imports: [AccountForm, DefaultModal, VButton, VCard],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AccountsList {
-  protected accounts$$ = computed(() => this.moneyService.accounts$$());
-  protected currencies$$ = computed(() => this.moneyService.currencies$$());
-  protected showForm = false;
-  protected editingAccount: Account | null = null;
-  protected isDeleteConfirmOpen = false;
-  protected pendingDeleteId: number | null = null;
+  protected readonly accounts$$ = computed(() => this.moneyService.accounts$$());
+  protected readonly currencies$$ = computed(() => this.moneyService.currencies$$());
+  protected readonly showForm$$ = signal(false);
+  protected readonly editingAccount$$ = signal<Account | null>(null);
+  protected readonly isDeleteConfirmOpen$$ = signal(false);
+  private readonly pendingDeleteId$$ = signal<number | null>(null);
 
   constructor(private moneyService: MoneyService) {}
 
   protected showCreateForm(): void {
-    this.editingAccount = null;
-    this.showForm = true;
+    this.editingAccount$$.set(null);
+    this.showForm$$.set(true);
   }
 
   protected editAccount(account: Account): void {
-    this.editingAccount = account;
-    this.showForm = true;
+    this.editingAccount$$.set(account);
+    this.showForm$$.set(true);
   }
 
   protected deleteAccount(id: number): void {
     this.openConfirmationModal(id);
   }
 
-  protected openConfirmationModal(id: number): void {
-    this.pendingDeleteId = id;
-    this.isDeleteConfirmOpen = true;
+  private openConfirmationModal(id: number): void {
+    this.pendingDeleteId$$.set(id);
+    this.isDeleteConfirmOpen$$.set(true);
   }
 
   protected closeConfirmationModal(): void {
-    this.isDeleteConfirmOpen = false;
-    this.pendingDeleteId = null;
+    this.isDeleteConfirmOpen$$.set(false);
+    this.pendingDeleteId$$.set(null);
   }
 
   protected onDeleteConfirmed(): void {
-    const id = this.pendingDeleteId;
-    this.isDeleteConfirmOpen = false;
-    this.pendingDeleteId = null;
+    const id = this.pendingDeleteId$$();
+    this.isDeleteConfirmOpen$$.set(false);
+    this.pendingDeleteId$$.set(null);
     if (!id) return;
     this.moneyService.deleteAccount(id).subscribe((success) => {});
   }
 
   protected onSaved(): void {
-    this.showForm = false;
-    this.editingAccount = null;
+    this.showForm$$.set(false);
+    this.editingAccount$$.set(null);
   }
 
   protected onCancelled(): void {
-    this.showForm = false;
-    this.editingAccount = null;
+    this.showForm$$.set(false);
+    this.editingAccount$$.set(null);
   }
 
   protected getKindDisplayName(kind: AccountKind): string {

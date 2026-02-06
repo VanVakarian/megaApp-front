@@ -1,4 +1,13 @@
-import { Component, effect, ElementRef, input, output, viewChild } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  effect,
+  ElementRef,
+  input,
+  output,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MoneyService } from '@app/services/money.service';
 import {
@@ -21,24 +30,24 @@ import { VInput } from '@ui-kit/components/v-input/v-input';
   templateUrl: './transaction-form.html',
   styleUrl: './transaction-form.scss',
   imports: [FormsModule, VButton, VCard, VDropdown, VIcon, VInput],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class TransactionForm {
   protected readonly Icon = IconName;
-  protected readonly dateInputElem = viewChild<ElementRef<HTMLInputElement>>('dateInputElem');
+  private readonly dateInputElem = viewChild<ElementRef<HTMLInputElement>>('dateInputElem');
 
   public readonly dateIsoInput = input<string | null>(null);
   public readonly transactionInput = input<Transaction | null>(null);
 
-  public readonly onSaved = output<void>();
-  public readonly onCancelled = output<void>();
+  public readonly savedOutput = output<void>();
+  public readonly cancelledOutput = output<void>();
 
-  // Form fields
-  protected dateISO = '';
-  protected accountId: string | null = null;
-  protected amount = '';
-  protected kind: TransactionKind = TransactionKind.EXPENSE;
-  protected notes = '';
-  protected categoryId: string | null = null;
+  protected readonly dateISO$$ = signal('');
+  protected readonly accountId$$ = signal<string | null>(null);
+  protected readonly amount$$ = signal('');
+  protected readonly kind$$ = signal<TransactionKind>(TransactionKind.EXPENSE);
+  protected readonly notes$$ = signal('');
+  protected readonly categoryId$$ = signal<string | null>(null);
 
   constructor(private moneyService: MoneyService) {
     effect(() => {
@@ -62,13 +71,13 @@ export class TransactionForm {
     if (normalizedAmount === null) return;
 
     const transactionData: Transaction = {
-      dateISO: this.dateISO,
-      accountId: Number(this.accountId),
+      dateISO: this.dateISO$$(),
+      accountId: Number(this.accountId$$()),
       amount: normalizedAmount,
-      kind: this.kind,
+      kind: this.kind$$(),
       isGift: false,
-      notes: this.notes || undefined,
-      categoryId: this.categoryId ? Number(this.categoryId) : null,
+      notes: this.notes$$() || undefined,
+      categoryId: this.categoryId$$() ? Number(this.categoryId$$()) : null,
     };
 
     const currentTransaction = this.transactionInput();
@@ -77,21 +86,21 @@ export class TransactionForm {
       transactionData.id = currentTransaction.id;
       this.moneyService.updateTransaction(transactionData).subscribe((success) => {
         if (success) {
-          this.onSaved.emit();
+          this.savedOutput.emit();
         }
       });
     } else {
       // Create mode
       this.moneyService.createTransaction(transactionData).subscribe((success) => {
         if (success) {
-          this.onSaved.emit();
+          this.savedOutput.emit();
         }
       });
     }
   }
 
   protected cancel(): void {
-    this.onCancelled.emit();
+    this.cancelledOutput.emit();
   }
 
   protected isEditing(): boolean {
@@ -101,7 +110,7 @@ export class TransactionForm {
   protected isFormValid(): boolean {
     const amount = this.parseAmount();
     const normalizedAmount = amount === null ? null : this.normalizeAmount(amount);
-    return Boolean(this.dateISO && this.accountId && normalizedAmount && normalizedAmount > 0 && this.kind);
+    return Boolean(this.dateISO$$() && this.accountId$$() && normalizedAmount && normalizedAmount > 0 && this.kind$$());
   }
 
   protected accountItems(): DropdownItem[] {
@@ -118,12 +127,12 @@ export class TransactionForm {
     }));
   }
 
-  protected getKindValues(): TransactionKind[] {
+  private getKindValues(): TransactionKind[] {
     return Object.values(TransactionKind);
   }
 
   protected onKindChange(): void {
-    this.categoryId = null;
+    this.categoryId$$.set(null);
   }
 
   protected onDateControlClick(): void {
@@ -134,10 +143,10 @@ export class TransactionForm {
     const input = event.target as HTMLInputElement | null;
     const dateIso = input?.value;
     if (!dateIso) return;
-    this.dateISO = dateIso;
+    this.dateISO$$.set(dateIso);
   }
 
-  protected getKindDisplayName(kind: TransactionKind): string {
+  private getKindDisplayName(kind: TransactionKind): string {
     switch (kind) {
       case TransactionKind.INCOME:
         return 'Income';
@@ -148,13 +157,13 @@ export class TransactionForm {
     }
   }
 
-  protected getAccounts(): Account[] {
+  private getAccounts(): Account[] {
     return this.moneyService.accounts$$();
   }
 
-  protected getSelectedCurrency(): Currency | null {
-    if (!this.accountId) return null;
-    const accountId = Number(this.accountId);
+  private getSelectedCurrency(): Currency | null {
+    if (!this.accountId$$()) return null;
+    const accountId = Number(this.accountId$$());
     if (!Number.isFinite(accountId)) return null;
     const account = this.moneyService.accounts$$().find((item) => item.id === accountId);
     if (!account) return null;
@@ -177,8 +186,8 @@ export class TransactionForm {
     return `${whitespace}${currency.symbol}`;
   }
 
-  protected getTransactionCategories(): Category[] {
-    const categoryType = this.kind === TransactionKind.INCOME ? CategoryType.INCOME : CategoryType.EXPENSE;
+  private getTransactionCategories(): Category[] {
+    const categoryType = this.kind$$() === TransactionKind.INCOME ? CategoryType.INCOME : CategoryType.EXPENSE;
     const categories = this.moneyService.categories$$().filter((category) => category.categoryType === categoryType);
     const parentsWithChildren = new Set<number>();
 
@@ -201,7 +210,7 @@ export class TransactionForm {
     ];
   }
 
-  protected getCategoryLabel(category: Category): string {
+  private getCategoryLabel(category: Category): string {
     if (!category.parentId) return category.name;
 
     const parentCategory = this.moneyService.categories$$().find((parent) => parent.id === category.parentId);
@@ -211,27 +220,27 @@ export class TransactionForm {
   }
 
   private prepFormWithTransaction(transaction: Transaction): void {
-    this.dateISO = transaction.dateISO;
-    this.accountId = String(transaction.accountId);
-    this.amount = String(transaction.amount);
-    this.kind = transaction.kind;
-    this.notes = transaction.notes || '';
-    this.categoryId = transaction.categoryId ? String(transaction.categoryId) : null;
+    this.dateISO$$.set(transaction.dateISO);
+    this.accountId$$.set(String(transaction.accountId));
+    this.amount$$.set(String(transaction.amount));
+    this.kind$$.set(transaction.kind);
+    this.notes$$.set(transaction.notes || '');
+    this.categoryId$$.set(transaction.categoryId ? String(transaction.categoryId) : null);
   }
 
   private prepFormWithDate(dateInput: string): void {
-    this.dateISO = dateInput;
-    this.accountId = null;
-    this.amount = '';
-    this.kind = TransactionKind.EXPENSE;
-    this.notes = '';
-    this.categoryId = null;
+    this.dateISO$$.set(dateInput);
+    this.accountId$$.set(null);
+    this.amount$$.set('');
+    this.kind$$.set(TransactionKind.EXPENSE);
+    this.notes$$.set('');
+    this.categoryId$$.set(null);
   }
 
   private parseAmount(): number | null {
-    if (!this.amount) return null;
-    if (this.amount === '-' || this.amount === '+') return null;
-    const parsed = Number(this.amount);
+    if (!this.amount$$()) return null;
+    if (this.amount$$() === '-' || this.amount$$() === '+') return null;
+    const parsed = Number(this.amount$$());
     return Number.isFinite(parsed) ? parsed : null;
   }
 

@@ -1,4 +1,4 @@
-import { Component, input, OnInit, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, effect, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MoneyService } from '@app/services/money.service';
 import { Account, AccountKind, Currency } from '@app/shared/types';
@@ -11,71 +11,73 @@ import { VInput } from '@ui-kit/components/v-input/v-input';
 @Component({
   selector: 'account-form',
   templateUrl: './account-form.html',
-  standalone: true,
   imports: [FormsModule, VButton, VCard, VDropdown, VCheckbox, VInput],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class AccountForm implements OnInit {
-  public readonly account = input<Account | null>(null);
-  public readonly currencies = input<Currency[]>([]);
+export class AccountForm {
+  public readonly accountInput = input<Account | null>(null);
+  public readonly currenciesInput = input<Currency[]>([]);
 
-  public readonly saved = output<void>();
-  public readonly cancelled = output<void>();
+  public readonly savedOutput = output<void>();
+  public readonly cancelledOutput = output<void>();
 
-  protected title = '';
-  protected currencyId: string | null = null;
-  protected invest = false;
-  protected kind: AccountKind | '' = '';
+  protected readonly title$$ = signal('');
+  protected readonly currencyId$$ = signal<string | null>(null);
+  protected readonly invest$$ = signal(false);
+  protected readonly kind$$ = signal<AccountKind | ''>('');
 
-  constructor(private moneyService: MoneyService) {}
-
-  public ngOnInit(): void {
-    const currentAccount = this.account();
-    if (currentAccount) {
-      this.fillForm(currentAccount);
-    }
+  constructor(private moneyService: MoneyService) {
+    effect(() => {
+      const currentAccount = this.accountInput();
+      if (currentAccount) {
+        this.fillForm(currentAccount);
+      } else {
+        this.resetForm();
+      }
+    });
   }
 
   protected save(): void {
     if (!this.isFormValid()) return;
 
     const accountData: Account = {
-      title: this.title,
-      currencyId: Number(this.currencyId),
-      invest: this.invest,
-      kind: this.kind as AccountKind,
+      title: this.title$$(),
+      currencyId: Number(this.currencyId$$()),
+      invest: this.invest$$(),
+      kind: this.kind$$() as AccountKind,
     };
 
-    const currentAccount = this.account();
+    const currentAccount = this.accountInput();
     if (currentAccount?.id) {
       accountData.id = currentAccount.id;
       this.moneyService.updateAccount(accountData).subscribe((success) => {
         if (success) {
-          this.saved.emit();
+          this.savedOutput.emit();
         }
       });
     } else {
       this.moneyService.createAccount(accountData).subscribe((success) => {
         if (success) {
-          this.saved.emit();
+          this.savedOutput.emit();
         }
       });
     }
   }
 
   protected cancel(): void {
-    this.cancelled.emit();
+    this.cancelledOutput.emit();
   }
 
   protected isEditing(): boolean {
-    return Boolean(this.account()?.id);
+    return Boolean(this.accountInput()?.id);
   }
 
   protected isFormValid(): boolean {
-    return Boolean(this.title && this.currencyId && this.kind);
+    return Boolean(this.title$$() && this.currencyId$$() && this.kind$$());
   }
 
   protected currencyItems(): DropdownItem[] {
-    return this.currencies().map((currency) => ({
+    return this.currenciesInput().map((currency) => ({
       value: String(currency.id),
       label: `${currency.title} (${currency.ticker})`,
     }));
@@ -88,11 +90,11 @@ export class AccountForm implements OnInit {
     }));
   }
 
-  protected getKindValues(): AccountKind[] {
+  private getKindValues(): AccountKind[] {
     return Object.values(AccountKind);
   }
 
-  protected getKindDisplayName(kind: AccountKind): string {
+  private getKindDisplayName(kind: AccountKind): string {
     switch (kind) {
       case AccountKind.CASH:
         return 'Cash';
@@ -112,9 +114,16 @@ export class AccountForm implements OnInit {
   }
 
   private fillForm(account: Account): void {
-    this.title = account.title;
-    this.currencyId = String(account.currencyId);
-    this.invest = account.invest;
-    this.kind = account.kind;
+    this.title$$.set(account.title);
+    this.currencyId$$.set(String(account.currencyId));
+    this.invest$$.set(account.invest);
+    this.kind$$.set(account.kind);
+  }
+
+  private resetForm(): void {
+    this.title$$.set('');
+    this.currencyId$$.set(null);
+    this.invest$$.set(false);
+    this.kind$$.set('');
   }
 }

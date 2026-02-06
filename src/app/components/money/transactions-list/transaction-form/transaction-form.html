@@ -14,19 +14,21 @@
                 [placeholder]="'Select an account'"
                 [items]="accountItems()"
                 [isRequired]="true"
-                [(ngModel)]="accountId"></v-dropdown>
+                [ngModel]="accountId$$()"
+                (ngModelChange)="accountId$$.set($event)"></v-dropdown>
 
     <v-dropdown [label]="'Type'"
                 [placeholder]="'Select type'"
                 [items]="kindItems()"
                 [isRequired]="true"
-                [(ngModel)]="kind"
-                (ngModelChange)="onKindChange()"></v-dropdown>
+                [ngModel]="kind$$()"
+                (ngModelChange)="kind$$.set($event); onKindChange()"></v-dropdown>
 
     <v-dropdown [label]="'Category (optional)'"
                 [placeholder]="'No category'"
                 [items]="categoryItems()"
-                [(ngModel)]="categoryId"></v-dropdown>
+                [ngModel]="categoryId$$()"
+                (ngModelChange)="categoryId$$.set($event)"></v-dropdown>
 
     <div class="flex gap-4">
       <v-input [config]="{
@@ -35,7 +37,8 @@
                  type: 'text',
                  inputmode: 'numeric',
                }"
-               [(ngModel)]="dateISO">
+               [ngModel]="dateISO$$()"
+               (ngModelChange)="dateISO$$.set($event)">
         <v-button class="calendar-v-button v-link v-link-static mr-2"
                   v-postfix
                   tabindex="-1"
@@ -52,7 +55,7 @@
                    id="dateInputElem"
                    type="date"
                    class="absolute w-0 h-0 p-0 m-0 border-0 opacity-0 top-[14px] right-[29px]"
-                   [value]="dateISO"
+                   [value]="dateISO$$()"
                    (change)="onDatePicked($event)" />
           </span>
         </v-button>
@@ -66,14 +69,17 @@
                  inputmode: 'decimal',
                  textAlign: 'right',
                }"
-               [(ngModel)]="amount">
+               [ngModel]="amount$$()"
+               (ngModelChange)="amount$$.set($event)">
         @if (getCurrencyPrefix(); as currencyPrefix) {
-          <span v-prefix
-                class="mx-2">{{ currencyPrefix }}</span>
+          <ng-container v-prefix>
+            <span class="mx-2">{{ currencyPrefix }}</span>
+          </ng-container>
         }
         @if (getCurrencyPostfix(); as currencyPostfix) {
-          <span v-postfix
-                class="mx-2">{{ currencyPostfix }}</span>
+          <ng-container v-postfix>
+            <span class="mx-2">{{ currencyPostfix }}</span>
+          </ng-container>
         }
       </v-input>
     </div>
@@ -84,7 +90,8 @@
                isTextarea: true,
                rows: 2,
              }"
-             [(ngModel)]="notes" />
+             [ngModel]="notes$$()"
+             (ngModelChange)="notes$$.set($event)" />
 
     <div class="flex gap-2">
       <v-button class="v-flat"
