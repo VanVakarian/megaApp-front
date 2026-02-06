@@ -5,6 +5,7 @@ import { IconName, VIcon } from '@ui-kit/components/v-icon/v-icon';
 import { firstValueFrom } from 'rxjs';
 import { MoneyService } from '../../services/money.service';
 import { AccountsList } from './accounts-list/accounts-list';
+import { AssetsList } from './assets-list/assets-list';
 import { CategoriesList } from './categories-list/categories-list';
 import { CurrenciesList } from './currencies-list/currencies-list';
 import { TransactionsList } from './transactions-list/transactions-list';
@@ -13,13 +14,14 @@ enum MoneyTab {
   Currencies = 'currencies',
   Categories = 'categories',
   Accounts = 'accounts',
+  Assets = 'assets',
   Transactions = 'transactions',
 }
 
 @Component({
   selector: 'money-screen',
   templateUrl: './money-screen.html',
-  imports: [CurrenciesList, CategoriesList, AccountsList, TransactionsList, VButton, VCard, VIcon],
+  imports: [CurrenciesList, CategoriesList, AccountsList, AssetsList, TransactionsList, VButton, VCard, VIcon],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class MoneyScreen implements OnInit {

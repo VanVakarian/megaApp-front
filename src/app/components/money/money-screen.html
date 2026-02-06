@@ -7,50 +7,72 @@
             }">
       <div class="flex gap-2">
         <v-button [class.v-flat]="activeTab$$() === MoneyTab.Currencies"
+                  [class.flex-grow]="activeTab$$() === MoneyTab.Currencies"
                   [class.v-link]="activeTab$$() !== MoneyTab.Currencies"
                   [class.v-link-static]="activeTab$$() !== MoneyTab.Currencies"
                   [config]="{
                     padding: 2,
-                    isLabelHidden: true,
+                    isLabelHidden: activeTab$$() !== MoneyTab.Currencies,
                   }"
                   (onClick)="setActiveTab(MoneyTab.Currencies)">
           <v-icon v-prefix
                   [name]="Icon.UniversalCurrency"
                   [size]="7"></v-icon>
+          Currencies
         </v-button>
 
         <v-button [class.v-flat]="activeTab$$() === MoneyTab.Categories"
+                  [class.flex-grow]="activeTab$$() === MoneyTab.Categories"
                   [class.v-link]="activeTab$$() !== MoneyTab.Categories"
                   [class.v-link-static]="activeTab$$() !== MoneyTab.Categories"
                   [config]="{
                     padding: 2,
-                    isLabelHidden: true,
+                    isLabelHidden: activeTab$$() !== MoneyTab.Categories,
                   }"
                   (onClick)="setActiveTab(MoneyTab.Categories)">
           <v-icon v-prefix
                   [name]="Icon.Category"
                   [size]="7"></v-icon>
+          Categories
         </v-button>
 
         <v-button [class.v-flat]="activeTab$$() === MoneyTab.Accounts"
+                  [class.flex-grow]="activeTab$$() === MoneyTab.Accounts"
                   [class.v-link]="activeTab$$() !== MoneyTab.Accounts"
                   [class.v-link-static]="activeTab$$() !== MoneyTab.Accounts"
                   [config]="{
                     padding: 2,
-                    isLabelHidden: true,
+                    isLabelHidden: activeTab$$() !== MoneyTab.Accounts,
                   }"
                   (onClick)="setActiveTab(MoneyTab.Accounts)">
           <v-icon v-prefix
                   [name]="Icon.AccontBalanceWallet"
                   [size]="7"></v-icon>
+          Accounts
         </v-button>
 
-        <v-button class="grow"
-                  [class.v-flat]="activeTab$$() === MoneyTab.Transactions"
+        <v-button [class.v-flat]="activeTab$$() === MoneyTab.Assets"
+                  [class.flex-grow]="activeTab$$() === MoneyTab.Assets"
+                  [class.v-link]="activeTab$$() !== MoneyTab.Assets"
+                  [class.v-link-static]="activeTab$$() !== MoneyTab.Assets"
+                  [config]="{
+                    padding: 2,
+                    isLabelHidden: activeTab$$() !== MoneyTab.Assets,
+                  }"
+                  (onClick)="setActiveTab(MoneyTab.Assets)">
+          <v-icon v-prefix
+                  [name]="Icon.Enterprise"
+                  [size]="7"></v-icon>
+          Assets
+        </v-button>
+
+        <v-button [class.v-flat]="activeTab$$() === MoneyTab.Transactions"
+                  [class.flex-grow]="activeTab$$() === MoneyTab.Transactions"
                   [class.v-link]="activeTab$$() !== MoneyTab.Transactions"
                   [class.v-link-static]="activeTab$$() !== MoneyTab.Transactions"
                   [config]="{
                     padding: 2,
+                    isLabelHidden: activeTab$$() !== MoneyTab.Transactions,
                   }"
                   (onClick)="setActiveTab(MoneyTab.Transactions)">
           <v-icon v-prefix
@@ -71,6 +93,10 @@
 
     @if (activeTab$$() === MoneyTab.Accounts) {
       <accounts-list />
+    }
+
+    @if (activeTab$$() === MoneyTab.Assets) {
+      <assets-list />
     }
 
     @if (activeTab$$() === MoneyTab.Transactions) {
