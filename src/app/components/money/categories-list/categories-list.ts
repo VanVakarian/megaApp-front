@@ -4,16 +4,19 @@ import { DefaultModal } from '@app/shared/components/default-modal/default-modal
 import { Category, CategoryType } from '@app/shared/types';
 import { VButton } from '@ui-kit/components/v-button/v-button';
 import { VCard } from '@ui-kit/components/v-card/v-card';
+import { IconName, VIcon } from '@ui-kit/components/v-icon/v-icon';
 import { CategoryForm } from './category-form/category-form';
 
 @Component({
   selector: 'categories-list',
   templateUrl: './categories-list.html',
-  imports: [CategoryForm, DefaultModal, VButton, VCard],
+  imports: [CategoryForm, DefaultModal, VButton, VCard, VIcon],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class CategoriesList {
+  protected readonly Icon = IconName;
   protected readonly categories$$ = computed(() => this.moneyService.categories$$());
+  private readonly transactions$$ = computed(() => this.moneyService.transactions$$());
   protected readonly showForm$$ = signal(false);
   protected readonly editingCategory$$ = signal<Category | null>(null);
   protected readonly isDeleteConfirmOpen$$ = signal(false);
@@ -32,6 +35,7 @@ export class CategoriesList {
   }
 
   protected deleteCategory(id: number): void {
+    if (!this.canDeleteCategory(id)) return;
     this.openConfirmationModal(id);
   }
 
@@ -50,6 +54,7 @@ export class CategoriesList {
     this.isDeleteConfirmOpen$$.set(false);
     this.pendingDeleteId$$.set(null);
     if (!id) return;
+    if (!this.canDeleteCategory(id)) return;
     this.moneyService.deleteCategory(id).subscribe((success) => {});
   }
 
@@ -88,5 +93,17 @@ export class CategoriesList {
     return this.categories$$()
       .filter((category) => category.parentId === parentId)
       .sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  private hasChildCategories(categoryId: number): boolean {
+    return this.categories$$().some((category) => category.parentId === categoryId);
+  }
+
+  private hasLinkedTransactions(categoryId: number): boolean {
+    return this.transactions$$().some((transaction) => transaction.categoryId === categoryId);
+  }
+
+  protected canDeleteCategory(categoryId: number): boolean {
+    return !this.hasChildCategories(categoryId) && !this.hasLinkedTransactions(categoryId);
   }
 }

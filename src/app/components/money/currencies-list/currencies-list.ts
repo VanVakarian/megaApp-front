@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, signal } from '@angular/core';
 import { VButton } from '@ui-kit/components/v-button/v-button';
 import { VCard } from '@ui-kit/components/v-card/v-card';
+import { IconName, VIcon } from '@ui-kit/components/v-icon/v-icon';
 import { MoneyService } from '../../../services/money.service';
 import { DefaultModal } from '../../../shared/components/default-modal/default-modal';
 import { Currency } from '../../../shared/types';
@@ -9,11 +10,14 @@ import { CurrencyForm } from './currency-form/currency-form';
 @Component({
   selector: 'currencies-list',
   templateUrl: './currencies-list.html',
-  imports: [CurrencyForm, DefaultModal, VButton, VCard],
+  imports: [CurrencyForm, DefaultModal, VButton, VCard, VIcon],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class CurrenciesList {
+  protected readonly Icon = IconName;
+
   protected readonly currencies$$ = computed(() => this.moneyService.currencies$$());
+  private readonly accounts$$ = computed(() => this.moneyService.accounts$$());
   protected readonly showForm$$ = signal(false);
   protected readonly editingCurrency$$ = signal<Currency | null>(null);
   protected readonly isDeleteConfirmOpen$$ = signal(false);
@@ -42,6 +46,7 @@ export class CurrenciesList {
   }
 
   protected deleteCurrency(id: number): void {
+    if (!this.canDeleteCurrency(id)) return;
     this.openConfirmationModal(id);
   }
 
@@ -60,6 +65,11 @@ export class CurrenciesList {
     this.isDeleteConfirmOpen$$.set(false);
     this.pendingDeleteId$$.set(null);
     if (!id) return;
+    if (!this.canDeleteCurrency(id)) return;
     this.moneyService.deleteCurrency(id).subscribe((success) => {});
+  }
+
+  protected canDeleteCurrency(currencyId: number): boolean {
+    return !this.accounts$$().some((account) => account.currencyId === currencyId);
   }
 }

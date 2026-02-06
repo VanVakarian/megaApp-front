@@ -17,8 +17,14 @@
       <div class="text-lg font-semibold">Accounts</div>
       @if (!showForm$$()) {
         <v-button class="v-flat"
+                  [config]="{
+                    paddingY: 1,
+                  }"
                   (onClick)="showCreateForm()">
-          Add New Account
+          <v-icon v-prefix
+                  [name]="Icon.Add"
+                  [size]="6"></v-icon>
+          New Account
         </v-button>
       }
     </div>
@@ -61,6 +67,7 @@
                       [config]="{
                         paddingY: 1,
                         paddingX: 2,
+                        isDisabled: !canDeleteAccount(account.id!),
                       }"
                       (onClick)="deleteAccount(account.id!)">
               Delete

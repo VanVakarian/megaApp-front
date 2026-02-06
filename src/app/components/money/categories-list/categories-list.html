@@ -18,8 +18,14 @@
       <div class="text-lg font-semibold">Categories</div>
       @if (!showForm$$()) {
         <v-button class="v-flat"
+                  [config]="{
+                    paddingY: 1,
+                  }"
                   (onClick)="showCreateForm()">
-          Add New Category
+          <v-icon v-prefix
+                  [name]="Icon.Add"
+                  [size]="6"></v-icon>
+          New Category
         </v-button>
       }
     </div>
@@ -65,6 +71,7 @@
                               [config]="{
                                 paddingY: 1,
                                 paddingX: 2,
+                                isDisabled: !canDeleteCategory(parentCategory.id!),
                               }"
                               (onClick)="deleteCategory(parentCategory.id!)">
                       Delete
@@ -96,6 +103,7 @@
                                     [config]="{
                                       paddingY: 1,
                                       paddingX: 2,
+                                      isDisabled: !canDeleteCategory(childCategory.id!),
                                     }"
                                     (onClick)="deleteCategory(childCategory.id!)">
                             Delete

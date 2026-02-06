@@ -4,17 +4,21 @@ import { DefaultModal } from '@app/shared/components/default-modal/default-modal
 import { Account, AccountKind } from '@app/shared/types';
 import { VButton } from '@ui-kit/components/v-button/v-button';
 import { VCard } from '@ui-kit/components/v-card/v-card';
+import { IconName, VIcon } from '@ui-kit/components/v-icon/v-icon';
 import { AccountForm } from './account-form/account-form';
 
 @Component({
   selector: 'accounts-list',
   templateUrl: './accounts-list.html',
-  imports: [AccountForm, DefaultModal, VButton, VCard],
+  imports: [AccountForm, DefaultModal, VButton, VCard, VIcon],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AccountsList {
+  protected readonly Icon = IconName;
+
   protected readonly accounts$$ = computed(() => this.moneyService.accounts$$());
   protected readonly currencies$$ = computed(() => this.moneyService.currencies$$());
+  private readonly transactions$$ = computed(() => this.moneyService.transactions$$());
   protected readonly showForm$$ = signal(false);
   protected readonly editingAccount$$ = signal<Account | null>(null);
   protected readonly isDeleteConfirmOpen$$ = signal(false);
@@ -33,6 +37,7 @@ export class AccountsList {
   }
 
   protected deleteAccount(id: number): void {
+    if (!this.canDeleteAccount(id)) return;
     this.openConfirmationModal(id);
   }
 
@@ -51,6 +56,7 @@ export class AccountsList {
     this.isDeleteConfirmOpen$$.set(false);
     this.pendingDeleteId$$.set(null);
     if (!id) return;
+    if (!this.canDeleteAccount(id)) return;
     this.moneyService.deleteAccount(id).subscribe((success) => {});
   }
 
@@ -86,5 +92,9 @@ export class AccountsList {
   protected getCurrencySymbol(currencyId: number): string {
     const currency = this.currencies$$().find((c) => c.id === currencyId);
     return currency ? currency.symbol : '';
+  }
+
+  protected canDeleteAccount(accountId: number): boolean {
+    return !this.transactions$$().some((transaction) => transaction.accountId === accountId);
   }
 }

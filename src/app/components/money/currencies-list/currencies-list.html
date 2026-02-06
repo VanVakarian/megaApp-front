@@ -14,11 +14,17 @@
             borderRadius: 2,
           }">
     <div class="flex items-center justify-between mb-4">
-      <div class="text-lg font-semibold">Currency List</div>
+      <div class="text-lg font-semibold">Currencies</div>
       @if (!showForm$$()) {
         <v-button class="v-flat"
+                  [config]="{
+                    paddingY: 1,
+                  }"
                   (onClick)="showCreateForm()">
-          Add New Currency
+          <v-icon v-prefix
+                  [name]="Icon.Add"
+                  [size]="6"></v-icon>
+          New Currency
         </v-button>
       }
     </div>
@@ -72,6 +78,7 @@
                       [config]="{
                         paddingY: 1,
                         paddingX: 2,
+                        isDisabled: !canDeleteCurrency(currency.id!),
                       }"
                       (onClick)="deleteCurrency(currency.id!)">
               Delete
