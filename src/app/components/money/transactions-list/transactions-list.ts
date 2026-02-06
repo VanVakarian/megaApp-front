@@ -9,9 +9,11 @@ import {
   createComponent,
 } from '@angular/core';
 import { MoneyService } from '@app/services/money.service';
+import { DefaultModal } from '@app/shared/components/default-modal/default-modal';
 import { SymbolPosition, Transaction, TransactionKind } from '@app/shared/types';
 import { VButton } from '@ui-kit/components/v-button/v-button';
 import { VCard } from '@ui-kit/components/v-card/v-card';
+import { IconName, VIcon } from '@ui-kit/components/v-icon/v-icon';
 import { TransactionForm } from './transaction-form/transaction-form';
 
 interface TransactionGroup {
@@ -24,13 +26,17 @@ interface TransactionGroup {
   selector: 'transactions-list',
   templateUrl: './transactions-list.html',
   standalone: true,
-  imports: [VButton, VCard],
+  imports: [DefaultModal, VButton, VCard, VIcon],
 })
 export class TransactionsList implements AfterViewInit, OnDestroy {
+  protected readonly Icon = IconName;
   protected currencies$$ = computed(() => this.moneyService.currencies$$());
   protected categories$$ = computed(() => this.moneyService.categories$$());
   protected accounts$$ = computed(() => this.moneyService.accounts$$());
   protected groupedTransactions$$ = computed(() => this.groupTransactionsByDate());
+
+  protected isDeleteConfirmOpen = false;
+  protected pendingDeleteId: number | null = null;
 
   private formRef: ComponentRef<TransactionForm> | null = null;
   private activeFormTarget: HTMLElement | null = null;
@@ -99,6 +105,24 @@ export class TransactionsList implements AfterViewInit, OnDestroy {
   }
 
   protected deleteTransaction(id: number): void {
+    this.openConfirmationModal(id);
+  }
+
+  protected openConfirmationModal(id: number): void {
+    this.pendingDeleteId = id;
+    this.isDeleteConfirmOpen = true;
+  }
+
+  protected closeConfirmationModal(): void {
+    this.isDeleteConfirmOpen = false;
+    this.pendingDeleteId = null;
+  }
+
+  protected onDeleteConfirmed(): void {
+    const id = this.pendingDeleteId;
+    this.isDeleteConfirmOpen = false;
+    this.pendingDeleteId = null;
+    if (!id) return;
     this.moneyService.deleteTransaction(id).subscribe((success) => {});
   }
 
@@ -108,6 +132,10 @@ export class TransactionsList implements AfterViewInit, OnDestroy {
     } else if (transaction) {
       this.toggleForm(targetElem, undefined, transaction);
     }
+  }
+
+  protected showNewTransactionForm(targetElem: HTMLElement): void {
+    this.toggleForm(targetElem, this.getTodayDateISO(), undefined);
   }
 
   private createFormComponent(): void {
@@ -209,5 +237,13 @@ export class TransactionsList implements AfterViewInit, OnDestroy {
     }
 
     return date.toLocaleDateString('en-US', options);
+  }
+
+  private getTodayDateISO(): string {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   }
 }

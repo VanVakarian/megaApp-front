@@ -2,41 +2,19 @@
           padding: 4,
           borderRadius: 2,
         }">
-  <div class="mb-4 text-lg font-semibold">{{ isEditing() ? 'Edit Transaction' : 'Add New Transaction' }}</div>
+  <div class="mb-4 text-lg font-semibold">
+    {{ isEditing() ? 'Edit Transaction' : 'Add Transaction' }}
+    <v-icon class="hidden"
+            [name]="Icon.CalendarMonth"
+            [size]="0"></v-icon>
+  </div>
 
   <div class="flex flex-col gap-4">
-    <v-input [config]="{
-               label: 'Date',
-               placeholder: 'YYYY-MM-DD',
-               type: 'text',
-               inputmode: 'numeric',
-             }"
-             [(ngModel)]="dateISO" />
-
     <v-dropdown [label]="'Account'"
                 [placeholder]="'Select an account'"
                 [items]="accountItems()"
                 [isRequired]="true"
                 [(ngModel)]="accountId"></v-dropdown>
-
-    <div>
-      <v-input [config]="{
-                 label: 'Amount',
-                 placeholder: '0.00',
-                 type: 'number',
-                 inputmode: 'decimal',
-                 textAlign: 'right',
-               }"
-               [(ngModel)]="amount" />
-
-      <div class="opacity-70 mt-1 text-xs">
-        Enter positive amount - it will be automatically
-        <span [class]="kind === 'expense' ? 'text-red-600' : 'text-green-600'">
-          {{ kind === 'expense' ? 'subtracted' : 'added' }}
-        </span>
-        based on transaction type
-      </div>
-    </div>
 
     <v-dropdown [label]="'Type'"
                 [placeholder]="'Select type'"
@@ -45,23 +23,68 @@
                 [(ngModel)]="kind"
                 (ngModelChange)="onKindChange()"></v-dropdown>
 
-    <v-checkbox [value]="isGift"
-                (valueChange)="isGift = $event">
-      This is a gift
-    </v-checkbox>
+    <v-dropdown [label]="'Category (optional)'"
+                [placeholder]="'No category'"
+                [items]="categoryItems()"
+                [(ngModel)]="categoryId"></v-dropdown>
+
+    <div class="flex gap-4">
+      <v-input [config]="{
+                 label: 'Date',
+                 placeholder: 'YYYY-MM-DD',
+                 type: 'text',
+                 inputmode: 'numeric',
+               }"
+               [(ngModel)]="dateISO">
+        <v-button class="calendar-v-button v-link v-link-static mr-2"
+                  v-postfix
+                  tabindex="-1"
+                  [config]="{
+                    padding: 1,
+                  }"
+                  (mousedown)="$event.preventDefault()"
+                  (onClick)="onDateControlClick()">
+          <v-icon v-prefix
+                  [name]="Icon.CalendarMonth"
+                  [size]="6"></v-icon>
+          <span class="relative">
+            <input #dateInputElem
+                   id="dateInputElem"
+                   type="date"
+                   class="absolute w-0 h-0 p-0 m-0 border-0 opacity-0 top-[14px] right-[29px]"
+                   [value]="dateISO"
+                   (change)="onDatePicked($event)" />
+          </span>
+        </v-button>
+      </v-input>
+
+      <v-input class="amount-input"
+               [config]="{
+                 label: 'Amount',
+                 placeholder: '0.00',
+                 type: 'text',
+                 inputmode: 'decimal',
+                 textAlign: 'right',
+               }"
+               [(ngModel)]="amount">
+        @if (getCurrencyPrefix(); as currencyPrefix) {
+          <span v-prefix
+                class="mx-2">{{ currencyPrefix }}</span>
+        }
+        @if (getCurrencyPostfix(); as currencyPostfix) {
+          <span v-postfix
+                class="mx-2">{{ currencyPostfix }}</span>
+        }
+      </v-input>
+    </div>
 
     <v-input [config]="{
                label: 'Notes (optional)',
                placeholder: 'Add any notes about this transaction...',
                isTextarea: true,
-               rows: 3,
+               rows: 2,
              }"
              [(ngModel)]="notes" />
-
-    <v-dropdown [label]="'Category (optional)'"
-                [placeholder]="'No category'"
-                [items]="categoryItems()"
-                [(ngModel)]="categoryId"></v-dropdown>
 
     <div class="flex gap-2">
       <v-button class="v-flat"
@@ -69,7 +92,7 @@
                   isDisabled: !isFormValid(),
                 }"
                 (onClick)="save()">
-        {{ isEditing() ? 'Update' : 'Create' }}
+        {{ isEditing() ? 'Update' : 'Add' }}
       </v-button>
 
       <v-button class="v-flat"

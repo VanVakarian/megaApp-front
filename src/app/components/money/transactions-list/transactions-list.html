@@ -3,6 +3,23 @@
             padding: 4,
             borderRadius: 2,
           }">
+    <div class="flex items-center justify-between mb-4">
+      <div class="text-lg font-semibold">Transactions</div>
+      <v-button class="v-flat"
+                [config]="{
+                  paddingY: 1,
+                }"
+                (onClick)="showNewTransactionForm(newFormPlace)">
+        <v-icon v-prefix
+                [name]="Icon.Add"
+                [size]="6"></v-icon>
+        New transaction
+      </v-button>
+    </div>
+
+    <div class="mb-6"
+         #newFormPlace></div>
+
     @for (group of groupedTransactions$$(); track group.date; let groupIndex = $index) {
       <div class="mb-6">
         <div class="py-2 mb-4">
@@ -14,7 +31,9 @@
                         padding: 1,
                       }"
                       (onClick)="showTransactionForm(formPlace, group.date, undefined)">
-              +
+              <v-icon v-prefix
+                      [name]="Icon.Add"
+                      [size]="5"></v-icon>
             </v-button>
           </div>
         </div>
@@ -37,23 +56,23 @@
                     {{ formatAmount(transaction) }}
                   </span>
 
-                  <span class="text-xs opacity-70">
+                  <span class="opacity-70 text-xs">
                     {{ getKindDisplayName(transaction.kind) }}
                   </span>
 
                   @if (transaction.isGift) {
-                    <span class="text-xs opacity-70">Gift</span>
+                    <span class="opacity-70 text-xs">Gift</span>
                   }
                 </div>
 
                 @if (getCategoryName(transaction.categoryId)) {
-                  <div class="flex flex-wrap gap-2 mb-2 text-xs opacity-70">
+                  <div class="opacity-70 flex flex-wrap gap-2 mb-2 text-xs">
                     <span>{{ getCategoryName(transaction.categoryId) }}</span>
                   </div>
                 }
 
                 @if (transaction.notes) {
-                  <div class="text-sm opacity-70">
+                  <div class="opacity-70 text-sm">
                     {{ transaction.notes }}
                   </div>
                 }
@@ -62,19 +81,23 @@
               <div class="flex gap-2">
                 <v-button class="v-flat"
                           [config]="{
-                            paddingY: 1,
-                            paddingX: 2,
+                            isLabelHidden: true,
+                            padding: 1,
                           }"
                           (onClick)="showTransactionForm(formPlace, undefined, transaction)">
-                  Edit
+                  <v-icon v-prefix
+                          [name]="Icon.Edit"
+                          [size]="5"></v-icon>
                 </v-button>
                 <v-button class="v-danger"
                           [config]="{
-                            paddingY: 1,
-                            paddingX: 2,
+                            isLabelHidden: true,
+                            padding: 1,
                           }"
                           (onClick)="deleteTransaction(transaction.id!)">
-                  Delete
+                  <v-icon v-prefix
+                          [name]="Icon.Delete"
+                          [size]="5"></v-icon>
                 </v-button>
               </div>
             </div>
@@ -84,10 +107,18 @@
         }
       </div>
     } @empty {
-      <div class="py-8 text-center opacity-70">
+      <div class="opacity-70 py-8 text-center">
         No transactions found.
       </div>
     }
 
   </v-card>
 </div>
+
+<default-modal [isModalOpen]="isDeleteConfirmOpen"
+               [modalTitle]="'Are you sure you want to delete this transaction?'"
+               [confirmButtonLabel]="'Yes'"
+               [cancelButtonLabel]="'No'"
+               (confirmOutput)="onDeleteConfirmed()"
+               (cancelOutput)="closeConfirmationModal()"
+               (closeOutput)="closeConfirmationModal()" />

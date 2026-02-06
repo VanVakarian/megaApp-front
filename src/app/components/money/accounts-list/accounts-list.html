@@ -24,7 +24,7 @@
     </div>
 
     @if (accounts$$().length === 0) {
-      <div class="py-8 text-center opacity-70">
+      <div class="opacity-70 py-8 text-center">
         No accounts found.
       </div>
     }
@@ -35,10 +35,10 @@
           <div class="flex-1">
             <div class="mb-2">
               <span class="font-semibold">{{ account.title }}</span>
-              <span class="ml-2 opacity-70">{{ getCurrencySymbol(account.currencyId) }}</span>
+              <span class="opacity-70 ml-2">{{ getCurrencySymbol(account.currencyId) }}</span>
             </div>
 
-            <div class="flex gap-3 text-xs opacity-70">
+            <div class="opacity-70 flex gap-3 text-xs">
               @if (account.invest) {
                 <span>Investment</span>
               }
@@ -72,3 +72,11 @@
 
   </v-card>
 </div>
+
+<default-modal [isModalOpen]="isDeleteConfirmOpen"
+               [modalTitle]="'Are you sure you want to delete this account?'"
+               [confirmButtonLabel]="'Yes'"
+               [cancelButtonLabel]="'No'"
+               (confirmOutput)="onDeleteConfirmed()"
+               (cancelOutput)="closeConfirmationModal()"
+               (closeOutput)="closeConfirmationModal()" />

@@ -43,7 +43,7 @@ export class MoneyService {
   public accounts$$: WritableSignal<Account[]> = signal([]);
   public transactions$$: WritableSignal<Transaction[]> = signal([]);
 
-  public postRequestResult$ = new Subject<ServerResponseBasic>();
+  public requestResult$ = new Subject<ServerResponseBasic>();
 
   constructor(private http: HttpClient) {
     // effect(() => { console.log('CURRENCIES:', this.currencies$$()) }); // prettier-ignore
@@ -65,7 +65,7 @@ export class MoneyService {
       }),
       catchError((error) => {
         console.error('Error fetching currencies:', error);
-        this.postRequestResult$.next({ result: false });
+        this.requestResult$.next({ result: false });
         return of([]);
       }),
     );
@@ -80,15 +80,15 @@ export class MoneyService {
             ...currencyData,
           };
           this.addCurrencyToState(newCurrency);
-          this.postRequestResult$.next({ result: true });
+          this.requestResult$.next({ result: true });
           return true;
         }
-        this.postRequestResult$.next({ result: false });
+        this.requestResult$.next({ result: false });
         return false;
       }),
       catchError((error) => {
         console.error('Error creating currency:', error);
-        this.postRequestResult$.next({ result: false });
+        this.requestResult$.next({ result: false });
         return of(false);
       }),
     );
@@ -97,7 +97,7 @@ export class MoneyService {
   public updateCurrency(currencyData: Currency): Observable<boolean> {
     if (!currencyData.id) {
       console.error('Currency ID is required for update');
-      this.postRequestResult$.next({ result: false });
+      this.requestResult$.next({ result: false });
       return of(false);
     }
 
@@ -105,15 +105,15 @@ export class MoneyService {
       map((response: BasicResponse) => {
         if (response.success) {
           this.updateCurrencyInState(currencyData);
-          this.postRequestResult$.next({ result: true });
+          this.requestResult$.next({ result: true });
           return true;
         }
-        this.postRequestResult$.next({ result: false });
+        this.requestResult$.next({ result: false });
         return false;
       }),
       catchError((error) => {
         console.error('Error updating currency:', error);
-        this.postRequestResult$.next({ result: false });
+        this.requestResult$.next({ result: false });
         return of(false);
       }),
     );
@@ -124,15 +124,15 @@ export class MoneyService {
       map((response: BasicResponse) => {
         if (response.success) {
           this.removeCurrencyFromState(currencyId);
-          this.postRequestResult$.next({ result: true });
+          this.requestResult$.next({ result: true });
           return true;
         }
-        this.postRequestResult$.next({ result: false });
+        this.requestResult$.next({ result: false });
         return false;
       }),
       catchError((error) => {
         console.error('Error deleting currency:', error);
-        this.postRequestResult$.next({ result: false });
+        this.requestResult$.next({ result: false });
         return of(false);
       }),
     );
@@ -169,7 +169,7 @@ export class MoneyService {
       }),
       catchError((error) => {
         console.error('Error fetching categories:', error);
-        this.postRequestResult$.next({ result: false });
+        this.requestResult$.next({ result: false });
         return of([]);
       }),
     );
@@ -184,15 +184,15 @@ export class MoneyService {
             ...categoryData,
           };
           this.addCategoryToState(newCategory);
-          this.postRequestResult$.next({ result: true });
+          this.requestResult$.next({ result: true });
           return true;
         }
-        this.postRequestResult$.next({ result: false });
+        this.requestResult$.next({ result: false });
         return false;
       }),
       catchError((error) => {
         console.error('Error creating category:', error);
-        this.postRequestResult$.next({ result: false });
+        this.requestResult$.next({ result: false });
         return of(false);
       }),
     );
@@ -201,7 +201,7 @@ export class MoneyService {
   public updateCategory(categoryData: Category): Observable<boolean> {
     if (!categoryData.id) {
       console.error('Category ID is required for update');
-      this.postRequestResult$.next({ result: false });
+      this.requestResult$.next({ result: false });
       return of(false);
     }
 
@@ -209,15 +209,15 @@ export class MoneyService {
       map((response: BasicResponse) => {
         if (response.success) {
           this.updateCategoryInState(categoryData);
-          this.postRequestResult$.next({ result: true });
+          this.requestResult$.next({ result: true });
           return true;
         }
-        this.postRequestResult$.next({ result: false });
+        this.requestResult$.next({ result: false });
         return false;
       }),
       catchError((error) => {
         console.error('Error updating category:', error);
-        this.postRequestResult$.next({ result: false });
+        this.requestResult$.next({ result: false });
         return of(false);
       }),
     );
@@ -228,15 +228,15 @@ export class MoneyService {
       map((response: BasicResponse) => {
         if (response.success) {
           this.removeCategoryFromState(categoryId);
-          this.postRequestResult$.next({ result: true });
+          this.requestResult$.next({ result: true });
           return true;
         }
-        this.postRequestResult$.next({ result: false });
+        this.requestResult$.next({ result: false });
         return false;
       }),
       catchError((error) => {
         console.error('Error deleting category:', error);
-        this.postRequestResult$.next({ result: false });
+        this.requestResult$.next({ result: false });
         return of(false);
       }),
     );
@@ -273,7 +273,7 @@ export class MoneyService {
       }),
       catchError((error) => {
         console.error('Error fetching accounts:', error);
-        this.postRequestResult$.next({ result: false });
+        this.requestResult$.next({ result: false });
         return of([]);
       }),
     );
@@ -288,15 +288,15 @@ export class MoneyService {
             ...accountData,
           };
           this.addAccountToState(newAccount);
-          this.postRequestResult$.next({ result: true });
+          this.requestResult$.next({ result: true });
           return true;
         }
-        this.postRequestResult$.next({ result: false });
+        this.requestResult$.next({ result: false });
         return false;
       }),
       catchError((error) => {
         console.error('Error creating account:', error);
-        this.postRequestResult$.next({ result: false });
+        this.requestResult$.next({ result: false });
         return of(false);
       }),
     );
@@ -305,7 +305,7 @@ export class MoneyService {
   public updateAccount(accountData: Account): Observable<boolean> {
     if (!accountData.id) {
       console.error('Account ID is required for update');
-      this.postRequestResult$.next({ result: false });
+      this.requestResult$.next({ result: false });
       return of(false);
     }
 
@@ -313,15 +313,15 @@ export class MoneyService {
       map((response: BasicResponse) => {
         if (response.success) {
           this.updateAccountInState(accountData);
-          this.postRequestResult$.next({ result: true });
+          this.requestResult$.next({ result: true });
           return true;
         }
-        this.postRequestResult$.next({ result: false });
+        this.requestResult$.next({ result: false });
         return false;
       }),
       catchError((error) => {
         console.error('Error updating account:', error);
-        this.postRequestResult$.next({ result: false });
+        this.requestResult$.next({ result: false });
         return of(false);
       }),
     );
@@ -332,15 +332,15 @@ export class MoneyService {
       map((response: BasicResponse) => {
         if (response.success) {
           this.removeAccountFromState(accountId);
-          this.postRequestResult$.next({ result: true });
+          this.requestResult$.next({ result: true });
           return true;
         }
-        this.postRequestResult$.next({ result: false });
+        this.requestResult$.next({ result: false });
         return false;
       }),
       catchError((error) => {
         console.error('Error deleting account:', error);
-        this.postRequestResult$.next({ result: false });
+        this.requestResult$.next({ result: false });
         return of(false);
       }),
     );
@@ -375,7 +375,7 @@ export class MoneyService {
       }),
       catchError((error) => {
         console.error('Error fetching transactions:', error);
-        this.postRequestResult$.next({ result: false });
+        this.requestResult$.next({ result: false });
         return of([]);
       }),
     );
@@ -390,15 +390,15 @@ export class MoneyService {
             ...transactionData,
           };
           this.addTransactionToState(newTransaction);
-          this.postRequestResult$.next({ result: true });
+          this.requestResult$.next({ result: true });
           return true;
         }
-        this.postRequestResult$.next({ result: false });
+        this.requestResult$.next({ result: false });
         return false;
       }),
       catchError((error) => {
         console.error('Error creating transaction:', error);
-        this.postRequestResult$.next({ result: false });
+        this.requestResult$.next({ result: false });
         return of(false);
       }),
     );
@@ -407,7 +407,7 @@ export class MoneyService {
   public updateTransaction(transactionData: Transaction): Observable<boolean> {
     if (!transactionData.id) {
       console.error('Transaction ID is required for update');
-      this.postRequestResult$.next({ result: false });
+      this.requestResult$.next({ result: false });
       return of(false);
     }
 
@@ -415,15 +415,15 @@ export class MoneyService {
       map((response: BasicResponse) => {
         if (response.success) {
           this.updateTransactionInState(transactionData);
-          this.postRequestResult$.next({ result: true });
+          this.requestResult$.next({ result: true });
           return true;
         }
-        this.postRequestResult$.next({ result: false });
+        this.requestResult$.next({ result: false });
         return false;
       }),
       catchError((error) => {
         console.error('Error updating transaction:', error);
-        this.postRequestResult$.next({ result: false });
+        this.requestResult$.next({ result: false });
         return of(false);
       }),
     );
@@ -434,15 +434,15 @@ export class MoneyService {
       map((response: BasicResponse) => {
         if (response.success) {
           this.removeTransactionFromState(transactionId);
-          this.postRequestResult$.next({ result: true });
+          this.requestResult$.next({ result: true });
           return true;
         }
-        this.postRequestResult$.next({ result: false });
+        this.requestResult$.next({ result: false });
         return false;
       }),
       catchError((error) => {
         console.error('Error deleting transaction:', error);
-        this.postRequestResult$.next({ result: false });
+        this.requestResult$.next({ result: false });
         return of(false);
       }),
     );

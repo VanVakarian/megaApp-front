@@ -1,5 +1,6 @@
 import { Component, computed } from '@angular/core';
 import { MoneyService } from '@app/services/money.service';
+import { DefaultModal } from '@app/shared/components/default-modal/default-modal';
 import { Category, CategoryType } from '@app/shared/types';
 import { VButton } from '@ui-kit/components/v-button/v-button';
 import { VCard } from '@ui-kit/components/v-card/v-card';
@@ -9,12 +10,14 @@ import { CategoryForm } from './category-form/category-form';
   selector: 'categories-list',
   templateUrl: './categories-list.html',
   standalone: true,
-  imports: [CategoryForm, VButton, VCard],
+  imports: [CategoryForm, DefaultModal, VButton, VCard],
 })
 export class CategoriesList {
   protected categories$$ = computed(() => this.moneyService.categories$$());
   protected showForm = false;
   protected editingCategory: Category | null = null;
+  protected isDeleteConfirmOpen = false;
+  protected pendingDeleteId: number | null = null;
 
   constructor(private moneyService: MoneyService) {}
 
@@ -29,6 +32,24 @@ export class CategoriesList {
   }
 
   protected deleteCategory(id: number): void {
+    this.openConfirmationModal(id);
+  }
+
+  protected openConfirmationModal(id: number): void {
+    this.pendingDeleteId = id;
+    this.isDeleteConfirmOpen = true;
+  }
+
+  protected closeConfirmationModal(): void {
+    this.isDeleteConfirmOpen = false;
+    this.pendingDeleteId = null;
+  }
+
+  protected onDeleteConfirmed(): void {
+    const id = this.pendingDeleteId;
+    this.isDeleteConfirmOpen = false;
+    this.pendingDeleteId = null;
+    if (!id) return;
     this.moneyService.deleteCategory(id).subscribe((success) => {});
   }
 
