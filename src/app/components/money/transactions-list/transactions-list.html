@@ -46,14 +46,22 @@
               <div class="flex-1">
                 <div class="mb-2">
                   <div class="flex items-center gap-2">
-                    <span class="opacity-70">{{ getAccountTitle(transaction.accountId) }}</span>
+                    @if (transaction.kind === 'transfer') {
+                      <span class="opacity-70">{{ getTransferAccountLine(transaction) }}</span>
+                    } @else {
+                      <span class="opacity-70">{{ getAccountTitle(transaction.accountId) }}</span>
+                    }
                   </div>
                 </div>
 
                 <div class="flex items-center gap-3 mb-2">
                   <span class="text-lg font-semibold"
-                        [class]="transactionKindIsIncome(transaction) ? 'text-green-600' : 'text-red-600'">
-                    {{ formatAmount(transaction) }}
+                        [class]="getAmountClass(transaction)">
+                    @if (transaction.kind === 'transfer') {
+                      {{ formatTransferAmounts(transaction) }}
+                    } @else {
+                      {{ formatAmount(transaction) }}
+                    }
                   </span>
 
                   <span class="opacity-70 text-xs">

@@ -68,6 +68,8 @@ export class TransactionsList implements AfterViewInit, OnDestroy {
         return 'Income';
       case TransactionKind.EXPENSE:
         return 'Expense';
+      case TransactionKind.TRANSFER:
+        return 'Transfer';
       default:
         return kind;
     }
@@ -76,6 +78,12 @@ export class TransactionsList implements AfterViewInit, OnDestroy {
   protected getAccountTitle(accountId: number): string {
     const account = this.accounts$$().find((a) => a.id === accountId);
     return account ? account.title : 'Unknown Account';
+  }
+
+  protected getTransferAccountLine(transaction: Transaction): string {
+    const twin = this.getTwinTransaction(transaction);
+    if (!twin) return this.getAccountTitle(transaction.accountId);
+    return `${this.getAccountTitle(transaction.accountId)} → ${this.getAccountTitle(twin.accountId)}`;
   }
 
   protected getCategoryName(categoryId?: number | null): string | null {
@@ -92,7 +100,8 @@ export class TransactionsList implements AfterViewInit, OnDestroy {
     if (!currency) return transaction.amount.toString();
 
     const whitespace = currency.whitespace ? ' ' : '';
-    const sign = transaction.kind === TransactionKind.INCOME ? '+' : '-';
+    const sign =
+      transaction.kind === TransactionKind.INCOME ? '+' : transaction.kind === TransactionKind.EXPENSE ? '-' : '';
     const amount = transaction.amount.toFixed(2);
 
     if (currency.symbolPosEnum === SymbolPosition.BEFORE) {
@@ -102,8 +111,49 @@ export class TransactionsList implements AfterViewInit, OnDestroy {
     }
   }
 
+  protected formatTransferAmounts(transaction: Transaction): string {
+    const twin = this.getTwinTransaction(transaction);
+    if (!twin) return this.formatAmount(transaction);
+    const fromAmount = this.formatPlainAmount(transaction.accountId, transaction.amount);
+    const toAmount = this.formatPlainAmount(twin.accountId, twin.amount);
+    return `${fromAmount} → ${toAmount}`;
+  }
+
   protected transactionKindIsIncome(transaction: Transaction): boolean {
     return transaction.kind === TransactionKind.INCOME;
+  }
+
+  protected getAmountClass(transaction: Transaction): string {
+    if (transaction.kind === TransactionKind.INCOME) return 'text-green-600';
+    if (transaction.kind === TransactionKind.EXPENSE) return 'text-red-600';
+    return '';
+  }
+
+  private formatPlainAmount(accountId: number, amount: number): string {
+    const account = this.accounts$$().find((a) => a.id === accountId);
+    if (!account) return amount.toFixed(2);
+
+    const currency = this.currencies$$().find((c) => c.id === account.currencyId);
+    if (!currency) return amount.toFixed(2);
+
+    const whitespace = currency.whitespace ? ' ' : '';
+    const amountDisplay = amount.toFixed(2);
+
+    if (currency.symbolPosEnum === SymbolPosition.BEFORE) {
+      return `${currency.symbol}${whitespace}${amountDisplay}`;
+    }
+    return `${amountDisplay}${whitespace}${currency.symbol}`;
+  }
+
+  private getTwinTransaction(transaction: Transaction): Transaction | null {
+    if (!transaction.twinId) return null;
+    return this.moneyService.transactions$$().find((item) => item.id === transaction.twinId) ?? null;
+  }
+
+  private shouldDisplayTransaction(transaction: Transaction): boolean {
+    if (transaction.kind !== TransactionKind.TRANSFER) return true;
+    if (!transaction.twinId || !transaction.id) return true;
+    return transaction.id < transaction.twinId;
   }
 
   protected deleteTransaction(id: number): void {
@@ -197,6 +247,7 @@ export class TransactionsList implements AfterViewInit, OnDestroy {
     const transactionsByDateMap = new Map<string, TransactionGroup>();
 
     transactions.forEach((transaction) => {
+      if (!this.shouldDisplayTransaction(transaction)) return;
       const dateIsoKey = transaction.dateISO;
 
       if (!transactionsByDateMap.has(dateIsoKey)) {

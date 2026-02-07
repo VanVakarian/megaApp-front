@@ -395,6 +395,7 @@ export interface Account {
 export enum TransactionKind {
   INCOME = 'income',
   EXPENSE = 'expense',
+  TRANSFER = 'transfer',
 }
 
 export interface Transaction {
@@ -407,6 +408,7 @@ export interface Transaction {
   isGift: boolean;
   notes?: string;
   details?: any;
+  twinId?: number | null;
 }
 
 // export interface Notification {

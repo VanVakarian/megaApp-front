@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, signal, WritableSignal } from '@angular/core';
 import { Observable, of, Subject } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
-import { Account, Category, Currency, ServerResponseBasic, Transaction } from '../shared/types';
+import { Account, Category, Currency, ServerResponseBasic, Transaction, TransactionKind } from '../shared/types';
 
 interface BaseResponse {
   success: boolean;
@@ -30,7 +30,7 @@ interface CreateCategoryResponse extends DataResponse<{ id: number }> {}
 
 interface CreateAccountResponse extends DataResponse<{ id: number }> {}
 
-interface CreateTransactionResponse extends DataResponse<{ id: number }> {}
+interface CreateTransactionResponse extends DataResponse<{ id: number; twinId?: number }> {}
 
 interface BasicResponse extends MessageResponse {}
 
@@ -433,7 +433,7 @@ export class MoneyService {
     return this.http.delete<BasicResponse>(`/api/money/transactions/${transactionId}`).pipe(
       map((response: BasicResponse) => {
         if (response.success) {
-          this.removeTransactionFromState(transactionId);
+          this.removeTransactionPairFromState(transactionId);
           this.requestResult$.next({ result: true });
           return true;
         }
@@ -446,6 +446,107 @@ export class MoneyService {
         return of(false);
       }),
     );
+  }
+
+  public createTransfer(transferData: {
+    dateISO: string;
+    accountId: number;
+    amount: number;
+    twinAccountId: number;
+    twinAmount: number;
+    notes?: string;
+  }): Observable<boolean> {
+    return this.http
+      .post<CreateTransactionResponse>('/api/money/transactions', {
+        ...transferData,
+        kind: TransactionKind.TRANSFER,
+        isGift: false,
+        categoryId: null,
+      })
+      .pipe(
+        map((response: CreateTransactionResponse) => {
+          if (response.success && response.data?.id && response.data?.twinId) {
+            const fromTransaction: Transaction = {
+              id: response.data.id,
+              dateISO: transferData.dateISO,
+              accountId: transferData.accountId,
+              amount: transferData.amount,
+              categoryId: null,
+              kind: TransactionKind.TRANSFER,
+              isGift: false,
+              notes: transferData.notes,
+              twinId: response.data.twinId,
+            };
+
+            const toTransaction: Transaction = {
+              id: response.data.twinId,
+              dateISO: transferData.dateISO,
+              accountId: transferData.twinAccountId,
+              amount: transferData.twinAmount,
+              categoryId: null,
+              kind: TransactionKind.TRANSFER,
+              isGift: false,
+              notes: transferData.notes,
+              twinId: response.data.id,
+            };
+
+            this.transactions$$.update((transactions: Transaction[]) => [
+              fromTransaction,
+              toTransaction,
+              ...transactions,
+            ]);
+            this.requestResult$.next({ result: true });
+            return true;
+          }
+          this.requestResult$.next({ result: false });
+          return false;
+        }),
+        catchError((error) => {
+          console.error('Error creating transfer:', error);
+          this.requestResult$.next({ result: false });
+          return of(false);
+        }),
+      );
+  }
+
+  public updateTransfer(transferData: {
+    id: number;
+    twinId: number;
+    dateISO: string;
+    accountId: number;
+    amount: number;
+    twinAccountId: number;
+    twinAmount: number;
+    notes?: string;
+  }): Observable<boolean> {
+    return this.http
+      .put<BasicResponse>(`/api/money/transactions/${transferData.id}`, {
+        dateISO: transferData.dateISO,
+        accountId: transferData.accountId,
+        amount: transferData.amount,
+        twinAccountId: transferData.twinAccountId,
+        twinAmount: transferData.twinAmount,
+        kind: TransactionKind.TRANSFER,
+        isGift: false,
+        categoryId: null,
+        notes: transferData.notes,
+      })
+      .pipe(
+        map((response: BasicResponse) => {
+          if (response.success) {
+            this.updateTransferInState(transferData);
+            this.requestResult$.next({ result: true });
+            return true;
+          }
+          this.requestResult$.next({ result: false });
+          return false;
+        }),
+        catchError((error) => {
+          console.error('Error updating transfer:', error);
+          this.requestResult$.next({ result: false });
+          return of(false);
+        }),
+      );
   }
 
   private addTransactionToState(transaction: Transaction): void {
@@ -463,6 +564,53 @@ export class MoneyService {
   private removeTransactionFromState(transactionId: number): void {
     this.transactions$$.update((transactions: Transaction[]) =>
       transactions.filter((transaction: Transaction) => transaction.id !== transactionId),
+    );
+  }
+
+  private removeTransactionPairFromState(transactionId: number): void {
+    const transactions = this.transactions$$();
+    const target = transactions.find((transaction) => transaction.id === transactionId);
+    const twinId = target?.twinId;
+
+    this.transactions$$.update((items: Transaction[]) =>
+      items.filter((transaction) => transaction.id !== transactionId && transaction.id !== twinId),
+    );
+  }
+
+  private updateTransferInState(transferData: {
+    id: number;
+    twinId: number;
+    dateISO: string;
+    accountId: number;
+    amount: number;
+    twinAccountId: number;
+    twinAmount: number;
+    notes?: string;
+  }): void {
+    this.transactions$$.update((transactions: Transaction[]) =>
+      transactions.map((transaction: Transaction) => {
+        if (transaction.id === transferData.id) {
+          return {
+            ...transaction,
+            dateISO: transferData.dateISO,
+            accountId: transferData.accountId,
+            amount: transferData.amount,
+            notes: transferData.notes,
+          };
+        }
+
+        if (transaction.id === transferData.twinId) {
+          return {
+            ...transaction,
+            dateISO: transferData.dateISO,
+            accountId: transferData.twinAccountId,
+            amount: transferData.twinAmount,
+            notes: transferData.notes,
+          };
+        }
+
+        return transaction;
+      }),
     );
   }
 }
