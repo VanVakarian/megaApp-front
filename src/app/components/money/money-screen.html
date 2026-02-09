@@ -104,16 +104,47 @@
     }
   </div>
 
-  <div class="flex flex-wrap w-full gap-2">
-    @for (item of [].constructor(4); track $index) {
-      <v-card class="w-96 flex flex-shrink-0"
-              [config]="{
-                padding: 2,
-                borderRadius: 2,
-              }">
-        Card {{ $index }}
-      </v-card>
-    }
+  <div class="w-full">
+    <v-card class="w-full"
+            [config]="{
+              padding: 2,
+              borderRadius: 2,
+            }">
+      <div class="text-sm font-semibold mb-2">Monthly balances</div>
+
+      @if (balanceRows$$().length === 0) {
+        <div class="text-sm opacity-60">No data yet</div>
+      }
+
+      @else {
+        <div class="overflow-auto max-h-[70vh]">
+          <table class="min-w-full text-sm">
+            <thead class="text-left">
+              <tr class="border-b">
+                <th class="py-2 pr-4">Date</th>
+                <th class="py-2 pr-4 text-right">Total</th>
+                @for (account of accountColumns$$(); track account.id) {
+                  <th class="py-2 pr-4 text-right">{{ getAccountTitle(account) }}</th>
+                }
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of balanceRows$$(); track row.dateISO) {
+                <tr class="border-b border-neutral-200"
+                    [class.border-neutral-400]="row.isYearEnd"
+                    [class.border-b-2]="row.isYearEnd">
+                  <td class="py-2 pr-4 whitespace-nowrap">{{ row.dateDisplay }}</td>
+                  <td class="py-2 pr-4 text-right whitespace-nowrap">{{ formatTotal(row) }}</td>
+                  @for (account of accountColumns$$(); track account.id) {
+                    <td class="py-2 pr-4 text-right whitespace-nowrap">{{ formatAccountBalance(row, account) }}</td>
+                  }
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </v-card>
   </div>
 
 </div>
