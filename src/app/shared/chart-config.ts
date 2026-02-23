@@ -5,6 +5,8 @@ interface ChartColors {
   mainAlpha: string;
   secondary: string;
   secondaryAlpha: string;
+  virtual: string;
+  virtualAlpha: string;
 }
 
 export interface MonthLabelsPluginOptions {
@@ -30,6 +32,8 @@ export const CHART_COLORS: ChartColors = {
   mainAlpha: '#578f9250',
   secondary: '#345b5b',
   secondaryAlpha: '#345b5b50',
+  virtual: '#9fc9cb',
+  virtualAlpha: '#9fc9cb80',
 };
 
 export const WEIGHT_CHART_SETTINGS: ChartConfiguration = {
@@ -82,8 +86,20 @@ export const KCALS_CHART_SETTINGS: ChartConfiguration = {
         label: 'Ккал за день',
         data: [],
         order: 2,
+        stack: 'kcals',
         borderColor: CHART_COLORS.main,
         backgroundColor: CHART_COLORS.main,
+        borderWidth: 1,
+        barThickness: 'flex',
+        maxBarThickness: 30,
+      },
+      {
+        label: 'Виртуальные ккал',
+        data: [],
+        order: 2,
+        stack: 'kcals',
+        borderColor: CHART_COLORS.virtual,
+        backgroundColor: CHART_COLORS.virtual,
         borderWidth: 1,
         barThickness: 'flex',
         maxBarThickness: 30,
@@ -114,9 +130,11 @@ export const KCALS_CHART_SETTINGS: ChartConfiguration = {
     },
     scales: {
       x: {
+        stacked: true,
         ticks: {},
       },
       y: {
+        stacked: true,
         display: false,
         ticks: {
           display: false,
