@@ -260,8 +260,10 @@ export class FoodStats implements OnInit, AfterViewInit {
     const chart = this.kcalsChart$$();
     if (chart?.data) {
       chart.data.labels = data.dates;
-      chart.data.datasets[0].data = data.kcals;
-      chart.data.datasets[1].data = data.kcalsTarget;
+      chart.data.datasets[0].data = data.kcalsFactual;
+      chart.data.datasets[1].data = data.kcalsVirtual;
+      chart.data.datasets[2].data = data.kcalsTarget;
+
       chart.update('none');
     }
   }

@@ -336,14 +336,15 @@ export interface BodyWeightInterface {
 //                                                                         STATS
 
 export interface Stats {
-  [id: string]: [number, number, number, number];
+  [id: string]: [number, number, number, number, boolean?];
 }
 
 export interface StatsChartData {
   dates: string[];
   weights: number[];
   weightsAvg: number[];
-  kcals: number[];
+  kcalsFactual: number[];
+  kcalsVirtual: number[];
   kcalsTarget: number[];
 }
 

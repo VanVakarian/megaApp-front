@@ -76,7 +76,7 @@ export class FoodStatsService {
     if (dateStats) {
       this.stats$$.set({
         ...stats,
-        [dateIso]: [dateStats[0] + weightDelta, dateStats[1], dateStats[2] + kcalsDelta, dateStats[3]],
+        [dateIso]: [dateStats[0] + weightDelta, dateStats[1], dateStats[2] + kcalsDelta, dateStats[3], dateStats[4]],
       });
     }
   }
@@ -96,16 +96,21 @@ export class FoodStatsService {
       dates: [],
       weights: [],
       weightsAvg: [],
-      kcals: [],
+      kcalsFactual: [],
+      kcalsVirtual: [],
       kcalsTarget: [],
     };
 
     Object.entries(stats).forEach(([date, values]) => {
-      const [weight, weightAvg, kcal, kcalTarget] = values;
+      const [weight, weightAvg, kcal, kcalTarget, isVirtualKcalDay] = values;
+      const hasKcal = kcal !== undefined && kcal !== null;
+      const factualKcal = !hasKcal ? Number.NaN : isVirtualKcalDay ? 0 : kcal;
+      const virtualKcal = !hasKcal ? Number.NaN : isVirtualKcalDay ? kcal : 0;
       result.dates.push(date);
       result.weights.push(weight);
       result.weightsAvg.push(weightAvg);
-      result.kcals.push(kcal);
+      result.kcalsFactual.push(factualKcal);
+      result.kcalsVirtual.push(virtualKcal);
       result.kcalsTarget.push(kcalTarget);
     });
 
@@ -120,7 +125,8 @@ export class FoodStatsService {
     const dates = data.dates.slice(start, end + 1);
     const weights = data.weights.slice(start, end + 1);
     const weightsAvg = data.weightsAvg.slice(start, end + 1);
-    const kcals = data.kcals.slice(start, end + 1);
+    const kcalsFactual = data.kcalsFactual.slice(start, end + 1);
+    const kcalsVirtual = data.kcalsVirtual.slice(start, end + 1);
     const kcalsTarget = data.kcalsTarget.slice(start, end + 1);
 
     const daysCount = dates.length;
@@ -138,7 +144,8 @@ export class FoodStatsService {
       dates: dates.map(formatDateTicks),
       weights,
       weightsAvg,
-      kcals,
+      kcalsFactual,
+      kcalsVirtual,
       kcalsTarget,
     };
   }
@@ -163,7 +170,8 @@ export class FoodStatsService {
     const weightsCount: number[] = [];
     const weightsAvgSum: number[] = [];
     const weightsAvgCount: number[] = [];
-    const kcalsSum: number[] = [];
+    const kcalsFactualSum: number[] = [];
+    const kcalsVirtualSum: number[] = [];
     const kcalsCount: number[] = [];
     const kcalsTargetSum: number[] = [];
     const kcalsTargetCount: number[] = [];
@@ -186,7 +194,8 @@ export class FoodStatsService {
         weightsCount.push(0);
         weightsAvgSum.push(0);
         weightsAvgCount.push(0);
-        kcalsSum.push(0);
+        kcalsFactualSum.push(0);
+        kcalsVirtualSum.push(0);
         kcalsCount.push(0);
         kcalsTargetSum.push(0);
         kcalsTargetCount.push(0);
@@ -196,8 +205,13 @@ export class FoodStatsService {
 
       const weightValue = data.weights[index];
       const weightAvgValue = data.weightsAvg[index];
-      const kcalsValue = data.kcals[index];
+      const kcalsFactualValue = data.kcalsFactual[index];
+      const kcalsVirtualValue = data.kcalsVirtual[index];
       const kcalsTargetValue = data.kcalsTarget[index];
+      const hasFactualKcal =
+        kcalsFactualValue !== undefined && kcalsFactualValue !== null && !Number.isNaN(kcalsFactualValue);
+      const hasVirtualKcal =
+        kcalsVirtualValue !== undefined && kcalsVirtualValue !== null && !Number.isNaN(kcalsVirtualValue);
 
       if (weightValue !== undefined && weightValue !== null) {
         weightsSum[groupIndex] += weightValue;
@@ -207,8 +221,9 @@ export class FoodStatsService {
         weightsAvgSum[groupIndex] += weightAvgValue;
         weightsAvgCount[groupIndex] += 1;
       }
-      if (kcalsValue !== undefined && kcalsValue !== null) {
-        kcalsSum[groupIndex] += kcalsValue;
+      if (hasFactualKcal || hasVirtualKcal) {
+        kcalsFactualSum[groupIndex] += hasFactualKcal ? kcalsFactualValue : 0;
+        kcalsVirtualSum[groupIndex] += hasVirtualKcal ? kcalsVirtualValue : 0;
         kcalsCount[groupIndex] += 1;
       }
       if (kcalsTargetValue !== undefined && kcalsTargetValue !== null) {
@@ -233,7 +248,8 @@ export class FoodStatsService {
       aggregated.dates.push(formatDateTicks(periodStartIsos[i]));
       aggregated.weights.push(weightsComplete ? weightsSum[i] / weightsCount[i] : Number.NaN);
       aggregated.weightsAvg.push(weightsAvgComplete ? weightsAvgSum[i] / weightsAvgCount[i] : Number.NaN);
-      aggregated.kcals.push(kcalsComplete ? kcalsSum[i] / kcalsCount[i] : Number.NaN);
+      aggregated.kcalsFactual.push(kcalsComplete ? kcalsFactualSum[i] / kcalsCount[i] : Number.NaN);
+      aggregated.kcalsVirtual.push(kcalsComplete ? kcalsVirtualSum[i] / kcalsCount[i] : Number.NaN);
       aggregated.kcalsTarget.push(kcalsTargetComplete ? kcalsTargetSum[i] / kcalsTargetCount[i] : Number.NaN);
       aggregatedStartIdx.push(periodStartIdx[i]);
       aggregatedEndIdx.push(periodEndIdx[i]);
@@ -261,7 +277,8 @@ export class FoodStatsService {
       dates: aggregated.data.dates.slice(startPeriodIdx, endPeriodIdx + 1),
       weights: aggregated.data.weights.slice(startPeriodIdx, endPeriodIdx + 1),
       weightsAvg: aggregated.data.weightsAvg.slice(startPeriodIdx, endPeriodIdx + 1),
-      kcals: aggregated.data.kcals.slice(startPeriodIdx, endPeriodIdx + 1),
+      kcalsFactual: aggregated.data.kcalsFactual.slice(startPeriodIdx, endPeriodIdx + 1),
+      kcalsVirtual: aggregated.data.kcalsVirtual.slice(startPeriodIdx, endPeriodIdx + 1),
       kcalsTarget: aggregated.data.kcalsTarget.slice(startPeriodIdx, endPeriodIdx + 1),
     };
 
@@ -334,7 +351,8 @@ export class FoodStatsService {
       dates: [],
       weights: [],
       weightsAvg: [],
-      kcals: [],
+      kcalsFactual: [],
+      kcalsVirtual: [],
       kcalsTarget: [],
     };
   }
