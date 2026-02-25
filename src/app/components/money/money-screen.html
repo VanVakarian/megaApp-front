@@ -118,13 +118,13 @@
 
       @else {
         <div class="overflow-auto">
-          <table class="min-w-full text-sm">
+          <table class="min-w-full font-mono text-sm">
             <thead class="text-left">
-              <tr class="border-b">
-                <th class="py-2 pr-4">Date</th>
-                <th class="py-2 pr-4 text-right">Total</th>
+              <tr class="border-neutral-400 border-b-2">
+                <th class="py-0.5 px-2">Date</th>
+                <th class="py-0.5 px-2 text-right border-l border-neutral-200">Total</th>
                 @for (account of accountColumns$$(); track account.id) {
-                  <th class="py-2 pr-4 text-right">{{ getAccountTitle(account) }}</th>
+                  <th class="py-0.5 px-2 text-right border-l border-neutral-200">{{ getAccountTitle(account) }}</th>
                 }
               </tr>
             </thead>
@@ -133,10 +133,14 @@
                 <tr class="border-neutral-200 border-b"
                     [class.border-neutral-400]="row.isYearEnd"
                     [class.border-b-2]="row.isYearEnd">
-                  <td class="whitespace-nowrap py-2 pr-4">{{ row.dateDisplay }}</td>
-                  <td class="whitespace-nowrap py-2 pr-4 text-right">{{ formatTotal(row) }}</td>
+                  <td class="whitespace-nowrap py-0.5 px-2">{{ row.dateDisplay }}</td>
+                  <td class="whitespace-nowrap py-0.5 px-2 text-right border-l border-neutral-200">
+                    {{ formatTotal(row) }}
+                  </td>
                   @for (account of accountColumns$$(); track account.id) {
-                    <td class="whitespace-nowrap py-2 pr-4 text-right">{{ formatAccountBalance(row, account) }}</td>
+                    <td class="whitespace-nowrap py-0.5 px-2 text-right border-l border-neutral-200">
+                      {{ formatAccountBalance(row, account) }}
+                    </td>
                   }
                 </tr>
               }

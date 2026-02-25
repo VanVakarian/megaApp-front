@@ -42,8 +42,16 @@ export class MoneyScreen implements OnInit {
   private readonly currencies$$ = computed(() => this.moneyService.currencies$$());
   private readonly transactions$$ = computed(() => this.moneyService.transactions$$());
   private readonly rateHistory$$ = computed(() => this.moneyService.rateHistory$$());
+  private readonly fxTickers = new Set(['USD', 'EUR']);
 
-  private readonly accountOrder = ['Наличка', 'Яндекс.Деньги', 'Банковский счет', 'Банковский депозит'];
+  private readonly accountOrder = [
+    'Наличка',
+    'Яндекс.Деньги',
+    'Банковский счет',
+    'Банковский депозит',
+    'USD (наличные)',
+    'EUR (наличные)',
+  ];
   protected readonly accountColumns$$ = computed(() => this.getOrderedAccounts());
   protected readonly balanceRows$$ = computed(() => this.buildBalanceRows());
 
@@ -144,7 +152,6 @@ export class MoneyScreen implements OnInit {
       const accountBalances: Record<number, number> = {};
       const accountRubEquity: Record<number, number> = {};
       let total = 0;
-      const usdToRubRate = this.getUsdToRubRateForDate(dateISO);
 
       accounts.forEach((account) => {
         if (!account.id) return;
@@ -152,9 +159,11 @@ export class MoneyScreen implements OnInit {
         if (this.isFxEquityAccount(account)) {
           const nativeAmount = fxInvestUnits.get(account.id) ?? 0;
           accountBalances[account.id] = nativeAmount;
+          const fxTicker = this.getFxTickerForAccount(account.id);
+          const fxToRubRate = fxTicker ? this.getFxToRubRateForDate(dateISO, fxTicker) : null;
 
-          if (usdToRubRate != null) {
-            const rubEquity = nativeAmount * usdToRubRate;
+          if (fxToRubRate != null) {
+            const rubEquity = nativeAmount * fxToRubRate;
             accountRubEquity[account.id] = rubEquity;
             total += rubEquity;
           } else {
@@ -238,25 +247,40 @@ export class MoneyScreen implements OnInit {
     const accountAny = account as any;
     const isInvest = Boolean(accountAny.isInvest ?? accountAny.invest);
     if (!isInvest || !account.id) return false;
-    const currency = this.getCurrencyForAccount(account.id);
-    return currency?.ticker === 'USD';
+    const ticker = this.getFxTickerForAccount(account.id);
+    return ticker != null;
   }
 
-  private getUsdToRubRateForDate(dateISO: string): number | null {
+  private getFxTickerForAccount(accountId: number): string | null {
+    const currency = this.getCurrencyForAccount(accountId);
+    if (!currency?.ticker) return null;
+    if (!this.fxTickers.has(currency.ticker)) return null;
+    return currency.ticker;
+  }
+
+  private getFxToRubRateForDate(dateISO: string, fxTicker: string): number | null {
     const row = this.rateHistory$$().find((item: MoneyRateHistory) => item.dateISO === dateISO);
     if (!row) return null;
     const rates = row.ratesJson;
     if (!rates || typeof rates !== 'object') return null;
     const rub = rates['RUB'];
-    return typeof rub === 'number' ? rub : null;
+    if (typeof rub !== 'number') return null;
+
+    if (fxTicker === 'USD') return rub;
+
+    if (fxTicker === 'EUR') {
+      const eur = rates['EUR'];
+      if (typeof eur !== 'number' || eur <= 0) return null;
+      return rub / eur;
+    }
+
+    return null;
   }
 
   private formatAmount(amount: number, currency: Currency | null): string {
-    const hasDecimals = Math.abs(amount % 1) > Number.EPSILON;
-    const digits = hasDecimals ? 2 : 0;
     const formatted = new Intl.NumberFormat('ru-RU', {
-      minimumFractionDigits: digits,
-      maximumFractionDigits: digits,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
     }).format(amount);
 
     if (!currency?.symbol) return formatted;
