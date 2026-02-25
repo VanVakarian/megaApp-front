@@ -412,6 +412,12 @@ export interface Transaction {
   twinId?: number | null;
 }
 
+export interface MoneyRateHistory {
+  id?: number;
+  dateISO: string;
+  ratesJson: Record<string, number> | string;
+}
+
 // export interface Notification {
 //   id: number;
 //   message: string;

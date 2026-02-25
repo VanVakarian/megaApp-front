@@ -4,7 +4,7 @@ import { VCard } from '@ui-kit/components/v-card/v-card';
 import { IconName, VIcon } from '@ui-kit/components/v-icon/v-icon';
 import { firstValueFrom } from 'rxjs';
 import { MoneyService } from '../../services/money.service';
-import { Account, Currency, SymbolPosition, Transaction, TransactionKind } from '../../shared/types';
+import { Account, Currency, MoneyRateHistory, SymbolPosition, Transaction, TransactionKind } from '../../shared/types';
 import { AccountsList } from './accounts-list/accounts-list';
 import { AssetsList } from './assets-list/assets-list';
 import { CategoriesList } from './categories-list/categories-list';
@@ -24,6 +24,7 @@ interface BalanceRow {
   dateDisplay: string;
   total: number;
   accountBalances: Record<number, number>;
+  accountRubEquity: Record<number, number>;
   isYearEnd: boolean;
 }
 
@@ -40,6 +41,7 @@ export class MoneyScreen implements OnInit {
   private readonly accounts$$ = computed(() => this.moneyService.accounts$$());
   private readonly currencies$$ = computed(() => this.moneyService.currencies$$());
   private readonly transactions$$ = computed(() => this.moneyService.transactions$$());
+  private readonly rateHistory$$ = computed(() => this.moneyService.rateHistory$$());
 
   private readonly accountOrder = ['Наличка', 'Яндекс.Деньги', 'Банковский счет', 'Банковский депозит'];
   protected readonly accountColumns$$ = computed(() => this.getOrderedAccounts());
@@ -52,6 +54,7 @@ export class MoneyScreen implements OnInit {
     firstValueFrom(this.moneyService.getCategories());
     firstValueFrom(this.moneyService.getAccounts());
     firstValueFrom(this.moneyService.getTransactions());
+    firstValueFrom(this.moneyService.getRateHistory());
   }
 
   protected setActiveTab(tab: MoneyTab): void {
@@ -67,11 +70,16 @@ export class MoneyScreen implements OnInit {
     if (!accountId) return '0';
     const amount = row.accountBalances[accountId] ?? 0;
     const currency = this.getCurrencyForAccount(accountId);
+    const rubEquity = row.accountRubEquity[accountId];
+    if (rubEquity != null && this.isFxEquityAccount(account)) {
+      const rubCurrency = this.getRubCurrency();
+      return `${this.formatAmount(amount, currency)} (${this.formatAmount(rubEquity, rubCurrency)})`;
+    }
     return this.formatAmount(amount, currency);
   }
 
   protected formatTotal(row: BalanceRow): string {
-    const currency = this.getCurrencyForTotal();
+    const currency = this.getRubCurrency() ?? this.getCurrencyForTotal();
     return this.formatAmount(row.total, currency);
   }
 
@@ -100,6 +108,16 @@ export class MoneyScreen implements OnInit {
 
     const dateKeys = Array.from(transactionsByDate.keys()).sort((a, b) => a.localeCompare(b));
     const balances = new Map<number, number>();
+    const fxInvestUnits = new Map<number, number>();
+    const fxInvestAccountIds = new Set<number>();
+
+    accounts.forEach((account) => {
+      if (this.isFxEquityAccount(account) && account.id) {
+        fxInvestAccountIds.add(account.id);
+        fxInvestUnits.set(account.id, 0);
+      }
+    });
+
     accounts.forEach((account) => {
       if (account.id) {
         balances.set(account.id, 0);
@@ -114,15 +132,38 @@ export class MoneyScreen implements OnInit {
         const delta = this.getTransactionDelta(transaction);
         const current = balances.get(transaction.accountId) ?? 0;
         balances.set(transaction.accountId, current + delta);
+
+        if (fxInvestAccountIds.has(transaction.accountId) && transaction.kind === TransactionKind.TRANSFER) {
+          const currentFx = fxInvestUnits.get(transaction.accountId) ?? 0;
+          fxInvestUnits.set(transaction.accountId, currentFx + delta);
+        }
       });
 
       if (!this.isEndOfMonth(dateISO)) return;
 
       const accountBalances: Record<number, number> = {};
+      const accountRubEquity: Record<number, number> = {};
       let total = 0;
+      const usdToRubRate = this.getUsdToRubRateForDate(dateISO);
 
       accounts.forEach((account) => {
         if (!account.id) return;
+
+        if (this.isFxEquityAccount(account)) {
+          const nativeAmount = fxInvestUnits.get(account.id) ?? 0;
+          accountBalances[account.id] = nativeAmount;
+
+          if (usdToRubRate != null) {
+            const rubEquity = nativeAmount * usdToRubRate;
+            accountRubEquity[account.id] = rubEquity;
+            total += rubEquity;
+          } else {
+            total += nativeAmount;
+          }
+
+          return;
+        }
+
         const amount = balances.get(account.id) ?? 0;
         accountBalances[account.id] = amount;
         total += amount;
@@ -133,6 +174,7 @@ export class MoneyScreen implements OnInit {
         dateDisplay: this.formatDateDMY(dateISO),
         total,
         accountBalances,
+        accountRubEquity,
         isYearEnd: this.isYearEnd(dateISO),
       });
     });
@@ -186,6 +228,27 @@ export class MoneyScreen implements OnInit {
     const account = this.accountColumns$$()[0];
     if (!account?.id) return null;
     return this.getCurrencyForAccount(account.id);
+  }
+
+  private getRubCurrency(): Currency | null {
+    return this.currencies$$().find((item) => item.ticker === 'RUB') ?? null;
+  }
+
+  private isFxEquityAccount(account: Account): boolean {
+    const accountAny = account as any;
+    const isInvest = Boolean(accountAny.isInvest ?? accountAny.invest);
+    if (!isInvest || !account.id) return false;
+    const currency = this.getCurrencyForAccount(account.id);
+    return currency?.ticker === 'USD';
+  }
+
+  private getUsdToRubRateForDate(dateISO: string): number | null {
+    const row = this.rateHistory$$().find((item: MoneyRateHistory) => item.dateISO === dateISO);
+    if (!row) return null;
+    const rates = row.ratesJson;
+    if (!rates || typeof rates !== 'object') return null;
+    const rub = rates['RUB'];
+    return typeof rub === 'number' ? rub : null;
   }
 
   private formatAmount(amount: number, currency: Currency | null): string {

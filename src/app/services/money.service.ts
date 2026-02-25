@@ -1,8 +1,16 @@
 import { HttpClient } from '@angular/common/http';
-import { Injectable, signal, WritableSignal } from '@angular/core';
+import { effect, Injectable, signal, WritableSignal } from '@angular/core';
 import { Observable, of, Subject } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
-import { Account, Category, Currency, ServerResponseBasic, Transaction, TransactionKind } from '../shared/types';
+import {
+  Account,
+  Category,
+  Currency,
+  MoneyRateHistory,
+  ServerResponseBasic,
+  Transaction,
+  TransactionKind,
+} from '../shared/types';
 
 interface BaseResponse {
   success: boolean;
@@ -24,6 +32,8 @@ interface AccountsResponse extends DataResponse<Account[]> {}
 
 interface TransactionsResponse extends DataResponse<Transaction[]> {}
 
+interface RateHistoryResponse extends DataResponse<MoneyRateHistory[]> {}
+
 interface CreateCurrencyResponse extends DataResponse<{ id: number }> {}
 
 interface CreateCategoryResponse extends DataResponse<{ id: number }> {}
@@ -42,6 +52,7 @@ export class MoneyService {
   public readonly categories$$: WritableSignal<Category[]> = signal([]);
   public readonly accounts$$: WritableSignal<Account[]> = signal([]);
   public readonly transactions$$: WritableSignal<Transaction[]> = signal([]);
+  public readonly rateHistory$$: WritableSignal<MoneyRateHistory[]> = signal([]);
 
   public readonly requestResult$ = new Subject<ServerResponseBasic>();
 
@@ -50,6 +61,7 @@ export class MoneyService {
     // effect(() => { console.log('CATEGORIES:', this.categories$$()) }); // prettier-ignore
     // effect(() => { console.log('ACCOUNTS:', this.accounts$$()) }); // prettier-ignore
     // effect(() => { console.log('TRANSACTIONS:', this.transactions$$()) }); // prettier-ignore
+    effect(() => { console.log('RATE HISTORY:', this.rateHistory$$()) }); // prettier-ignore
   }
 
   //                                                          ~~~ CURRENCIES ~~~
@@ -379,6 +391,48 @@ export class MoneyService {
         return of([]);
       }),
     );
+  }
+
+  public getRateHistory(): Observable<MoneyRateHistory[]> {
+    return this.http.get<RateHistoryResponse>('/api/money/rate-history').pipe(
+      map((response: RateHistoryResponse | null) => {
+        if (!response || !response.success || !Array.isArray(response.data)) {
+          this.rateHistory$$.set([]);
+          return [];
+        }
+
+        const parsed = response.data.map((item) => ({
+          ...item,
+          ratesJson: this.parseRatesJson(item.ratesJson),
+        }));
+        this.rateHistory$$.set(parsed);
+        return parsed;
+      }),
+      catchError((error) => {
+        console.error('Error fetching money rate history:', error);
+        this.requestResult$.next({ result: false });
+        return of([]);
+      }),
+    );
+  }
+
+  private parseRatesJson(ratesJson: Record<string, number> | string): Record<string, number> {
+    if (ratesJson && typeof ratesJson === 'object') {
+      return ratesJson;
+    }
+
+    if (typeof ratesJson === 'string') {
+      try {
+        const parsed = JSON.parse(ratesJson);
+        if (parsed && typeof parsed === 'object') {
+          return parsed as Record<string, number>;
+        }
+      } catch {
+        return {};
+      }
+    }
+
+    return {};
   }
 
   public createTransaction(transactionData: Transaction): Observable<boolean> {
