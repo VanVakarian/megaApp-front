@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, OnInit, computed, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 import { VButton } from '@ui-kit/components/v-button/v-button';
 import { VCard } from '@ui-kit/components/v-card/v-card';
 import { IconName, VIcon } from '@ui-kit/components/v-icon/v-icon';
@@ -38,6 +38,9 @@ export class MoneyScreen implements OnInit {
   protected readonly Icon = IconName;
   protected readonly MoneyTab = MoneyTab;
   protected readonly activeTab$$ = signal<MoneyTab>(MoneyTab.Transactions);
+
+  private readonly moneyService = inject(MoneyService);
+
   private readonly accounts$$ = computed(() => this.moneyService.accounts$$());
   private readonly currencies$$ = computed(() => this.moneyService.currencies$$());
   private readonly transactions$$ = computed(() => this.moneyService.transactions$$());
@@ -55,12 +58,11 @@ export class MoneyScreen implements OnInit {
   protected readonly accountColumns$$ = computed(() => this.getOrderedAccounts());
   protected readonly balanceRows$$ = computed(() => this.buildBalanceRows());
 
-  constructor(private moneyService: MoneyService) {}
-
   public ngOnInit(): void {
     firstValueFrom(this.moneyService.getCurrencies());
     firstValueFrom(this.moneyService.getCategories());
     firstValueFrom(this.moneyService.getAccounts());
+    firstValueFrom(this.moneyService.getAssets());
     firstValueFrom(this.moneyService.getTransactions());
     firstValueFrom(this.moneyService.getRateHistory());
   }

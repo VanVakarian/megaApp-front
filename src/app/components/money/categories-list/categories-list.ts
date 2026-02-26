@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { MoneyService } from '@app/services/money.service';
 import { DefaultModal } from '@app/shared/components/default-modal/default-modal';
 import { Category, CategoryType } from '@app/shared/types';
@@ -15,14 +15,17 @@ import { CategoryForm } from './category-form/category-form';
 })
 export class CategoriesList {
   protected readonly Icon = IconName;
+
+  private readonly moneyService = inject(MoneyService);
+
   protected readonly categories$$ = computed(() => this.moneyService.categories$$());
   private readonly transactions$$ = computed(() => this.moneyService.transactions$$());
+
   protected readonly showForm$$ = signal(false);
   protected readonly editingCategory$$ = signal<Category | null>(null);
   protected readonly isDeleteConfirmOpen$$ = signal(false);
-  private readonly pendingDeleteId$$ = signal<number | null>(null);
 
-  constructor(private moneyService: MoneyService) {}
+  private readonly pendingDeleteId$$ = signal<number | null>(null);
 
   protected showCreateForm(): void {
     this.editingCategory$$.set(null);

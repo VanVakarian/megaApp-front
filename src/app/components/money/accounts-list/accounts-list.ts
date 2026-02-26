@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { MoneyService } from '@app/services/money.service';
 import { DefaultModal } from '@app/shared/components/default-modal/default-modal';
 import { Account, AccountKind } from '@app/shared/types';
@@ -16,15 +16,17 @@ import { AccountForm } from './account-form/account-form';
 export class AccountsList {
   protected readonly Icon = IconName;
 
+  private readonly moneyService = inject(MoneyService);
+
   protected readonly accounts$$ = computed(() => this.moneyService.accounts$$());
   protected readonly currencies$$ = computed(() => this.moneyService.currencies$$());
   private readonly transactions$$ = computed(() => this.moneyService.transactions$$());
+
   protected readonly showForm$$ = signal(false);
   protected readonly editingAccount$$ = signal<Account | null>(null);
   protected readonly isDeleteConfirmOpen$$ = signal(false);
-  private readonly pendingDeleteId$$ = signal<number | null>(null);
 
-  constructor(private moneyService: MoneyService) {}
+  private readonly pendingDeleteId$$ = signal<number | null>(null);
 
   protected showCreateForm(): void {
     this.editingAccount$$.set(null);

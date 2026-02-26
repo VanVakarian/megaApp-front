@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { VButton } from '@ui-kit/components/v-button/v-button';
 import { VCard } from '@ui-kit/components/v-card/v-card';
 import { IconName, VIcon } from '@ui-kit/components/v-icon/v-icon';
@@ -16,14 +16,16 @@ import { CurrencyForm } from './currency-form/currency-form';
 export class CurrenciesList {
   protected readonly Icon = IconName;
 
+  private readonly moneyService = inject(MoneyService);
+
   protected readonly currencies$$ = computed(() => this.moneyService.currencies$$());
   private readonly accounts$$ = computed(() => this.moneyService.accounts$$());
+
   protected readonly showForm$$ = signal(false);
   protected readonly editingCurrency$$ = signal<Currency | null>(null);
   protected readonly isDeleteConfirmOpen$$ = signal(false);
-  private readonly pendingDeleteId$$ = signal<number | null>(null);
 
-  constructor(private moneyService: MoneyService) {}
+  private readonly pendingDeleteId$$ = signal<number | null>(null);
 
   protected showCreateForm(): void {
     this.editingCurrency$$.set(null);

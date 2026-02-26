@@ -4,6 +4,7 @@ import { Observable, of, Subject } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import {
   Account,
+  Asset,
   Category,
   Currency,
   MoneyRateHistory,
@@ -30,6 +31,8 @@ interface CategoriesResponse extends DataResponse<Category[]> {}
 
 interface AccountsResponse extends DataResponse<Account[]> {}
 
+interface AssetsResponse extends DataResponse<Asset[]> {}
+
 interface AccountApi extends Omit<Account, 'isInvest'> {
   isInvest?: boolean | number | string;
 }
@@ -44,6 +47,8 @@ interface CreateCategoryResponse extends DataResponse<{ id: number }> {}
 
 interface CreateAccountResponse extends DataResponse<{ id: number }> {}
 
+interface CreateAssetResponse extends DataResponse<{ id: number }> {}
+
 interface CreateTransactionResponse extends DataResponse<{ id: number; twinId?: number }> {}
 
 interface BasicResponse extends MessageResponse {}
@@ -55,6 +60,7 @@ export class MoneyService {
   public readonly currencies$$: WritableSignal<Currency[]> = signal([]);
   public readonly categories$$: WritableSignal<Category[]> = signal([]);
   public readonly accounts$$: WritableSignal<Account[]> = signal([]);
+  public readonly assets$$: WritableSignal<Asset[]> = signal([]);
   public readonly transactions$$: WritableSignal<Transaction[]> = signal([]);
   public readonly rateHistory$$: WritableSignal<MoneyRateHistory[]> = signal([]);
 
@@ -403,6 +409,106 @@ export class MoneyService {
 
   private toBoolean(value: boolean | number | string | undefined): boolean {
     return value === true || value === 1 || value === '1' || value === 'true';
+  }
+
+  //                                                              ~~~ ASSETS ~~~
+
+  public getAssets(): Observable<Asset[]> {
+    return this.http.get<AssetsResponse>('/api/money/assets').pipe(
+      map((response: AssetsResponse) => {
+        if (response.success && response.data) {
+          this.assets$$.set(response.data);
+          return response.data;
+        }
+        return [];
+      }),
+      catchError((error) => {
+        console.error('Error fetching assets:', error);
+        this.requestResult$.next({ result: false });
+        return of([]);
+      }),
+    );
+  }
+
+  public createAsset(assetData: Asset): Observable<boolean> {
+    return this.http.post<CreateAssetResponse>('/api/money/assets', assetData).pipe(
+      map((response: CreateAssetResponse) => {
+        if (response.success && response.data?.id) {
+          const newAsset: Asset = {
+            id: response.data.id,
+            ...assetData,
+          };
+          this.addAssetToState(newAsset);
+          this.requestResult$.next({ result: true });
+          return true;
+        }
+        this.requestResult$.next({ result: false });
+        return false;
+      }),
+      catchError((error) => {
+        console.error('Error creating asset:', error);
+        this.requestResult$.next({ result: false });
+        return of(false);
+      }),
+    );
+  }
+
+  public updateAsset(assetData: Asset): Observable<boolean> {
+    if (!assetData.id) {
+      console.error('Asset ID is required for update');
+      this.requestResult$.next({ result: false });
+      return of(false);
+    }
+
+    return this.http.put<BasicResponse>(`/api/money/assets/${assetData.id}`, assetData).pipe(
+      map((response: BasicResponse) => {
+        if (response.success) {
+          this.updateAssetInState(assetData);
+          this.requestResult$.next({ result: true });
+          return true;
+        }
+        this.requestResult$.next({ result: false });
+        return false;
+      }),
+      catchError((error) => {
+        console.error('Error updating asset:', error);
+        this.requestResult$.next({ result: false });
+        return of(false);
+      }),
+    );
+  }
+
+  public deleteAsset(assetId: number): Observable<boolean> {
+    return this.http.delete<BasicResponse>(`/api/money/assets/${assetId}`).pipe(
+      map((response: BasicResponse) => {
+        if (response.success) {
+          this.removeAssetFromState(assetId);
+          this.requestResult$.next({ result: true });
+          return true;
+        }
+        this.requestResult$.next({ result: false });
+        return false;
+      }),
+      catchError((error) => {
+        console.error('Error deleting asset:', error);
+        this.requestResult$.next({ result: false });
+        return of(false);
+      }),
+    );
+  }
+
+  private addAssetToState(asset: Asset): void {
+    this.assets$$.update((assets: Asset[]) => [...assets, asset]);
+  }
+
+  private updateAssetInState(updatedAsset: Asset): void {
+    this.assets$$.update((assets: Asset[]) =>
+      assets.map((asset: Asset) => (asset.id === updatedAsset.id ? { ...asset, ...updatedAsset } : asset)),
+    );
+  }
+
+  private removeAssetFromState(assetId: number): void {
+    this.assets$$.update((assets: Asset[]) => assets.filter((asset: Asset) => asset.id !== assetId));
   }
 
   //                                                        ~~~ TRANSACTIONS ~~~

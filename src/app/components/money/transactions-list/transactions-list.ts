@@ -8,6 +8,7 @@ import {
   OnDestroy,
   computed,
   createComponent,
+  inject,
   signal,
 } from '@angular/core';
 import { MoneyService } from '@app/services/money.service';
@@ -32,24 +33,22 @@ interface TransactionGroup {
 })
 export class TransactionsList implements AfterViewInit, OnDestroy {
   protected readonly Icon = IconName;
+
+  private readonly moneyService = inject(MoneyService);
+  private readonly appRef = inject(ApplicationRef);
+  private readonly injector = inject(EnvironmentInjector);
+
   private readonly currencies$$ = computed(() => this.moneyService.currencies$$());
   private readonly categories$$ = computed(() => this.moneyService.categories$$());
   private readonly accounts$$ = computed(() => this.moneyService.accounts$$());
-  protected readonly groupedTransactions$$ = computed(() => this.groupTransactionsByDate());
 
+  protected readonly groupedTransactions$$ = computed(() => this.groupTransactionsByDate());
   protected readonly isDeleteConfirmOpen$$ = signal(false);
+
   private readonly pendingDeleteId$$ = signal<number | null>(null);
 
   private formRef: ComponentRef<TransactionForm> | null = null;
   private activeFormTarget: HTMLElement | null = null;
-
-  constructor(
-    private moneyService: MoneyService,
-    private appRef: ApplicationRef,
-    private injector: EnvironmentInjector,
-  ) {
-    // effect(() => { console.log('GROUPED TRANSACTIONS:', this.groupedTransactions$$()) }); // prettier-ignore
-  }
 
   public ngAfterViewInit(): void {
     this.createFormComponent();
