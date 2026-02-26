@@ -1,8 +1,10 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  computed,
   effect,
   ElementRef,
+  inject,
   input,
   output,
   signal,
@@ -12,6 +14,8 @@ import { FormsModule } from '@angular/forms';
 import { MoneyService } from '@app/services/money.service';
 import {
   Account,
+  Asset,
+  AssetType,
   Category,
   CategoryType,
   Currency,
@@ -21,6 +25,7 @@ import {
 } from '@app/shared/types';
 import { VButton } from '@ui-kit/components/v-button/v-button';
 import { VCard } from '@ui-kit/components/v-card/v-card';
+import { VCheckbox } from '@ui-kit/components/v-checkbox/v-checkbox';
 import { DropdownItem, VDropdown } from '@ui-kit/components/v-dropdown/v-dropdown';
 import { IconName, VIcon } from '@ui-kit/components/v-icon/v-icon';
 import { VInput } from '@ui-kit/components/v-input/v-input';
@@ -30,7 +35,7 @@ import { VToggle } from '@ui-kit/components/v-toggle/v-toggle';
   selector: 'transaction-form',
   templateUrl: './transaction-form.html',
   styleUrl: './transaction-form.scss',
-  imports: [FormsModule, VButton, VCard, VDropdown, VIcon, VInput, VToggle],
+  imports: [FormsModule, VButton, VCard, VCheckbox, VDropdown, VIcon, VInput, VToggle],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class TransactionForm {
@@ -52,19 +57,94 @@ export class TransactionForm {
   protected readonly kind$$ = signal<TransactionKind>(TransactionKind.EXPENSE);
   protected readonly notes$$ = signal('');
   protected readonly categoryId$$ = signal<string | null>(null);
+  protected readonly assetId$$ = signal<string | null>(null);
+  protected readonly quantity$$ = signal('');
+  protected readonly price$$ = signal('');
+  protected readonly commissionAmount$$ = signal('');
+  protected readonly accruedInterestAmount$$ = signal('');
+  protected readonly isCouponDividend$$ = signal(false);
+  protected readonly isEditing$$ = computed(() => Boolean(this.transactionInput()?.id));
 
-  constructor(private moneyService: MoneyService) {
-    effect(() => {
-      const date = this.dateIsoInput();
-      const transaction = this.transactionInput();
+  private readonly moneyService = inject(MoneyService);
 
-      if (transaction) {
-        this.prepFormWithTransaction(transaction);
-      } else if (date) {
-        this.prepFormWithDate(date);
-      }
-    });
-  }
+  private readonly selectedAccount$$ = computed(() => {
+    const accountIdValue = this.accountId$$();
+    if (!accountIdValue) return null;
+    const accountId = Number(accountIdValue);
+    if (!Number.isFinite(accountId)) return null;
+    return this.moneyService.accounts$$().find((item) => item.id === accountId) ?? null;
+  });
+
+  private readonly selectedAsset$$ = computed(() => {
+    const assetIdValue = this.assetId$$();
+    if (!assetIdValue) return null;
+    const assetId = Number(assetIdValue);
+    if (!Number.isFinite(assetId)) return null;
+    return this.moneyService.assets$$().find((item) => item.id === assetId) ?? null;
+  });
+
+  protected readonly isInvestMode$$ = computed(() => {
+    if (this.kind$$() === TransactionKind.TRANSFER) return false;
+    const currentTransaction = this.transactionInput();
+    if (currentTransaction && this.isPersistedInvestKind(currentTransaction.kind)) return true;
+    return Boolean(this.selectedAccount$$()?.isInvest);
+  });
+
+  private readonly persistedKind$$ = computed(() => {
+    const currentTransaction = this.transactionInput();
+    if (currentTransaction && this.isPersistedInvestKind(currentTransaction.kind)) {
+      return currentTransaction.kind;
+    }
+
+    if (!this.isInvestMode$$()) return this.kind$$();
+    if (this.kind$$() === TransactionKind.EXPENSE) return TransactionKind.INVEST_BUY;
+    return this.isCouponDividend$$() ? TransactionKind.INVEST_DIVIDEND : TransactionKind.INVEST_SELL;
+  });
+
+  protected readonly isInvestDividendMode$$ = computed(
+    () => this.isInvestMode$$() && this.persistedKind$$() === TransactionKind.INVEST_DIVIDEND,
+  );
+
+  protected readonly selectedAssetIsBond$$ = computed(() => this.selectedAsset$$()?.type === AssetType.BOND);
+
+  protected readonly canEditInvestIdentity$$ = computed(() => !this.isEditing$$());
+
+  protected readonly kindToggleItems$$ = computed(() => {
+    const expenseLabel = this.isInvestMode$$() ? 'Buy' : 'Expense';
+    const incomeLabel = this.isInvestMode$$() ? 'Sell' : 'Income';
+
+    return [
+      { id: TransactionKind.EXPENSE, label: expenseLabel },
+      { id: TransactionKind.INCOME, label: incomeLabel },
+      { id: TransactionKind.TRANSFER, label: 'Transfer' },
+    ];
+  });
+
+  protected readonly assetItems$$ = computed(() =>
+    this.moneyService.assets$$().map((asset: Asset) => ({
+      value: String(asset.id),
+      label: `${asset.title} (${asset.ticker})`,
+    })),
+  );
+
+  protected readonly investAmountDisplay$$ = computed(() => {
+    const amount = this.computeInvestAmount();
+    if (amount == null) return '';
+    return String(amount);
+  });
+
+  protected readonly couponDividendLabel$$ = computed(() => (this.selectedAssetIsBond$$() ? 'Coupon' : 'Dividend'));
+
+  private readonly transactionFormSyncEffect$$ = effect(() => {
+    const date = this.dateIsoInput();
+    const transaction = this.transactionInput();
+
+    if (transaction) {
+      this.prepFormWithTransaction(transaction);
+    } else if (date) {
+      this.prepFormWithDate(date);
+    }
+  });
 
   protected save(): void {
     if (!this.isFormValid()) return;
@@ -113,6 +193,71 @@ export class TransactionForm {
               this.savedOutput.emit();
             }
           });
+      }
+
+      return;
+    }
+
+    if (this.isInvestMode$$()) {
+      const currentTransaction = this.transactionInput();
+      const accountId = currentTransaction?.accountId ?? Number(this.accountId$$());
+      const persistedKind = this.persistedKind$$();
+      const assetId = Number(this.assetId$$());
+
+      if (!Number.isFinite(assetId) || assetId <= 0) return;
+
+      const details: any = {
+        assetId,
+      };
+
+      let submitAmount = this.normalizeAmount(this.parseAmount(this.amount$$()) ?? NaN);
+
+      if (persistedKind !== TransactionKind.INVEST_DIVIDEND) {
+        const quantity = this.normalizeAmount(this.parseAmount(this.quantity$$()) ?? NaN);
+        const price = this.normalizeAmount(this.parseAmount(this.price$$()) ?? NaN);
+        const commissionAmount = this.normalizeAmount(this.parseAmount(this.commissionAmount$$()) ?? 0) ?? 0;
+        const accruedInterestAmount = this.normalizeAmount(this.parseAmount(this.accruedInterestAmount$$()) ?? 0) ?? 0;
+
+        if (quantity == null || quantity <= 0 || price == null || price <= 0) return;
+
+        details.quantity = quantity;
+        details.price = price;
+        details.commissionAmount = commissionAmount;
+        details.accruedInterestAmount = this.selectedAssetIsBond$$() ? accruedInterestAmount : 0;
+
+        const computedAmount = this.computeInvestAmount();
+        if (computedAmount == null || computedAmount <= 0) return;
+        submitAmount = computedAmount;
+      } else {
+        submitAmount = this.normalizeAmount(this.parseAmount(this.amount$$()) ?? NaN);
+      }
+
+      if (submitAmount == null || submitAmount <= 0) return;
+
+      const transactionData: Transaction = {
+        dateISO: this.dateISO$$(),
+        accountId,
+        amount: submitAmount,
+        categoryId: null,
+        kind: currentTransaction?.kind ?? persistedKind,
+        isGift: false,
+        notes: this.notes$$() || undefined,
+        detailsJSON: details,
+      };
+
+      if (currentTransaction?.id) {
+        transactionData.id = currentTransaction.id;
+        this.moneyService.updateTransaction(transactionData).subscribe((success) => {
+          if (success) {
+            this.savedOutput.emit();
+          }
+        });
+      } else {
+        this.moneyService.createTransaction(transactionData).subscribe((success) => {
+          if (success) {
+            this.savedOutput.emit();
+          }
+        });
       }
 
       return;
@@ -180,6 +325,31 @@ export class TransactionForm {
       );
     }
 
+    if (this.isInvestMode$$()) {
+      const assetId = Number(this.assetId$$());
+      if (!Number.isFinite(assetId) || assetId <= 0) return false;
+
+      if (this.persistedKind$$() === TransactionKind.INVEST_DIVIDEND) {
+        const amount = this.normalizeAmount(this.parseAmount(this.amount$$()) ?? NaN);
+        return Boolean(this.dateISO$$() && this.accountId$$() && amount && amount > 0);
+      }
+
+      const quantity = this.normalizeAmount(this.parseAmount(this.quantity$$()) ?? NaN);
+      const price = this.normalizeAmount(this.parseAmount(this.price$$()) ?? NaN);
+      const computedAmount = this.computeInvestAmount();
+
+      return Boolean(
+        this.dateISO$$() &&
+          this.accountId$$() &&
+          quantity &&
+          quantity > 0 &&
+          price &&
+          price > 0 &&
+          computedAmount &&
+          computedAmount > 0,
+      );
+    }
+
     const amount = this.parseAmount(this.amount$$());
     const normalizedAmount = amount === null ? null : this.normalizeAmount(amount);
     return Boolean(this.dateISO$$() && this.accountId$$() && normalizedAmount && normalizedAmount > 0 && this.kind$$());
@@ -196,9 +366,35 @@ export class TransactionForm {
     const nextKind = value[0] as TransactionKind | undefined;
     this.kind$$.set(nextKind ?? TransactionKind.EXPENSE);
     this.categoryId$$.set(null);
+
+    if (this.kind$$() !== TransactionKind.INCOME) {
+      this.isCouponDividend$$.set(false);
+    }
+
     if (this.kind$$() !== TransactionKind.TRANSFER) {
       this.accountToId$$.set(null);
       this.amountTo$$.set('');
+    }
+  }
+
+  protected onAccountChange(value: string | null): void {
+    this.accountId$$.set(value);
+    this.categoryId$$.set(null);
+
+    if (!this.isInvestMode$$() && !this.isEditing$$()) {
+      this.assetId$$.set(null);
+      this.quantity$$.set('');
+      this.price$$.set('');
+      this.commissionAmount$$.set('');
+      this.accruedInterestAmount$$.set('');
+      this.isCouponDividend$$.set(false);
+    }
+  }
+
+  protected onAssetChange(value: string | null): void {
+    this.assetId$$.set(value);
+    if (!this.selectedAssetIsBond$$()) {
+      this.accruedInterestAmount$$.set('');
     }
   }
 
@@ -224,14 +420,6 @@ export class TransactionForm {
       default:
         return kind;
     }
-  }
-
-  protected kindToggleItems(): { id: string; label: string }[] {
-    return [
-      { id: TransactionKind.EXPENSE, label: 'Expense' },
-      { id: TransactionKind.INCOME, label: 'Income' },
-      { id: TransactionKind.TRANSFER, label: 'Transfer' },
-    ];
   }
 
   protected kindToggleValue(): string[] {
@@ -320,9 +508,19 @@ export class TransactionForm {
     this.dateISO$$.set(transaction.dateISO);
     this.accountId$$.set(String(transaction.accountId));
     this.amount$$.set(String(transaction.amount));
-    this.kind$$.set(transaction.kind);
+    this.kind$$.set(this.mapPersistedKindToUiKind(transaction.kind));
     this.notes$$.set(transaction.notes || '');
     this.categoryId$$.set(transaction.categoryId ? String(transaction.categoryId) : null);
+
+    const details = this.parseDetails(transaction.detailsJSON);
+    this.assetId$$.set(details?.assetId != null ? String(details.assetId) : null);
+    this.quantity$$.set(details?.quantity != null ? String(details.quantity) : '');
+    this.price$$.set(details?.price != null ? String(details.price) : '');
+    this.commissionAmount$$.set(details?.commissionAmount != null ? String(details.commissionAmount) : '');
+    this.accruedInterestAmount$$.set(
+      details?.accruedInterestAmount != null ? String(details.accruedInterestAmount) : '',
+    );
+    this.isCouponDividend$$.set(transaction.kind === TransactionKind.INVEST_DIVIDEND);
 
     if (transaction.kind === TransactionKind.TRANSFER) {
       const twin = this.getTwinTransaction(transaction);
@@ -332,6 +530,10 @@ export class TransactionForm {
     } else {
       this.accountToId$$.set(null);
       this.amountTo$$.set('');
+    }
+
+    if (this.isInvestMode$$() && !this.isInvestDividendMode$$()) {
+      this.amount$$.set(this.investAmountDisplay$$());
     }
   }
 
@@ -344,6 +546,61 @@ export class TransactionForm {
     this.kind$$.set(TransactionKind.EXPENSE);
     this.notes$$.set('');
     this.categoryId$$.set(null);
+    this.assetId$$.set(null);
+    this.quantity$$.set('');
+    this.price$$.set('');
+    this.commissionAmount$$.set('');
+    this.accruedInterestAmount$$.set('');
+    this.isCouponDividend$$.set(false);
+  }
+
+  private isPersistedInvestKind(kind: TransactionKind): boolean {
+    return [TransactionKind.INVEST_BUY, TransactionKind.INVEST_SELL, TransactionKind.INVEST_DIVIDEND].includes(kind);
+  }
+
+  private mapPersistedKindToUiKind(kind: TransactionKind): TransactionKind {
+    if (kind === TransactionKind.INVEST_BUY) return TransactionKind.EXPENSE;
+    if (kind === TransactionKind.INVEST_SELL || kind === TransactionKind.INVEST_DIVIDEND) return TransactionKind.INCOME;
+    return kind;
+  }
+
+  private computeInvestAmount(): number | null {
+    if (!this.isInvestMode$$()) return null;
+    const persistedKind = this.persistedKind$$();
+    if (persistedKind === TransactionKind.INVEST_DIVIDEND) {
+      const amount = this.parseAmount(this.amount$$());
+      return amount == null ? null : this.normalizeAmount(amount);
+    }
+
+    const quantity = this.normalizeAmount(this.parseAmount(this.quantity$$()) ?? NaN);
+    const price = this.normalizeAmount(this.parseAmount(this.price$$()) ?? NaN);
+    const commissionAmount = this.normalizeAmount(this.parseAmount(this.commissionAmount$$()) ?? 0) ?? 0;
+    const accruedInterestAmount = this.normalizeAmount(this.parseAmount(this.accruedInterestAmount$$()) ?? 0) ?? 0;
+
+    if (quantity == null || quantity <= 0 || price == null || price <= 0) return null;
+
+    const effectiveAccrued = this.selectedAssetIsBond$$() ? accruedInterestAmount : 0;
+
+    if (persistedKind === TransactionKind.INVEST_BUY) {
+      return quantity * price + commissionAmount + effectiveAccrued;
+    }
+
+    return quantity * price - commissionAmount + effectiveAccrued;
+  }
+
+  private parseDetails(detailsJSON: any): any {
+    if (!detailsJSON) return null;
+    if (typeof detailsJSON === 'object') return detailsJSON;
+
+    if (typeof detailsJSON === 'string') {
+      try {
+        return JSON.parse(detailsJSON);
+      } catch {
+        return null;
+      }
+    }
+
+    return null;
   }
 
   private getTwinTransaction(transaction: Transaction): Transaction | null {

@@ -7,6 +7,7 @@ import {
   Asset,
   Category,
   Currency,
+  InvestAssetTrade,
   MoneyRateHistory,
   ServerResponseBasic,
   Transaction,
@@ -32,6 +33,8 @@ interface CategoriesResponse extends DataResponse<Category[]> {}
 interface AccountsResponse extends DataResponse<Account[]> {}
 
 interface AssetsResponse extends DataResponse<Asset[]> {}
+
+interface InvestAssetTradesResponse extends DataResponse<InvestAssetTrade[]> {}
 
 interface AccountApi extends Omit<Account, 'isInvest'> {
   isInvest?: boolean | number | string;
@@ -61,6 +64,7 @@ export class MoneyService {
   public readonly categories$$: WritableSignal<Category[]> = signal([]);
   public readonly accounts$$: WritableSignal<Account[]> = signal([]);
   public readonly assets$$: WritableSignal<Asset[]> = signal([]);
+  public readonly investAssetTrades$$: WritableSignal<InvestAssetTrade[]> = signal([]);
   public readonly transactions$$: WritableSignal<Transaction[]> = signal([]);
   public readonly rateHistory$$: WritableSignal<MoneyRateHistory[]> = signal([]);
 
@@ -493,6 +497,23 @@ export class MoneyService {
         console.error('Error deleting asset:', error);
         this.requestResult$.next({ result: false });
         return of(false);
+      }),
+    );
+  }
+
+  public getInvestAssetTrades(): Observable<InvestAssetTrade[]> {
+    return this.http.get<InvestAssetTradesResponse>('/api/money/trades').pipe(
+      map((response: InvestAssetTradesResponse) => {
+        if (response.success && response.data) {
+          this.investAssetTrades$$.set(response.data);
+          return response.data;
+        }
+        return [];
+      }),
+      catchError((error) => {
+        console.error('Error fetching invest asset trades:', error);
+        this.requestResult$.next({ result: false });
+        return of([]);
       }),
     );
   }

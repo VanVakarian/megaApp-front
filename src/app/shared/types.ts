@@ -409,6 +409,23 @@ export enum TransactionKind {
   INCOME = 'income',
   EXPENSE = 'expense',
   TRANSFER = 'transfer',
+  INVEST_BUY = 'invest_buy',
+  INVEST_SELL = 'invest_sell',
+  INVEST_DIVIDEND = 'invest_dividend',
+}
+
+export interface InvestAssetTrade {
+  id: number;
+  dateISO: string;
+  accountId: number;
+  amount: number;
+  kind: TransactionKind.INVEST_BUY | TransactionKind.INVEST_SELL;
+  notes?: string | null;
+  detailsJSON?: any;
+  assetId?: number | null;
+  assetTitle?: string | null;
+  assetTicker?: string | null;
+  assetType?: AssetType | null;
 }
 
 export interface Transaction {

@@ -2,12 +2,22 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { FormsModule } from '@angular/forms';
 import { MoneyService } from '@app/services/money.service';
 import { DefaultModal } from '@app/shared/components/default-modal/default-modal';
-import { Asset, AssetType, Transaction } from '@app/shared/types';
+import { Account, Asset, AssetType, Transaction, TransactionKind } from '@app/shared/types';
 import { VButton } from '@ui-kit/components/v-button/v-button';
 import { VCard } from '@ui-kit/components/v-card/v-card';
 import { IconName, VIcon } from '@ui-kit/components/v-icon/v-icon';
 import { VInput } from '@ui-kit/components/v-input/v-input';
 import { VToggle } from '@ui-kit/components/v-toggle/v-toggle';
+
+interface OpenedPosition {
+  accountId: number;
+  accountTitle: string;
+  assetId: number;
+  assetTitle: string;
+  assetTicker: string;
+  openedAtISO: string;
+  openQuantity: number;
+}
 
 @Component({
   selector: 'assets-list',
@@ -21,6 +31,9 @@ export class AssetsList {
   private readonly moneyService = inject(MoneyService);
 
   protected readonly assets$$ = computed(() => this.moneyService.assets$$());
+  protected readonly openedPositions$$ = computed(() => this.buildOpenedPositions());
+
+  private readonly accounts$$ = computed(() => this.moneyService.accounts$$());
   private readonly transactions$$ = computed(() => this.moneyService.transactions$$());
 
   protected readonly showForm$$ = signal(false);
@@ -170,5 +183,115 @@ export class AssetsList {
     this.title$$.set('');
     this.ticker$$.set('');
     this.type$$.set(AssetType.STOCK);
+  }
+
+  protected formatOpenedDate(dateISO: string): string {
+    const date = new Date(dateISO + 'T00:00:00');
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}.${month}.${year}`;
+  }
+
+  protected formatQuantity(quantity: number): string {
+    return new Intl.NumberFormat('ru-RU', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 8,
+    }).format(quantity);
+  }
+
+  private buildOpenedPositions(): OpenedPosition[] {
+    const accountsById = new Map<number, Account>(this.accounts$$().map((account) => [account.id!, account]));
+    const assetsById = new Map<number, Asset>(this.assets$$().map((asset) => [asset.id!, asset]));
+
+    const trades = this.transactions$$()
+      .filter((transaction) => {
+        return transaction.kind === TransactionKind.INVEST_BUY || transaction.kind === TransactionKind.INVEST_SELL;
+      })
+      .sort((first, second) => {
+        const dateCompare = first.dateISO.localeCompare(second.dateISO);
+        if (dateCompare !== 0) return dateCompare;
+        return (first.id ?? 0) - (second.id ?? 0);
+      });
+
+    const stateByKey = new Map<
+      string,
+      { accountId: number; assetId: number; openedAtISO: string | null; quantity: number }
+    >();
+
+    trades.forEach((trade) => {
+      const details = this.parseDetails(trade.detailsJSON);
+      const assetId = this.toPositiveNumber(details?.assetId);
+      const quantity = this.toPositiveNumber(details?.quantity);
+
+      if (assetId == null || quantity == null) return;
+
+      const key = `${trade.accountId}:${assetId}`;
+      const current = stateByKey.get(key) ?? {
+        accountId: trade.accountId,
+        assetId,
+        openedAtISO: null,
+        quantity: 0,
+      };
+
+      if (trade.kind === TransactionKind.INVEST_BUY) {
+        if (current.quantity <= 0) {
+          current.openedAtISO = trade.dateISO;
+        }
+        current.quantity += quantity;
+      }
+
+      if (trade.kind === TransactionKind.INVEST_SELL) {
+        current.quantity -= quantity;
+        if (current.quantity <= 0) {
+          current.quantity = 0;
+          current.openedAtISO = null;
+        }
+      }
+
+      stateByKey.set(key, current);
+    });
+
+    return Array.from(stateByKey.values())
+      .filter((item) => item.quantity > 0 && item.openedAtISO)
+      .map((item) => {
+        const account = accountsById.get(item.accountId);
+        const asset = assetsById.get(item.assetId);
+
+        return {
+          accountId: item.accountId,
+          accountTitle: account?.title ?? `Account #${item.accountId}`,
+          assetId: item.assetId,
+          assetTitle: asset?.title ?? `Asset #${item.assetId}`,
+          assetTicker: asset?.ticker ?? '',
+          openedAtISO: item.openedAtISO!,
+          openQuantity: item.quantity,
+        };
+      })
+      .sort((first, second) => first.openedAtISO.localeCompare(second.openedAtISO));
+  }
+
+  private parseDetails(detailsJSON: any): any {
+    if (!detailsJSON) return null;
+
+    if (typeof detailsJSON === 'object') {
+      return detailsJSON;
+    }
+
+    if (typeof detailsJSON === 'string') {
+      try {
+        return JSON.parse(detailsJSON);
+      } catch {
+        return null;
+      }
+    }
+
+    return null;
+  }
+
+  private toPositiveNumber(value: unknown): number | null {
+    const numberValue = Number(value);
+    if (!Number.isFinite(numberValue) || numberValue <= 0) return null;
+    return numberValue;
   }
 }
