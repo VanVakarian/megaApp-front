@@ -199,30 +199,23 @@ export class MoneyScreen implements OnInit {
     const direction = this.getTransferDirection(transaction);
     if (direction === 'out') return -transaction.amount;
     if (direction === 'in') return transaction.amount;
-
-    const id = transaction.id ?? null;
-    const twinId = transaction.twinId ?? null;
-    if (id && twinId) {
-      return id < twinId ? -transaction.amount : transaction.amount;
-    }
-
-    return -transaction.amount;
+    return 0;
   }
 
   private getTransferDirection(transaction: Transaction): 'out' | 'in' | null {
-    const details = transaction.details;
-    if (!details) return null;
+    const detailsJSON = transaction.detailsJSON;
+    if (!detailsJSON) return null;
 
-    let parsed: any = details;
-    if (typeof details === 'string') {
+    let parsed: any = detailsJSON;
+    if (typeof detailsJSON === 'string') {
       try {
-        parsed = JSON.parse(details);
+        parsed = JSON.parse(detailsJSON);
       } catch {
         return null;
       }
     }
 
-    const direction = parsed?.direction ?? parsed?.transferDirection ?? null;
+    const direction = parsed?.direction ?? null;
     if (direction === 'out' || direction === 'in') return direction;
     return null;
   }

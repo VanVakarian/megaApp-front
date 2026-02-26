@@ -560,6 +560,7 @@ export class MoneyService {
               kind: TransactionKind.TRANSFER,
               isGift: false,
               notes: transferData.notes,
+              detailsJSON: JSON.stringify({ direction: 'out' }),
               twinId: response.data.twinId,
             };
 
@@ -572,6 +573,7 @@ export class MoneyService {
               kind: TransactionKind.TRANSFER,
               isGift: false,
               notes: transferData.notes,
+              detailsJSON: JSON.stringify({ direction: 'in' }),
               twinId: response.data.id,
             };
 

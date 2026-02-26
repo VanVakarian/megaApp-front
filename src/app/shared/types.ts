@@ -408,7 +408,7 @@ export interface Transaction {
   kind: TransactionKind;
   isGift: boolean;
   notes?: string;
-  details?: any;
+  detailsJSON?: any;
   twinId?: number | null;
 }
 
