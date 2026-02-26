@@ -389,7 +389,7 @@ export interface Account {
   id?: number;
   title: string;
   currencyId: number;
-  invest: boolean;
+  isInvest: boolean;
   kind: AccountKind;
 }
 

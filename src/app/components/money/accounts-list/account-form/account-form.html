@@ -27,8 +27,8 @@
                 [ngModel]="kind$$()"
                 (ngModelChange)="kind$$.set($event)"></v-dropdown>
 
-    <v-checkbox [value]="invest$$()"
-                (valueChange)="invest$$.set($event)">
+    <v-checkbox [value]="isInvest$$()"
+                (valueChange)="isInvest$$.set($event)">
       Investment account
     </v-checkbox>
 

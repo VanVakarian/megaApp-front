@@ -244,9 +244,7 @@ export class MoneyScreen implements OnInit {
   }
 
   private isFxEquityAccount(account: Account): boolean {
-    const accountAny = account as any;
-    const isInvest = Boolean(accountAny.isInvest ?? accountAny.invest);
-    if (!isInvest || !account.id) return false;
+    if (!account.isInvest || !account.id) return false;
     const ticker = this.getFxTickerForAccount(account.id);
     return ticker != null;
   }

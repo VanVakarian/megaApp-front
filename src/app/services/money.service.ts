@@ -30,6 +30,10 @@ interface CategoriesResponse extends DataResponse<Category[]> {}
 
 interface AccountsResponse extends DataResponse<Account[]> {}
 
+interface AccountApi extends Omit<Account, 'isInvest'> {
+  isInvest?: boolean | number | string;
+}
+
 interface TransactionsResponse extends DataResponse<Transaction[]> {}
 
 interface RateHistoryResponse extends DataResponse<MoneyRateHistory[]> {}
@@ -278,8 +282,9 @@ export class MoneyService {
     return this.http.get<AccountsResponse>('/api/money/accounts').pipe(
       map((response: AccountsResponse) => {
         if (response.success && response.data) {
-          this.accounts$$.set(response.data);
-          return response.data;
+          const normalizedAccounts = response.data.map((account) => this.normalizeAccount(account as AccountApi));
+          this.accounts$$.set(normalizedAccounts);
+          return normalizedAccounts;
         }
         return [];
       }),
@@ -292,7 +297,7 @@ export class MoneyService {
   }
 
   public createAccount(accountData: Account): Observable<boolean> {
-    return this.http.post<CreateAccountResponse>('/api/money/accounts', accountData).pipe(
+    return this.http.post<CreateAccountResponse>('/api/money/accounts', this.toAccountApiPayload(accountData)).pipe(
       map((response: CreateAccountResponse) => {
         if (response.success && response.data?.id) {
           const newAccount: Account = {
@@ -321,22 +326,24 @@ export class MoneyService {
       return of(false);
     }
 
-    return this.http.put<BasicResponse>(`/api/money/accounts/${accountData.id}`, accountData).pipe(
-      map((response: BasicResponse) => {
-        if (response.success) {
-          this.updateAccountInState(accountData);
-          this.requestResult$.next({ result: true });
-          return true;
-        }
-        this.requestResult$.next({ result: false });
-        return false;
-      }),
-      catchError((error) => {
-        console.error('Error updating account:', error);
-        this.requestResult$.next({ result: false });
-        return of(false);
-      }),
-    );
+    return this.http
+      .put<BasicResponse>(`/api/money/accounts/${accountData.id}`, this.toAccountApiPayload(accountData))
+      .pipe(
+        map((response: BasicResponse) => {
+          if (response.success) {
+            this.updateAccountInState(accountData);
+            this.requestResult$.next({ result: true });
+            return true;
+          }
+          this.requestResult$.next({ result: false });
+          return false;
+        }),
+        catchError((error) => {
+          console.error('Error updating account:', error);
+          this.requestResult$.next({ result: false });
+          return of(false);
+        }),
+      );
   }
 
   public deleteAccount(accountId: number): Observable<boolean> {
@@ -372,6 +379,30 @@ export class MoneyService {
 
   private removeAccountFromState(accountId: number): void {
     this.accounts$$.update((accounts: Account[]) => accounts.filter((account: Account) => account.id !== accountId));
+  }
+
+  private normalizeAccount(account: AccountApi): Account {
+    return {
+      id: account.id,
+      title: account.title,
+      currencyId: account.currencyId,
+      isInvest: this.toBoolean(account.isInvest),
+      kind: account.kind,
+    };
+  }
+
+  private toAccountApiPayload(accountData: Account): AccountApi {
+    return {
+      id: accountData.id,
+      title: accountData.title,
+      currencyId: accountData.currencyId,
+      isInvest: this.toBoolean(accountData.isInvest),
+      kind: accountData.kind,
+    };
+  }
+
+  private toBoolean(value: boolean | number | string | undefined): boolean {
+    return value === true || value === 1 || value === '1' || value === 'true';
   }
 
   //                                                        ~~~ TRANSACTIONS ~~~

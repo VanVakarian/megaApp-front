@@ -23,7 +23,7 @@ export class AccountForm {
 
   protected readonly title$$ = signal('');
   protected readonly currencyId$$ = signal<string | null>(null);
-  protected readonly invest$$ = signal(false);
+  protected readonly isInvest$$ = signal(false);
   protected readonly kind$$ = signal<AccountKind | ''>('');
 
   constructor(private moneyService: MoneyService) {
@@ -43,7 +43,7 @@ export class AccountForm {
     const accountData: Account = {
       title: this.title$$(),
       currencyId: Number(this.currencyId$$()),
-      invest: this.invest$$(),
+      isInvest: this.isInvest$$(),
       kind: this.kind$$() as AccountKind,
     };
 
@@ -116,14 +116,14 @@ export class AccountForm {
   private fillForm(account: Account): void {
     this.title$$.set(account.title);
     this.currencyId$$.set(String(account.currencyId));
-    this.invest$$.set(account.invest);
+    this.isInvest$$.set(account.isInvest);
     this.kind$$.set(account.kind);
   }
 
   private resetForm(): void {
     this.title$$.set('');
     this.currencyId$$.set(null);
-    this.invest$$.set(false);
+    this.isInvest$$.set(false);
     this.kind$$.set('');
   }
 }
