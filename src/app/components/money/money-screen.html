@@ -105,37 +105,39 @@
   </div>
 
   <div class="flex-1 max-w-full min-w-0">
-    <v-card class="w-full max-w-full min-w-0"
+    <v-card class="w-full max-w-full min-w-0 overflow-visible"
             [config]="{
               padding: 2,
               borderRadius: 2,
             }">
-      <div class="mb-2 text-sm font-semibold">Monthly balances</div>
+      <div class="w-full max-w-full overflow-visible">
+        @if (balanceRows$$().length === 0) {
+          <div class="opacity-60 text-sm">No data yet</div>
+        }
 
-      @if (balanceRows$$().length === 0) {
-        <div class="opacity-60 text-sm">No data yet</div>
-      }
-
-      @else {
-        <div class="w-full max-w-full overflow-x-auto overflow-y-visible">
+        @else {
           <table class="min-w-full font-mono text-sm">
             <thead class="text-left">
               <tr class="border-neutral-400 border-b-2">
-                <th class="py-0.5 px-2">Date</th>
-                <th class="py-0.5 px-2 text-right border-l border-neutral-200">Total</th>
-                @for (account of accountColumns$$(); track account.id) {
+                <th class="sticky top-0 z-20 py-0.5 px-2 bg-white">Date</th>
+                <th class="sticky top-0 z-20 py-0.5 px-2 text-right border-l border-neutral-200 bg-white">Total</th>
+                @for (account of visibleAccountColumns$$(); track account.id) {
                   @if (isBrokerAccount(account)) {
-                    <th class="py-0.5 px-2 text-right border-l border-neutral-200">
-                      {{ getAccountTitle(account) }} (cash)
-                    </th>
-                    <th class="py-0.5 px-2 text-right border-l border-neutral-200">
+                    @if (!isCryptoTradesBrokerAccount(account)) {
+                      <th class="sticky top-0 z-20 py-0.5 px-2 text-right border-l border-neutral-200 bg-white">
+                        {{ getAccountTitle(account) }} (cash)
+                      </th>
+                    }
+                    <th class="sticky top-0 z-20 py-0.5 px-2 text-right border-l border-neutral-200 bg-white">
                       {{ getAccountTitle(account) }}
                       (virtual)
                     </th>
                   }
 
                   @else {
-                    <th class="py-0.5 px-2 text-right border-l border-neutral-200">{{ getAccountTitle(account) }}</th>
+                    <th class="sticky top-0 z-20 py-0.5 px-2 text-right border-l border-neutral-200 bg-white">
+                      {{ getAccountTitle(account) }}
+                    </th>
                   }
                 }
               </tr>
@@ -149,11 +151,13 @@
                   <td class="whitespace-nowrap py-0.5 px-2 text-right border-l border-neutral-200">
                     {{ formatTotal(row) }}
                   </td>
-                  @for (account of accountColumns$$(); track account.id) {
+                  @for (account of visibleAccountColumns$$(); track account.id) {
                     @if (isBrokerAccount(account)) {
-                      <td class="whitespace-nowrap py-0.5 px-2 text-right border-l border-neutral-200">
-                        {{ formatAccountBalance(row, account) }}
-                      </td>
+                      @if (!isCryptoTradesBrokerAccount(account)) {
+                        <td class="whitespace-nowrap py-0.5 px-2 text-right border-l border-neutral-200">
+                          {{ formatAccountBalance(row, account) }}
+                        </td>
+                      }
                       <td class="whitespace-nowrap py-0.5 px-2 text-right border-l border-neutral-200">
                         {{ formatBrokerVirtualBalance(row, account) }}
                       </td>
@@ -169,8 +173,8 @@
               }
             </tbody>
           </table>
-        </div>
-      }
+        }
+      </div>
     </v-card>
   </div>
 

@@ -2,9 +2,10 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { FormsModule } from '@angular/forms';
 import { MoneyService } from '@app/services/money.service';
 import { DefaultModal } from '@app/shared/components/default-modal/default-modal';
-import { Account, Asset, AssetType, Transaction, TransactionKind } from '@app/shared/types';
+import { Account, AccountKind, Asset, AssetType, Transaction, TransactionKind } from '@app/shared/types';
 import { VButton } from '@ui-kit/components/v-button/v-button';
 import { VCard } from '@ui-kit/components/v-card/v-card';
+import { DropdownItem, VDropdown } from '@ui-kit/components/v-dropdown/v-dropdown';
 import { IconName, VIcon } from '@ui-kit/components/v-icon/v-icon';
 import { VInput } from '@ui-kit/components/v-input/v-input';
 import { VToggle } from '@ui-kit/components/v-toggle/v-toggle';
@@ -19,10 +20,22 @@ interface OpenedPosition {
   openQuantity: number;
 }
 
+interface OpenedPositionGroup {
+  accountId: number;
+  accountTitle: string;
+  positions: OpenedPosition[];
+}
+
+interface AssetGroup {
+  accountId: number;
+  accountTitle: string;
+  assets: Asset[];
+}
+
 @Component({
   selector: 'assets-list',
   templateUrl: './assets-list.html',
-  imports: [FormsModule, DefaultModal, VButton, VCard, VIcon, VInput, VToggle],
+  imports: [FormsModule, DefaultModal, VButton, VCard, VDropdown, VIcon, VInput, VToggle],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AssetsList {
@@ -31,9 +44,14 @@ export class AssetsList {
   private readonly moneyService = inject(MoneyService);
 
   protected readonly assets$$ = computed(() => this.moneyService.assets$$());
+  protected readonly assetGroups$$ = computed(() => this.buildAssetGroups());
   protected readonly openedPositions$$ = computed(() => this.buildOpenedPositions());
+  protected readonly openedPositionGroups$$ = computed(() => this.buildOpenedPositionGroups());
 
   private readonly accounts$$ = computed(() => this.moneyService.accounts$$());
+  private readonly brokerageAccounts$$ = computed(() =>
+    this.accounts$$().filter((account) => account.kind === AccountKind.BROKERAGE),
+  );
   private readonly transactions$$ = computed(() => this.moneyService.transactions$$());
 
   protected readonly showForm$$ = signal(false);
@@ -41,6 +59,7 @@ export class AssetsList {
   protected readonly title$$ = signal('');
   protected readonly ticker$$ = signal('');
   protected readonly type$$ = signal<AssetType>(AssetType.STOCK);
+  protected readonly accountId$$ = signal<string | null>(null);
   protected readonly isDeleteConfirmOpen$$ = signal(false);
 
   private readonly pendingDeleteId$$ = signal<number | null>(null);
@@ -58,12 +77,13 @@ export class AssetsList {
   }
 
   protected saveAsset(): void {
-    if (!this.title$$() || !this.ticker$$() || !this.type$$()) return;
+    if (!this.title$$() || !this.ticker$$() || !this.type$$() || !this.accountId$$()) return;
 
     const assetData: Asset = {
       title: this.title$$(),
       ticker: this.ticker$$(),
       type: this.type$$(),
+      accountId: Number(this.accountId$$()),
     };
 
     const currentAsset = this.editingAsset$$();
@@ -128,6 +148,7 @@ export class AssetsList {
     return [
       { id: AssetType.STOCK, label: 'Stock' },
       { id: AssetType.BOND, label: 'Bond' },
+      { id: AssetType.CRYPTO, label: 'Crypto' },
     ];
   }
 
@@ -146,9 +167,23 @@ export class AssetsList {
         return 'Stock';
       case AssetType.BOND:
         return 'Bond';
+      case AssetType.CRYPTO:
+        return 'Crypto';
       default:
         return type;
     }
+  }
+
+  protected accountItems(): DropdownItem[] {
+    return this.brokerageAccounts$$().map((account) => ({
+      value: String(account.id),
+      label: account.title,
+    }));
+  }
+
+  protected getAccountTitle(accountId: number): string {
+    const account = this.accounts$$().find((item) => item.id === accountId);
+    return account?.title ?? `Account #${accountId}`;
   }
 
   protected canDeleteAsset(assetId: number): boolean {
@@ -177,12 +212,14 @@ export class AssetsList {
     this.title$$.set(asset.title);
     this.ticker$$.set(asset.ticker);
     this.type$$.set(asset.type);
+    this.accountId$$.set(String(asset.accountId));
   }
 
   private resetForm(): void {
     this.title$$.set('');
     this.ticker$$.set('');
     this.type$$.set(AssetType.STOCK);
+    this.accountId$$.set(null);
   }
 
   protected formatOpenedDate(dateISO: string): string {
@@ -243,7 +280,16 @@ export class AssetsList {
 
       if (trade.kind === TransactionKind.INVEST_SELL) {
         current.quantity -= quantity;
-        if (current.quantity <= 0) {
+        if (current.quantity < 0) {
+          const asset = assetsById.get(assetId);
+          console.log(
+            `[Money] Warning: negative open quantity detected for ${asset?.ticker ?? `asset#${assetId}`} on account ${trade.accountId}.`,
+          );
+          current.quantity = 0;
+          current.openedAtISO = null;
+        }
+
+        if (current.quantity === 0) {
           current.quantity = 0;
           current.openedAtISO = null;
         }
@@ -269,6 +315,46 @@ export class AssetsList {
         };
       })
       .sort((first, second) => first.openedAtISO.localeCompare(second.openedAtISO));
+  }
+
+  private buildOpenedPositionGroups(): OpenedPositionGroup[] {
+    const grouped = new Map<number, OpenedPositionGroup>();
+
+    this.openedPositions$$().forEach((position) => {
+      const current = grouped.get(position.accountId) ?? {
+        accountId: position.accountId,
+        accountTitle: position.accountTitle,
+        positions: [],
+      };
+
+      current.positions.push(position);
+      grouped.set(position.accountId, current);
+    });
+
+    return Array.from(grouped.values()).map((group) => ({
+      ...group,
+      positions: group.positions.sort((first, second) => first.openedAtISO.localeCompare(second.openedAtISO)),
+    }));
+  }
+
+  private buildAssetGroups(): AssetGroup[] {
+    const grouped = new Map<number, AssetGroup>();
+
+    this.assets$$().forEach((asset) => {
+      const current = grouped.get(asset.accountId) ?? {
+        accountId: asset.accountId,
+        accountTitle: this.getAccountTitle(asset.accountId),
+        assets: [],
+      };
+
+      current.assets.push(asset);
+      grouped.set(asset.accountId, current);
+    });
+
+    return Array.from(grouped.values()).map((group) => ({
+      ...group,
+      assets: group.assets.sort((first, second) => first.title.localeCompare(second.title)),
+    }));
   }
 
   private parseDetails(detailsJSON: any): any {

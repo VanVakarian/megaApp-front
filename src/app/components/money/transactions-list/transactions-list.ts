@@ -13,7 +13,7 @@ import {
 } from '@angular/core';
 import { MoneyService } from '@app/services/money.service';
 import { DefaultModal } from '@app/shared/components/default-modal/default-modal';
-import { SymbolPosition, Transaction, TransactionKind } from '@app/shared/types';
+import { Asset, SymbolPosition, Transaction, TransactionKind } from '@app/shared/types';
 import { VButton } from '@ui-kit/components/v-button/v-button';
 import { VCard } from '@ui-kit/components/v-card/v-card';
 import { IconName, VIcon } from '@ui-kit/components/v-icon/v-icon';
@@ -41,6 +41,7 @@ export class TransactionsList implements AfterViewInit, OnDestroy {
   private readonly currencies$$ = computed(() => this.moneyService.currencies$$());
   private readonly categories$$ = computed(() => this.moneyService.categories$$());
   private readonly accounts$$ = computed(() => this.moneyService.accounts$$());
+  private readonly assets$$ = computed(() => this.moneyService.assets$$());
 
   protected readonly groupedTransactions$$ = computed(() => this.groupTransactionsByDate());
   protected readonly isDeleteConfirmOpen$$ = signal(false);
@@ -69,9 +70,46 @@ export class TransactionsList implements AfterViewInit, OnDestroy {
         return 'Expense';
       case TransactionKind.TRANSFER:
         return 'Transfer';
+      case TransactionKind.INVEST_BUY:
+        return 'invest buy';
+      case TransactionKind.INVEST_SELL:
+        return 'invest sell';
+      case TransactionKind.INVEST_DIVIDEND:
+        return 'invest dividend';
       default:
         return kind;
     }
+  }
+
+  protected getPrimaryLine(transaction: Transaction): string {
+    if (transaction.kind === TransactionKind.TRANSFER) {
+      return this.getTransferAccountLine(transaction);
+    }
+
+    if (this.isInvestKind(transaction.kind)) {
+      return `${this.getAccountTitle(transaction.accountId)} - ${this.getKindDisplayName(transaction.kind)}`;
+    }
+
+    return this.getAccountTitle(transaction.accountId);
+  }
+
+  protected getInvestSharesLine(transaction: Transaction): string | null {
+    if (!this.isInvestKind(transaction.kind)) return null;
+
+    const details = this.parseDetails(transaction.detailsJSON);
+    const assetId = this.toPositiveNumber(details?.assetId);
+    if (assetId == null) return null;
+
+    const ticker = this.getAssetTicker(assetId);
+    if (transaction.kind === TransactionKind.INVEST_DIVIDEND) {
+      return ticker;
+    }
+
+    const quantity = this.toPositiveNumber(details?.quantity);
+    if (quantity == null) return ticker;
+
+    const sign = transaction.kind === TransactionKind.INVEST_BUY ? '+' : '-';
+    return `${sign}${this.formatSharesQuantity(quantity)} shares ${ticker}`;
   }
 
   protected getAccountTitle(accountId: number): string {
@@ -126,6 +164,50 @@ export class TransactionsList implements AfterViewInit, OnDestroy {
     if (transaction.kind === TransactionKind.INCOME) return 'text-green-600';
     if (transaction.kind === TransactionKind.EXPENSE) return 'text-red-600';
     return '';
+  }
+
+  private isInvestKind(kind: TransactionKind): boolean {
+    return (
+      kind === TransactionKind.INVEST_BUY ||
+      kind === TransactionKind.INVEST_SELL ||
+      kind === TransactionKind.INVEST_DIVIDEND
+    );
+  }
+
+  private getAssetTicker(assetId: number): string {
+    const asset = this.assets$$().find((item: Asset) => item.id === assetId);
+    return asset?.ticker ?? `asset #${assetId}`;
+  }
+
+  private parseDetails(detailsJSON: any): any {
+    if (!detailsJSON) return null;
+
+    if (typeof detailsJSON === 'object') {
+      return detailsJSON;
+    }
+
+    if (typeof detailsJSON === 'string') {
+      try {
+        return JSON.parse(detailsJSON);
+      } catch {
+        return null;
+      }
+    }
+
+    return null;
+  }
+
+  private toPositiveNumber(value: unknown): number | null {
+    const numberValue = Number(value);
+    if (!Number.isFinite(numberValue) || numberValue <= 0) return null;
+    return numberValue;
+  }
+
+  private formatSharesQuantity(quantity: number): string {
+    return new Intl.NumberFormat('ru-RU', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 8,
+    }).format(quantity);
   }
 
   private formatPlainAmount(accountId: number, amount: number): string {

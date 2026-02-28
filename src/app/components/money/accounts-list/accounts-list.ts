@@ -20,6 +20,7 @@ export class AccountsList {
 
   protected readonly accounts$$ = computed(() => this.moneyService.accounts$$());
   protected readonly currencies$$ = computed(() => this.moneyService.currencies$$());
+  private readonly assets$$ = computed(() => this.moneyService.assets$$());
   private readonly transactions$$ = computed(() => this.moneyService.transactions$$());
 
   protected readonly showForm$$ = signal(false);
@@ -97,6 +98,10 @@ export class AccountsList {
   }
 
   protected canDeleteAccount(accountId: number): boolean {
-    return !this.transactions$$().some((transaction) => transaction.accountId === accountId);
+    const hasTransactions = this.transactions$$().some((transaction) => transaction.accountId === accountId);
+    if (hasTransactions) return false;
+
+    const hasAssets = this.assets$$().some((asset) => asset.accountId === accountId);
+    return !hasAssets;
   }
 }

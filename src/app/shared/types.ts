@@ -396,6 +396,7 @@ export interface Account {
 export enum AssetType {
   STOCK = 'stock',
   BOND = 'bond',
+  CRYPTO = 'crypto',
 }
 
 export interface Asset {
@@ -403,6 +404,7 @@ export interface Asset {
   title: string;
   ticker: string;
   type: AssetType;
+  accountId: number;
 }
 
 export enum TransactionKind {

@@ -1,5 +1,5 @@
 import { HttpClient } from '@angular/common/http';
-import { effect, Injectable, signal, WritableSignal } from '@angular/core';
+import { Injectable, signal, WritableSignal } from '@angular/core';
 import { Observable, of, Subject } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import {
@@ -75,7 +75,7 @@ export class MoneyService {
     // effect(() => { console.log('CATEGORIES:', this.categories$$()) }); // prettier-ignore
     // effect(() => { console.log('ACCOUNTS:', this.accounts$$()) }); // prettier-ignore
     // effect(() => { console.log('TRANSACTIONS:', this.transactions$$()) }); // prettier-ignore
-    effect(() => { console.log('RATE HISTORY:', this.rateHistory$$()) }); // prettier-ignore
+    // effect(() => { console.log('RATE HISTORY:', this.rateHistory$$()) }); // prettier-ignore
   }
 
   //                                                          ~~~ CURRENCIES ~~~

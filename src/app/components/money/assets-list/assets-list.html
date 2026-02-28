@@ -1,36 +1,46 @@
 <div class="max-w-4xl mx-auto">
 
-  <div class="mb-4">
-    <v-card [config]="{
-                        padding: 4,
-                        borderRadius: 2,
-                      }">
-      <div class="mb-4 text-lg font-semibold">Opened Positions</div>
-
-      @if (openedPositions$$().length === 0) {
+  @if (openedPositionGroups$$().length === 0) {
+    <div class="mb-4">
+      <v-card [config]="{
+                          padding: 4,
+                          borderRadius: 2,
+                        }">
+        <div class="mb-4 text-lg font-semibold">Opened Positions</div>
         <div class="opacity-70 py-4 text-sm">
           No opened positions.
         </div>
-      }
+      </v-card>
+    </div>
+  }
 
-      @for (position of openedPositions$$(); track position.accountId + '-' + position.assetId) {
-        <div class="last:border-b-0 py-3 border-b border-[color:var(--v-outline-color)]">
-          <div class="flex items-baseline min-w-0 gap-2 mb-1">
-            <span class="font-semibold truncate">{{ position.assetTitle }}</span>
-            @if (position.assetTicker) {
-              <span class="opacity-70 shrink-0">{{ position.assetTicker }}</span>
-            }
-          </div>
+  @for (group of openedPositionGroups$$(); track group.accountId) {
+    <div class="mb-4">
+      <v-card [config]="{
+                          padding: 4,
+                          borderRadius: 2,
+                        }">
+        <div class="mb-4 text-lg font-semibold">{{ group.accountTitle }}</div>
 
-          <div class="opacity-70 gap-x-4 gap-y-1 flex flex-wrap text-xs">
-            <span>Account: {{ position.accountTitle }}</span>
-            <span>Opened: {{ formatOpenedDate(position.openedAtISO) }}</span>
-            <span>Quantity: {{ formatQuantity(position.openQuantity) }}</span>
+        @for (position of group.positions; track position.accountId + '-' + position.assetId) {
+          <div class="last:border-b-0 py-3 border-b border-[color:var(--v-outline-color)]">
+            <div class="flex items-baseline min-w-0 gap-2 mb-1">
+              <span class="font-semibold truncate">{{ position.assetTitle }}</span>
+              @if (position.assetTicker) {
+                <span class="opacity-70 shrink-0">{{ position.assetTicker }}</span>
+              }
+              <span class="opacity-70 shrink-0">{{ formatQuantity(position.openQuantity) }} shares</span>
+            </div>
+
+            <div class="opacity-70 gap-x-4 gap-y-1 flex flex-wrap text-xs">
+              <span>Opened: {{ formatOpenedDate(position.openedAtISO) }}</span>
+              <span>Account: {{ position.accountTitle }}</span>
+            </div>
           </div>
-        </div>
-      }
-    </v-card>
-  </div>
+        }
+      </v-card>
+    </div>
+  }
 
   @if (showForm$$()) {
     <div class="mb-4">
@@ -44,6 +54,13 @@
           <v-toggle [items]="typeToggleItems()"
                     [value]="typeToggleValue()"
                     (valueChange)="onTypeToggleChange($event)"></v-toggle>
+
+          <v-dropdown [label]="'Brokerage Account'"
+                      [placeholder]="'Select brokerage account'"
+                      [items]="accountItems()"
+                      [isRequired]="true"
+                      [ngModel]="accountId$$()"
+                      (ngModelChange)="accountId$$.set($event)"></v-dropdown>
 
           <v-input [config]="{
 										 label: 'Title',
@@ -64,7 +81,7 @@
           <div class="flex gap-2">
             <v-button class="v-flat"
                       [config]="{
-												isDisabled: !title$$() || !ticker$$() || !type$$(),
+											isDisabled: !title$$() || !ticker$$() || !type$$() || !accountId$$(),
 											}"
                       (onClick)="saveAsset()">
               {{ isEditing() ? 'Update' : 'Create' }}
@@ -106,42 +123,47 @@
       </div>
     }
 
-    @for (asset of assets$$(); track asset.id) {
-      <div class="last:border-b-0 py-4 border-b border-[color:var(--v-outline-color)]">
-        <div class="flex items-start justify-between gap-4">
-          <div class="flex-1 min-w-0">
-            <div class="flex items-baseline min-w-0 gap-2 mb-2">
-              <span class="font-semibold truncate">{{ asset.title }}</span>
-              <span class="opacity-70 shrink-0">{{ asset.ticker }}</span>
+    @for (group of assetGroups$$(); track group.accountId) {
+      <div class="opacity-60 mt-2 mb-2 text-xs tracking-wide uppercase">{{ group.accountTitle }}</div>
+
+      @for (asset of group.assets; track asset.id) {
+        <div class="last:border-b-0 py-4 border-b border-[color:var(--v-outline-color)]">
+          <div class="flex items-start justify-between gap-4">
+            <div class="flex-1 min-w-0">
+              <div class="flex items-baseline min-w-0 gap-2 mb-2">
+                <span class="font-semibold truncate">{{ asset.title }}</span>
+                <span class="opacity-70 shrink-0">{{ asset.ticker }}</span>
+              </div>
+
+              <div class="opacity-70 flex gap-3 text-xs">
+                <span>{{ getAssetTypeLabel(asset.type) }}</span>
+                <span>{{ getAccountTitle(asset.accountId) }}</span>
+              </div>
             </div>
 
-            <div class="opacity-70 flex gap-3 text-xs">
-              <span>{{ getAssetTypeLabel(asset.type) }}</span>
+            <div class="shrink-0 flex gap-2">
+              <v-button class="v-flat"
+                        [config]="{
+											paddingY: 1,
+											paddingX: 2,
+										}"
+                        (onClick)="editAsset(asset)">
+                Edit
+              </v-button>
+
+              <v-button class="v-danger"
+                        [config]="{
+											paddingY: 1,
+											paddingX: 2,
+											isDisabled: !canDeleteAsset(asset.id!),
+										}"
+                        (onClick)="deleteAsset(asset.id!)">
+                Delete
+              </v-button>
             </div>
-          </div>
-
-          <div class="shrink-0 flex gap-2">
-            <v-button class="v-flat"
-                      [config]="{
-												paddingY: 1,
-												paddingX: 2,
-											}"
-                      (onClick)="editAsset(asset)">
-              Edit
-            </v-button>
-
-            <v-button class="v-danger"
-                      [config]="{
-												paddingY: 1,
-												paddingX: 2,
-												isDisabled: !canDeleteAsset(asset.id!),
-											}"
-                      (onClick)="deleteAsset(asset.id!)">
-              Delete
-            </v-button>
           </div>
         </div>
-      </div>
+      }
     }
 
   </v-card>

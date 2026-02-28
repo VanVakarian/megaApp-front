@@ -58,6 +58,7 @@ export class MoneyScreen implements OnInit {
     'EUR (наличные)',
   ];
   protected readonly accountColumns$$ = computed(() => this.getOrderedAccounts());
+  protected readonly visibleAccountColumns$$ = computed(() => this.getVisibleAccounts());
   protected readonly balanceRows$$ = computed(() => this.buildBalanceRows());
 
   public ngOnInit(): void {
@@ -79,6 +80,11 @@ export class MoneyScreen implements OnInit {
 
   protected isBrokerAccount(account: Account): boolean {
     return account.kind === 'brokerage';
+  }
+
+  protected isCryptoTradesBrokerAccount(account: Account): boolean {
+    if (!this.isBrokerAccount(account)) return false;
+    return /крипто|crypto/i.test(account.title ?? '');
   }
 
   protected formatAccountBalance(row: BalanceRow, account: Account): string {
@@ -113,6 +119,10 @@ export class MoneyScreen implements OnInit {
       const secondIndex = orderIndex.get(second.title) ?? Number.POSITIVE_INFINITY;
       return firstIndex - secondIndex;
     });
+  }
+
+  private getVisibleAccounts(): Account[] {
+    return this.accountColumns$$().filter((account) => account.kind !== 'deposit');
   }
 
   private buildBalanceRows(): BalanceRow[] {
@@ -364,6 +374,7 @@ export class MoneyScreen implements OnInit {
   }
 
   private isFxEquityAccount(account: Account): boolean {
+    if (account.kind !== 'cash') return false;
     if (!account.isInvest || !account.id) return false;
     const ticker = this.getFxTickerForAccount(account.id);
     return ticker != null;

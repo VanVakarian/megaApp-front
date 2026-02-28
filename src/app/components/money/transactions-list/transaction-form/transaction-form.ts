@@ -14,6 +14,7 @@ import { FormsModule } from '@angular/forms';
 import { MoneyService } from '@app/services/money.service';
 import {
   Account,
+  AccountKind,
   Asset,
   AssetType,
   Category,
@@ -87,7 +88,7 @@ export class TransactionForm {
     if (this.kind$$() === TransactionKind.TRANSFER) return false;
     const currentTransaction = this.transactionInput();
     if (currentTransaction && this.isPersistedInvestKind(currentTransaction.kind)) return true;
-    return Boolean(this.selectedAccount$$()?.isInvest);
+    return this.selectedAccount$$()?.kind === AccountKind.BROKERAGE;
   });
 
   private readonly persistedKind$$ = computed(() => {
@@ -120,12 +121,19 @@ export class TransactionForm {
     ];
   });
 
-  protected readonly assetItems$$ = computed(() =>
-    this.moneyService.assets$$().map((asset: Asset) => ({
+  protected readonly assetItems$$ = computed(() => {
+    const accountIdValue = this.accountId$$();
+    const accountId = accountIdValue ? Number(accountIdValue) : null;
+    const filteredAssets =
+      accountId != null && Number.isFinite(accountId)
+        ? this.moneyService.assets$$().filter((asset: Asset) => asset.accountId === accountId)
+        : [];
+
+    return filteredAssets.map((asset: Asset) => ({
       value: String(asset.id),
       label: `${asset.title} (${asset.ticker})`,
-    })),
-  );
+    }));
+  });
 
   protected readonly investAmountDisplay$$ = computed(() => {
     const amount = this.computeInvestAmount();
