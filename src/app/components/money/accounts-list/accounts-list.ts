@@ -101,7 +101,7 @@ export class AccountsList {
     const hasTransactions = this.transactions$$().some((transaction) => transaction.accountId === accountId);
     if (hasTransactions) return false;
 
-    const hasAssets = this.assets$$().some((asset) => asset.accountId === accountId);
+    const hasAssets = this.assets$$().some((asset) => asset.accountIds.includes(accountId));
     return !hasAssets;
   }
 }

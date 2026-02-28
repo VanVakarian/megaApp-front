@@ -404,7 +404,7 @@ export interface Asset {
   title: string;
   ticker: string;
   type: AssetType;
-  accountId: number;
+  accountIds: number[];
 }
 
 export enum TransactionKind {

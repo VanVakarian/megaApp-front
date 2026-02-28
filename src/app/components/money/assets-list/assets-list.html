@@ -55,12 +55,18 @@
                     [value]="typeToggleValue()"
                     (valueChange)="onTypeToggleChange($event)"></v-toggle>
 
-          <v-dropdown [label]="'Brokerage Account'"
-                      [placeholder]="'Select brokerage account'"
-                      [items]="accountItems()"
-                      [isRequired]="true"
-                      [ngModel]="accountId$$()"
-                      (ngModelChange)="accountId$$.set($event)"></v-dropdown>
+          <div class="border border-[color:var(--v-outline-color)] rounded-md p-3">
+            <div class="opacity-80 mb-2 text-sm">Brokerage Accounts</div>
+
+            @for (account of brokerageAccounts$$(); track account.id) {
+              <div class="py-1">
+                <v-checkbox [value]="isAccountSelected(account.id!)"
+                            (valueChange)="onAccountSelectionChange(account.id!, $event)">
+                  {{ account.title }}
+                </v-checkbox>
+              </div>
+            }
+          </div>
 
           <v-input [config]="{
 										 label: 'Title',
@@ -78,10 +84,10 @@
                    [ngModel]="ticker$$()"
                    (ngModelChange)="ticker$$.set($event)" />
 
-          <div class="flex gap-2">
-            <v-button class="v-flat"
+          <div class="flex justify-end gap-2">
+            <v-button class="v-primary"
                       [config]="{
-											isDisabled: !title$$() || !ticker$$() || !type$$() || !accountId$$(),
+										isDisabled: !title$$() || !ticker$$() || !type$$() || selectedAccountIds$$().length === 0,
 											}"
                       (onClick)="saveAsset()">
               {{ isEditing() ? 'Update' : 'Create' }}
@@ -137,7 +143,7 @@
 
               <div class="opacity-70 flex gap-3 text-xs">
                 <span>{{ getAssetTypeLabel(asset.type) }}</span>
-                <span>{{ getAccountTitle(asset.accountId) }}</span>
+                <span>{{ getAssetAccountsLabel(asset) }}</span>
               </div>
             </div>
 

@@ -126,7 +126,7 @@ export class TransactionForm {
     const accountId = accountIdValue ? Number(accountIdValue) : null;
     const filteredAssets =
       accountId != null && Number.isFinite(accountId)
-        ? this.moneyService.assets$$().filter((asset: Asset) => asset.accountId === accountId)
+        ? this.moneyService.assets$$().filter((asset: Asset) => asset.accountIds.includes(accountId))
         : [];
 
     return filteredAssets.map((asset: Asset) => ({
@@ -388,6 +388,16 @@ export class TransactionForm {
   protected onAccountChange(value: string | null): void {
     this.accountId$$.set(value);
     this.categoryId$$.set(null);
+
+    const selectedAsset = this.selectedAsset$$();
+    const accountId = value ? Number(value) : null;
+    if (selectedAsset && (accountId == null || !selectedAsset.accountIds.includes(accountId))) {
+      this.assetId$$.set(null);
+      this.quantity$$.set('');
+      this.price$$.set('');
+      this.commissionAmount$$.set('');
+      this.accruedInterestAmount$$.set('');
+    }
 
     if (!this.isInvestMode$$() && !this.isEditing$$()) {
       this.assetId$$.set(null);

@@ -5,7 +5,7 @@ import { DefaultModal } from '@app/shared/components/default-modal/default-modal
 import { Account, AccountKind, Asset, AssetType, Transaction, TransactionKind } from '@app/shared/types';
 import { VButton } from '@ui-kit/components/v-button/v-button';
 import { VCard } from '@ui-kit/components/v-card/v-card';
-import { DropdownItem, VDropdown } from '@ui-kit/components/v-dropdown/v-dropdown';
+import { VCheckbox } from '@ui-kit/components/v-checkbox/v-checkbox';
 import { IconName, VIcon } from '@ui-kit/components/v-icon/v-icon';
 import { VInput } from '@ui-kit/components/v-input/v-input';
 import { VToggle } from '@ui-kit/components/v-toggle/v-toggle';
@@ -35,7 +35,7 @@ interface AssetGroup {
 @Component({
   selector: 'assets-list',
   templateUrl: './assets-list.html',
-  imports: [FormsModule, DefaultModal, VButton, VCard, VDropdown, VIcon, VInput, VToggle],
+  imports: [FormsModule, DefaultModal, VButton, VCard, VIcon, VInput, VToggle, VCheckbox],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AssetsList {
@@ -49,7 +49,7 @@ export class AssetsList {
   protected readonly openedPositionGroups$$ = computed(() => this.buildOpenedPositionGroups());
 
   private readonly accounts$$ = computed(() => this.moneyService.accounts$$());
-  private readonly brokerageAccounts$$ = computed(() =>
+  protected readonly brokerageAccounts$$ = computed(() =>
     this.accounts$$().filter((account) => account.kind === AccountKind.BROKERAGE),
   );
   private readonly transactions$$ = computed(() => this.moneyService.transactions$$());
@@ -59,7 +59,7 @@ export class AssetsList {
   protected readonly title$$ = signal('');
   protected readonly ticker$$ = signal('');
   protected readonly type$$ = signal<AssetType>(AssetType.STOCK);
-  protected readonly accountId$$ = signal<string | null>(null);
+  protected readonly selectedAccountIds$$ = signal<number[]>([]);
   protected readonly isDeleteConfirmOpen$$ = signal(false);
 
   private readonly pendingDeleteId$$ = signal<number | null>(null);
@@ -77,13 +77,13 @@ export class AssetsList {
   }
 
   protected saveAsset(): void {
-    if (!this.title$$() || !this.ticker$$() || !this.type$$() || !this.accountId$$()) return;
+    if (!this.title$$() || !this.ticker$$() || !this.type$$() || this.selectedAccountIds$$().length === 0) return;
 
     const assetData: Asset = {
       title: this.title$$(),
       ticker: this.ticker$$(),
       type: this.type$$(),
-      accountId: Number(this.accountId$$()),
+      accountIds: this.selectedAccountIds$$(),
     };
 
     const currentAsset = this.editingAsset$$();
@@ -174,16 +174,28 @@ export class AssetsList {
     }
   }
 
-  protected accountItems(): DropdownItem[] {
-    return this.brokerageAccounts$$().map((account) => ({
-      value: String(account.id),
-      label: account.title,
-    }));
-  }
-
   protected getAccountTitle(accountId: number): string {
     const account = this.accounts$$().find((item) => item.id === accountId);
     return account?.title ?? `Account #${accountId}`;
+  }
+
+  protected getAssetAccountsLabel(asset: Asset): string {
+    return asset.accountIds.map((accountId) => this.getAccountTitle(accountId)).join(', ');
+  }
+
+  protected isAccountSelected(accountId: number): boolean {
+    return this.selectedAccountIds$$().includes(accountId);
+  }
+
+  protected onAccountSelectionChange(accountId: number, isSelected: boolean): void {
+    const current = this.selectedAccountIds$$();
+    if (isSelected) {
+      if (current.includes(accountId)) return;
+      this.selectedAccountIds$$.set([...current, accountId].sort((first, second) => first - second));
+      return;
+    }
+
+    this.selectedAccountIds$$.set(current.filter((currentAccountId) => currentAccountId !== accountId));
   }
 
   protected canDeleteAsset(assetId: number): boolean {
@@ -212,14 +224,14 @@ export class AssetsList {
     this.title$$.set(asset.title);
     this.ticker$$.set(asset.ticker);
     this.type$$.set(asset.type);
-    this.accountId$$.set(String(asset.accountId));
+    this.selectedAccountIds$$.set([...asset.accountIds].sort((first, second) => first - second));
   }
 
   private resetForm(): void {
     this.title$$.set('');
     this.ticker$$.set('');
     this.type$$.set(AssetType.STOCK);
-    this.accountId$$.set(null);
+    this.selectedAccountIds$$.set([]);
   }
 
   protected formatOpenedDate(dateISO: string): string {
@@ -341,14 +353,16 @@ export class AssetsList {
     const grouped = new Map<number, AssetGroup>();
 
     this.assets$$().forEach((asset) => {
-      const current = grouped.get(asset.accountId) ?? {
-        accountId: asset.accountId,
-        accountTitle: this.getAccountTitle(asset.accountId),
-        assets: [],
-      };
+      asset.accountIds.forEach((accountId) => {
+        const current = grouped.get(accountId) ?? {
+          accountId,
+          accountTitle: this.getAccountTitle(accountId),
+          assets: [],
+        };
 
-      current.assets.push(asset);
-      grouped.set(asset.accountId, current);
+        current.assets.push(asset);
+        grouped.set(accountId, current);
+      });
     });
 
     return Array.from(grouped.values()).map((group) => ({
