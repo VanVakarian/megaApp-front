@@ -125,8 +125,15 @@ export class TransactionsList implements AfterViewInit, OnDestroy {
 
   protected getCategoryName(categoryId?: number | null): string | null {
     if (!categoryId) return null;
-    const category = this.categories$$().find((c) => c.id === categoryId);
-    return category ? category.name : 'Unknown Category';
+    const normalizedCategoryId = Number(categoryId);
+    const category = this.categories$$().find((c) => Number(c.id) === normalizedCategoryId);
+    if (!category) return 'Unknown Category';
+    if (!category.parentId) return category.name;
+
+    const parentCategory = this.categories$$().find((parent) => Number(parent.id) === Number(category.parentId));
+    if (!parentCategory) return category.name;
+
+    return `${parentCategory.name} / ${category.name}`;
   }
 
   protected formatAmount(transaction: Transaction): string {

@@ -54,8 +54,15 @@ export class MoneyScreen implements OnInit {
     'Яндекс.Деньги',
     'Банковский счет',
     'Банковский депозит',
+    '27898',
+    '46T4M',
+    '4020VC1',
+    'Крипта',
+    '16163',
+    '27897',
     'USD (наличные)',
     'EUR (наличные)',
+    '26319',
   ];
   protected readonly accountColumns$$ = computed(() => this.getOrderedAccounts());
   protected readonly visibleAccountColumns$$ = computed(() => this.getVisibleAccounts());

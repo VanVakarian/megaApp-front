@@ -57,6 +57,7 @@ export class TransactionForm {
   protected readonly amountTo$$ = signal('');
   protected readonly kind$$ = signal<TransactionKind>(TransactionKind.EXPENSE);
   protected readonly notes$$ = signal('');
+  protected readonly isGift$$ = signal(false);
   protected readonly categoryId$$ = signal<string | null>(null);
   protected readonly assetId$$ = signal<string | null>(null);
   protected readonly quantity$$ = signal('');
@@ -285,7 +286,7 @@ export class TransactionForm {
       accountId,
       amount: normalizedAmount,
       kind,
-      isGift: false,
+      isGift: this.isGift$$(),
       notes: this.notes$$() || undefined,
       categoryId: this.categoryId$$() ? Number(this.categoryId$$()) : null,
     };
@@ -491,16 +492,7 @@ export class TransactionForm {
 
   private getTransactionCategories(): Category[] {
     const categoryType = this.kind$$() === TransactionKind.INCOME ? CategoryType.INCOME : CategoryType.EXPENSE;
-    const categories = this.moneyService.categories$$().filter((category) => category.categoryType === categoryType);
-    const parentsWithChildren = new Set<number>();
-
-    categories.forEach((category) => {
-      if (category.parentId) {
-        parentsWithChildren.add(category.parentId);
-      }
-    });
-
-    return categories.filter((category) => !parentsWithChildren.has(category.id!));
+    return this.moneyService.categories$$().filter((category) => category.categoryType === categoryType);
   }
 
   protected categoryItems(): DropdownItem[] {
@@ -528,6 +520,7 @@ export class TransactionForm {
     this.amount$$.set(String(transaction.amount));
     this.kind$$.set(this.mapPersistedKindToUiKind(transaction.kind));
     this.notes$$.set(transaction.notes || '');
+    this.isGift$$.set(Boolean(transaction.isGift));
     this.categoryId$$.set(transaction.categoryId ? String(transaction.categoryId) : null);
 
     const details = this.parseDetails(transaction.detailsJSON);
@@ -563,6 +556,7 @@ export class TransactionForm {
     this.amountTo$$.set('');
     this.kind$$.set(TransactionKind.EXPENSE);
     this.notes$$.set('');
+    this.isGift$$.set(false);
     this.categoryId$$.set(null);
     this.assetId$$.set(null);
     this.quantity$$.set('');

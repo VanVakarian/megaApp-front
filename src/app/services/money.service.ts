@@ -186,8 +186,8 @@ export class MoneyService {
 
   public getCategories(): Observable<Category[]> {
     return this.http.get<CategoriesResponse>('/api/money/categories').pipe(
-      map((response: CategoriesResponse) => {
-        if (response.success && response.data) {
+      map((response: CategoriesResponse | null) => {
+        if (response?.success && response.data) {
           this.categories$$.set(response.data);
           return response.data;
         }
@@ -291,7 +291,7 @@ export class MoneyService {
   public getAccounts(): Observable<Account[]> {
     return this.http.get<AccountsResponse>('/api/money/accounts').pipe(
       map((response: AccountsResponse) => {
-        if (response.success && response.data) {
+        if (response?.success && response.data) {
           const normalizedAccounts = response.data.map((account) => this.normalizeAccount(account as AccountApi));
           this.accounts$$.set(normalizedAccounts);
           return normalizedAccounts;

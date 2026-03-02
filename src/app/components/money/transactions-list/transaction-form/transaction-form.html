@@ -92,6 +92,11 @@
                     [items]="categoryItems()"
                     [ngModel]="categoryId$$()"
                     (ngModelChange)="categoryId$$.set($event)"></v-dropdown>
+
+        <v-checkbox [value]="isGift$$()"
+                    (valueChange)="isGift$$.set($event)">
+          Gift
+        </v-checkbox>
       }
 
       @if (isInvestMode$$()) {
