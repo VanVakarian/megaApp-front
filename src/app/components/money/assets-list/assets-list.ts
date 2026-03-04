@@ -27,8 +27,7 @@ interface OpenedPositionGroup {
 }
 
 interface AssetGroup {
-  accountId: number;
-  accountTitle: string;
+  title: string;
   assets: Asset[];
 }
 
@@ -60,6 +59,9 @@ export class AssetsList {
   protected readonly ticker$$ = signal('');
   protected readonly type$$ = signal<AssetType>(AssetType.STOCK);
   protected readonly selectedAccountIds$$ = signal<number[]>([]);
+  protected readonly suspendedSince$$ = signal('');
+  protected readonly suspendedUntil$$ = signal('');
+  protected readonly isSuspended$$ = signal(false);
   protected readonly isDeleteConfirmOpen$$ = signal(false);
 
   private readonly pendingDeleteId$$ = signal<number | null>(null);
@@ -84,6 +86,8 @@ export class AssetsList {
       ticker: this.ticker$$(),
       type: this.type$$(),
       accountIds: this.selectedAccountIds$$(),
+      suspendedSince: this.suspendedSince$$() || null,
+      suspendedUntil: this.suspendedUntil$$() || null,
     };
 
     const currentAsset = this.editingAsset$$();
@@ -198,6 +202,14 @@ export class AssetsList {
     this.selectedAccountIds$$.set(current.filter((currentAccountId) => currentAccountId !== accountId));
   }
 
+  protected onSuspendedCheckboxChange(checked: boolean): void {
+    this.isSuspended$$.set(checked);
+    if (!checked) {
+      this.suspendedSince$$.set('');
+      this.suspendedUntil$$.set('');
+    }
+  }
+
   protected canDeleteAsset(assetId: number): boolean {
     return !this.transactions$$().some((transaction: Transaction) =>
       this.isAssetLinkedToTransaction(assetId, transaction),
@@ -225,6 +237,9 @@ export class AssetsList {
     this.ticker$$.set(asset.ticker);
     this.type$$.set(asset.type);
     this.selectedAccountIds$$.set([...asset.accountIds].sort((first, second) => first - second));
+    this.suspendedSince$$.set(asset.suspendedSince ?? '');
+    this.suspendedUntil$$.set(asset.suspendedUntil ?? '');
+    this.isSuspended$$.set(!!asset.suspendedSince);
   }
 
   private resetForm(): void {
@@ -232,6 +247,9 @@ export class AssetsList {
     this.ticker$$.set('');
     this.type$$.set(AssetType.STOCK);
     this.selectedAccountIds$$.set([]);
+    this.isSuspended$$.set(false);
+    this.suspendedSince$$.set('');
+    this.suspendedUntil$$.set('');
   }
 
   protected formatOpenedDate(dateISO: string): string {
@@ -350,25 +368,21 @@ export class AssetsList {
   }
 
   private buildAssetGroups(): AssetGroup[] {
-    const grouped = new Map<number, AssetGroup>();
+    const allAssets = this.assets$$();
+    const groups: AssetGroup[] = [];
 
-    this.assets$$().forEach((asset) => {
-      asset.accountIds.forEach((accountId) => {
-        const current = grouped.get(accountId) ?? {
-          accountId,
-          accountTitle: this.getAccountTitle(accountId),
-          assets: [],
-        };
+    const otherAssets = allAssets
+      .filter((a) => a.type !== AssetType.CRYPTO)
+      .sort((first, second) => first.title.localeCompare(second.title));
 
-        current.assets.push(asset);
-        grouped.set(accountId, current);
-      });
-    });
+    const cryptoAssets = allAssets
+      .filter((a) => a.type === AssetType.CRYPTO)
+      .sort((first, second) => first.title.localeCompare(second.title));
 
-    return Array.from(grouped.values()).map((group) => ({
-      ...group,
-      assets: group.assets.sort((first, second) => first.title.localeCompare(second.title)),
-    }));
+    if (otherAssets.length > 0) groups.push({ title: 'Assets', assets: otherAssets });
+    if (cryptoAssets.length > 0) groups.push({ title: 'Crypto', assets: cryptoAssets });
+
+    return groups;
   }
 
   private parseDetails(detailsJSON: any): any {

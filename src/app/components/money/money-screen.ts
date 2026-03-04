@@ -50,10 +50,9 @@ export class MoneyScreen implements OnInit {
   private readonly fxTickers = new Set(['USD', 'EUR']);
 
   private readonly accountOrder = [
-    'Наличка',
     'Яндекс.Деньги',
-    'Банковский счет',
-    'Банковский депозит',
+    'нал руб',
+    'Сбер карта',
     '27898',
     '46T4M',
     '4020VC1',
@@ -63,6 +62,7 @@ export class MoneyScreen implements OnInit {
     'USD (наличные)',
     'EUR (наличные)',
     '26319',
+    'Банковский депозит',
   ];
   protected readonly accountColumns$$ = computed(() => this.getOrderedAccounts());
   protected readonly visibleAccountColumns$$ = computed(() => this.getVisibleAccounts());
@@ -146,7 +146,20 @@ export class MoneyScreen implements OnInit {
       transactionsByDate.get(key)!.push(transaction);
     });
 
-    const dateKeys = Array.from(transactionsByDate.keys()).sort((a, b) => a.localeCompare(b));
+    const rawDateKeys = Array.from(transactionsByDate.keys()).sort((a, b) => a.localeCompare(b));
+    const endOfMonthDates = new Set<string>();
+    if (rawDateKeys.length) {
+      const cursor = new Date(rawDateKeys[0] + 'T00:00:00');
+      const lastDate = new Date(rawDateKeys[rawDateKeys.length - 1] + 'T00:00:00');
+      cursor.setDate(1);
+      while (cursor <= lastDate) {
+        const eom = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0);
+        const eomStr = `${eom.getFullYear()}-${String(eom.getMonth() + 1).padStart(2, '0')}-${String(eom.getDate()).padStart(2, '0')}`;
+        endOfMonthDates.add(eomStr);
+        cursor.setMonth(cursor.getMonth() + 1);
+      }
+    }
+    const dateKeys = Array.from(new Set([...rawDateKeys, ...endOfMonthDates])).sort((a, b) => a.localeCompare(b));
     const balances = new Map<number, number>();
     const fxInvestUnits = new Map<number, number>();
     const brokerUnitsByAsset = new Map<string, number>();
@@ -190,13 +203,13 @@ export class MoneyScreen implements OnInit {
 
       if (!this.isEndOfMonth(dateISO)) return;
 
+      const rates = this.getRatesForDate(dateISO);
+      const usdRub = rates?.['RUB'];
+
       const accountBalances: Record<number, number> = {};
       const accountRubEquity: Record<number, number> = {};
       const brokerVirtualRub: Record<number, number> = {};
       let total = 0;
-
-      const rates = this.getRatesForDate(dateISO);
-      const usdRub = rates?.['RUB'];
 
       accounts.forEach((account) => {
         if (!account.id) return;
@@ -439,7 +452,8 @@ export class MoneyScreen implements OnInit {
     const date = new Date(dateISO + 'T00:00:00');
     const nextDay = new Date(date);
     nextDay.setDate(date.getDate() + 1);
-    return nextDay.getMonth() !== date.getMonth();
+    const result = nextDay.getMonth() !== date.getMonth();
+    return result;
   }
 
   private isYearEnd(dateISO: string): boolean {

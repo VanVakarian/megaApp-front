@@ -405,6 +405,8 @@ export interface Asset {
   ticker: string;
   type: AssetType;
   accountIds: number[];
+  suspendedSince?: string | null;
+  suspendedUntil?: string | null;
 }
 
 export enum TransactionKind {
