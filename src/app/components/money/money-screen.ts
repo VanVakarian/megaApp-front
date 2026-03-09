@@ -4,9 +4,18 @@ import { VCard } from '@ui-kit/components/v-card/v-card';
 import { IconName, VIcon } from '@ui-kit/components/v-icon/v-icon';
 import { firstValueFrom } from 'rxjs';
 import { MoneyService } from '../../services/money.service';
-import { Account, Currency, SymbolPosition, Transaction, TransactionKind } from '../../shared/types';
+import {
+  Account,
+  BalanceChartAccountSeries,
+  BalanceChartData,
+  Currency,
+  SymbolPosition,
+  Transaction,
+  TransactionKind,
+} from '../../shared/types';
 import { AccountsList } from './accounts-list/accounts-list';
 import { AssetsList } from './assets-list/assets-list';
+import { BalancesChart } from './balances-chart/balances-chart';
 import { CategoriesList } from './categories-list/categories-list';
 import { CurrenciesList } from './currencies-list/currencies-list';
 import { TransactionsList } from './transactions-list/transactions-list';
@@ -26,13 +35,24 @@ interface BalanceRow {
   accountBalances: Record<number, number>;
   accountRubEquity: Record<number, number>;
   brokerVirtualRub: Record<number, number>;
+  accountRubContributions: Record<number, number>;
   isYearEnd: boolean;
 }
 
 @Component({
   selector: 'money-screen',
   templateUrl: './money-screen.html',
-  imports: [CurrenciesList, CategoriesList, AccountsList, AssetsList, TransactionsList, VButton, VCard, VIcon],
+  imports: [
+    CurrenciesList,
+    CategoriesList,
+    AccountsList,
+    AssetsList,
+    TransactionsList,
+    BalancesChart,
+    VButton,
+    VCard,
+    VIcon,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class MoneyScreen implements OnInit {
@@ -70,6 +90,7 @@ export class MoneyScreen implements OnInit {
   protected readonly accountColumns$$ = computed(() => this.getOrderedAccounts());
   protected readonly visibleAccountColumns$$ = computed(() => this.getVisibleAccounts());
   protected readonly balanceRows$$ = computed(() => this.buildBalanceRows());
+  protected readonly balanceChartData$$ = computed(() => this.buildChartData());
 
   public ngOnInit(): void {
     firstValueFrom(this.moneyService.getCurrencies());
@@ -133,6 +154,52 @@ export class MoneyScreen implements OnInit {
 
   private getVisibleAccounts(): Account[] {
     return this.accountColumns$$();
+  }
+
+  private buildChartData(): BalanceChartData {
+    const rows = this.balanceRows$$();
+    const accounts = this.accountColumns$$();
+    const assets = this.assets$$();
+
+    const suspendedAccountIds = new Set<number>();
+    assets.forEach((asset) => {
+      if (asset.suspendedSince) {
+        asset.accountIds.forEach((id) => suspendedAccountIds.add(id));
+      }
+    });
+
+    const accountSeriesMap = new Map<number, number[]>();
+    accounts.forEach((a) => {
+      if (a.id) accountSeriesMap.set(a.id, []);
+    });
+
+    rows.forEach((row) => {
+      accounts.forEach((account) => {
+        if (!account.id) return;
+        const series = accountSeriesMap.get(account.id)!;
+        series.push(row.accountRubContributions[account.id] ?? 0);
+      });
+    });
+
+    const accountSeries: BalanceChartAccountSeries[] = [];
+    accounts.forEach((account) => {
+      if (!account.id) return;
+      const values = accountSeriesMap.get(account.id) ?? [];
+      if (values.some((v) => v !== 0)) {
+        accountSeries.push({
+          accountId: account.id,
+          accountTitle: account.title,
+          values,
+          isSuspended: suspendedAccountIds.has(account.id),
+        });
+      }
+    });
+
+    return {
+      dates: rows.map((r) => r.dateISO),
+      totals: rows.map((r) => r.total),
+      accountSeries,
+    };
   }
 
   private buildBalanceRows(): BalanceRow[] {
@@ -213,6 +280,7 @@ export class MoneyScreen implements OnInit {
       const accountBalances: Record<number, number> = {};
       const accountRubEquity: Record<number, number> = {};
       const brokerVirtualRub: Record<number, number> = {};
+      const accountRubContributions: Record<number, number> = {};
       let total = 0;
 
       accounts.forEach((account) => {
@@ -227,8 +295,10 @@ export class MoneyScreen implements OnInit {
           if (fxToRubRate != null) {
             const rubEquity = nativeAmount * fxToRubRate;
             accountRubEquity[account.id] = rubEquity;
+            accountRubContributions[account.id] = rubEquity;
             total += rubEquity;
           } else {
+            accountRubContributions[account.id] = nativeAmount;
             total += nativeAmount;
           }
 
@@ -237,7 +307,8 @@ export class MoneyScreen implements OnInit {
 
         const amount = balances.get(account.id) ?? 0;
         accountBalances[account.id] = amount;
-        total += this.convertNativeToRub(amount, account.id, rates, usdRub);
+        const rubFromBalance = this.convertNativeToRub(amount, account.id, rates, usdRub);
+        total += rubFromBalance;
 
         if (this.isBrokerAccount(account)) {
           const virtualRub = this.getBrokerVirtualRubForAccount(
@@ -248,7 +319,10 @@ export class MoneyScreen implements OnInit {
             rates,
           );
           brokerVirtualRub[account.id] = virtualRub;
+          accountRubContributions[account.id] = rubFromBalance + virtualRub;
           total += virtualRub;
+        } else {
+          accountRubContributions[account.id] = rubFromBalance;
         }
       });
 
@@ -259,6 +333,7 @@ export class MoneyScreen implements OnInit {
         accountBalances,
         accountRubEquity,
         brokerVirtualRub,
+        accountRubContributions,
         isYearEnd: this.isYearEnd(dateISO),
       });
     });

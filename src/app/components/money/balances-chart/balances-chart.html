@@ -1,0 +1,60 @@
+<div class="flex flex-col gap-3">
+  <div class="flex items-center justify-between">
+    <div class="text-sm font-semibold">Баланс счетов</div>
+    <div class="flex gap-1">
+      @if (showByAccount$$()) {
+        <v-button [class.v-flat]="hideSuspended$$()"
+                  [class.v-link]="!hideSuspended$$()"
+                  [class.v-link-static]="!hideSuspended$$()"
+                  [config]="{
+                    padding: 1,
+                  }"
+                  (onClick)="toggleHideSuspended()">
+          Без заблок.
+        </v-button>
+      }
+      <v-button [class.v-flat]="showByAccount$$()"
+                [class.v-link]="!showByAccount$$()"
+                [class.v-link-static]="!showByAccount$$()"
+                [config]="{
+                  padding: 1,
+                }"
+                (onClick)="setShowByAccount(true)">
+        По счетам
+      </v-button>
+      <v-button [class.v-flat]="!showByAccount$$()"
+                [class.v-link]="showByAccount$$()"
+                [class.v-link-static]="showByAccount$$()"
+                [config]="{
+                  padding: 1,
+                }"
+                (onClick)="setShowByAccount(false)">
+        Агрегировано
+      </v-button>
+    </div>
+  </div>
+
+  <div class="h-[220px]">
+    <canvas #chartCanvas></canvas>
+  </div>
+
+  @if (showByAccount$$()) {
+    <div class="flex flex-wrap gap-x-4 gap-y-1 pt-1">
+      @for (series of dataInput().accountSeries; track series.accountId) {
+        <v-checkbox [value]="isAccountEnabled(series.accountId)"
+                    [config]="{
+                      size: 4,
+                      checkIconSize: 3,
+                      gap: 1,
+                    }"
+                    (onChanged)="toggleAccount(series.accountId, $event)">
+          <span class="inline-flex items-center gap-1 text-xs">
+            <span class="inline-block w-2.5 h-2.5 rounded-sm flex-shrink-0"
+                  [style.background]="getAccountColor(series.accountId)"></span>
+            {{ series.accountTitle }}
+          </span>
+        </v-checkbox>
+      }
+    </div>
+  }
+</div>

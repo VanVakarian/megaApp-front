@@ -104,7 +104,15 @@
     }
   </div>
 
-  <div class="flex-1 max-w-full min-w-0">
+  <div class="flex-1 max-w-full min-w-0 flex flex-col gap-2">
+    <v-card class="w-full max-w-full min-w-0"
+            [config]="{
+              padding: 3,
+              borderRadius: 2,
+            }">
+      <balances-chart [dataInput]="balanceChartData$$()" />
+    </v-card>
+
     <v-card class="w-full max-w-full min-w-0 overflow-visible"
             [config]="{
               padding: 2,

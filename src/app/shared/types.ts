@@ -451,6 +451,19 @@ export interface MoneyRateHistory {
   ratesJson: Record<string, number> | string;
 }
 
+export interface BalanceChartAccountSeries {
+  accountId: number;
+  accountTitle: string;
+  values: number[];
+  isSuspended: boolean;
+}
+
+export interface BalanceChartData {
+  dates: string[];
+  totals: number[];
+  accountSeries: BalanceChartAccountSeries[];
+}
+
 // export interface Notification {
 //   id: number;
 //   message: string;
