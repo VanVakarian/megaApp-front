@@ -4,12 +4,14 @@ import {
   ChangeDetectionStrategy,
   Component,
   ComponentRef,
+  ElementRef,
   EnvironmentInjector,
   OnDestroy,
   computed,
   createComponent,
   inject,
   signal,
+  viewChild,
 } from '@angular/core';
 import { MoneyService } from '@app/services/money.service';
 import { DefaultModal } from '@app/shared/components/default-modal/default-modal';
@@ -23,6 +25,12 @@ interface TransactionGroup {
   date: string;
   dateDisplay: string;
   transactions: Transaction[];
+}
+
+interface GroupMeasurement {
+  startY: number;
+  height: number;
+  group: TransactionGroup;
 }
 
 @Component({
@@ -50,6 +58,63 @@ export class TransactionsList implements AfterViewInit, OnDestroy {
 
   private formRef: ComponentRef<TransactionForm> | null = null;
   private activeFormTarget: HTMLElement | null = null;
+
+  private readonly scrollContainerElem = viewChild<ElementRef<HTMLDivElement>>('scrollContainer');
+  private readonly newFormPlaceElem = viewChild<ElementRef<HTMLElement>>('newFormPlace');
+
+  private readonly HEADER_HEIGHT = 56;
+  private readonly TRANSACTION_HEIGHT = 104;
+  private readonly GROUP_BOTTOM_MARGIN = 24;
+  private readonly BUFFER_PX = 600;
+
+  protected readonly containerHeight = 640;
+
+  private readonly scrollTop$$ = signal(0);
+
+  private readonly groupMeasurements$$ = computed<GroupMeasurement[]>(() => {
+    const groups = this.groupedTransactions$$();
+    let y = 0;
+    return groups.map((group) => {
+      const height =
+        this.HEADER_HEIGHT + group.transactions.length * this.TRANSACTION_HEIGHT + this.GROUP_BOTTOM_MARGIN;
+      const measurement: GroupMeasurement = { startY: y, height, group };
+      y += height;
+      return measurement;
+    });
+  });
+
+  protected readonly totalScrollHeight$$ = computed(() => {
+    const measurements = this.groupMeasurements$$();
+    if (!measurements.length) return 0;
+    const last = measurements[measurements.length - 1];
+    return last.startY + last.height;
+  });
+
+  protected readonly visibleMeasurements$$ = computed(() => {
+    const measurements = this.groupMeasurements$$();
+    const scrollTop = this.scrollTop$$();
+    const visibleBottom = scrollTop + this.containerHeight;
+    return measurements.filter(
+      (m) => m.startY + m.height > scrollTop - this.BUFFER_PX && m.startY < visibleBottom + this.BUFFER_PX,
+    );
+  });
+
+  protected readonly paddingTop$$ = computed(() => {
+    const visible = this.visibleMeasurements$$();
+    return visible.length ? visible[0].startY : 0;
+  });
+
+  protected readonly paddingBottom$$ = computed(() => {
+    const visible = this.visibleMeasurements$$();
+    const total = this.totalScrollHeight$$();
+    if (!visible.length) return total;
+    const last = visible[visible.length - 1];
+    return total - (last.startY + last.height);
+  });
+
+  protected onScroll(event: Event): void {
+    this.scrollTop$$.set((event.target as HTMLElement).scrollTop);
+  }
 
   public ngAfterViewInit(): void {
     this.createFormComponent();
@@ -266,16 +331,20 @@ export class TransactionsList implements AfterViewInit, OnDestroy {
     this.moneyService.deleteTransaction(id).subscribe((success) => {});
   }
 
-  protected showTransactionForm(targetElem: HTMLElement, dateISO?: string, transaction?: Transaction): void {
+  protected showTransactionForm(dateISO?: string, transaction?: Transaction): void {
+    const place = this.newFormPlaceElem()?.nativeElement;
+    if (!place) return;
     if (dateISO) {
-      this.toggleForm(targetElem, dateISO, undefined);
+      this.toggleForm(place, dateISO, undefined);
     } else if (transaction) {
-      this.toggleForm(targetElem, undefined, transaction);
+      this.toggleForm(place, undefined, transaction);
     }
   }
 
-  protected showNewTransactionForm(targetElem: HTMLElement): void {
-    this.toggleForm(targetElem, this.getTodayDateISO(), undefined);
+  protected showNewTransactionForm(): void {
+    const place = this.newFormPlaceElem()?.nativeElement;
+    if (!place) return;
+    this.toggleForm(place, this.getTodayDateISO(), undefined);
   }
 
   private createFormComponent(): void {
@@ -315,6 +384,9 @@ export class TransactionsList implements AfterViewInit, OnDestroy {
     }
 
     this.showForm();
+
+    const container = this.scrollContainerElem()?.nativeElement;
+    if (container) container.scrollTop = 0;
   }
 
   private showForm(): void {
