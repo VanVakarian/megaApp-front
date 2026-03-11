@@ -1,50 +1,49 @@
-<v-card [config]="{
-          padding: 4,
-          borderRadius: 2,
-        }">
-  <div class="mb-4 text-lg font-semibold">{{ isEditing() ? 'Edit Account' : 'Add New Account' }}</div>
+<div class="mb-4 text-lg font-semibold">{{ isEditing() ? 'Edit Account' : 'Add New Account' }}</div>
 
-  <div class="flex flex-col gap-4">
-    <v-input [config]="{
+<div class="flex flex-col gap-4">
+  <v-input [config]="{
                label: 'Title',
                placeholder: 'My Bank Account',
                type: 'text',
              }"
-             [ngModel]="title$$()"
-             (ngModelChange)="title$$.set($event)" />
+           [ngModel]="title$$()"
+           (ngModelChange)="title$$.set($event)" />
 
-    <v-dropdown [label]="'Currency'"
+  <div class="flex gap-4">
+    <v-dropdown class="flex-1"
+                [label]="'Currency'"
                 [placeholder]="'Select currency'"
                 [items]="currencyItems()"
                 [isRequired]="true"
                 [ngModel]="currencyId$$()"
                 (ngModelChange)="currencyId$$.set($event)"></v-dropdown>
 
-    <v-dropdown [label]="'Account Type'"
+    <v-dropdown class="flex-1"
+                [label]="'Account Type'"
                 [placeholder]="'Select type'"
                 [items]="kindItems()"
                 [isRequired]="true"
                 [ngModel]="kind$$()"
                 (ngModelChange)="kind$$.set($event)"></v-dropdown>
+  </div>
 
-    <v-checkbox [value]="isInvest$$()"
-                (valueChange)="isInvest$$.set($event)">
-      Investment account
-    </v-checkbox>
+  <v-checkbox [value]="isInvest$$()"
+              (valueChange)="isInvest$$.set($event)">
+    Investment account
+  </v-checkbox>
 
-    <div class="flex justify-end gap-2">
-      <v-button class="v-primary"
-                [config]="{
+  <div class="flex justify-end gap-2">
+    <v-button class="v-primary"
+              [config]="{
                   isDisabled: !isFormValid(),
                 }"
-                (onClick)="save()">
-        {{ isEditing() ? 'Update' : 'Create' }}
-      </v-button>
+              (onClick)="save()">
+      {{ isEditing() ? 'Update' : 'Create' }}
+    </v-button>
 
-      <v-button class="v-flat"
-                (onClick)="cancel()">
-        Cancel
-      </v-button>
-    </div>
+    <v-button class="v-flat"
+              (onClick)="cancel()">
+      Cancel
+    </v-button>
   </div>
-</v-card>
+</div>

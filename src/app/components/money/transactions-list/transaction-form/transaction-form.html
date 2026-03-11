@@ -1,172 +1,168 @@
-<v-card [config]="{
-          padding: 4,
-          borderRadius: 2,
-        }">
-  <div class="flex justify-center items-center gap-4 mb-4 *:w-1/2">
-    <div class="text-lg font-semibold">
-      {{ isEditing$$() ? 'Edit Transaction' : 'Add Transaction' }}
-      <v-icon class="hidden"
-              [name]="Icon.CalendarMonth"
-              [size]="0"></v-icon>
-    </div>
+<div class="flex justify-center items-center gap-4 mb-4 *:w-1/2">
+  <div class="text-lg font-semibold">
+    {{ isEditing$$() ? 'Edit Transaction' : 'Add Transaction' }}
+    <v-icon class="hidden"
+            [name]="Icon.CalendarMonth"
+            [size]="0"></v-icon>
+  </div>
 
-    <div class="">
-      <v-input [config]="{
+  <div class="">
+    <v-input [config]="{
                  placeholder: 'YYYY-MM-DD',
                  type: 'text',
                  inputmode: 'numeric',
                }"
-               [ngModel]="dateISO$$()"
-               (ngModelChange)="dateISO$$.set($event)">
-        <v-button class="calendar-v-button v-link v-link-static mr-2"
-                  v-postfix
-                  tabindex="-1"
-                  [config]="{
+             [ngModel]="dateISO$$()"
+             (ngModelChange)="dateISO$$.set($event)">
+      <v-button class="calendar-v-button v-link v-link-static mr-2"
+                v-postfix
+                tabindex="-1"
+                [config]="{
                     padding: 1,
                   }"
-                  (mousedown)="$event.preventDefault()"
-                  (onClick)="onDateControlClick()">
-          <v-icon v-prefix
-                  [name]="Icon.CalendarMonth"
-                  [size]="6"></v-icon>
-          <span class="relative">
-            <input #dateInputElem
-                   id="dateInputElem"
-                   type="date"
-                   class="absolute w-0 h-0 p-0 m-0 border-0 opacity-0 top-[14px] right-[29px]"
-                   [value]="dateISO$$()"
-                   (change)="onDatePicked($event)" />
-          </span>
-        </v-button>
-      </v-input>
-    </div>
+                (mousedown)="$event.preventDefault()"
+                (onClick)="onDateControlClick()">
+        <v-icon v-prefix
+                [name]="Icon.CalendarMonth"
+                [size]="6"></v-icon>
+        <span class="relative">
+          <input #dateInputElem
+                 id="dateInputElem"
+                 type="date"
+                 class="absolute w-0 h-0 p-0 m-0 border-0 opacity-0 top-[14px] right-[29px]"
+                 [value]="dateISO$$()"
+                 (change)="onDatePicked($event)" />
+        </span>
+      </v-button>
+    </v-input>
   </div>
+</div>
 
-  <div class="flex flex-col gap-4">
-    <v-toggle [items]="kindToggleItems$$()"
-              [value]="kindToggleValue()"
-              [config]="{
+<div class="flex flex-col gap-4">
+  <v-toggle [items]="kindToggleItems$$()"
+            [value]="kindToggleValue()"
+            [config]="{
                 isDisabled: isEditing$$(),
               }"
-              (valueChange)="onKindToggleChange($event)"></v-toggle>
+            (valueChange)="onKindToggleChange($event)"></v-toggle>
 
-    @if (kind$$() !== TransactionKind.TRANSFER) {
-      <div class="flex gap-4">
-        <v-dropdown class="w-2/3"
-                    [label]="'Account'"
-                    [placeholder]="'Select an account'"
-                    [isDisabled]="isEditing$$()"
-                    [items]="accountItems()"
-                    [isRequired]="true"
-                    [ngModel]="accountId$$()"
-                    (ngModelChange)="onAccountChange($event)"></v-dropdown>
+  @if (kind$$() !== TransactionKind.TRANSFER) {
+    <div class="flex gap-4">
+      <v-dropdown class="w-2/3"
+                  [label]="'Account'"
+                  [placeholder]="'Select an account'"
+                  [isDisabled]="isEditing$$()"
+                  [items]="accountItems()"
+                  [isRequired]="true"
+                  [ngModel]="accountId$$()"
+                  (ngModelChange)="onAccountChange($event)"></v-dropdown>
 
-        @if (!isInvestMode$$()) {
-          <v-input class="amount-input w-1/3"
-                   [config]="{
+      @if (!isInvestMode$$()) {
+        <v-input class="amount-input w-1/3"
+                 [config]="{
                      label: 'Amount',
                      placeholder: '0.00',
                      type: 'text',
                      inputmode: 'decimal',
                      textAlign: 'right',
                    }"
-                   [ngModel]="amount$$()"
-                   (ngModelChange)="amount$$.set($event)">
-            <ng-container v-prefix>
-              @if (getCurrencyPrefix(); as currencyPrefix) {
-                <span class="mx-2">{{ currencyPrefix }}</span>
-              }
-            </ng-container>
-            <ng-container v-postfix>
-              @if (getCurrencyPostfix(); as currencyPostfix) {
-                <span class="mx-2">{{ currencyPostfix }}</span>
-              }
-            </ng-container>
-          </v-input>
-        }
-      </div>
+                 [ngModel]="amount$$()"
+                 (ngModelChange)="amount$$.set($event)">
+          <ng-container v-prefix>
+            @if (getCurrencyPrefix(); as currencyPrefix) {
+              <span class="mx-2">{{ currencyPrefix }}</span>
+            }
+          </ng-container>
+          <ng-container v-postfix>
+            @if (getCurrencyPostfix(); as currencyPostfix) {
+              <span class="mx-2">{{ currencyPostfix }}</span>
+            }
+          </ng-container>
+        </v-input>
+      }
+    </div>
 
-      @if (!isInvestMode$$()) {
-        <v-dropdown [label]="'Category (optional)'"
-                    [placeholder]="'No category'"
-                    [items]="categoryItems()"
-                    [ngModel]="categoryId$$()"
-                    (ngModelChange)="categoryId$$.set($event)"></v-dropdown>
+    @if (!isInvestMode$$()) {
+      <v-dropdown [label]="'Category (optional)'"
+                  [placeholder]="'No category'"
+                  [items]="categoryItems()"
+                  [ngModel]="categoryId$$()"
+                  (ngModelChange)="categoryId$$.set($event)"></v-dropdown>
 
-        <v-checkbox [value]="isGift$$()"
-                    (valueChange)="isGift$$.set($event)">
-          Gift
+      <v-checkbox [value]="isGift$$()"
+                  (valueChange)="isGift$$.set($event)">
+        Gift
+      </v-checkbox>
+    }
+
+    @if (isInvestMode$$()) {
+      <v-dropdown [label]="'Asset'"
+                  [placeholder]="'Select an asset'"
+                  [items]="assetItems$$()"
+                  [isRequired]="true"
+                  [isDisabled]="!canEditInvestIdentity$$()"
+                  [ngModel]="assetId$$()"
+                  (ngModelChange)="onAssetChange($event)"></v-dropdown>
+
+      @if (kind$$() === TransactionKind.INCOME) {
+        <v-checkbox [value]="isCouponDividend$$()"
+                    [config]="{
+                        isDisabled: !canEditInvestIdentity$$(),
+                      }"
+                    (valueChange)="isCouponDividend$$.set($event)">
+          {{ couponDividendLabel$$() }}
         </v-checkbox>
       }
 
-      @if (isInvestMode$$()) {
-        <v-dropdown [label]="'Asset'"
-                    [placeholder]="'Select an asset'"
-                    [items]="assetItems$$()"
-                    [isRequired]="true"
-                    [isDisabled]="!canEditInvestIdentity$$()"
-                    [ngModel]="assetId$$()"
-                    (ngModelChange)="onAssetChange($event)"></v-dropdown>
-
-        @if (kind$$() === TransactionKind.INCOME) {
-          <v-checkbox [value]="isCouponDividend$$()"
-                      [config]="{
-                        isDisabled: !canEditInvestIdentity$$(),
-                      }"
-                      (valueChange)="isCouponDividend$$.set($event)">
-            {{ couponDividendLabel$$() }}
-          </v-checkbox>
-        }
-
-        @if (!isInvestDividendMode$$()) {
-          <div class="flex gap-4">
-            <v-input class="w-1/2"
-                     [config]="{
+      @if (!isInvestDividendMode$$()) {
+        <div class="flex gap-4">
+          <v-input class="w-1/2"
+                   [config]="{
                        label: 'Quantity',
                        placeholder: '0',
                        type: 'text',
                        inputmode: 'decimal',
                      }"
-                     [ngModel]="quantity$$()"
-                     (ngModelChange)="quantity$$.set($event)" />
+                   [ngModel]="quantity$$()"
+                   (ngModelChange)="quantity$$.set($event)" />
 
-            <v-input class="w-1/2"
-                     [config]="{
+          <v-input class="w-1/2"
+                   [config]="{
                        label: 'Price',
                        placeholder: '0.00',
                        type: 'text',
                        inputmode: 'decimal',
                      }"
-                     [ngModel]="price$$()"
-                     (ngModelChange)="price$$.set($event)" />
-          </div>
+                   [ngModel]="price$$()"
+                   (ngModelChange)="price$$.set($event)" />
+        </div>
 
-          <div class="flex gap-4">
-            <v-input class="w-1/2"
-                     [config]="{
+        <div class="flex gap-4">
+          <v-input class="w-1/2"
+                   [config]="{
                        label: 'Commission',
                        placeholder: '0.00',
                        type: 'text',
                        inputmode: 'decimal',
                      }"
-                     [ngModel]="commissionAmount$$()"
-                     (ngModelChange)="commissionAmount$$.set($event)" />
+                   [ngModel]="commissionAmount$$()"
+                   (ngModelChange)="commissionAmount$$.set($event)" />
 
-            <v-input class="w-1/2"
-                     [config]="{
+          <v-input class="w-1/2"
+                   [config]="{
                        label: 'Accrued Interest',
                        placeholder: '0.00',
                        type: 'text',
                        inputmode: 'decimal',
                        isDisabled: !selectedAssetIsBond$$(),
                      }"
-                     [ngModel]="accruedInterestAmount$$()"
-                     (ngModelChange)="accruedInterestAmount$$.set($event)" />
-          </div>
-        }
+                   [ngModel]="accruedInterestAmount$$()"
+                   (ngModelChange)="accruedInterestAmount$$.set($event)" />
+        </div>
+      }
 
-        @if (!isInvestDividendMode$$()) {
-          <v-input [config]="{
+      @if (!isInvestDividendMode$$()) {
+        <v-input [config]="{
                      label: 'Amount',
                      placeholder: '0.00',
                      type: 'text',
@@ -174,136 +170,135 @@
                      textAlign: 'right',
                      isDisabled: true,
                    }"
-                   [ngModel]="investAmountDisplay$$()">
-            <ng-container v-prefix>
-              @if (getCurrencyPrefix(); as currencyPrefix) {
-                <span class="mx-2">{{ currencyPrefix }}</span>
-              }
-            </ng-container>
-            <ng-container v-postfix>
-              @if (getCurrencyPostfix(); as currencyPostfix) {
-                <span class="mx-2">{{ currencyPostfix }}</span>
-              }
-            </ng-container>
-          </v-input>
-        }
+                 [ngModel]="investAmountDisplay$$()">
+          <ng-container v-prefix>
+            @if (getCurrencyPrefix(); as currencyPrefix) {
+              <span class="mx-2">{{ currencyPrefix }}</span>
+            }
+          </ng-container>
+          <ng-container v-postfix>
+            @if (getCurrencyPostfix(); as currencyPostfix) {
+              <span class="mx-2">{{ currencyPostfix }}</span>
+            }
+          </ng-container>
+        </v-input>
+      }
 
-        @if (isInvestDividendMode$$()) {
-          <v-input [config]="{
+      @if (isInvestDividendMode$$()) {
+        <v-input [config]="{
                      label: 'Amount',
                      placeholder: '0.00',
                      type: 'text',
                      inputmode: 'decimal',
                      textAlign: 'right',
                    }"
-                   [ngModel]="amount$$()"
-                   (ngModelChange)="amount$$.set($event)">
-            <ng-container v-prefix>
-              @if (getCurrencyPrefix(); as currencyPrefix) {
-                <span class="mx-2">{{ currencyPrefix }}</span>
-              }
-            </ng-container>
-            <ng-container v-postfix>
-              @if (getCurrencyPostfix(); as currencyPostfix) {
-                <span class="mx-2">{{ currencyPostfix }}</span>
-              }
-            </ng-container>
-          </v-input>
-        }
+                 [ngModel]="amount$$()"
+                 (ngModelChange)="amount$$.set($event)">
+          <ng-container v-prefix>
+            @if (getCurrencyPrefix(); as currencyPrefix) {
+              <span class="mx-2">{{ currencyPrefix }}</span>
+            }
+          </ng-container>
+          <ng-container v-postfix>
+            @if (getCurrencyPostfix(); as currencyPostfix) {
+              <span class="mx-2">{{ currencyPostfix }}</span>
+            }
+          </ng-container>
+        </v-input>
       }
-
     }
 
-    @else {
-      <div class="flex gap-4">
-        <v-dropdown class="w-2/3"
-                    [label]="'Account from'"
-                    [placeholder]="'Select an account'"
-                    [isDisabled]="isEditing$$()"
-                    [items]="accountItems()"
-                    [isRequired]="true"
-                    [ngModel]="accountId$$()"
-                    (ngModelChange)="accountId$$.set($event)"></v-dropdown>
+  }
 
-        <v-input class="amount-input w-1/3"
-                 [config]="{
+  @else {
+    <div class="flex gap-4">
+      <v-dropdown class="w-2/3"
+                  [label]="'Account from'"
+                  [placeholder]="'Select an account'"
+                  [isDisabled]="isEditing$$()"
+                  [items]="accountItems()"
+                  [isRequired]="true"
+                  [ngModel]="accountId$$()"
+                  (ngModelChange)="accountId$$.set($event)"></v-dropdown>
+
+      <v-input class="amount-input w-1/3"
+               [config]="{
                    label: 'Amount from',
                    placeholder: '0.00',
                    type: 'text',
                    inputmode: 'decimal',
                    textAlign: 'right',
                  }"
-                 [ngModel]="amount$$()"
-                 (ngModelChange)="amount$$.set($event)">
-          <ng-container v-prefix>
-            @if (getCurrencyPrefixForAccount(accountId$$()); as currencyPrefix) {
-              <span class="mx-2">{{ currencyPrefix }}</span>
-            }
-          </ng-container>
-          <ng-container v-postfix>
-            @if (getCurrencyPostfixForAccount(accountId$$()); as currencyPostfix) {
-              <span class="mx-2">{{ currencyPostfix }}</span>
-            }
-          </ng-container>
-        </v-input>
-      </div>
+               [ngModel]="amount$$()"
+               (ngModelChange)="amount$$.set($event)">
+        <ng-container v-prefix>
+          @if (getCurrencyPrefixForAccount(accountId$$()); as currencyPrefix) {
+            <span class="mx-2">{{ currencyPrefix }}</span>
+          }
+        </ng-container>
+        <ng-container v-postfix>
+          @if (getCurrencyPostfixForAccount(accountId$$()); as currencyPostfix) {
+            <span class="mx-2">{{ currencyPostfix }}</span>
+          }
+        </ng-container>
+      </v-input>
+    </div>
 
-      <div class="flex gap-4">
-        <v-dropdown class="w-2/3"
-                    [label]="'Account to'"
-                    [placeholder]="'Select an account'"
-                    [isDisabled]="isEditing$$()"
-                    [items]="accountItems()"
-                    [isRequired]="true"
-                    [ngModel]="accountToId$$()"
-                    (ngModelChange)="accountToId$$.set($event)"></v-dropdown>
+    <div class="flex gap-4">
+      <v-dropdown class="w-2/3"
+                  [label]="'Account to'"
+                  [placeholder]="'Select an account'"
+                  [isDisabled]="isEditing$$()"
+                  [items]="accountItems()"
+                  [isRequired]="true"
+                  [ngModel]="accountToId$$()"
+                  (ngModelChange)="accountToId$$.set($event)"></v-dropdown>
 
-        <v-input class="amount-input w-1/3"
-                 [config]="{
+      <v-input class="amount-input w-1/3"
+               [config]="{
                    label: 'Amount to',
                    placeholder: '0.00',
                    type: 'text',
                    inputmode: 'decimal',
                    textAlign: 'right',
                  }"
-                 [ngModel]="amountTo$$()"
-                 (ngModelChange)="amountTo$$.set($event)">
-          <ng-container v-prefix>
-            @if (getCurrencyPrefixForAccount(accountToId$$()); as currencyPrefix) {
-              <span class="mx-2">{{ currencyPrefix }}</span>
-            }
-          </ng-container>
-          <ng-container v-postfix>
-            @if (getCurrencyPostfixForAccount(accountToId$$()); as currencyPostfix) {
-              <span class="mx-2">{{ currencyPostfix }}</span>
-            }
-          </ng-container>
-        </v-input>
-      </div>
-    }
+               [ngModel]="amountTo$$()"
+               (ngModelChange)="amountTo$$.set($event)">
+        <ng-container v-prefix>
+          @if (getCurrencyPrefixForAccount(accountToId$$()); as currencyPrefix) {
+            <span class="mx-2">{{ currencyPrefix }}</span>
+          }
+        </ng-container>
+        <ng-container v-postfix>
+          @if (getCurrencyPostfixForAccount(accountToId$$()); as currencyPostfix) {
+            <span class="mx-2">{{ currencyPostfix }}</span>
+          }
+        </ng-container>
+      </v-input>
+    </div>
+  }
 
-    <v-input [config]="{
+  <v-input [config]="{
                label: 'Notes (optional)',
                placeholder: 'Add any notes about this transaction...',
                isTextarea: true,
                rows: 2,
              }"
-             [ngModel]="notes$$()"
-             (ngModelChange)="notes$$.set($event)" />
+           [ngModel]="notes$$()"
+           (ngModelChange)="notes$$.set($event)" />
 
-    <div class="flex justify-end gap-2">
-      <v-button class="v-primary"
-                [config]="{
+  <div class="flex justify-end gap-2">
+    <v-button class="v-primary"
+              [config]="{
                   isDisabled: !isFormValid(),
                 }"
-                (onClick)="save()">
-        {{ isEditing$$() ? 'Update' : 'Add' }}
-      </v-button>
+              (onClick)="save()">
+      {{ isEditing$$() ? 'Update' : 'Add' }}
+    </v-button>
 
-      <v-button class="v-flat"
-                (onClick)="cancel()">
-        Cancel
-      </v-button>
-    </div>
+    <v-button class="v-flat"
+              (onClick)="cancel()">
+      Cancel
+    </v-button>
   </div>
-</v-card>
+</div>

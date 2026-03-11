@@ -4,13 +4,14 @@ import { VCard } from '@ui-kit/components/v-card/v-card';
 import { IconName, VIcon } from '@ui-kit/components/v-icon/v-icon';
 import { MoneyService } from '../../../services/money.service';
 import { DefaultModal } from '../../../shared/components/default-modal/default-modal';
+import { FormModal } from '../../../shared/components/form-modal/form-modal';
 import { Currency } from '../../../shared/types';
 import { CurrencyForm } from './currency-form/currency-form';
 
 @Component({
   selector: 'currencies-list',
   templateUrl: './currencies-list.html',
-  imports: [CurrencyForm, DefaultModal, VButton, VCard, VIcon],
+  imports: [CurrencyForm, DefaultModal, FormModal, VButton, VCard, VIcon],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class CurrenciesList {

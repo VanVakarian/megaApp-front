@@ -1,32 +1,21 @@
 <div class="max-w-4xl mx-auto">
 
-  @if (showForm$$()) {
-    <div class="mb-4">
-      <currency-form [currencyInput]="editingCurrency$$()"
-                     (savedOutput)="onSaved()"
-                     (cancelledOutput)="onCancelled()">
-      </currency-form>
-    </div>
-  }
-
   <v-card [config]="{
             padding: 4,
             borderRadius: 2,
           }">
     <div class="flex items-center justify-between mb-4">
       <div class="text-lg font-semibold">Currencies</div>
-      @if (!showForm$$()) {
-        <v-button class="v-flat"
-                  [config]="{
-                    paddingY: 1,
-                  }"
-                  (onClick)="showCreateForm()">
-          <v-icon v-prefix
-                  [name]="Icon.Add"
-                  [size]="6"></v-icon>
-          New Currency
-        </v-button>
-      }
+      <v-button class="v-flat"
+                [config]="{
+                  paddingY: 1,
+                }"
+                (onClick)="showCreateForm()">
+        <v-icon v-prefix
+                [name]="Icon.Add"
+                [size]="6"></v-icon>
+        New Currency
+      </v-button>
     </div>
 
     @if (currencies$$().length === 0) {
@@ -89,6 +78,14 @@
     }
   </v-card>
 </div>
+
+<form-modal [isModalOpen]="showForm$$()"
+            (closeOutput)="onCancelled()">
+  <currency-form [currencyInput]="editingCurrency$$()"
+                 (savedOutput)="onSaved()"
+                 (cancelledOutput)="onCancelled()">
+  </currency-form>
+</form-modal>
 
 <default-modal [isModalOpen]="isDeleteConfirmOpen$$()"
                [title]="'Are you sure you want to delete this currency?'"

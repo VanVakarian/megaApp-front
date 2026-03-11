@@ -1,32 +1,21 @@
 <div class="max-w-4xl mx-auto">
 
-  @if (showForm$$()) {
-    <div class="mb-4">
-      <account-form [accountInput]="editingAccount$$()"
-                    [currenciesInput]="currencies$$()"
-                    (savedOutput)="onSaved()"
-                    (cancelledOutput)="onCancelled()" />
-    </div>
-  }
-
   <v-card [config]="{
             padding: 4,
             borderRadius: 2,
           }">
     <div class="flex items-center justify-between mb-4">
       <div class="text-lg font-semibold">Accounts</div>
-      @if (!showForm$$()) {
-        <v-button class="v-flat"
-                  [config]="{
-                    paddingY: 1,
-                  }"
-                  (onClick)="showCreateForm()">
-          <v-icon v-prefix
-                  [name]="Icon.Add"
-                  [size]="6"></v-icon>
-          New Account
-        </v-button>
-      }
+      <v-button class="v-flat"
+                [config]="{
+                  paddingY: 1,
+                }"
+                (onClick)="showCreateForm()">
+        <v-icon v-prefix
+                [name]="Icon.Add"
+                [size]="6"></v-icon>
+        New Account
+      </v-button>
     </div>
 
     @if (accounts$$().length === 0) {
@@ -79,6 +68,14 @@
 
   </v-card>
 </div>
+
+<form-modal [isModalOpen]="showForm$$()"
+            (closeOutput)="onCancelled()">
+  <account-form [accountInput]="editingAccount$$()"
+                [currenciesInput]="currencies$$()"
+                (savedOutput)="onSaved()"
+                (cancelledOutput)="onCancelled()" />
+</form-modal>
 
 <default-modal [isModalOpen]="isDeleteConfirmOpen$$()"
                [modalTitle]="'Are you sure you want to delete this account?'"

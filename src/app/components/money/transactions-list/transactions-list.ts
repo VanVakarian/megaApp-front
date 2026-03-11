@@ -1,20 +1,7 @@
-import {
-  AfterViewInit,
-  ApplicationRef,
-  ChangeDetectionStrategy,
-  Component,
-  ComponentRef,
-  ElementRef,
-  EnvironmentInjector,
-  OnDestroy,
-  computed,
-  createComponent,
-  inject,
-  signal,
-  viewChild,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, computed, inject, signal, viewChild } from '@angular/core';
 import { MoneyService } from '@app/services/money.service';
 import { DefaultModal } from '@app/shared/components/default-modal/default-modal';
+import { FormModal } from '@app/shared/components/form-modal/form-modal';
 import { Asset, SymbolPosition, Transaction, TransactionKind } from '@app/shared/types';
 import { VButton } from '@ui-kit/components/v-button/v-button';
 import { VCard } from '@ui-kit/components/v-card/v-card';
@@ -36,15 +23,13 @@ interface GroupMeasurement {
 @Component({
   selector: 'transactions-list',
   templateUrl: './transactions-list.html',
-  imports: [DefaultModal, VButton, VCard, VIcon],
+  imports: [DefaultModal, FormModal, TransactionForm, VButton, VCard, VIcon],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class TransactionsList implements AfterViewInit, OnDestroy {
+export class TransactionsList {
   protected readonly Icon = IconName;
 
   private readonly moneyService = inject(MoneyService);
-  private readonly appRef = inject(ApplicationRef);
-  private readonly injector = inject(EnvironmentInjector);
 
   private readonly currencies$$ = computed(() => this.moneyService.currencies$$());
   private readonly categories$$ = computed(() => this.moneyService.categories$$());
@@ -56,11 +41,11 @@ export class TransactionsList implements AfterViewInit, OnDestroy {
 
   private readonly pendingDeleteId$$ = signal<number | null>(null);
 
-  private formRef: ComponentRef<TransactionForm> | null = null;
-  private activeFormTarget: HTMLElement | null = null;
+  protected readonly showForm$$ = signal(false);
+  protected readonly formDateISO$$ = signal<string | null>(null);
+  protected readonly editingTransaction$$ = signal<Transaction | null>(null);
 
   private readonly scrollContainerElem = viewChild<ElementRef<HTMLDivElement>>('scrollContainer');
-  private readonly newFormPlaceElem = viewChild<ElementRef<HTMLElement>>('newFormPlace');
 
   private readonly HEADER_HEIGHT = 56;
   private readonly TRANSACTION_HEIGHT = 104;
@@ -116,15 +101,25 @@ export class TransactionsList implements AfterViewInit, OnDestroy {
     this.scrollTop$$.set((event.target as HTMLElement).scrollTop);
   }
 
-  public ngAfterViewInit(): void {
-    this.createFormComponent();
+  protected showNewTransactionForm(): void {
+    this.formDateISO$$.set(this.getTodayDateISO());
+    this.editingTransaction$$.set(null);
+    this.showForm$$.set(true);
   }
 
-  public ngOnDestroy(): void {
-    if (this.formRef) {
-      this.appRef.detachView(this.formRef.hostView);
-      this.formRef.destroy();
+  protected showTransactionForm(dateISO?: string, transaction?: Transaction): void {
+    if (dateISO) {
+      this.formDateISO$$.set(dateISO);
+      this.editingTransaction$$.set(null);
+    } else if (transaction) {
+      this.editingTransaction$$.set(transaction);
+      this.formDateISO$$.set(null);
     }
+    this.showForm$$.set(true);
+  }
+
+  protected hideForm(): void {
+    this.showForm$$.set(false);
   }
 
   protected getKindDisplayName(kind: TransactionKind): string {
@@ -329,77 +324,6 @@ export class TransactionsList implements AfterViewInit, OnDestroy {
     this.pendingDeleteId$$.set(null);
     if (!id) return;
     this.moneyService.deleteTransaction(id).subscribe((success) => {});
-  }
-
-  protected showTransactionForm(dateISO?: string, transaction?: Transaction): void {
-    const place = this.newFormPlaceElem()?.nativeElement;
-    if (!place) return;
-    if (dateISO) {
-      this.toggleForm(place, dateISO, undefined);
-    } else if (transaction) {
-      this.toggleForm(place, undefined, transaction);
-    }
-  }
-
-  protected showNewTransactionForm(): void {
-    const place = this.newFormPlaceElem()?.nativeElement;
-    if (!place) return;
-    this.toggleForm(place, this.getTodayDateISO(), undefined);
-  }
-
-  private createFormComponent(): void {
-    this.formRef = createComponent(TransactionForm, {
-      environmentInjector: this.injector,
-    });
-    this.formRef.instance.savedOutput.subscribe(() => this.hideForm());
-    this.formRef.instance.cancelledOutput.subscribe(() => this.hideForm());
-    this.appRef.attachView(this.formRef.hostView);
-  }
-
-  private toggleForm(targetElement: HTMLElement, dateISO?: string, transaction?: Transaction): void {
-    if (this.activeFormTarget === targetElement) {
-      this.hideForm();
-    } else {
-      this.moveFormTo(targetElement, dateISO, transaction);
-    }
-  }
-
-  private moveFormTo(targetElement: HTMLElement, dateISO?: string, transaction?: Transaction): void {
-    if (!this.formRef) return;
-
-    const formElement = this.formRef.location.nativeElement as HTMLElement;
-    if (formElement.parentNode) {
-      formElement.parentNode.removeChild(formElement);
-    }
-
-    targetElement.appendChild(formElement);
-    this.activeFormTarget = targetElement;
-
-    if (transaction) {
-      this.formRef.setInput('dateIsoInput', null);
-      this.formRef.setInput('transactionInput', transaction);
-    } else {
-      this.formRef.setInput('dateIsoInput', dateISO);
-      this.formRef.setInput('transactionInput', null);
-    }
-
-    this.showForm();
-
-    const container = this.scrollContainerElem()?.nativeElement;
-    if (container) container.scrollTop = 0;
-  }
-
-  private showForm(): void {
-    if (this.formRef) {
-      (this.formRef.location.nativeElement as HTMLElement).style.display = 'block';
-    }
-  }
-
-  private hideForm(): void {
-    if (this.formRef) {
-      (this.formRef.location.nativeElement as HTMLElement).style.display = 'none';
-      this.activeFormTarget = null;
-    }
   }
 
   private groupTransactionsByDate(): TransactionGroup[] {

@@ -3,14 +3,13 @@ import { FormsModule } from '@angular/forms';
 import { MoneyService } from '@app/services/money.service';
 import { Category, CategoryType } from '@app/shared/types';
 import { VButton } from '@ui-kit/components/v-button/v-button';
-import { VCard } from '@ui-kit/components/v-card/v-card';
 import { DropdownItem, VDropdown } from '@ui-kit/components/v-dropdown/v-dropdown';
 import { VInput } from '@ui-kit/components/v-input/v-input';
 
 @Component({
   selector: 'category-form',
   templateUrl: './category-form.html',
-  imports: [FormsModule, VButton, VCard, VDropdown, VInput],
+  imports: [FormsModule, VButton, VDropdown, VInput],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class CategoryForm {

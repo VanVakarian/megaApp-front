@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { MoneyService } from '@app/services/money.service';
 import { DefaultModal } from '@app/shared/components/default-modal/default-modal';
+import { FormModal } from '@app/shared/components/form-modal/form-modal';
 import { Category, CategoryType } from '@app/shared/types';
 import { VButton } from '@ui-kit/components/v-button/v-button';
 import { VCard } from '@ui-kit/components/v-card/v-card';
@@ -10,7 +11,7 @@ import { CategoryForm } from './category-form/category-form';
 @Component({
   selector: 'categories-list',
   templateUrl: './categories-list.html',
-  imports: [CategoryForm, DefaultModal, VButton, VCard, VIcon],
+  imports: [CategoryForm, DefaultModal, FormModal, VButton, VCard, VIcon],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class CategoriesList {

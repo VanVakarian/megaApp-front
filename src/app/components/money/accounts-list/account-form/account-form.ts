@@ -3,7 +3,6 @@ import { FormsModule } from '@angular/forms';
 import { MoneyService } from '@app/services/money.service';
 import { Account, AccountKind, Currency } from '@app/shared/types';
 import { VButton } from '@ui-kit/components/v-button/v-button';
-import { VCard } from '@ui-kit/components/v-card/v-card';
 import { VCheckbox } from '@ui-kit/components/v-checkbox/v-checkbox';
 import { DropdownItem, VDropdown } from '@ui-kit/components/v-dropdown/v-dropdown';
 import { VInput } from '@ui-kit/components/v-input/v-input';
@@ -11,7 +10,7 @@ import { VInput } from '@ui-kit/components/v-input/v-input';
 @Component({
   selector: 'account-form',
   templateUrl: './account-form.html',
-  imports: [FormsModule, VButton, VCard, VDropdown, VCheckbox, VInput],
+  imports: [FormsModule, VButton, VDropdown, VCheckbox, VInput],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AccountForm {

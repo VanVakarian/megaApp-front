@@ -42,98 +42,96 @@
     </div>
   }
 
-  @if (showForm$$()) {
-    <div class="mb-4">
-      <v-card [config]="{
-								padding: 4,
-								borderRadius: 2,
-							}">
-        <div class="mb-4 text-lg font-semibold">{{ isEditing() ? 'Edit Asset' : 'Add New Asset' }}</div>
+  <form-modal [isModalOpen]="showForm$$()"
+              (closeOutput)="onCancelled()">
+    <div class="mb-4 text-lg font-semibold">{{ isEditing() ? 'Edit Asset' : 'Add New Asset' }}</div>
 
-        <div class="flex flex-col gap-4">
-          <v-toggle [items]="typeToggleItems()"
-                    [value]="typeToggleValue()"
-                    (valueChange)="onTypeToggleChange($event)"></v-toggle>
+    <div class="flex flex-col gap-4">
+      <v-toggle [items]="typeToggleItems()"
+                [value]="typeToggleValue()"
+                (valueChange)="onTypeToggleChange($event)"></v-toggle>
 
-          <div class="border border-[color:var(--v-outline-color)] rounded-md p-3">
-            <div class="opacity-80 mb-2 text-sm">Brokerage Accounts</div>
+      <div class="border border-[color:var(--v-outline-color)] rounded-md p-3">
+        <div class="opacity-80 mb-2 text-sm">Brokerage Accounts</div>
 
-            @for (account of brokerageAccounts$$(); track account.id) {
-              <div class="py-1">
-                <v-checkbox [value]="isAccountSelected(account.id!)"
-                            (valueChange)="onAccountSelectionChange(account.id!, $event)">
-                  {{ account.title }}
-                </v-checkbox>
-              </div>
-            }
+        @for (account of brokerageAccounts$$(); track account.id) {
+          <div class="py-1">
+            <v-checkbox [value]="isAccountSelected(account.id!)"
+                        (valueChange)="onAccountSelectionChange(account.id!, $event)">
+              {{ account.title }}
+            </v-checkbox>
           </div>
+        }
+      </div>
 
-          <v-input [config]="{
-										 label: 'Title',
-										 placeholder: 'Sberbank',
-										 type: 'text',
-									 }"
-                   [ngModel]="title$$()"
-                   (ngModelChange)="title$$.set($event)" />
+      <div class="flex gap-4">
+        <v-input class="flex-1"
+                 [config]="{
+								 label: 'Title',
+								 placeholder: 'Sberbank',
+								 type: 'text',
+							 }"
+                 [ngModel]="title$$()"
+                 (ngModelChange)="title$$.set($event)" />
 
-          <v-input [config]="{
-										 label: 'Ticker',
-										 placeholder: 'SBER',
-										 type: 'text',
-									 }"
-                   [ngModel]="ticker$$()"
-                   (ngModelChange)="ticker$$.set($event)" />
+        <v-input class="flex-1"
+                 [config]="{
+								 label: 'Ticker',
+								 placeholder: 'SBER',
+								 type: 'text',
+							 }"
+                 [ngModel]="ticker$$()"
+                 (ngModelChange)="ticker$$.set($event)" />
+      </div>
 
-          @if (isEditing()) {
-            <div class="border border-[color:var(--v-outline-color)] rounded-md p-3 flex flex-col gap-3">
-              <v-checkbox [value]="isSuspended$$()"
-                          (valueChange)="onSuspendedCheckboxChange($event)">
-                Suspended Asset
-              </v-checkbox>
+      @if (isEditing()) {
+        <div class="border border-[color:var(--v-outline-color)] rounded-md p-3 flex flex-col gap-3">
+          <v-checkbox [value]="isSuspended$$()"
+                      (valueChange)="onSuspendedCheckboxChange($event)">
+            Suspended Asset
+          </v-checkbox>
 
-              @if (isSuspended$$()) {
-                <div class="flex gap-3">
-                  <v-input class="flex-1"
-                           [config]="{
+          @if (isSuspended$$()) {
+            <div class="flex gap-3">
+              <v-input class="flex-1"
+                       [config]="{
                                        label: 'Suspended Since',
                                        placeholder: 'YYYY-MM-DD',
                                        type: 'text',
                                      }"
-                           [ngModel]="suspendedSince$$()"
-                           (ngModelChange)="suspendedSince$$.set($event)" />
+                       [ngModel]="suspendedSince$$()"
+                       (ngModelChange)="suspendedSince$$.set($event)" />
 
-                  <v-input class="flex-1"
-                           [config]="{
+              <v-input class="flex-1"
+                       [config]="{
                                        label: 'Suspended Until',
                                        placeholder: 'YYYY-MM-DD',
                                        type: 'text',
                                        isDisabled: !suspendedSince$$(),
                                      }"
-                           [ngModel]="suspendedUntil$$()"
-                           (ngModelChange)="suspendedUntil$$.set($event)" />
-                </div>
-              }
+                       [ngModel]="suspendedUntil$$()"
+                       (ngModelChange)="suspendedUntil$$.set($event)" />
             </div>
           }
+        </div>
+      }
 
-          <div class="flex justify-end gap-2">
-            <v-button class="v-primary"
-                      [config]="{
+      <div class="flex justify-end gap-2">
+        <v-button class="v-primary"
+                  [config]="{
 										isDisabled: !title$$() || !ticker$$() || !type$$() || selectedAccountIds$$().length === 0,
 											}"
-                      (onClick)="saveAsset()">
-              {{ isEditing() ? 'Update' : 'Create' }}
-            </v-button>
+                  (onClick)="saveAsset()">
+          {{ isEditing() ? 'Update' : 'Create' }}
+        </v-button>
 
-            <v-button class="v-flat"
-                      (onClick)="onCancelled()">
-              Cancel
-            </v-button>
-          </div>
-        </div>
-      </v-card>
+        <v-button class="v-flat"
+                  (onClick)="onCancelled()">
+          Cancel
+        </v-button>
+      </div>
     </div>
-  }
+  </form-modal>
 
   <v-card [config]="{
 						padding: 4,
@@ -141,18 +139,16 @@
 					}">
     <div class="flex items-center justify-between mb-4">
       <div class="text-lg font-semibold">Assets</div>
-      @if (!showForm$$()) {
-        <v-button class="v-flat"
-                  [config]="{
-										paddingY: 1,
-									}"
-                  (onClick)="showCreateForm()">
-          <v-icon v-prefix
-                  [name]="Icon.Add"
-                  [size]="6"></v-icon>
-          New Asset
-        </v-button>
-      }
+      <v-button class="v-flat"
+                [config]="{
+							paddingY: 1,
+						}"
+                (onClick)="showCreateForm()">
+        <v-icon v-prefix
+                [name]="Icon.Add"
+                [size]="6"></v-icon>
+        New Asset
+      </v-button>
     </div>
 
     @if (assets$$().length === 0) {

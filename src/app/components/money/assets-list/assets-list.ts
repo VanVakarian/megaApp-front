@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { FormsModule } from '@angular/forms';
 import { MoneyService } from '@app/services/money.service';
 import { DefaultModal } from '@app/shared/components/default-modal/default-modal';
+import { FormModal } from '@app/shared/components/form-modal/form-modal';
 import { Account, AccountKind, Asset, AssetType, Transaction, TransactionKind } from '@app/shared/types';
 import { VButton } from '@ui-kit/components/v-button/v-button';
 import { VCard } from '@ui-kit/components/v-card/v-card';
@@ -34,7 +35,7 @@ interface AssetGroup {
 @Component({
   selector: 'assets-list',
   templateUrl: './assets-list.html',
-  imports: [FormsModule, DefaultModal, VButton, VCard, VIcon, VInput, VToggle, VCheckbox],
+  imports: [FormsModule, DefaultModal, FormModal, VButton, VCard, VIcon, VInput, VToggle, VCheckbox],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AssetsList {

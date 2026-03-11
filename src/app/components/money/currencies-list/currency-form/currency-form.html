@@ -1,58 +1,61 @@
-<v-card [config]="{
-          padding: 4,
-          borderRadius: 2,
-        }">
-  <div class="mb-4 text-lg font-semibold">{{ isEditing() ? 'Edit Currency' : 'Add New Currency' }}</div>
+<div class="mb-4 text-lg font-semibold">{{ isEditing() ? 'Edit Currency' : 'Add New Currency' }}</div>
 
-  <div class="flex flex-col gap-4">
-    <v-input [config]="{
-               label: 'Title',
-               placeholder: 'US Dollar',
-               type: 'text',
-             }"
+<div class="flex flex-col gap-4">
+  <div class="flex gap-4">
+    <v-input class="flex-1"
+             [config]="{
+                 label: 'Title',
+                 placeholder: 'US Dollar',
+                 type: 'text',
+               }"
              [ngModel]="title$$()"
              (ngModelChange)="title$$.set($event)" />
 
-    <v-input [config]="{
-               label: 'Ticker',
-               placeholder: 'USD',
-               type: 'text',
-             }"
+    <v-input class="flex-1"
+             [config]="{
+                 label: 'Ticker',
+                 placeholder: 'USD',
+                 type: 'text',
+               }"
              [ngModel]="ticker$$()"
              (ngModelChange)="ticker$$.set($event)" />
+  </div>
 
-    <v-input [config]="{
-               label: 'Symbol',
-               placeholder: '$',
-               type: 'text',
-             }"
+  <div class="flex gap-4">
+    <v-input class="flex-1"
+             [config]="{
+                 label: 'Symbol',
+                 placeholder: '$',
+                 type: 'text',
+               }"
              [ngModel]="symbol$$()"
              (ngModelChange)="symbol$$.set($event)" />
 
-    <v-dropdown [label]="'Symbol Position'"
+    <v-dropdown class="flex-1"
+                [label]="'Symbol Position'"
                 [placeholder]="'Select position'"
                 [items]="symbolPositionItems()"
                 [ngModel]="symbolPosEnum$$()"
                 (ngModelChange)="symbolPosEnum$$.set($event)"></v-dropdown>
+  </div>
 
-    <v-checkbox [value]="whitespace$$()"
-                (valueChange)="whitespace$$.set($event)">
-      Whitespace between symbol and amount
-    </v-checkbox>
+  <v-checkbox [value]="whitespace$$()"
+              (valueChange)="whitespace$$.set($event)">
+    Whitespace between symbol and amount
+  </v-checkbox>
 
-    <div class="flex justify-end gap-2">
-      <v-button class="v-primary"
-                [config]="{
+  <div class="flex justify-end gap-2">
+    <v-button class="v-primary"
+              [config]="{
                   isDisabled: !title$$() || !ticker$$() || !symbol$$(),
                 }"
-                (onClick)="save()">
-        {{ isEditing() ? 'Update' : 'Create' }}
-      </v-button>
+              (onClick)="save()">
+      {{ isEditing() ? 'Update' : 'Create' }}
+    </v-button>
 
-      <v-button class="v-flat"
-                (onClick)="cancel()">
-        Cancel
-      </v-button>
-    </div>
+    <v-button class="v-flat"
+              (onClick)="cancel()">
+      Cancel
+    </v-button>
   </div>
-</v-card>
+</div>

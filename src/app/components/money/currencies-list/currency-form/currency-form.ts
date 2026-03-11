@@ -1,7 +1,6 @@
 import { ChangeDetectionStrategy, Component, effect, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { VButton } from '@ui-kit/components/v-button/v-button';
-import { VCard } from '@ui-kit/components/v-card/v-card';
 import { VCheckbox } from '@ui-kit/components/v-checkbox/v-checkbox';
 import { DropdownItem, VDropdown } from '@ui-kit/components/v-dropdown/v-dropdown';
 import { VInput } from '@ui-kit/components/v-input/v-input';
@@ -11,7 +10,7 @@ import { Currency, SymbolPosition } from '../../../../shared/types';
 @Component({
   selector: 'currency-form',
   templateUrl: './currency-form.html',
-  imports: [FormsModule, VButton, VCard, VDropdown, VCheckbox, VInput],
+  imports: [FormsModule, VButton, VDropdown, VCheckbox, VInput],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class CurrencyForm {
