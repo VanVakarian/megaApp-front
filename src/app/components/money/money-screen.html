@@ -6,19 +6,19 @@
               borderRadius: 2,
             }">
       <div class="flex gap-2">
-        <v-button [class.v-flat]="activeTab$$() === MoneyTab.Currencies"
-                  [class.flex-grow]="activeTab$$() === MoneyTab.Currencies"
-                  [class.v-link]="activeTab$$() !== MoneyTab.Currencies"
-                  [class.v-link-static]="activeTab$$() !== MoneyTab.Currencies"
+        <v-button [class.v-flat]="activeTab$$() === MoneyTab.Setup"
+                  [class.flex-grow]="activeTab$$() === MoneyTab.Setup"
+                  [class.v-link]="activeTab$$() !== MoneyTab.Setup"
+                  [class.v-link-static]="activeTab$$() !== MoneyTab.Setup"
                   [config]="{
                     padding: 2,
-                    isLabelHidden: activeTab$$() !== MoneyTab.Currencies,
+                    isLabelHidden: activeTab$$() !== MoneyTab.Setup,
                   }"
-                  (onClick)="setActiveTab(MoneyTab.Currencies)">
+                  (onClick)="setActiveTab(MoneyTab.Setup)">
           <v-icon v-prefix
-                  [name]="Icon.UniversalCurrency"
+                  [name]="Icon.Settings"
                   [size]="7"></v-icon>
-          Currencies
+          Setup
         </v-button>
 
         <v-button [class.v-flat]="activeTab$$() === MoneyTab.Categories"
@@ -34,21 +34,6 @@
                   [name]="Icon.Category"
                   [size]="7"></v-icon>
           Categories
-        </v-button>
-
-        <v-button [class.v-flat]="activeTab$$() === MoneyTab.Accounts"
-                  [class.flex-grow]="activeTab$$() === MoneyTab.Accounts"
-                  [class.v-link]="activeTab$$() !== MoneyTab.Accounts"
-                  [class.v-link-static]="activeTab$$() !== MoneyTab.Accounts"
-                  [config]="{
-                    padding: 2,
-                    isLabelHidden: activeTab$$() !== MoneyTab.Accounts,
-                  }"
-                  (onClick)="setActiveTab(MoneyTab.Accounts)">
-          <v-icon v-prefix
-                  [name]="Icon.AccontBalanceWallet"
-                  [size]="7"></v-icon>
-          Accounts
         </v-button>
 
         <v-button [class.v-flat]="activeTab$$() === MoneyTab.Assets"
@@ -83,16 +68,14 @@
       </div>
     </v-card>
 
-    @if (activeTab$$() === MoneyTab.Currencies) {
+    @if (activeTab$$() === MoneyTab.Setup) {
+      <accounts-list />
+      <organizations-list />
       <currencies-list />
     }
 
     @if (activeTab$$() === MoneyTab.Categories) {
       <categories-list />
-    }
-
-    @if (activeTab$$() === MoneyTab.Accounts) {
-      <accounts-list />
     }
 
     @if (activeTab$$() === MoneyTab.Assets) {
@@ -113,7 +96,7 @@
       @if (isChartDataReady$$()) {
         <balances-chart [dataInput]="balanceChartData$$()" />
       } @else {
-        <div class="h-[372px] flex items-center justify-center">
+        <div class="h-[324px] flex items-center justify-center">
           <div class="border-t-transparent animate-spin w-8 h-8 border-2 rounded-full"
                style="border-color: var(--v-color-primary); border-top-color: transparent;"></div>
         </div>

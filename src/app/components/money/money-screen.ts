@@ -18,12 +18,12 @@ import { AssetsList } from './assets-list/assets-list';
 import { BalancesChart } from './balances-chart/balances-chart';
 import { CategoriesList } from './categories-list/categories-list';
 import { CurrenciesList } from './currencies-list/currencies-list';
+import { OrganizationsList } from './organizations-list/organizations-list';
 import { TransactionsList } from './transactions-list/transactions-list';
 
 enum MoneyTab {
-  Currencies = 'currencies',
+  Setup = 'setup',
   Categories = 'categories',
-  Accounts = 'accounts',
   Assets = 'assets',
   Transactions = 'transactions',
 }
@@ -47,6 +47,7 @@ interface BalanceRow {
     CurrenciesList,
     CategoriesList,
     AccountsList,
+    OrganizationsList,
     AssetsList,
     TransactionsList,
     BalancesChart,
@@ -98,6 +99,7 @@ export class MoneyScreen implements OnInit {
     firstValueFrom(this.moneyService.getCurrencies());
     firstValueFrom(this.moneyService.getCategories());
     firstValueFrom(this.moneyService.getAccounts());
+    firstValueFrom(this.moneyService.getOrganizations());
     firstValueFrom(this.moneyService.getAssets());
     firstValueFrom(this.moneyService.getTransactions());
     firstValueFrom(this.moneyService.getRateHistory());
@@ -112,12 +114,11 @@ export class MoneyScreen implements OnInit {
   }
 
   protected isBrokerAccount(account: Account): boolean {
-    return account.kind === 'brokerage';
+    return account.kind === 'brokerage' || account.kind === 'crypto';
   }
 
   protected isCryptoTradesBrokerAccount(account: Account): boolean {
-    if (!this.isBrokerAccount(account)) return false;
-    return /крипто|crypto/i.test(account.title ?? '');
+    return account.kind === 'crypto';
   }
 
   protected formatAccountBalance(row: BalanceRow, account: Account): string {

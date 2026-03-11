@@ -1,13 +1,23 @@
 <div class="mb-4 text-lg font-semibold">{{ isEditing() ? 'Edit Account' : 'Add New Account' }}</div>
 
 <div class="flex flex-col gap-4">
-  <v-input [config]="{
-               label: 'Title',
-               placeholder: 'My Bank Account',
-               type: 'text',
-             }"
-           [ngModel]="title$$()"
-           (ngModelChange)="title$$.set($event)" />
+  <div class="flex gap-4">
+    <v-input class="flex-1"
+             [config]="{
+                 label: 'Title',
+                 placeholder: 'My Bank Account',
+                 type: 'text',
+               }"
+             [ngModel]="title$$()"
+             (ngModelChange)="title$$.set($event)" />
+
+    <v-dropdown class="flex-1"
+                [label]="'Organization'"
+                [placeholder]="'None'"
+                [items]="organizationItems()"
+                [ngModel]="organizationId$$()"
+                (ngModelChange)="organizationId$$.set($event)"></v-dropdown>
+  </div>
 
   <div class="flex gap-4">
     <v-dropdown class="flex-1"

@@ -10,6 +10,7 @@ import { VCheckbox } from '@ui-kit/components/v-checkbox/v-checkbox';
 import { IconName, VIcon } from '@ui-kit/components/v-icon/v-icon';
 import { VInput } from '@ui-kit/components/v-input/v-input';
 import { VToggle } from '@ui-kit/components/v-toggle/v-toggle';
+import { ICON_BUTTON } from '../money.const';
 
 interface OpenedPosition {
   accountId: number;
@@ -40,6 +41,7 @@ interface AssetGroup {
 })
 export class AssetsList {
   protected readonly Icon = IconName;
+  protected readonly iconButton = ICON_BUTTON;
 
   private readonly moneyService = inject(MoneyService);
 
@@ -50,7 +52,9 @@ export class AssetsList {
 
   private readonly accounts$$ = computed(() => this.moneyService.accounts$$());
   protected readonly brokerageAccounts$$ = computed(() =>
-    this.accounts$$().filter((account) => account.kind === AccountKind.BROKERAGE),
+    this.accounts$$().filter(
+      (account) => account.kind === AccountKind.BROKERAGE || account.kind === AccountKind.CRYPTO,
+    ),
   );
   private readonly transactions$$ = computed(() => this.moneyService.transactions$$());
 

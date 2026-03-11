@@ -5,53 +5,53 @@ import { IconName, VIcon } from '@ui-kit/components/v-icon/v-icon';
 import { MoneyService } from '../../../services/money.service';
 import { DefaultModal } from '../../../shared/components/default-modal/default-modal';
 import { FormModal } from '../../../shared/components/form-modal/form-modal';
-import { Currency } from '../../../shared/types';
+import { Organization } from '../../../shared/types';
 import { ICON_BUTTON } from '../money.const';
-import { CurrencyForm } from './currency-form/currency-form';
+import { OrganizationForm } from './organization-form/organization-form';
 
 @Component({
-  selector: 'currencies-list',
-  templateUrl: './currencies-list.html',
-  imports: [CurrencyForm, DefaultModal, FormModal, VButton, VCard, VIcon],
+  selector: 'organizations-list',
+  templateUrl: './organizations-list.html',
+  imports: [OrganizationForm, DefaultModal, FormModal, VButton, VCard, VIcon],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class CurrenciesList {
+export class OrganizationsList {
   protected readonly Icon = IconName;
   protected readonly iconButton = ICON_BUTTON;
 
   private readonly moneyService = inject(MoneyService);
 
-  protected readonly currencies$$ = computed(() => this.moneyService.currencies$$());
+  protected readonly organizations$$ = computed(() => this.moneyService.organizations$$());
   private readonly accounts$$ = computed(() => this.moneyService.accounts$$());
 
   protected readonly showForm$$ = signal(false);
-  protected readonly editingCurrency$$ = signal<Currency | null>(null);
+  protected readonly editingOrganization$$ = signal<Organization | null>(null);
   protected readonly isDeleteConfirmOpen$$ = signal(false);
 
   private readonly pendingDeleteId$$ = signal<number | null>(null);
 
   protected showCreateForm(): void {
-    this.editingCurrency$$.set(null);
+    this.editingOrganization$$.set(null);
     this.showForm$$.set(true);
   }
 
-  protected editCurrency(currency: Currency): void {
-    this.editingCurrency$$.set(currency);
+  protected editOrganization(organization: Organization): void {
+    this.editingOrganization$$.set(organization);
     this.showForm$$.set(true);
   }
 
   protected onSaved(): void {
     this.showForm$$.set(false);
-    this.editingCurrency$$.set(null);
+    this.editingOrganization$$.set(null);
   }
 
   protected onCancelled(): void {
     this.showForm$$.set(false);
-    this.editingCurrency$$.set(null);
+    this.editingOrganization$$.set(null);
   }
 
-  protected deleteCurrency(id: number): void {
-    if (!this.canDeleteCurrency(id)) return;
+  protected deleteOrganization(id: number): void {
+    if (!this.canDeleteOrganization(id)) return;
     this.openConfirmationModal(id);
   }
 
@@ -70,11 +70,16 @@ export class CurrenciesList {
     this.isDeleteConfirmOpen$$.set(false);
     this.pendingDeleteId$$.set(null);
     if (!id) return;
-    if (!this.canDeleteCurrency(id)) return;
-    this.moneyService.deleteCurrency(id).subscribe((success) => {});
+    if (!this.canDeleteOrganization(id)) return;
+    this.moneyService.deleteOrganization(id).subscribe((success) => {});
   }
 
-  protected canDeleteCurrency(currencyId: number): boolean {
-    return !this.accounts$$().some((account) => account.currencyId === currencyId);
+  protected canDeleteOrganization(organizationId: number): boolean {
+    return !this.accounts$$().some((account) => account.organizationId === organizationId);
+  }
+
+  protected getLogoSrc(logoBase64: string | null | undefined): string | null {
+    if (!logoBase64) return null;
+    return `data:image/png;base64,${logoBase64}`;
   }
 }

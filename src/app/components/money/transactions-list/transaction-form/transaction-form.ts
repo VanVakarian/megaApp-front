@@ -88,7 +88,9 @@ export class TransactionForm {
     if (this.kind$$() === TransactionKind.TRANSFER) return false;
     const currentTransaction = this.transactionInput();
     if (currentTransaction && this.isPersistedInvestKind(currentTransaction.kind)) return true;
-    return this.selectedAccount$$()?.kind === AccountKind.BROKERAGE;
+    return (
+      this.selectedAccount$$()?.kind === AccountKind.BROKERAGE || this.selectedAccount$$()?.kind === AccountKind.CRYPTO
+    );
   });
 
   private readonly persistedKind$$ = computed(() => {

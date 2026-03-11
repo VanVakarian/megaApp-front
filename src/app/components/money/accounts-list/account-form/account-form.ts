@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, effect, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MoneyService } from '@app/services/money.service';
-import { Account, AccountKind, Currency } from '@app/shared/types';
+import { Account, AccountKind, Currency, Organization } from '@app/shared/types';
 import { VButton } from '@ui-kit/components/v-button/v-button';
 import { VCheckbox } from '@ui-kit/components/v-checkbox/v-checkbox';
 import { DropdownItem, VDropdown } from '@ui-kit/components/v-dropdown/v-dropdown';
@@ -16,6 +16,7 @@ import { VInput } from '@ui-kit/components/v-input/v-input';
 export class AccountForm {
   public readonly accountInput = input<Account | null>(null);
   public readonly currenciesInput = input<Currency[]>([]);
+  public readonly organizationsInput = input<Organization[]>([]);
 
   public readonly savedOutput = output<void>();
   public readonly cancelledOutput = output<void>();
@@ -24,6 +25,7 @@ export class AccountForm {
   protected readonly currencyId$$ = signal<string | null>(null);
   protected readonly isInvest$$ = signal(false);
   protected readonly kind$$ = signal<AccountKind | ''>('');
+  protected readonly organizationId$$ = signal<string | null>(null);
 
   constructor(private moneyService: MoneyService) {
     effect(() => {
@@ -44,6 +46,7 @@ export class AccountForm {
       currencyId: Number(this.currencyId$$()),
       isInvest: this.isInvest$$(),
       kind: this.kind$$() as AccountKind,
+      organizationId: this.organizationId$$() ? Number(this.organizationId$$()) : null,
     };
 
     const currentAccount = this.accountInput();
@@ -82,6 +85,16 @@ export class AccountForm {
     }));
   }
 
+  protected organizationItems(): DropdownItem[] {
+    return [
+      { value: '', label: 'None' },
+      ...this.organizationsInput().map((org) => ({
+        value: String(org.id),
+        label: org.title,
+      })),
+    ];
+  }
+
   protected kindItems(): DropdownItem[] {
     return this.getKindValues().map((kind) => ({
       value: kind,
@@ -117,6 +130,7 @@ export class AccountForm {
     this.currencyId$$.set(String(account.currencyId));
     this.isInvest$$.set(account.isInvest);
     this.kind$$.set(account.kind);
+    this.organizationId$$.set(account.organizationId ? String(account.organizationId) : null);
   }
 
   private resetForm(): void {
@@ -124,5 +138,6 @@ export class AccountForm {
     this.currencyId$$.set(null);
     this.isInvest$$.set(false);
     this.kind$$.set('');
+    this.organizationId$$.set(null);
   }
 }

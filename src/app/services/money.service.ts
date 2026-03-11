@@ -9,6 +9,7 @@ import {
   Currency,
   InvestAssetTrade,
   MoneyRateHistory,
+  Organization,
   ServerResponseBasic,
   Transaction,
   TransactionKind,
@@ -30,6 +31,8 @@ interface CurrenciesResponse extends DataResponse<Currency[]> {}
 
 interface CategoriesResponse extends DataResponse<Category[]> {}
 
+interface OrganizationsResponse extends DataResponse<Organization[]> {}
+
 interface AccountsResponse extends DataResponse<Account[]> {}
 
 interface AssetsResponse extends DataResponse<Asset[]> {}
@@ -48,6 +51,8 @@ interface CreateCurrencyResponse extends DataResponse<{ id: number }> {}
 
 interface CreateCategoryResponse extends DataResponse<{ id: number }> {}
 
+interface CreateOrganizationResponse extends DataResponse<{ id: number }> {}
+
 interface CreateAccountResponse extends DataResponse<{ id: number }> {}
 
 interface CreateAssetResponse extends DataResponse<{ id: number }> {}
@@ -62,6 +67,7 @@ interface BasicResponse extends MessageResponse {}
 export class MoneyService {
   public readonly currencies$$: WritableSignal<Currency[]> = signal([]);
   public readonly categories$$: WritableSignal<Category[]> = signal([]);
+  public readonly organizations$$: WritableSignal<Organization[]> = signal([]);
   public readonly accounts$$: WritableSignal<Account[]> = signal([]);
   public readonly assets$$: WritableSignal<Asset[]> = signal([]);
   public readonly investAssetTrades$$: WritableSignal<InvestAssetTrade[]> = signal([]);
@@ -292,6 +298,110 @@ export class MoneyService {
     );
   }
 
+  //                                                        ~~~ ORGANIZATIONS ~~~
+
+  public getOrganizations(): Observable<Organization[]> {
+    return this.http.get<OrganizationsResponse>('/api/money/organizations').pipe(
+      map((response: OrganizationsResponse) => {
+        if (response.success && response.data) {
+          this.organizations$$.set(response.data);
+          return response.data;
+        }
+        return [];
+      }),
+      catchError((error) => {
+        console.error('Error fetching organizations:', error);
+        this.requestResult$.next({ result: false });
+        return of([]);
+      }),
+    );
+  }
+
+  public createOrganization(organizationData: Organization): Observable<boolean> {
+    return this.http.post<CreateOrganizationResponse>('/api/money/organizations', organizationData).pipe(
+      map((response: CreateOrganizationResponse) => {
+        if (response.success && response.data?.id) {
+          const newOrganization: Organization = {
+            id: response.data.id,
+            ...organizationData,
+          };
+          this.addOrganizationToState(newOrganization);
+          this.requestResult$.next({ result: true });
+          return true;
+        }
+        this.requestResult$.next({ result: false });
+        return false;
+      }),
+      catchError((error) => {
+        console.error('Error creating organization:', error);
+        this.requestResult$.next({ result: false });
+        return of(false);
+      }),
+    );
+  }
+
+  public updateOrganization(organizationData: Organization): Observable<boolean> {
+    if (!organizationData.id) {
+      console.error('Organization ID is required for update');
+      this.requestResult$.next({ result: false });
+      return of(false);
+    }
+
+    return this.http.put<BasicResponse>(`/api/money/organizations/${organizationData.id}`, organizationData).pipe(
+      map((response: BasicResponse) => {
+        if (response.success) {
+          this.updateOrganizationInState(organizationData);
+          this.requestResult$.next({ result: true });
+          return true;
+        }
+        this.requestResult$.next({ result: false });
+        return false;
+      }),
+      catchError((error) => {
+        console.error('Error updating organization:', error);
+        this.requestResult$.next({ result: false });
+        return of(false);
+      }),
+    );
+  }
+
+  public deleteOrganization(organizationId: number): Observable<boolean> {
+    return this.http.delete<BasicResponse>(`/api/money/organizations/${organizationId}`).pipe(
+      map((response: BasicResponse) => {
+        if (response.success) {
+          this.removeOrganizationFromState(organizationId);
+          this.requestResult$.next({ result: true });
+          return true;
+        }
+        this.requestResult$.next({ result: false });
+        return false;
+      }),
+      catchError((error) => {
+        console.error('Error deleting organization:', error);
+        this.requestResult$.next({ result: false });
+        return of(false);
+      }),
+    );
+  }
+
+  private addOrganizationToState(organization: Organization): void {
+    this.organizations$$.update((organizations: Organization[]) => [...organizations, organization]);
+  }
+
+  private updateOrganizationInState(updatedOrganization: Organization): void {
+    this.organizations$$.update((organizations: Organization[]) =>
+      organizations.map((organization: Organization) =>
+        organization.id === updatedOrganization.id ? { ...organization, ...updatedOrganization } : organization,
+      ),
+    );
+  }
+
+  private removeOrganizationFromState(organizationId: number): void {
+    this.organizations$$.update((organizations: Organization[]) =>
+      organizations.filter((organization: Organization) => organization.id !== organizationId),
+    );
+  }
+
   //                                                            ~~~ ACCOUNTS ~~~
 
   public getAccounts(): Observable<Account[]> {
@@ -407,6 +517,7 @@ export class MoneyService {
       currencyId: account.currencyId,
       isInvest: this.toBoolean(account.isInvest),
       kind: account.kind,
+      organizationId: account.organizationId ?? null,
     };
   }
 
@@ -417,6 +528,7 @@ export class MoneyService {
       currencyId: accountData.currencyId,
       isInvest: this.toBoolean(accountData.isInvest),
       kind: accountData.kind,
+      organizationId: accountData.organizationId ?? null,
     };
   }
 

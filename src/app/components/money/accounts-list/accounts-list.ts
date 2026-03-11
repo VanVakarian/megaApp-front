@@ -6,6 +6,7 @@ import { Account, AccountKind } from '@app/shared/types';
 import { VButton } from '@ui-kit/components/v-button/v-button';
 import { VCard } from '@ui-kit/components/v-card/v-card';
 import { IconName, VIcon } from '@ui-kit/components/v-icon/v-icon';
+import { ICON_BUTTON } from '../money.const';
 import { AccountForm } from './account-form/account-form';
 
 @Component({
@@ -16,11 +17,13 @@ import { AccountForm } from './account-form/account-form';
 })
 export class AccountsList {
   protected readonly Icon = IconName;
+  protected readonly iconButton = ICON_BUTTON;
 
   private readonly moneyService = inject(MoneyService);
 
   protected readonly accounts$$ = computed(() => this.moneyService.accounts$$());
   protected readonly currencies$$ = computed(() => this.moneyService.currencies$$());
+  protected readonly organizations$$ = computed(() => this.moneyService.organizations$$());
   private readonly assets$$ = computed(() => this.moneyService.assets$$());
   private readonly transactions$$ = computed(() => this.moneyService.transactions$$());
 

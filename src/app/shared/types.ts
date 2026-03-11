@@ -385,12 +385,19 @@ export enum AccountKind {
   CRYPTO = 'crypto',
 }
 
+export interface Organization {
+  id?: number;
+  title: string;
+  logoBase64?: string | null;
+}
+
 export interface Account {
   id?: number;
   title: string;
   currencyId: number;
   isInvest: boolean;
   kind: AccountKind;
+  organizationId?: number | null;
 }
 
 export enum AssetType {

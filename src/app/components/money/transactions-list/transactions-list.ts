@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, ElementRef, computed, inject, signa
 import { MoneyService } from '@app/services/money.service';
 import { DefaultModal } from '@app/shared/components/default-modal/default-modal';
 import { FormModal } from '@app/shared/components/form-modal/form-modal';
-import { Asset, SymbolPosition, Transaction, TransactionKind } from '@app/shared/types';
+import { AccountKind, Asset, Organization, SymbolPosition, Transaction, TransactionKind } from '@app/shared/types';
 import { VButton } from '@ui-kit/components/v-button/v-button';
 import { VCard } from '@ui-kit/components/v-card/v-card';
 import { IconName, VIcon } from '@ui-kit/components/v-icon/v-icon';
@@ -32,9 +32,21 @@ export class TransactionsList {
 
   private readonly moneyService = inject(MoneyService);
 
+  /**
+   * Thousands separator. Options (narrowest to widest):
+   * '\u2006' six-per-em   ~1/6em
+   * '\u2009' thin space   ~1/5em
+   * '\u202F' narrow-nbsp  ~1/4em  ← current
+   * '\u2005' four-per-em  ~1/4em
+   * '\u2004' three-per-em ~1/3em
+   * '\u2002' en-space     ~1/2em
+   */
+  private readonly THOUSANDS_SEP = '\u202F';
+
   private readonly currencies$$ = computed(() => this.moneyService.currencies$$());
   private readonly categories$$ = computed(() => this.moneyService.categories$$());
   private readonly accounts$$ = computed(() => this.moneyService.accounts$$());
+  private readonly organizations$$ = computed(() => this.moneyService.organizations$$());
   private readonly assets$$ = computed(() => this.moneyService.assets$$());
 
   protected readonly groupedTransactions$$ = computed(() => this.groupTransactionsByDate());
@@ -156,6 +168,50 @@ export class TransactionsList {
     return this.getAccountTitle(transaction.accountId);
   }
 
+  protected getAccountKindIcon(accountId: number): IconName {
+    const account = this.accounts$$().find((a) => a.id === accountId);
+    if (!account) return IconName.AccontBalanceWallet;
+
+    switch (account.kind) {
+      case AccountKind.CASH:
+        return IconName.UniversalCurrencyAlt;
+      case AccountKind.CARD:
+        return IconName.CreditCard;
+      case AccountKind.CHECKING:
+        return IconName.AccontBalance;
+      case AccountKind.DEPOSIT:
+        return IconName.Savings;
+      case AccountKind.BROKERAGE:
+        return IconName.CandlestickChart;
+      case AccountKind.CRYPTO:
+        return IconName.CurrencyBitcoin;
+      default:
+        return IconName.AccontBalanceWallet;
+    }
+  }
+
+  protected getAccountOrgLogoSrc(accountId: number): string | null {
+    const account = this.accounts$$().find((a) => a.id === accountId);
+    if (!account?.organizationId) return null;
+
+    const org = this.organizations$$().find((o: Organization) => o.id === account.organizationId);
+    if (!org?.logoBase64) return null;
+
+    return `data:image/png;base64,${org.logoBase64}`;
+  }
+
+  protected getTransferOrgLogoSrc(transaction: Transaction): string | null {
+    const twin = this.getTwinTransaction(transaction);
+    if (!twin) return null;
+    return this.getAccountOrgLogoSrc(twin.accountId);
+  }
+
+  protected getTransferAccountKindIcon(transaction: Transaction): IconName {
+    const twin = this.getTwinTransaction(transaction);
+    if (!twin) return IconName.AccontBalanceWallet;
+    return this.getAccountKindIcon(twin.accountId);
+  }
+
   protected getInvestSharesLine(transaction: Transaction): string | null {
     if (!this.isInvestKind(transaction.kind)) return null;
 
@@ -204,7 +260,7 @@ export class TransactionsList {
     const whitespace = currency.whitespace ? ' ' : '';
     const sign =
       transaction.kind === TransactionKind.INCOME ? '+' : transaction.kind === TransactionKind.EXPENSE ? '-' : '';
-    const amount = transaction.amount.toFixed(2);
+    const amount = this.formatNumber(transaction.amount);
 
     if (currency.symbolPosEnum === SymbolPosition.BEFORE) {
       return `${currency.symbol}${whitespace}${sign}${amount}`;
@@ -226,7 +282,8 @@ export class TransactionsList {
   }
 
   protected getAmountClass(transaction: Transaction): string {
-    if (transaction.kind === TransactionKind.INCOME) return 'text-green-600';
+    if (transaction.kind === TransactionKind.INCOME || transaction.kind === TransactionKind.INVEST_DIVIDEND)
+      return 'text-green-600';
     if (transaction.kind === TransactionKind.EXPENSE) return 'text-red-600';
     return '';
   }
@@ -283,12 +340,18 @@ export class TransactionsList {
     if (!currency) return amount.toFixed(2);
 
     const whitespace = currency.whitespace ? ' ' : '';
-    const amountDisplay = amount.toFixed(2);
+    const amountDisplay = this.formatNumber(amount);
 
     if (currency.symbolPosEnum === SymbolPosition.BEFORE) {
       return `${currency.symbol}${whitespace}${amountDisplay}`;
     }
     return `${amountDisplay}${whitespace}${currency.symbol}`;
+  }
+
+  private formatNumber(amount: number): string {
+    const [int, dec] = amount.toFixed(2).split('.');
+    const intFormatted = int.replace(/\B(?=(\d{3})+(?!\d))/g, this.THOUSANDS_SEP);
+    return `${intFormatted}.${dec}`;
   }
 
   private getTwinTransaction(transaction: Transaction): Transaction | null {

@@ -47,31 +47,60 @@
             </div>
 
             @for (transaction of m.group.transactions; track transaction.id) {
-              <div class="group relative last:border-b-0 py-1 border-b border-[rgba(0,0,0,0.25)]">
+              <div class="group relative last:border-b-0 py-1 border-b border-[rgba(0,0,0,0.1)]">
                 <div class="flex items-center gap-3 text-sm">
                   <div class="flex-1 flex items-center gap-1.5 min-w-0 overflow-hidden">
-                    <span class="opacity-70 shrink-0">{{ getPrimaryLine(transaction) }}</span>
+
+                    <span class="shrink-0 flex items-center gap-0.5">
+                      @if (transaction.kind === 'transfer') {
+                        <v-icon [name]="getAccountKindIcon(transaction.accountId)"
+                                [size]="4"></v-icon>
+                        @if (getAccountOrgLogoSrc(transaction.accountId); as fromLogo) {
+                          <img [src]="fromLogo"
+                               class="object-contain w-4 h-4 rounded"
+                               alt="">
+                        }
+                        <span class="opacity-75 mx-0.5">→</span>
+                        <v-icon [name]="getTransferAccountKindIcon(transaction)"
+                                [size]="4"></v-icon>
+                        @if (getTransferOrgLogoSrc(transaction); as toLogo) {
+                          <img [src]="toLogo"
+                               class="object-contain w-4 h-4 rounded"
+                               alt="">
+                        }
+                      } @else {
+                        <v-icon [name]="getAccountKindIcon(transaction.accountId)"
+                                [size]="4"></v-icon>
+                        <span class="shrink-0 w-4 h-4">
+                          @if (getAccountOrgLogoSrc(transaction.accountId); as orgLogo) {
+                            <img [src]="orgLogo"
+                                 class="object-contain w-4 h-4 rounded"
+                                 alt="">
+                          }
+                        </span>
+                      }
+                    </span>
 
                     @if (getCategoryName(transaction.categoryId); as categoryName) {
-                      <span class="opacity-40 shrink-0">·</span>
-                      <span class="opacity-70 shrink-0">{{ categoryName }}</span>
+                      <span class="shrink-0">{{ categoryName }}</span>
                     }
 
                     @if (transaction.notes) {
-                      <span class="opacity-40 shrink-0">·</span>
+                      <!-- <span class="opacity-40 shrink-0">·</span> -->
                       <span class="opacity-60 truncate">{{ transaction.notes }}</span>
                     }
 
                     @if (getInvestSharesLine(transaction); as investSharesLine) {
-                      <span class="opacity-40 shrink-0">·</span>
-                      <span class="opacity-70 shrink-0">{{ investSharesLine }}</span>
+                      <span class="shrink-0">{{ investSharesLine }}</span>
                     }
 
-                    @if (transaction.isGift) {
-                      <span class="opacity-40 shrink-0">·</span>
-                      <span class="opacity-70 shrink-0">Gift</span>
-                    }
                   </div>
+
+                  @if (transaction.isGift) {
+                    <v-icon [name]="Icon.FeaturedSeasonalAndGifts"
+                            [size]="4"
+                            class="shrink-0 opacity-70"></v-icon>
+                  }
 
                   <span class="shrink-0 font-semibold"
                         [class]="getAmountClass(transaction)">

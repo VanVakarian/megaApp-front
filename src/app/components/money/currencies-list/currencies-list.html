@@ -56,21 +56,25 @@
           <div class="flex gap-2">
             <v-button class="v-flat"
                       [config]="{
-                        paddingY: 1,
-                        paddingX: 2,
+                        isLabelHidden: true,
+                        padding: iconButton.padding,
                       }"
                       (onClick)="editCurrency(currency)">
-              Edit
+              <v-icon v-prefix
+                      [name]="Icon.Edit"
+                      [size]="iconButton.size"></v-icon>
             </v-button>
 
             <v-button class="v-danger"
                       [config]="{
-                        paddingY: 1,
-                        paddingX: 2,
+                        isLabelHidden: true,
+                        padding: iconButton.padding,
                         isDisabled: !canDeleteCurrency(currency.id!),
                       }"
                       (onClick)="deleteCurrency(currency.id!)">
-              Delete
+              <v-icon v-prefix
+                      [name]="Icon.Delete"
+                      [size]="iconButton.size"></v-icon>
             </v-button>
           </div>
         </div>
