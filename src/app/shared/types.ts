@@ -455,6 +455,7 @@ export interface BalanceChartAccountSeries {
   accountId: number;
   accountTitle: string;
   values: number[];
+  suspendedValues: number[];
   isSuspended: boolean;
 }
 

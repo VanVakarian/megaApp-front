@@ -45,7 +45,7 @@ export const WEIGHT_CHART_SETTINGS: ChartConfiguration = {
         label: 'Вес',
         data: [],
         order: 2,
-        fill: true,
+        fill: false,
         borderColor: CHART_COLORS.main,
         backgroundColor: CHART_COLORS.main,
         pointRadius: 2,
@@ -163,4 +163,64 @@ export const FOOD_STATS_MONTH_LABELS_OPTIONS: MonthLabelsPluginOptions = {
   labelOffset: 3,
   shortMonthSwitchMonths: 6,
   yearSwitchMonths: 8,
+};
+
+export const BALANCE_ACCOUNT_PALETTE = [
+  '#4e79a7',
+  '#f28e2b',
+  '#e15759',
+  '#76b7b2',
+  '#59a14f',
+  '#edc948',
+  '#b07aa1',
+  '#ff9da7',
+  '#9c755f',
+  '#bab0ac',
+  '#d37295',
+  '#a0cbe8',
+  '#ffbe7d',
+  '#86bcb6',
+  '#8cd17d',
+  '#f1ce63',
+];
+
+export const BALANCE_CHART_CONFIG: ChartConfiguration<'line'> = {
+  type: 'line',
+  data: { labels: [], datasets: [] },
+  options: {
+    animation: false,
+    elements: { line: { tension: 0.3 }, point: { radius: 0, hitRadius: 20 } },
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        mode: 'nearest',
+        intersect: false,
+        filter: (item) => {
+          const raw = (item.dataset as any)['_rawValues'];
+          if (!raw) return item.parsed.y !== 0;
+          return raw[item.dataIndex] !== 0;
+        },
+        callbacks: {
+          label: (ctx) => {
+            const raw = (ctx.dataset as any)['_rawValues'];
+            const value = raw ? raw[ctx.dataIndex] : ctx.parsed.y;
+            return ` ${ctx.dataset.label}: ${new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(value)} ₽`;
+          },
+        },
+      },
+    },
+    scales: {
+      x: {
+        ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 12 },
+      },
+      y: {
+        min: 0,
+        ticks: {
+          callback: (value) =>
+            new Intl.NumberFormat('ru-RU', { notation: 'compact', maximumFractionDigits: 1 }).format(value as number),
+        },
+      },
+    },
+  },
 };

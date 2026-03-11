@@ -36,6 +36,7 @@ interface BalanceRow {
   accountRubEquity: Record<number, number>;
   brokerVirtualRub: Record<number, number>;
   accountRubContributions: Record<number, number>;
+  accountRubSuspendedContributions: Record<number, number>;
   isYearEnd: boolean;
 }
 
@@ -169,15 +170,19 @@ export class MoneyScreen implements OnInit {
     });
 
     const accountSeriesMap = new Map<number, number[]>();
+    const accountSuspendedSeriesMap = new Map<number, number[]>();
     accounts.forEach((a) => {
-      if (a.id) accountSeriesMap.set(a.id, []);
+      if (a.id) {
+        accountSeriesMap.set(a.id, []);
+        accountSuspendedSeriesMap.set(a.id, []);
+      }
     });
 
     rows.forEach((row) => {
       accounts.forEach((account) => {
         if (!account.id) return;
-        const series = accountSeriesMap.get(account.id)!;
-        series.push(row.accountRubContributions[account.id] ?? 0);
+        accountSeriesMap.get(account.id)!.push(row.accountRubContributions[account.id] ?? 0);
+        accountSuspendedSeriesMap.get(account.id)!.push(row.accountRubSuspendedContributions[account.id] ?? 0);
       });
     });
 
@@ -190,6 +195,7 @@ export class MoneyScreen implements OnInit {
           accountId: account.id,
           accountTitle: account.title,
           values,
+          suspendedValues: accountSuspendedSeriesMap.get(account.id) ?? [],
           isSuspended: suspendedAccountIds.has(account.id),
         });
       }
@@ -236,9 +242,11 @@ export class MoneyScreen implements OnInit {
     const fxInvestAccountIds = new Set<number>();
 
     const assetsById = new Map<number, string>();
+    const suspendedAssetIds = new Set<number>();
     this.assets$$().forEach((asset) => {
       if (!asset.id) return;
       assetsById.set(asset.id, asset.ticker);
+      if (asset.suspendedSince) suspendedAssetIds.add(asset.id);
     });
 
     accounts.forEach((account) => {
@@ -281,6 +289,7 @@ export class MoneyScreen implements OnInit {
       const accountRubEquity: Record<number, number> = {};
       const brokerVirtualRub: Record<number, number> = {};
       const accountRubContributions: Record<number, number> = {};
+      const accountRubSuspendedContributions: Record<number, number> = {};
       let total = 0;
 
       accounts.forEach((account) => {
@@ -296,9 +305,11 @@ export class MoneyScreen implements OnInit {
             const rubEquity = nativeAmount * fxToRubRate;
             accountRubEquity[account.id] = rubEquity;
             accountRubContributions[account.id] = rubEquity;
+            accountRubSuspendedContributions[account.id] = 0;
             total += rubEquity;
           } else {
             accountRubContributions[account.id] = nativeAmount;
+            accountRubSuspendedContributions[account.id] = 0;
             total += nativeAmount;
           }
 
@@ -318,11 +329,21 @@ export class MoneyScreen implements OnInit {
             usdRub,
             rates,
           );
+          const suspendedVirtualRub = this.getSuspendedBrokerVirtualRubForAccount(
+            account.id,
+            brokerUnitsByAsset,
+            assetsById,
+            suspendedAssetIds,
+            usdRub,
+            rates,
+          );
           brokerVirtualRub[account.id] = virtualRub;
           accountRubContributions[account.id] = rubFromBalance + virtualRub;
+          accountRubSuspendedContributions[account.id] = suspendedVirtualRub;
           total += virtualRub;
         } else {
           accountRubContributions[account.id] = rubFromBalance;
+          accountRubSuspendedContributions[account.id] = 0;
         }
       });
 
@@ -334,6 +355,7 @@ export class MoneyScreen implements OnInit {
         accountRubEquity,
         brokerVirtualRub,
         accountRubContributions,
+        accountRubSuspendedContributions,
         isYearEnd: this.isYearEnd(dateISO),
       });
     });
@@ -412,6 +434,39 @@ export class MoneyScreen implements OnInit {
       const assetId = Number(rawAssetId);
       if (!Number.isFinite(keyAccountId) || !Number.isFinite(assetId)) return;
       if (keyAccountId !== accountId) return;
+
+      const ticker = assetsById.get(assetId);
+      if (!ticker) return;
+
+      const quoteUsd = rates[ticker];
+      if (typeof quoteUsd !== 'number' || quoteUsd <= 0) return;
+
+      totalRub += units * quoteUsd * usdRub;
+    });
+
+    return totalRub;
+  }
+
+  private getSuspendedBrokerVirtualRubForAccount(
+    accountId: number,
+    brokerUnitsByAsset: Map<string, number>,
+    assetsById: Map<number, string>,
+    suspendedAssetIds: Set<number>,
+    usdRub: number | undefined,
+    rates: Record<string, number> | null,
+  ): number {
+    if (!rates || typeof usdRub !== 'number' || usdRub <= 0) return 0;
+
+    let totalRub = 0;
+    brokerUnitsByAsset.forEach((units, key) => {
+      if (units <= 0) return;
+
+      const [rawAccountId, rawAssetId] = key.split(':');
+      const keyAccountId = Number(rawAccountId);
+      const assetId = Number(rawAssetId);
+      if (!Number.isFinite(keyAccountId) || !Number.isFinite(assetId)) return;
+      if (keyAccountId !== accountId) return;
+      if (!suspendedAssetIds.has(assetId)) return;
 
       const ticker = assetsById.get(assetId);
       if (!ticker) return;

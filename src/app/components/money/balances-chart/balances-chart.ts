@@ -11,10 +11,11 @@ import {
   untracked,
   viewChild,
 } from '@angular/core';
-import { CHART_COLORS } from '@app/shared/chart-config';
+import { BALANCE_ACCOUNT_PALETTE, BALANCE_CHART_CONFIG, CHART_COLORS } from '@app/shared/chart-config';
 import { BalanceChartAccountSeries, BalanceChartData } from '@app/shared/types';
 import { VButton } from '@ui-kit/components/v-button/v-button';
 import { VCheckbox } from '@ui-kit/components/v-checkbox/v-checkbox';
+import { VToggle, VToggleItem } from '@ui-kit/components/v-toggle/v-toggle';
 import {
   CategoryScale,
   Chart,
@@ -31,29 +32,10 @@ import {
 
 Chart.register(CategoryScale, LinearScale, PointElement, LineElement, LineController, Title, Tooltip, Legend, Filler);
 
-const ACCOUNT_PALETTE = [
-  '#4e79a7',
-  '#f28e2b',
-  '#e15759',
-  '#76b7b2',
-  '#59a14f',
-  '#edc948',
-  '#b07aa1',
-  '#ff9da7',
-  '#9c755f',
-  '#bab0ac',
-  '#d37295',
-  '#a0cbe8',
-  '#ffbe7d',
-  '#86bcb6',
-  '#8cd17d',
-  '#f1ce63',
-];
-
 @Component({
   selector: 'balances-chart',
   templateUrl: './balances-chart.html',
-  imports: [VButton, VCheckbox],
+  imports: [VButton, VCheckbox, VToggle],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class BalancesChart implements AfterViewInit, OnDestroy {
@@ -62,18 +44,13 @@ export class BalancesChart implements AfterViewInit, OnDestroy {
   protected readonly chartCanvas = viewChild.required<ElementRef<HTMLCanvasElement>>('chartCanvas');
   protected readonly chart$$ = signal<Chart | null>(null);
   protected readonly showByAccount$$ = signal(false);
-  protected readonly hideSuspended$$ = signal(false);
+  protected readonly suspensionFilter$$ = signal<'all' | 'exclude' | 'only'>('all');
   protected readonly enabledAccountIds$$ = signal<Set<number>>(new Set());
 
   protected readonly activeAccountSeries$$ = computed(() => {
     const series = this.dataInput().accountSeries;
     const enabled = this.enabledAccountIds$$();
-    const hideSuspended = this.hideSuspended$$();
-    return series.filter((s) => {
-      if (!enabled.has(s.accountId)) return false;
-      if (hideSuspended && s.isSuspended) return false;
-      return true;
-    });
+    return series.filter((s) => enabled.has(s.accountId));
   });
 
   private readonly syncEnabledAccountsEffect = effect(() => {
@@ -93,75 +70,68 @@ export class BalancesChart implements AfterViewInit, OnDestroy {
     const data = this.dataInput();
     const showByAccount = this.showByAccount$$();
     const activeSeries = this.activeAccountSeries$$();
+    const suspensionFilter = this.suspensionFilter$$();
     const chart = this.chart$$();
     if (!chart) return;
-    this.rebuildChartDatasets(chart, data, showByAccount, activeSeries);
+    this.rebuildChartDatasets(chart, data, showByAccount, activeSeries, suspensionFilter);
   });
 
   public ngAfterViewInit(): void {
     const ctx = this.chartCanvas().nativeElement.getContext('2d');
     if (!ctx) return;
-
-    const chart = new Chart(ctx, {
-      type: 'line',
-      data: { labels: [], datasets: [] },
-      options: {
-        animation: false,
-        elements: { line: { tension: 0.3 } },
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            mode: 'index',
-            itemSort: (a, b) => b.datasetIndex - a.datasetIndex,
-            filter: (item) => {
-              const raw = (item.dataset as any)['_rawValues'];
-              if (!raw) return item.parsed.y !== 0;
-              return raw[item.dataIndex] !== 0;
-            },
-            callbacks: {
-              label: (ctx) => {
-                const raw = (ctx.dataset as any)['_rawValues'];
-                const value = raw ? raw[ctx.dataIndex] : ctx.parsed.y;
-                return ` ${ctx.dataset.label}: ${new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(value)} ₽`;
-              },
-            },
-          },
-        },
-        scales: {
-          x: {
-            ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 12 },
-          },
-          y: {
-            min: 0,
-            ticks: {
-              callback: (value) =>
-                new Intl.NumberFormat('ru-RU', { notation: 'compact', maximumFractionDigits: 1 }).format(
-                  value as number,
-                ),
-            },
-          },
-        },
-      },
-    });
-
-    this.chart$$.set(chart);
+    this.chart$$.set(new Chart(ctx, BALANCE_CHART_CONFIG));
   }
 
   public ngOnDestroy(): void {
     this.chart$$()?.destroy();
   }
 
-  protected toggleHideSuspended(): void {
-    this.hideSuspended$$.set(!this.hideSuspended$$());
+  protected readonly viewToggleItems: VToggleItem[] = [
+    { id: 'aggregated', label: 'Aggregated' },
+    { id: 'by-account', label: 'By Account' },
+  ];
+
+  protected readonly suspensionToggleItems: VToggleItem[] = [
+    { id: 'all', label: 'All' },
+    { id: 'exclude', label: 'Excl. Suspended' },
+    { id: 'only', label: 'Only Suspended' },
+  ];
+
+  protected viewToggleValue(): string[] {
+    return this.showByAccount$$() ? ['by-account'] : ['aggregated'];
   }
 
-  protected setShowByAccount(value: boolean): void {
-    this.showByAccount$$.set(value);
+  protected onViewToggleChange(value: string[]): void {
+    this.showByAccount$$.set(value[0] === 'by-account');
+  }
+
+  protected suspensionToggleValue(): string[] {
+    return [this.suspensionFilter$$()];
+  }
+
+  protected onSuspensionToggleChange(value: string[]): void {
+    this.suspensionFilter$$.set((value[0] ?? 'all') as 'all' | 'exclude' | 'only');
   }
 
   protected isAccountEnabled(accountId: number): boolean {
     return this.enabledAccountIds$$().has(accountId);
+  }
+
+  protected readonly allEnabled$$ = computed(() => {
+    const series = this.dataInput().accountSeries;
+    const enabled = this.enabledAccountIds$$();
+    return series.every((s) => enabled.has(s.accountId));
+  });
+
+  protected readonly allNoneLabel$$ = computed(() => (this.allEnabled$$() ? 'None' : 'All'));
+
+  protected toggleAll(): void {
+    const series = this.dataInput().accountSeries;
+    if (this.allEnabled$$()) {
+      this.enabledAccountIds$$.set(new Set());
+    } else {
+      this.enabledAccountIds$$.set(new Set(series.map((s) => s.accountId)));
+    }
   }
 
   protected toggleAccount(accountId: number, checked: boolean): void {
@@ -177,7 +147,7 @@ export class BalancesChart implements AfterViewInit, OnDestroy {
 
   protected getAccountColor(accountId: number): string {
     const index = this.dataInput().accountSeries.findIndex((s) => s.accountId === accountId);
-    return ACCOUNT_PALETTE[index % ACCOUNT_PALETTE.length];
+    return BALANCE_ACCOUNT_PALETTE[index % BALANCE_ACCOUNT_PALETTE.length];
   }
 
   private rebuildChartDatasets(
@@ -185,20 +155,28 @@ export class BalancesChart implements AfterViewInit, OnDestroy {
     data: BalanceChartData,
     showByAccount: boolean,
     activeSeries: BalanceChartAccountSeries[],
+    suspensionFilter: 'all' | 'exclude' | 'only',
   ): void {
     const labels = data.dates.map((d) => this.formatDateLabel(d));
 
+    const getEffectiveValue = (s: BalanceChartAccountSeries, i: number): number => {
+      if (suspensionFilter === 'only') return Math.max(0, s.suspendedValues[i] ?? 0);
+      if (suspensionFilter === 'exclude') return Math.max(0, (s.values[i] ?? 0) - (s.suspendedValues[i] ?? 0));
+      return Math.max(0, s.values[i] ?? 0);
+    };
+
     if (!showByAccount) {
+      const filteredTotals = data.dates.map((_, i) =>
+        activeSeries.reduce((sum, s) => sum + getEffectiveValue(s, i), 0),
+      );
       chart.data.labels = labels;
       chart.data.datasets = [
         {
           label: 'Баланс',
-          data: data.totals,
+          data: filteredTotals,
           fill: true,
           borderColor: CHART_COLORS.main,
           backgroundColor: CHART_COLORS.mainAlpha,
-          pointRadius: 2,
-          pointHitRadius: 20,
         },
       ];
       chart.update('none');
@@ -211,10 +189,10 @@ export class BalancesChart implements AfterViewInit, OnDestroy {
 
     activeSeries.forEach((series, localIdx) => {
       const globalIdx = allSeries.findIndex((s) => s.accountId === series.accountId);
-      const color = ACCOUNT_PALETTE[globalIdx % ACCOUNT_PALETTE.length];
+      const color = BALANCE_ACCOUNT_PALETTE[globalIdx % BALANCE_ACCOUNT_PALETTE.length];
       const colorAlpha = color + '99';
 
-      const rawValues = series.values.map((v) => Math.max(0, v));
+      const rawValues = series.values.map((_, i) => getEffectiveValue(series, i));
       const cumulativeData = rawValues.map((v, i) => {
         accumulated[i] += v;
         return accumulated[i];
@@ -226,8 +204,6 @@ export class BalancesChart implements AfterViewInit, OnDestroy {
         fill: localIdx === 0 ? 'origin' : '-1',
         borderColor: color,
         backgroundColor: colorAlpha,
-        pointRadius: 2,
-        pointHitRadius: 20,
         _rawValues: rawValues,
       } as unknown as ChartDataset<'line'>);
     });
