@@ -215,8 +215,9 @@ export class BalancesChart implements AfterViewInit, OnDestroy {
 
   private formatDateLabel(dateISO: string): string {
     const date = new Date(dateISO + 'T00:00:00');
-    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const month = date.getMonth();
     const year = date.getFullYear();
-    return `${month}.${year}`;
+    if (month === 0) return String(year);
+    return `${String(month + 1).padStart(2, '0')}.${year}`;
   }
 }

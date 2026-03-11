@@ -23,6 +23,7 @@ interface GroupMeasurement {
 @Component({
   selector: 'transactions-list',
   templateUrl: './transactions-list.html',
+  styleUrl: './transactions-list.scss',
   imports: [DefaultModal, FormModal, TransactionForm, VButton, VCard, VIcon],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -47,14 +48,16 @@ export class TransactionsList {
 
   private readonly scrollContainerElem = viewChild<ElementRef<HTMLDivElement>>('scrollContainer');
 
-  private readonly HEADER_HEIGHT = 56;
-  private readonly TRANSACTION_HEIGHT = 104;
-  private readonly GROUP_BOTTOM_MARGIN = 24;
-  private readonly BUFFER_PX = 600;
+  private readonly HEADER_HEIGHT = 24;
+  private readonly TRANSACTION_HEIGHT = 32;
+  private readonly GROUP_BOTTOM_MARGIN = 16;
+  private readonly BUFFER_PX = 1200;
 
-  protected readonly containerHeight = 640;
+  protected readonly containerHeight = 800;
 
   private readonly scrollTop$$ = signal(0);
+
+  protected readonly isAtTop$$ = computed(() => this.scrollTop$$() === 0);
 
   private readonly groupMeasurements$$ = computed<GroupMeasurement[]>(() => {
     const groups = this.groupedTransactions$$();
@@ -188,12 +191,7 @@ export class TransactionsList {
     const normalizedCategoryId = Number(categoryId);
     const category = this.categories$$().find((c) => Number(c.id) === normalizedCategoryId);
     if (!category) return 'Unknown Category';
-    if (!category.parentId) return category.name;
-
-    const parentCategory = this.categories$$().find((parent) => Number(parent.id) === Number(category.parentId));
-    if (!parentCategory) return category.name;
-
-    return `${parentCategory.name} / ${category.name}`;
+    return category.name;
   }
 
   protected formatAmount(transaction: Transaction): string {
@@ -346,16 +344,6 @@ export class TransactionsList {
     });
 
     const groupsSortedByDate = Array.from(transactionsByDateMap.values()).sort((a, b) => b.date.localeCompare(a.date));
-
-    // Let's see if we want to sort transactions by id within each group
-    // sortedGroups.forEach((group) => {
-    //   group.transactions.sort((a, b) => {
-    //     if (a.id && b.id) {
-    //       return b.id - a.id;
-    //     }
-    //     return 0;
-    //   });
-    // });
 
     return groupsSortedByDate;
   }

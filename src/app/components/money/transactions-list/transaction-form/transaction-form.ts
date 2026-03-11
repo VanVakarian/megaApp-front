@@ -25,7 +25,6 @@ import {
   TransactionKind,
 } from '@app/shared/types';
 import { VButton } from '@ui-kit/components/v-button/v-button';
-import { VCard } from '@ui-kit/components/v-card/v-card';
 import { VCheckbox } from '@ui-kit/components/v-checkbox/v-checkbox';
 import { DropdownItem, VDropdown } from '@ui-kit/components/v-dropdown/v-dropdown';
 import { IconName, VIcon } from '@ui-kit/components/v-icon/v-icon';
@@ -36,7 +35,7 @@ import { VToggle } from '@ui-kit/components/v-toggle/v-toggle';
   selector: 'transaction-form',
   templateUrl: './transaction-form.html',
   styleUrl: './transaction-form.scss',
-  imports: [FormsModule, VButton, VCard, VCheckbox, VDropdown, VIcon, VInput, VToggle],
+  imports: [FormsModule, VButton, VCheckbox, VDropdown, VIcon, VInput, VToggle],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class TransactionForm {

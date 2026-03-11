@@ -1,5 +1,5 @@
 import { HttpClient } from '@angular/common/http';
-import { Injectable, signal, WritableSignal } from '@angular/core';
+import { computed, Injectable, signal, WritableSignal } from '@angular/core';
 import { Observable, of, Subject } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import {
@@ -67,6 +67,12 @@ export class MoneyService {
   public readonly investAssetTrades$$: WritableSignal<InvestAssetTrade[]> = signal([]);
   public readonly transactions$$: WritableSignal<Transaction[]> = signal([]);
   public readonly rateHistory$$: WritableSignal<MoneyRateHistory[]> = signal([]);
+
+  private readonly loadedSources$$ = signal<Set<string>>(new Set());
+  public readonly isChartDataReady$$ = computed(() => {
+    const loaded = this.loadedSources$$();
+    return loaded.has('accounts') && loaded.has('assets') && loaded.has('transactions') && loaded.has('rateHistory');
+  });
 
   public readonly requestResult$ = new Subject<ServerResponseBasic>();
 
@@ -294,12 +300,15 @@ export class MoneyService {
         if (response?.success && response.data) {
           const normalizedAccounts = response.data.map((account) => this.normalizeAccount(account as AccountApi));
           this.accounts$$.set(normalizedAccounts);
+          this.loadedSources$$.update((s) => new Set([...s, 'accounts']));
           return normalizedAccounts;
         }
+        this.loadedSources$$.update((s) => new Set([...s, 'accounts']));
         return [];
       }),
       catchError((error) => {
         console.error('Error fetching accounts:', error);
+        this.loadedSources$$.update((s) => new Set([...s, 'accounts']));
         this.requestResult$.next({ result: false });
         return of([]);
       }),
@@ -422,12 +431,15 @@ export class MoneyService {
       map((response: AssetsResponse) => {
         if (response.success && response.data) {
           this.assets$$.set(response.data);
+          this.loadedSources$$.update((s) => new Set([...s, 'assets']));
           return response.data;
         }
+        this.loadedSources$$.update((s) => new Set([...s, 'assets']));
         return [];
       }),
       catchError((error) => {
         console.error('Error fetching assets:', error);
+        this.loadedSources$$.update((s) => new Set([...s, 'assets']));
         this.requestResult$.next({ result: false });
         return of([]);
       }),
@@ -539,12 +551,15 @@ export class MoneyService {
       map((response: TransactionsResponse) => {
         if (response.success && response.data) {
           this.transactions$$.set(response.data);
+          this.loadedSources$$.update((s) => new Set([...s, 'transactions']));
           return response.data;
         }
+        this.loadedSources$$.update((s) => new Set([...s, 'transactions']));
         return [];
       }),
       catchError((error) => {
         console.error('Error fetching transactions:', error);
+        this.loadedSources$$.update((s) => new Set([...s, 'transactions']));
         this.requestResult$.next({ result: false });
         return of([]);
       }),
@@ -556,6 +571,7 @@ export class MoneyService {
       map((response: RateHistoryResponse | null) => {
         if (!response || !response.success || !Array.isArray(response.data)) {
           this.rateHistory$$.set([]);
+          this.loadedSources$$.update((s) => new Set([...s, 'rateHistory']));
           return [];
         }
 
@@ -564,10 +580,12 @@ export class MoneyService {
           ratesJson: this.parseRatesJson(item.ratesJson),
         }));
         this.rateHistory$$.set(parsed);
+        this.loadedSources$$.update((s) => new Set([...s, 'rateHistory']));
         return parsed;
       }),
       catchError((error) => {
         console.error('Error fetching money rate history:', error);
+        this.loadedSources$$.update((s) => new Set([...s, 'rateHistory']));
         this.requestResult$.next({ result: false });
         return of([]);
       }),

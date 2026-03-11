@@ -68,6 +68,7 @@ export class MoneyScreen implements OnInit {
   private readonly assets$$ = computed(() => this.moneyService.assets$$());
   private readonly transactions$$ = computed(() => this.moneyService.transactions$$());
   private readonly rateHistory$$ = computed(() => this.moneyService.rateHistory$$());
+  protected readonly isChartDataReady$$ = computed(() => this.moneyService.isChartDataReady$$());
   private readonly fxTickers = new Set(['USD', 'EUR']);
 
   private readonly accountOrder = [
@@ -242,11 +243,11 @@ export class MoneyScreen implements OnInit {
     const fxInvestAccountIds = new Set<number>();
 
     const assetsById = new Map<number, string>();
-    const suspendedAssetIds = new Set<number>();
+    const assetSuspendedSince = new Map<number, string>();
     this.assets$$().forEach((asset) => {
       if (!asset.id) return;
       assetsById.set(asset.id, asset.ticker);
-      if (asset.suspendedSince) suspendedAssetIds.add(asset.id);
+      if (asset.suspendedSince) assetSuspendedSince.set(asset.id, asset.suspendedSince);
     });
 
     accounts.forEach((account) => {
@@ -333,7 +334,8 @@ export class MoneyScreen implements OnInit {
             account.id,
             brokerUnitsByAsset,
             assetsById,
-            suspendedAssetIds,
+            assetSuspendedSince,
+            dateISO,
             usdRub,
             rates,
           );
@@ -451,7 +453,8 @@ export class MoneyScreen implements OnInit {
     accountId: number,
     brokerUnitsByAsset: Map<string, number>,
     assetsById: Map<number, string>,
-    suspendedAssetIds: Set<number>,
+    assetSuspendedSince: Map<number, string>,
+    currentDateISO: string,
     usdRub: number | undefined,
     rates: Record<string, number> | null,
   ): number {
@@ -466,7 +469,9 @@ export class MoneyScreen implements OnInit {
       const assetId = Number(rawAssetId);
       if (!Number.isFinite(keyAccountId) || !Number.isFinite(assetId)) return;
       if (keyAccountId !== accountId) return;
-      if (!suspendedAssetIds.has(assetId)) return;
+
+      const suspendedSince = assetSuspendedSince.get(assetId);
+      if (!suspendedSince || currentDateISO < suspendedSince) return;
 
       const ticker = assetsById.get(assetId);
       if (!ticker) return;
