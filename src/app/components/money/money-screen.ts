@@ -4,11 +4,18 @@ import { VCard } from '@ui-kit/components/v-card/v-card';
 import { IconName, VIcon } from '@ui-kit/components/v-icon/v-icon';
 import { firstValueFrom } from 'rxjs';
 import { MoneyService } from '../../services/money.service';
+import { INCOME_CHART_ALLOWED_CATEGORIES, INCOME_VIRTUAL_SERIES } from '../../shared/chart-config';
 import {
   Account,
+  Asset,
+  AssetType,
   BalanceChartAccountSeries,
   BalanceChartData,
   Currency,
+  DividendRow,
+  IncomeChartData,
+  InvestAssetTrade,
+  PositionLotRow,
   SymbolPosition,
   Transaction,
   TransactionKind,
@@ -18,6 +25,8 @@ import { AssetsList } from './assets-list/assets-list';
 import { BalancesChart } from './balances-chart/balances-chart';
 import { CategoriesList } from './categories-list/categories-list';
 import { CurrenciesList } from './currencies-list/currencies-list';
+import { IncomeChart } from './income-chart/income-chart';
+import { IncomeTables } from './income-tables/income-tables';
 import { OrganizationsList } from './organizations-list/organizations-list';
 import { TransactionsList } from './transactions-list/transactions-list';
 
@@ -51,6 +60,8 @@ interface BalanceRow {
     AssetsList,
     TransactionsList,
     BalancesChart,
+    IncomeChart,
+    IncomeTables,
     VButton,
     VCard,
     VIcon,
@@ -68,7 +79,9 @@ export class MoneyScreen implements OnInit {
   private readonly currencies$$ = computed(() => this.moneyService.currencies$$());
   private readonly assets$$ = computed(() => this.moneyService.assets$$());
   private readonly transactions$$ = computed(() => this.moneyService.transactions$$());
+  private readonly investAssetTrades$$ = computed(() => this.moneyService.investAssetTrades$$());
   private readonly rateHistory$$ = computed(() => this.moneyService.rateHistory$$());
+  private readonly categories$$ = computed(() => this.moneyService.categories$$());
   protected readonly isChartDataReady$$ = computed(() => this.moneyService.isChartDataReady$$());
   private readonly fxTickers = new Set(['USD', 'EUR']);
 
@@ -94,6 +107,7 @@ export class MoneyScreen implements OnInit {
   protected readonly visibleAccountColumns$$ = computed(() => this.getVisibleAccounts());
   protected readonly balanceRows$$ = computed(() => this.buildBalanceRows());
   protected readonly balanceChartData$$ = computed(() => this.buildChartData());
+  protected readonly incomeChartData$$ = computed(() => this.buildIncomeChartData());
 
   public ngOnInit(): void {
     firstValueFrom(this.moneyService.getCurrencies());
@@ -103,6 +117,7 @@ export class MoneyScreen implements OnInit {
     firstValueFrom(this.moneyService.getAssets());
     firstValueFrom(this.moneyService.getTransactions());
     firstValueFrom(this.moneyService.getRateHistory());
+    firstValueFrom(this.moneyService.getInvestAssetTrades());
   }
 
   protected setActiveTab(tab: MoneyTab): void {
@@ -537,6 +552,7 @@ export class MoneyScreen implements OnInit {
     const currency = this.getCurrencyForAccount(accountId);
     if (!currency || currency.ticker === 'RUB') return amount;
     if (!rates || typeof usdRub !== 'number' || usdRub <= 0) return amount;
+    if (currency.ticker === 'USD') return amount * usdRub;
     const assetUsd = rates[currency.ticker];
     if (typeof assetUsd !== 'number' || assetUsd <= 0) return amount;
     return amount * assetUsd * usdRub;
@@ -623,5 +639,341 @@ export class MoneyScreen implements OnInit {
   private isYearEnd(dateISO: string): boolean {
     const date = new Date(dateISO + 'T00:00:00');
     return date.getMonth() === 11 && this.isEndOfMonth(dateISO);
+  }
+
+  private buildIncomeChartData(): IncomeChartData {
+    const transactions = this.transactions$$();
+    const categories = this.categories$$();
+
+    const dividendRows = this.buildDividendRows();
+    const positionLotRows = this.buildPositionLotRows();
+
+    const allowedCategoryIds = new Set(
+      categories
+        .filter((c) => c.id !== undefined && INCOME_CHART_ALLOWED_CATEGORIES.has(c.name))
+        .map((c) => c.id as number),
+    );
+    const incomeTransactions = transactions.filter(
+      (t) =>
+        t.kind === TransactionKind.INCOME && !t.isGift && t.categoryId != null && allowedCategoryIds.has(t.categoryId),
+    );
+
+    const allDates: string[] = [
+      ...incomeTransactions.map((t) => t.dateISO),
+      ...dividendRows.map((r) => r.dateISO),
+      ...positionLotRows.map((r) => r.buyDateISO),
+      ...positionLotRows.filter((r) => r.sellDateISO != null).map((r) => r.sellDateISO!),
+    ];
+
+    const today = new Date();
+    const currentMonthFirstDay = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-01`;
+    if (positionLotRows.some((r) => r.status === 'open')) {
+      allDates.push(currentMonthFirstDay);
+    }
+
+    if (!allDates.length) return { months: [], categorySeries: [], dividendRows, positionLotRows };
+
+    allDates.sort();
+    const firstDate = new Date(allDates[0] + 'T00:00:00');
+    const lastDate = new Date(allDates[allDates.length - 1] + 'T00:00:00');
+
+    const months: string[] = [];
+    const cursor = new Date(firstDate.getFullYear(), firstDate.getMonth(), 1);
+    while (
+      cursor.getFullYear() < lastDate.getFullYear() ||
+      (cursor.getFullYear() === lastDate.getFullYear() && cursor.getMonth() <= lastDate.getMonth())
+    ) {
+      const eom = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0);
+      months.push(
+        `${eom.getFullYear()}-${String(eom.getMonth() + 1).padStart(2, '0')}-${String(eom.getDate()).padStart(2, '0')}`,
+      );
+      cursor.setMonth(cursor.getMonth() + 1);
+    }
+
+    const monthIndexMap = new Map<string, number>(months.map((m, i) => [m.substring(0, 7), i]));
+    const categoryValues = new Map<number | null, number[]>();
+
+    incomeTransactions.forEach((t) => {
+      const monthKey = t.dateISO.substring(0, 7);
+      const monthIndex = monthIndexMap.get(monthKey);
+      if (monthIndex === undefined) return;
+
+      const rates = this.getRatesForDate(t.dateISO);
+      const usdRub = rates?.['RUB'] ? 1 / rates['RUB'] : undefined;
+      const rubAmount = this.convertNativeToRub(t.amount, t.accountId, rates, usdRub);
+
+      const catId = t.categoryId ?? null;
+      if (!categoryValues.has(catId)) {
+        categoryValues.set(catId, new Array(months.length).fill(0));
+      }
+      categoryValues.get(catId)![monthIndex] += rubAmount;
+    });
+
+    const dividendValues = new Array(months.length).fill(0);
+    dividendRows.forEach((row) => {
+      const monthKey = row.dateISO.substring(0, 7);
+      const idx = monthIndexMap.get(monthKey);
+      if (idx !== undefined) dividendValues[idx] += row.amountRub;
+    });
+
+    const closedValues = new Array(months.length).fill(0);
+    const cbOpenValues = new Array(months.length).fill(0);
+    const cryptoClosedValues = new Array(months.length).fill(0);
+    const cryptoOpenValues = new Array(months.length).fill(0);
+    positionLotRows
+      .filter((r) => r.pnlRub !== null)
+      .forEach((row) => {
+        const isCrypto = row.assetType === AssetType.CRYPTO;
+        const perMonth = row.pnlRub! / row.openMonths.length;
+        if (row.status === 'closed') {
+          const target = isCrypto ? cryptoClosedValues : closedValues;
+          row.openMonths.forEach((monthKey) => {
+            const idx = monthIndexMap.get(monthKey);
+            if (idx !== undefined) target[idx] += perMonth;
+          });
+        } else {
+          const target = isCrypto ? cryptoOpenValues : cbOpenValues;
+          row.openMonths.forEach((monthKey) => {
+            const idx = monthIndexMap.get(monthKey);
+            if (idx !== undefined) target[idx] += perMonth;
+          });
+        }
+      });
+
+    const pushIfNonZero = (categoryId: number, categoryName: string, values: number[]) => {
+      if (values.some((v) => v !== 0)) {
+        categorySeries.push({ categoryId, categoryName, values });
+      }
+    };
+
+    const categorySeries = Array.from(categoryValues.entries()).map(([catId, values]) => {
+      const category = catId !== null ? categories.find((c) => c.id === catId) : null;
+      return {
+        categoryId: catId,
+        categoryName: category?.name ?? 'Other',
+        values,
+      };
+    });
+
+    categorySeries.push({
+      categoryId: INCOME_VIRTUAL_SERIES.DIVIDENDS,
+      categoryName: 'Дивиденды',
+      values: dividendValues,
+    });
+    pushIfNonZero(INCOME_VIRTUAL_SERIES.CB_CLOSED_PNL, 'ЦБ закрытые', closedValues);
+    pushIfNonZero(INCOME_VIRTUAL_SERIES.CB_OPEN_PNL, 'ЦБ открытые', cbOpenValues);
+    pushIfNonZero(INCOME_VIRTUAL_SERIES.CRYPTO_CLOSED_PNL, 'Крипта закрытые', cryptoClosedValues);
+    pushIfNonZero(INCOME_VIRTUAL_SERIES.CRYPTO_OPEN_PNL, 'Крипта открытые', cryptoOpenValues);
+
+    const seriesOrderMap = new Map([
+      ['Зарплата', 0],
+      ['Проекты', 1],
+      ['Проценты', 2],
+      ['Дивиденды', 3],
+      ['ЦБ закрытые', 4],
+      ['ЦБ открытые', 5],
+      ['Крипта закрытые', 6],
+      ['Крипта открытые', 7],
+    ]);
+
+    categorySeries.sort((a, b) => {
+      const orderA = seriesOrderMap.get(a.categoryName) ?? 99;
+      const orderB = seriesOrderMap.get(b.categoryName) ?? 99;
+      return orderA - orderB;
+    });
+
+    return { months, categorySeries, dividendRows, positionLotRows };
+  }
+
+  private buildDividendRows(): DividendRow[] {
+    const transactions = this.transactions$$();
+    const assets = this.assets$$();
+    const accounts = this.accounts$$();
+
+    const assetMap = new Map<number, Asset>();
+    assets.forEach((a) => {
+      if (a.id) assetMap.set(a.id, a);
+    });
+
+    const accountMap = new Map<number, string>();
+    accounts.forEach((a) => {
+      if (a.id) accountMap.set(a.id, a.title);
+    });
+
+    return transactions
+      .filter((t) => t.kind === TransactionKind.INVEST_DIVIDEND)
+      .map((t) => {
+        const details = this.parseDetails(t.detailsJSON);
+        const assetId = details?.assetId != null ? Number(details.assetId) : null;
+        const asset = assetId ? assetMap.get(assetId) : null;
+
+        const rates = this.getRatesForDate(t.dateISO);
+        const usdRub = rates?.['RUB'] ? 1 / rates['RUB'] : undefined;
+        const amountRub = this.convertNativeToRub(t.amount, t.accountId, rates, usdRub);
+
+        return {
+          id: t.id ?? 0,
+          dateISO: t.dateISO,
+          dateDisplay: this.formatDateDMY(t.dateISO),
+          accountTitle: accountMap.get(t.accountId) ?? '?',
+          ticker: asset?.ticker ?? '?',
+          amountRub,
+          notes: t.notes ?? '',
+        };
+      })
+      .sort((a, b) => a.dateISO.localeCompare(b.dateISO));
+  }
+
+  private buildPositionLotRows(): PositionLotRow[] {
+    const trades = this.investAssetTrades$$();
+    const accounts = this.accounts$$();
+
+    if (!trades.length) return [];
+
+    const accountMap = new Map<number, string>();
+    accounts.forEach((a) => {
+      if (a.id) accountMap.set(a.id, a.title);
+    });
+
+    const today = new Date();
+    const currentMonthISO = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+    const currentDateISO = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+    const groupMap = new Map<string, InvestAssetTrade[]>();
+    trades.forEach((trade) => {
+      if (!trade.assetId) return;
+      const key = `${trade.accountId}:${trade.assetId}`;
+      if (!groupMap.has(key)) groupMap.set(key, []);
+      groupMap.get(key)!.push(trade);
+    });
+
+    const result: PositionLotRow[] = [];
+
+    groupMap.forEach((tradesInGroup) => {
+      const buys = tradesInGroup
+        .filter((t) => t.kind === TransactionKind.INVEST_BUY)
+        .sort((a, b) => a.dateISO.localeCompare(b.dateISO) || a.id - b.id);
+      const sells = tradesInGroup
+        .filter((t) => t.kind === TransactionKind.INVEST_SELL)
+        .sort((a, b) => a.dateISO.localeCompare(b.dateISO) || a.id - b.id);
+
+      const firstTrade = tradesInGroup[0];
+      const ticker = firstTrade.assetTicker ?? '?';
+      const accountTitle = accountMap.get(firstTrade.accountId) ?? '?';
+
+      const lotQueue = buys.map((trade) => {
+        const details = this.parseDetails(trade.detailsJSON);
+        const qty = this.toPositiveNumber(details?.quantity) ?? 0;
+        const rates = this.getRatesForDate(trade.dateISO);
+        const usdRub = rates?.['RUB'] ? 1 / rates['RUB'] : undefined;
+        const amountRub = this.convertNativeToRub(trade.amount, trade.accountId, rates, usdRub);
+        return { trade, qty, amountRub, remaining: qty };
+      });
+
+      sells.forEach((sell) => {
+        const sellDetails = this.parseDetails(sell.detailsJSON);
+        const sellQty = this.toPositiveNumber(sellDetails?.quantity) ?? 0;
+        const sellRates = this.getRatesForDate(sell.dateISO);
+        const sellUsdRub = sellRates?.['RUB'] ? 1 / sellRates['RUB'] : undefined;
+        const sellAmountRub = this.convertNativeToRub(sell.amount, sell.accountId, sellRates, sellUsdRub);
+
+        let remainingToMatch = sellQty;
+
+        for (const lot of lotQueue) {
+          if (remainingToMatch <= 0) break;
+          if (lot.remaining <= 0) continue;
+
+          const matchedQty = Math.min(lot.remaining, remainingToMatch);
+          const costRub = lot.qty > 0 ? lot.amountRub * (matchedQty / lot.qty) : 0;
+          const proceedsRub = sellQty > 0 ? sellAmountRub * (matchedQty / sellQty) : 0;
+
+          const buyMonth = lot.trade.dateISO.substring(0, 7);
+          const sellMonth = sell.dateISO.substring(0, 7);
+          const openMonths = this.generateMonthRange(buyMonth, sellMonth);
+
+          result.push({
+            status: 'closed',
+            ticker,
+            accountTitle,
+            assetType: firstTrade.assetType ?? null,
+            qty: matchedQty,
+            buyDateISO: lot.trade.dateISO,
+            sellDateISO: sell.dateISO,
+            costRub,
+            proceedsRub,
+            currentValueRub: null,
+            pnlRub: proceedsRub - costRub,
+            openMonths,
+          });
+
+          lot.remaining -= matchedQty;
+          remainingToMatch -= matchedQty;
+        }
+      });
+
+      const currentRates = this.getRatesForDate(currentDateISO);
+      const currentUsdRub = currentRates?.['RUB'] ? 1 / currentRates['RUB'] : undefined;
+
+      lotQueue.forEach((lot) => {
+        if (lot.remaining <= 0) return;
+
+        const costRub = lot.qty > 0 ? lot.amountRub * (lot.remaining / lot.qty) : 0;
+
+        let currentValueRub: number | null = null;
+        if (currentRates && typeof currentUsdRub === 'number' && currentUsdRub > 0 && ticker !== '?') {
+          const quoteUsd = currentRates[ticker];
+          if (typeof quoteUsd === 'number' && quoteUsd > 0) {
+            currentValueRub = lot.remaining * quoteUsd * currentUsdRub;
+          }
+        }
+
+        const buyMonth = lot.trade.dateISO.substring(0, 7);
+        const openMonths = this.generateMonthRange(buyMonth, currentMonthISO);
+
+        result.push({
+          status: 'open',
+          ticker,
+          accountTitle,
+          assetType: firstTrade.assetType ?? null,
+          qty: lot.remaining,
+          buyDateISO: lot.trade.dateISO,
+          sellDateISO: null,
+          costRub,
+          proceedsRub: null,
+          currentValueRub,
+          pnlRub: currentValueRub !== null ? currentValueRub - costRub : null,
+          openMonths,
+        });
+      });
+    });
+
+    result.sort((a, b) => {
+      if (a.status !== b.status) return a.status === 'closed' ? -1 : 1;
+      const dateA = a.sellDateISO ?? a.buyDateISO;
+      const dateB = b.sellDateISO ?? b.buyDateISO;
+      return dateB.localeCompare(dateA);
+    });
+
+    return result;
+  }
+
+  private generateMonthRange(fromMonthISO: string, toMonthISO: string): string[] {
+    const months: string[] = [];
+    const [fromYear, fromMonth] = fromMonthISO.split('-').map(Number);
+    const [toYear, toMonth] = toMonthISO.split('-').map(Number);
+
+    let year = fromYear;
+    let month = fromMonth;
+
+    while (year < toYear || (year === toYear && month <= toMonth)) {
+      months.push(`${year}-${String(month).padStart(2, '0')}`);
+      month++;
+      if (month > 12) {
+        month = 1;
+        year++;
+      }
+    }
+
+    return months;
   }
 }

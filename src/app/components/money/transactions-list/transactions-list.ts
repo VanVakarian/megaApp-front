@@ -36,12 +36,12 @@ export class TransactionsList {
    * Thousands separator. Options (narrowest to widest):
    * '\u2006' six-per-em   ~1/6em
    * '\u2009' thin space   ~1/5em
-   * '\u202F' narrow-nbsp  ~1/4em  ← current
-   * '\u2005' four-per-em  ~1/4em
+   * '\u202F' narrow-nbsp  ~1/4em
+   * '\u2005' four-per-em  ~1/4em  ← current
    * '\u2004' three-per-em ~1/3em
    * '\u2002' en-space     ~1/2em
    */
-  private readonly THOUSANDS_SEP = '\u202F';
+  private readonly THOUSANDS_SEP = '\u2005';
 
   private readonly currencies$$ = computed(() => this.moneyService.currencies$$());
   private readonly categories$$ = computed(() => this.moneyService.categories$$());

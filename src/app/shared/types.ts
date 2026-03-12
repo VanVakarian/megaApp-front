@@ -472,6 +472,44 @@ export interface BalanceChartData {
   accountSeries: BalanceChartAccountSeries[];
 }
 
+export interface IncomeChartCategorySeries {
+  categoryId: number | null;
+  categoryName: string;
+  values: number[];
+}
+
+export interface DividendRow {
+  id: number;
+  dateISO: string;
+  dateDisplay: string;
+  accountTitle: string;
+  ticker: string;
+  amountRub: number;
+  notes: string;
+}
+
+export interface PositionLotRow {
+  status: 'closed' | 'open';
+  ticker: string;
+  accountTitle: string;
+  assetType: AssetType | null;
+  qty: number;
+  buyDateISO: string;
+  sellDateISO: string | null;
+  costRub: number;
+  proceedsRub: number | null;
+  currentValueRub: number | null;
+  pnlRub: number | null;
+  openMonths: string[];
+}
+
+export interface IncomeChartData {
+  months: string[];
+  categorySeries: IncomeChartCategorySeries[];
+  dividendRows: DividendRow[];
+  positionLotRows: PositionLotRow[];
+}
+
 // export interface Notification {
 //   id: number;
 //   message: string;

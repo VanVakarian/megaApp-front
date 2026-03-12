@@ -1,0 +1,129 @@
+<div class="flex flex-col gap-4">
+  @if (dividendRows$$().length > 0) {
+    <div>
+      <div class="mb-1 text-sm font-semibold">Dividends</div>
+      <table class="min-w-full font-mono text-sm">
+        <thead class="text-left">
+          <tr class="border-neutral-400 border-b-2">
+            <th class="py-0.5 px-2">Date</th>
+            <th class="py-0.5 px-2 border-l border-neutral-200">Account</th>
+            <th class="py-0.5 px-2 border-l border-neutral-200">Ticker</th>
+            <th class="py-0.5 px-2 border-l border-neutral-200">Notes</th>
+            <th class="py-0.5 px-2 text-right border-l border-neutral-200">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of dividendRows$$(); track row.id) {
+            <tr class="border-neutral-200 border-b">
+              <td class="whitespace-nowrap py-0.5 px-2">{{ row.dateDisplay }}</td>
+              <td class="whitespace-nowrap py-0.5 px-2 border-l border-neutral-200">{{ row.accountTitle }}</td>
+              <td class="whitespace-nowrap py-0.5 px-2 border-l border-neutral-200 font-semibold">{{ row.ticker }}</td>
+              <td class="py-0.5 px-2 border-l border-neutral-200">{{ row.notes }}</td>
+              <td class="whitespace-nowrap py-0.5 px-2 text-right border-l border-neutral-200 text-green-700">
+                {{ formatAmountRub(row.amountRub) }}
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+
+  @if (closedLotRows$$().length > 0) {
+    <div>
+      <div class="mb-1 text-sm font-semibold">Closed Positions</div>
+      <table class="min-w-full font-mono text-sm">
+        <thead class="text-left">
+          <tr class="border-neutral-400 border-b-2">
+            <th class="py-0.5 px-2">Ticker</th>
+            <th class="py-0.5 px-2 border-l border-neutral-200">Account</th>
+            <th class="py-0.5 px-2 text-right border-l border-neutral-200">Qty</th>
+            <th class="py-0.5 px-2 border-l border-neutral-200">Buy Date</th>
+            <th class="py-0.5 px-2 border-l border-neutral-200">Sell Date</th>
+            <th class="py-0.5 px-2 border-l border-neutral-200">Period</th>
+            <th class="py-0.5 px-2 text-right border-l border-neutral-200">Cost</th>
+            <th class="py-0.5 px-2 text-right border-l border-neutral-200">Proceeds</th>
+            <th class="py-0.5 px-2 text-right border-l border-neutral-200">P&amp;L</th>
+            <th class="py-0.5 px-2 text-right border-l border-neutral-200">P&amp;L/mo</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of closedLotRows$$(); track $index) {
+            <tr class="border-neutral-200 border-b">
+              <td class="whitespace-nowrap py-0.5 px-2 font-semibold">{{ row.ticker }}</td>
+              <td class="whitespace-nowrap py-0.5 px-2 border-l border-neutral-200">{{ row.accountTitle }}</td>
+              <td class="whitespace-nowrap py-0.5 px-2 text-right border-l border-neutral-200">{{ formatQty(row.qty) }}</td>
+              <td class="whitespace-nowrap py-0.5 px-2 border-l border-neutral-200">{{ row.buyDateISO }}</td>
+              <td class="whitespace-nowrap py-0.5 px-2 border-l border-neutral-200">{{ row.sellDateISO }}</td>
+              <td class="whitespace-nowrap py-0.5 px-2 border-l border-neutral-200">{{ formatPeriod(row.openMonths) }}</td>
+              <td class="whitespace-nowrap py-0.5 px-2 text-right border-l border-neutral-200">
+                {{ formatAmountRub(row.costRub) }}
+              </td>
+              <td class="whitespace-nowrap py-0.5 px-2 text-right border-l border-neutral-200">
+                {{ row.proceedsRub !== null ? formatAmountRub(row.proceedsRub) : '—' }}
+              </td>
+              <td class="whitespace-nowrap py-0.5 px-2 text-right border-l border-neutral-200"
+                  [class.text-green-700]="(row.pnlRub ?? 0) > 0"
+                  [class.text-red-600]="(row.pnlRub ?? 0) < 0">
+                {{ row.pnlRub !== null ? formatAmountRub(row.pnlRub) : '—' }}
+              </td>
+              <td class="whitespace-nowrap py-0.5 px-2 text-right border-l border-neutral-200"
+                  [class.text-green-700]="(pnlPerMonth(row.pnlRub, row.openMonths) ?? 0) > 0"
+                  [class.text-red-600]="(pnlPerMonth(row.pnlRub, row.openMonths) ?? 0) < 0">
+                {{ pnlPerMonth(row.pnlRub, row.openMonths) !== null ? formatAmountRub(pnlPerMonth(row.pnlRub, row.openMonths)!) : '—' }}
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+
+  @if (openLotRows$$().length > 0) {
+    <div>
+      <div class="mb-1 text-sm font-semibold">Open Positions</div>
+      <table class="min-w-full font-mono text-sm">
+        <thead class="text-left">
+          <tr class="border-neutral-400 border-b-2">
+            <th class="py-0.5 px-2">Ticker</th>
+            <th class="py-0.5 px-2 border-l border-neutral-200">Account</th>
+            <th class="py-0.5 px-2 text-right border-l border-neutral-200">Qty</th>
+            <th class="py-0.5 px-2 border-l border-neutral-200">Buy Date</th>
+            <th class="py-0.5 px-2 border-l border-neutral-200">Period Open</th>
+            <th class="py-0.5 px-2 text-right border-l border-neutral-200">Cost</th>
+            <th class="py-0.5 px-2 text-right border-l border-neutral-200">Current Value</th>
+            <th class="py-0.5 px-2 text-right border-l border-neutral-200">Unrealized P&amp;L</th>
+            <th class="py-0.5 px-2 text-right border-l border-neutral-200">P&amp;L/mo</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of openLotRows$$(); track $index) {
+            <tr class="border-neutral-200 border-b">
+              <td class="whitespace-nowrap py-0.5 px-2 font-semibold">{{ row.ticker }}</td>
+              <td class="whitespace-nowrap py-0.5 px-2 border-l border-neutral-200">{{ row.accountTitle }}</td>
+              <td class="whitespace-nowrap py-0.5 px-2 text-right border-l border-neutral-200">{{ formatQty(row.qty) }}</td>
+              <td class="whitespace-nowrap py-0.5 px-2 border-l border-neutral-200">{{ row.buyDateISO }}</td>
+              <td class="whitespace-nowrap py-0.5 px-2 border-l border-neutral-200">{{ formatPeriod(row.openMonths) }}</td>
+              <td class="whitespace-nowrap py-0.5 px-2 text-right border-l border-neutral-200">
+                {{ formatAmountRub(row.costRub) }}
+              </td>
+              <td class="whitespace-nowrap py-0.5 px-2 text-right border-l border-neutral-200">
+                {{ row.currentValueRub !== null ? formatAmountRub(row.currentValueRub) : '—' }}
+              </td>
+              <td class="whitespace-nowrap py-0.5 px-2 text-right border-l border-neutral-200"
+                  [class.text-green-700]="(row.pnlRub ?? 0) > 0"
+                  [class.text-red-600]="(row.pnlRub ?? 0) < 0">
+                {{ row.pnlRub !== null ? formatAmountRub(row.pnlRub) : '—' }}
+              </td>
+              <td class="whitespace-nowrap py-0.5 px-2 text-right border-l border-neutral-200"
+                  [class.text-green-700]="(pnlPerMonth(row.pnlRub, row.openMonths) ?? 0) > 0"
+                  [class.text-red-600]="(pnlPerMonth(row.pnlRub, row.openMonths) ?? 0) < 0">
+                {{ pnlPerMonth(row.pnlRub, row.openMonths) !== null ? formatAmountRub(pnlPerMonth(row.pnlRub, row.openMonths)!) : '—' }}
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>

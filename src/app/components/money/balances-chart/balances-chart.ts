@@ -93,7 +93,7 @@ export class BalancesChart implements AfterViewInit, OnDestroy {
 
   protected readonly suspensionToggleItems: VToggleItem[] = [
     { id: 'all', label: 'All' },
-    { id: 'exclude', label: 'Excl. Suspended' },
+    { id: 'exclude', label: 'Exclude Suspended' },
     { id: 'only', label: 'Only Suspended' },
   ];
 

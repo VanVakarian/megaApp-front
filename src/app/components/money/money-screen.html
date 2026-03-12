@@ -103,6 +103,31 @@
       }
     </v-card>
 
+    <v-card class="w-full max-w-full min-w-0"
+            [config]="{
+              padding: 3,
+              borderRadius: 2,
+            }">
+      @if (isChartDataReady$$()) {
+        <income-chart [dataInput]="incomeChartData$$()" />
+      } @else {
+        <div class="h-[279px] flex items-center justify-center">
+          <div class="border-t-transparent animate-spin w-8 h-8 border-2 rounded-full"
+               style="border-color: var(--v-color-primary); border-top-color: transparent;"></div>
+        </div>
+      }
+    </v-card>
+
+    @if (isChartDataReady$$()) {
+      <v-card class="w-full max-w-full min-w-0"
+              [config]="{
+                padding: 3,
+                borderRadius: 2,
+              }">
+        <income-tables [dataInput]="incomeChartData$$()" />
+      </v-card>
+    }
+
     <v-card class="w-full max-w-full min-w-0 overflow-visible"
             [config]="{
               padding: 2,

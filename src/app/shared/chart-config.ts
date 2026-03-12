@@ -224,3 +224,66 @@ export const BALANCE_CHART_CONFIG: ChartConfiguration<'line'> = {
     },
   },
 };
+
+export const INCOME_CHART_ALLOWED_CATEGORIES: ReadonlySet<string> = new Set(['Зарплата', 'Проекты', 'Проценты']);
+
+const INCOME_BASE_COLORS: [number, number, number][] = [
+  [30, 64, 175],
+  [3, 105, 161],
+  [180, 83, 9],
+  [185, 28, 28],
+  [21, 128, 61],
+  [15, 118, 110],
+  [124, 58, 237],
+  [190, 24, 93],
+];
+
+const INCOME_COLOR_ALPHA = 0.8;
+
+export const INCOME_SERIES_PALETTE = INCOME_BASE_COLORS.map(
+  ([r, g, b]) => `rgba(${r}, ${g}, ${b}, ${INCOME_COLOR_ALPHA})`,
+);
+
+export const INCOME_VIRTUAL_SERIES = {
+  DIVIDENDS: -1,
+  CB_CLOSED_PNL: -2,
+  CB_OPEN_PNL: -3,
+  CRYPTO_CLOSED_PNL: -4,
+  CRYPTO_OPEN_PNL: -5,
+} as const;
+
+export const INCOME_CHART_CONFIG: ChartConfiguration<'bar'> = {
+  type: 'bar',
+  data: { labels: [], datasets: [] },
+  options: {
+    animation: false,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        mode: 'index',
+        intersect: false,
+        callbacks: {
+          label: (ctx) => {
+            if (ctx.parsed.y === 0) return '';
+            return ` ${ctx.dataset.label}: ${new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(ctx.parsed.y)} ₽`;
+          },
+        },
+      },
+    },
+    scales: {
+      x: {
+        stacked: true,
+        grid: { display: false },
+        ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 12 },
+      },
+      y: {
+        stacked: true,
+        ticks: {
+          callback: (value) =>
+            new Intl.NumberFormat('ru-RU', { notation: 'compact', maximumFractionDigits: 1 }).format(value as number),
+        },
+      },
+    },
+  },
+};
