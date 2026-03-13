@@ -42,6 +42,11 @@
     Investment account
   </v-checkbox>
 
+  <v-checkbox [value]="isArchived$$()"
+              (valueChange)="isArchived$$.set($event)">
+    Archived account
+  </v-checkbox>
+
   <div class="flex justify-end gap-2">
     <v-button class="v-primary"
               [config]="{

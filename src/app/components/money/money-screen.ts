@@ -238,6 +238,7 @@ export class MoneyScreen implements OnInit {
   }
 
   public ngOnInit(): void {
+    this.moneyService.resetLoadingState();
     firstValueFrom(this.moneyService.getCurrencies());
     firstValueFrom(this.moneyService.getCategories());
     firstValueFrom(this.moneyService.getAccounts());

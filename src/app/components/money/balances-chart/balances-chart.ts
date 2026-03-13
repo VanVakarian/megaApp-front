@@ -254,7 +254,7 @@ export class BalancesChart implements AfterViewInit, OnDestroy {
     activeSeries.forEach((series, localIdx) => {
       const globalIdx = allSeries.findIndex((s) => s.accountId === series.accountId);
       const color = BALANCE_ACCOUNT_PALETTE[globalIdx % BALANCE_ACCOUNT_PALETTE.length];
-      const colorAlpha = color + '99';
+      const colorAlpha = color.replace('rgb(', 'rgba(').replace(')', ', 0.6)');
 
       const rawValues = series.values.map((_, i) => getEffectiveValue(series, i));
       const cumulativeData = rawValues.map((v, i) => {

@@ -447,7 +447,23 @@ export class TransactionForm {
   }
 
   private getAccounts(): Account[] {
-    return this.moneyService.accounts$$();
+    const now = new Date();
+    const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate()).toISOString().slice(0, 10);
+
+    const usageCount = new Map<number, number>();
+    for (const tx of this.moneyService.transactions$$()) {
+      if (tx.dateISO >= threeMonthsAgo && tx.accountId) {
+        usageCount.set(tx.accountId, (usageCount.get(tx.accountId) ?? 0) + 1);
+      }
+    }
+
+    return this.moneyService
+      .accounts$$()
+      .filter((a) => !a.isArchived)
+      .sort((a, b) => {
+        const diff = (usageCount.get(b.id!) ?? 0) - (usageCount.get(a.id!) ?? 0);
+        return diff !== 0 ? diff : a.title.localeCompare(b.title);
+      });
   }
 
   private getSelectedCurrency(accountIdValue: string | null): Currency | null {

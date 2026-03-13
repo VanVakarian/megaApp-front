@@ -22,6 +22,8 @@ export class AccountsList {
   private readonly moneyService = inject(MoneyService);
 
   protected readonly accounts$$ = computed(() => this.moneyService.accounts$$());
+  protected readonly activeAccounts$$ = computed(() => this.accounts$$().filter((a) => !a.isArchived));
+  protected readonly archivedAccounts$$ = computed(() => this.accounts$$().filter((a) => a.isArchived));
   protected readonly currencies$$ = computed(() => this.moneyService.currencies$$());
   protected readonly organizations$$ = computed(() => this.moneyService.organizations$$());
   private readonly assets$$ = computed(() => this.moneyService.assets$$());
@@ -30,6 +32,7 @@ export class AccountsList {
   protected readonly showForm$$ = signal(false);
   protected readonly editingAccount$$ = signal<Account | null>(null);
   protected readonly isDeleteConfirmOpen$$ = signal(false);
+  protected readonly showArchivedAccounts$$ = signal(false);
 
   private readonly pendingDeleteId$$ = signal<number | null>(null);
 
@@ -75,6 +78,10 @@ export class AccountsList {
   protected onCancelled(): void {
     this.showForm$$.set(false);
     this.editingAccount$$.set(null);
+  }
+
+  protected toggleArchivedAccounts(): void {
+    this.showArchivedAccounts$$.update((v) => !v);
   }
 
   protected getKindDisplayName(kind: AccountKind): string {

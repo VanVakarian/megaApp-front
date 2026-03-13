@@ -24,6 +24,7 @@ export class AccountForm {
   protected readonly title$$ = signal('');
   protected readonly currencyId$$ = signal<string | null>(null);
   protected readonly isInvest$$ = signal(false);
+  protected readonly isArchived$$ = signal(false);
   protected readonly kind$$ = signal<AccountKind | ''>('');
   protected readonly organizationId$$ = signal<string | null>(null);
 
@@ -45,6 +46,7 @@ export class AccountForm {
       title: this.title$$(),
       currencyId: Number(this.currencyId$$()),
       isInvest: this.isInvest$$(),
+      isArchived: this.isArchived$$(),
       kind: this.kind$$() as AccountKind,
       organizationId: this.organizationId$$() ? Number(this.organizationId$$()) : null,
     };
@@ -129,6 +131,7 @@ export class AccountForm {
     this.title$$.set(account.title);
     this.currencyId$$.set(String(account.currencyId));
     this.isInvest$$.set(account.isInvest);
+    this.isArchived$$.set(account.isArchived);
     this.kind$$.set(account.kind);
     this.organizationId$$.set(account.organizationId ? String(account.organizationId) : null);
   }
@@ -137,6 +140,7 @@ export class AccountForm {
     this.title$$.set('');
     this.currencyId$$.set(null);
     this.isInvest$$.set(false);
+    this.isArchived$$.set(false);
     this.kind$$.set('');
     this.organizationId$$.set(null);
   }

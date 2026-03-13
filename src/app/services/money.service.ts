@@ -39,8 +39,9 @@ interface AssetsResponse extends DataResponse<Asset[]> {}
 
 interface InvestAssetTradesResponse extends DataResponse<InvestAssetTrade[]> {}
 
-interface AccountApi extends Omit<Account, 'isInvest'> {
+interface AccountApi extends Omit<Account, 'isInvest' | 'isArchived'> {
   isInvest?: boolean | number | string;
+  isArchived?: boolean | number | string;
 }
 
 interface TransactionsResponse extends DataResponse<Transaction[]> {}
@@ -89,6 +90,10 @@ export class MoneyService {
   });
 
   public readonly requestResult$ = new Subject<ServerResponseBasic>();
+
+  public resetLoadingState(): void {
+    this.loadedSources$$.set(new Set());
+  }
 
   public setChartRange(start: string | null, end: string | null): void {
     this.chartRangeStart$$.set(start);
@@ -533,6 +538,7 @@ export class MoneyService {
       title: account.title,
       currencyId: account.currencyId,
       isInvest: this.toBoolean(account.isInvest),
+      isArchived: this.toBoolean(account.isArchived),
       kind: account.kind,
       organizationId: account.organizationId ?? null,
     };
@@ -544,6 +550,7 @@ export class MoneyService {
       title: accountData.title,
       currencyId: accountData.currencyId,
       isInvest: this.toBoolean(accountData.isInvest),
+      isArchived: this.toBoolean(accountData.isArchived),
       kind: accountData.kind,
       organizationId: accountData.organizationId ?? null,
     };

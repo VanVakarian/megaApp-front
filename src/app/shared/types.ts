@@ -396,6 +396,7 @@ export interface Account {
   title: string;
   currencyId: number;
   isInvest: boolean;
+  isArchived: boolean;
   kind: AccountKind;
   organizationId?: number | null;
 }

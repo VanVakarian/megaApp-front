@@ -18,13 +18,13 @@
       </v-button>
     </div>
 
-    @if (accounts$$().length === 0) {
+    @if (activeAccounts$$().length === 0 && archivedAccounts$$().length === 0) {
       <div class="opacity-70 py-8 text-center">
         No accounts found.
       </div>
     }
 
-    @for (account of accounts$$(); track account.id) {
+    @for (account of activeAccounts$$(); track account.id) {
       <div class="last:border-b-0 py-4 border-b border-[color:var(--v-outline-color)]">
         <div class="flex items-start justify-between gap-4">
           <div class="flex-1">
@@ -69,6 +69,65 @@
         </div>
       </div>
     }
+
+    @if (archivedAccounts$$().length > 0) {
+      <div class="mt-2">
+        <button class="flex items-center gap-2 w-full py-3 opacity-60 hover:opacity-90 text-sm"
+                (click)="toggleArchivedAccounts()">
+          <v-icon [name]="showArchivedAccounts$$() ? Icon.KeyboardArrowUp : Icon.KeyboardArrowDown"
+                  [size]="5"></v-icon>
+          Archived ({{ archivedAccounts$$().length }})
+        </button>
+
+        @if (showArchivedAccounts$$()) {
+          @for (account of archivedAccounts$$(); track account.id) {
+            <div class="last:border-b-0 py-4 border-b border-[color:var(--v-outline-color)] opacity-60">
+              <div class="flex items-start justify-between gap-4">
+                <div class="flex-1">
+                  <div class="mb-2">
+                    <span class="font-semibold">{{ account.title }}</span>
+                    <span class="opacity-70 ml-2">{{ getCurrencySymbol(account.currencyId) }}</span>
+                  </div>
+
+                  <div class="opacity-70 flex gap-3 text-xs">
+                    @if (account.isInvest) {
+                      <span>Investment</span>
+                    }
+
+                    <span>{{ getKindDisplayName(account.kind) }}</span>
+                  </div>
+                </div>
+
+                <div class="flex gap-2">
+                  <v-button class="v-flat"
+                            [config]="{
+                              isLabelHidden: true,
+                              padding: iconButton.padding,
+                            }"
+                            (onClick)="editAccount(account)">
+                    <v-icon v-prefix
+                            [name]="Icon.Edit"
+                            [size]="iconButton.size"></v-icon>
+                  </v-button>
+
+                  <v-button class="v-danger"
+                            [config]="{
+                              isLabelHidden: true,
+                              padding: iconButton.padding,
+                              isDisabled: !canDeleteAccount(account.id!),
+                            }"
+                            (onClick)="deleteAccount(account.id!)">
+                    <v-icon v-prefix
+                            [name]="Icon.Delete"
+                            [size]="iconButton.size"></v-icon>
+                  </v-button>
+                </div>
+              </div>
+            </div>
+          }
+        }
+      </div>
+      }
 
   </v-card>
 </div>
