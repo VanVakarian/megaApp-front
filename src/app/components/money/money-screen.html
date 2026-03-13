@@ -80,6 +80,23 @@
                     (valueChange)="setDisplayCurrency($event[0])"></v-toggle>
         </div>
       </div>
+      @if (!isChartDataReady$$()) {
+        <div class="dark:border-gray-700 mt-3 pt-2 border-t border-gray-200 h-[61px] flex items-center justify-center">
+          <div class="animate-spin w-4 h-4 border-2 rounded-full"
+               style="border-color: var(--v-color-primary); border-top-color: transparent;"></div>
+        </div>
+      } @else if (allChartMonths$$().length > 1) {
+        <div class="dark:border-gray-700 pt-2 mt-3 border-t border-gray-200">
+          <div class="flex justify-between mb-2 text-xs text-gray-400">
+            <span>{{ sliderStartLabel$$() }}</span>
+            <span>Selected: {{ sliderRangeLabel$$() }}</span>
+            <span>{{ sliderEndLabel$$() }}</span>
+          </div>
+          <v-slider [range]="sliderRange$$()"
+                    [config]="chartRangeSliderConfig$$()"
+                    (rangeChange)="onChartRangeChange($event)" />
+        </div>
+      }
     </v-card>
 
     @if (activeTab$$() === MoneyTab.Setup) {
@@ -109,9 +126,10 @@
             }">
       @if (isChartDataReady$$()) {
         <expense-chart [dataInput]="expenseChartData$$()"
+                       [monthRangeInput]="monthRangeForCharts$$()"
                        [currencySymbolInput]="displayCurrencySymbol$$()" />
       } @else {
-        <div class="h-[279px] flex items-center justify-center">
+        <div class="h-[400px] flex items-center justify-center">
           <div class="border-t-transparent animate-spin w-8 h-8 border-2 rounded-full"
                style="border-color: var(--v-color-primary); border-top-color: transparent;"></div>
         </div>
@@ -125,9 +143,10 @@
             }">
       @if (isChartDataReady$$()) {
         <income-chart [dataInput]="incomeChartData$$()"
+                      [monthRangeInput]="monthRangeForCharts$$()"
                       [currencySymbolInput]="displayCurrencySymbol$$()" />
       } @else {
-        <div class="h-[279px] flex items-center justify-center">
+        <div class="h-[286px] flex items-center justify-center">
           <div class="border-t-transparent animate-spin w-8 h-8 border-2 rounded-full"
                style="border-color: var(--v-color-primary); border-top-color: transparent;"></div>
         </div>
@@ -140,10 +159,10 @@
               borderRadius: 2,
             }">
       @if (isChartDataReady$$()) {
-        <balances-chart [dataInput]="balanceChartData$$()"
+        <balances-chart [dataInput]="balanceChartDataClipped$$()"
                         [currencySymbolInput]="displayCurrencySymbol$$()" />
       } @else {
-        <div class="h-[324px] flex items-center justify-center">
+        <div class="h-[294px] flex items-center justify-center">
           <div class="border-t-transparent animate-spin w-8 h-8 border-2 rounded-full"
                style="border-color: var(--v-color-primary); border-top-color: transparent;"></div>
         </div>

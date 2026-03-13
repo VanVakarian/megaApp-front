@@ -39,6 +39,7 @@ Chart.register(BarController, BarElement, CategoryScale, LinearScale, Tooltip, L
 export class IncomeChart implements AfterViewInit, OnDestroy {
   readonly dataInput = input.required<IncomeChartData>();
   readonly currencySymbolInput = input<string>('₽');
+  readonly monthRangeInput = input<[string, string] | null>(null);
 
   protected readonly chartCanvas = viewChild.required<ElementRef<HTMLCanvasElement>>('chartCanvas');
   protected readonly chart$$ = signal<Chart | null>(null);
@@ -76,8 +77,9 @@ export class IncomeChart implements AfterViewInit, OnDestroy {
     const activeSeries = this.activeCategorySeries$$();
     const chart = this.chart$$();
     const yearly = this.yearlyMode$$();
+    const monthRange = this.monthRangeInput();
     if (!chart) return;
-    this.rebuildChartDatasets(chart, data, activeSeries, yearly);
+    this.rebuildChartDatasets(chart, data, activeSeries, yearly, monthRange);
   });
 
   private readonly yearSeparatorPlugin: Plugin = {
@@ -195,7 +197,26 @@ export class IncomeChart implements AfterViewInit, OnDestroy {
     data: IncomeChartData,
     activeSeries: IncomeChartCategorySeries[],
     yearly: boolean,
+    monthRange: [string, string] | null,
   ): void {
+    const effectiveData: IncomeChartData =
+      !yearly && monthRange !== null
+        ? (() => {
+            const [start, end] = monthRange;
+            const indices: number[] = [];
+            data.months.forEach((m, i) => {
+              const ym = m.substring(0, 7);
+              if (ym >= start && ym <= end) indices.push(i);
+            });
+            return {
+              months: indices.map((i) => data.months[i]),
+              categorySeries: data.categorySeries.map((s) => ({
+                ...s,
+                values: indices.map((i) => s.values[i]),
+              })),
+            };
+          })()
+        : data;
     let labels: string[];
     let yearlyValues: Map<number | null, number[]> | null = null;
 
@@ -222,7 +243,7 @@ export class IncomeChart implements AfterViewInit, OnDestroy {
     } else {
       this.yearBoundaries = [];
       const yearMap = new Map<string, { startIdx: number; endIdx: number }>();
-      data.months.forEach((m, i) => {
+      effectiveData.months.forEach((m, i) => {
         const year = m.substring(0, 4);
         const existing = yearMap.get(year);
         if (!existing) {
@@ -232,7 +253,7 @@ export class IncomeChart implements AfterViewInit, OnDestroy {
         }
       });
       yearMap.forEach((bounds, year) => this.yearBoundaries.push({ year, ...bounds }));
-      labels = data.months.map(() => '');
+      labels = effectiveData.months.map(() => '');
     }
 
     (chart.options.scales!['x']!.ticks as any).callback = yearly
@@ -242,9 +263,11 @@ export class IncomeChart implements AfterViewInit, OnDestroy {
     const datasets: ChartDataset<'bar'>[] = activeSeries.map((series) => {
       const index = data.categorySeries.findIndex((s) => s.categoryId === series.categoryId);
       const color = INCOME_SERIES_PALETTE[index % INCOME_SERIES_PALETTE.length];
+      const monthlyValues =
+        effectiveData.categorySeries.find((s) => s.categoryId === series.categoryId)?.values ?? series.values;
       return {
         label: series.categoryName,
-        data: yearly ? yearlyValues!.get(series.categoryId)! : series.values,
+        data: yearly ? yearlyValues!.get(series.categoryId)! : monthlyValues,
         backgroundColor: color,
         borderColor: color,
         borderWidth: 0,

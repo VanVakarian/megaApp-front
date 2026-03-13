@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } 
 import { VButton } from '@ui-kit/components/v-button/v-button';
 import { VCard } from '@ui-kit/components/v-card/v-card';
 import { IconName, VIcon } from '@ui-kit/components/v-icon/v-icon';
+import { VSlider, VSliderConfig, VSliderRangeValue } from '@ui-kit/components/v-slider/v-slider';
 import { VToggle, VToggleItem } from '@ui-kit/components/v-toggle/v-toggle';
 import { firstValueFrom } from 'rxjs';
 import { MoneyService } from '../../services/money.service';
@@ -64,6 +65,7 @@ interface BalanceRow {
     VButton,
     VCard,
     VIcon,
+    VSlider,
     VToggle,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -74,6 +76,7 @@ export class MoneyScreen implements OnInit {
   protected readonly activeTab$$ = signal<MoneyTab>(MoneyTab.Transactions);
 
   private readonly moneyService = inject(MoneyService);
+  private readonly sliderMonthFormatter = new Intl.DateTimeFormat('en-US', { month: 'short', year: 'numeric' });
 
   private readonly accounts$$ = computed(() => this.moneyService.accounts$$());
   private readonly currencies$$ = computed(() => this.moneyService.currencies$$());
@@ -122,6 +125,107 @@ export class MoneyScreen implements OnInit {
   protected readonly balanceChartData$$ = computed(() => this.buildChartData());
   protected readonly incomeChartData$$ = computed(() => this.buildIncomeChartData());
   protected readonly expenseChartData$$ = computed(() => this.buildExpenseChartData());
+
+  protected readonly allChartMonths$$ = computed((): string[] => {
+    const set = new Set<string>();
+    this.balanceChartData$$().dates.forEach((d) => set.add(d.substring(0, 7)));
+    this.incomeChartData$$().months.forEach((m) => set.add(m.substring(0, 7)));
+    this.expenseChartData$$().monthRows.forEach((r) => set.add(r.period));
+    return Array.from(set).sort();
+  });
+
+  private readonly rangeStartIdx$$ = computed((): number => {
+    const months = this.allChartMonths$$();
+    const saved = this.moneyService.chartRangeStart$$();
+    if (!saved) return 0;
+    const idx = months.indexOf(saved);
+    return idx >= 0 ? idx : 0;
+  });
+
+  private readonly rangeEndIdx$$ = computed((): number => {
+    const months = this.allChartMonths$$();
+    const saved = this.moneyService.chartRangeEnd$$();
+    if (!saved) return months.length > 0 ? months.length - 1 : 0;
+    const idx = months.indexOf(saved);
+    return idx >= 0 ? idx : months.length > 0 ? months.length - 1 : 0;
+  });
+
+  protected readonly sliderRange$$ = computed((): VSliderRangeValue => [this.rangeStartIdx$$(), this.rangeEndIdx$$()]);
+
+  protected readonly chartRangeSliderConfig$$ = computed(
+    (): VSliderConfig => ({
+      isRange: true,
+      min: 0,
+      max: Math.max(0, this.allChartMonths$$().length - 1),
+      valueList: this.allChartMonths$$().map((_, i) => i),
+      thumbBorderRadius: 2,
+    }),
+  );
+
+  protected readonly sliderStartLabel$$ = computed((): string =>
+    this.formatSliderMonth(this.allChartMonths$$()[this.rangeStartIdx$$()]),
+  );
+
+  protected readonly sliderEndLabel$$ = computed((): string =>
+    this.formatSliderMonth(this.allChartMonths$$()[this.rangeEndIdx$$()]),
+  );
+
+  protected readonly sliderRangeLabel$$ = computed((): string => {
+    const total = this.rangeEndIdx$$() - this.rangeStartIdx$$() + 1;
+    if (total <= 0) return '';
+    const y = Math.floor(total / 12);
+    const m = total % 12;
+    const parts: string[] = [];
+    if (y > 0) parts.push(`${y} yr${y > 1 ? 's' : ''}`);
+    if (m > 0) parts.push(`${m} mo`);
+    return parts.length > 0 ? parts.join(' ') : '1 mo';
+  });
+
+  protected readonly balanceChartDataClipped$$ = computed((): BalanceChartData => {
+    const data = this.balanceChartData$$();
+    const months = this.allChartMonths$$();
+    const startIdx = this.rangeStartIdx$$();
+    const endIdx = this.rangeEndIdx$$();
+    if (startIdx === 0 && endIdx === months.length - 1) return data;
+    const start = months[startIdx];
+    const end = months[endIdx];
+    const i0 = data.dates.findIndex((d) => d.substring(0, 7) >= start);
+    let i1 = -1;
+    for (let i = data.dates.length - 1; i >= 0; i--) {
+      if (data.dates[i].substring(0, 7) <= end) {
+        i1 = i;
+        break;
+      }
+    }
+    if (i0 < 0 || i1 < 0 || i0 > i1) return { dates: [], totals: [], accountSeries: [] };
+    return {
+      dates: data.dates.slice(i0, i1 + 1),
+      totals: data.totals.slice(i0, i1 + 1),
+      accountSeries: data.accountSeries.map((s) => ({
+        ...s,
+        values: s.values.slice(i0, i1 + 1),
+        suspendedValues: s.suspendedValues.slice(i0, i1 + 1),
+      })),
+    };
+  });
+
+  protected readonly monthRangeForCharts$$ = computed((): [string, string] | null => {
+    const months = this.allChartMonths$$();
+    const startIdx = this.rangeStartIdx$$();
+    const endIdx = this.rangeEndIdx$$();
+    if (months.length === 0 || (startIdx === 0 && endIdx === months.length - 1)) return null;
+    return [months[startIdx], months[endIdx]];
+  });
+
+  protected onChartRangeChange(range: VSliderRangeValue): void {
+    const months = this.allChartMonths$$();
+    const [startIdx, endIdx] = range;
+    const isFullRange = startIdx === 0 && endIdx === months.length - 1;
+    this.moneyService.setChartRange(
+      isFullRange ? null : (months[startIdx] ?? null),
+      isFullRange ? null : (months[endIdx] ?? null),
+    );
+  }
 
   protected setDisplayCurrency(id: string): void {
     if (!id || id === this.moneyService.displayCurrency$$()) return;
@@ -919,5 +1023,11 @@ export class MoneyScreen implements OnInit {
     }
 
     return months;
+  }
+
+  private formatSliderMonth(ym: string | undefined): string {
+    if (!ym) return '';
+    const [year, month] = ym.split('-').map(Number);
+    return this.sliderMonthFormatter.format(new Date(year, month - 1, 1));
   }
 }

@@ -45,6 +45,7 @@ interface ExpenseChartSeries {
 export class ExpenseChart implements AfterViewInit, OnDestroy {
   readonly dataInput = input.required<ExpenseChartData>();
   readonly currencySymbolInput = input<string>('₽');
+  readonly monthRangeInput = input<[string, string] | null>(null);
 
   protected readonly chartCanvas = viewChild.required<ElementRef<HTMLCanvasElement>>('chartCanvas');
   protected readonly chart$$ = signal<Chart | null>(null);
@@ -100,8 +101,9 @@ export class ExpenseChart implements AfterViewInit, OnDestroy {
     const chart = this.chart$$();
     const yearly = this.yearlyMode$$();
     const ymax = this.yMaxInput$$();
+    const monthRange = this.monthRangeInput();
     if (!chart) return;
-    this.rebuildChartDatasets(chart, data, activeSeries, allSeries, yearly, ymax);
+    this.rebuildChartDatasets(chart, data, activeSeries, allSeries, yearly, ymax, monthRange);
   });
 
   private readonly yearSeparatorPlugin: Plugin = {
@@ -219,8 +221,16 @@ export class ExpenseChart implements AfterViewInit, OnDestroy {
     allSeries: ExpenseChartSeries[],
     yearly: boolean,
     yMaxRaw: string,
+    monthRange: [string, string] | null,
   ): void {
-    const months = data.monthRows.map((r) => r.period);
+    const effectiveData: ExpenseChartData =
+      !yearly && monthRange !== null
+        ? {
+            categories: data.categories,
+            monthRows: data.monthRows.filter((r) => r.period >= monthRange[0] && r.period <= monthRange[1]),
+          }
+        : data;
+    const months = effectiveData.monthRows.map((r) => r.period);
     let labels: string[];
     let yearlyValues: Map<number | null, number[]> | null = null;
 
@@ -242,8 +252,8 @@ export class ExpenseChart implements AfterViewInit, OnDestroy {
           const year = m.substring(0, 4);
           const val =
             s.categoryId === null
-              ? data.monthRows[i].uncategorizedAmount
-              : (data.monthRows[i].categoryAmounts[s.categoryId] ?? 0);
+              ? effectiveData.monthRows[i].uncategorizedAmount
+              : (effectiveData.monthRows[i].categoryAmounts[s.categoryId] ?? 0);
           yearVals[yearIndexMap.get(year)!] += val;
         });
         yearlyValues!.set(s.categoryId, yearVals);
@@ -275,8 +285,8 @@ export class ExpenseChart implements AfterViewInit, OnDestroy {
         ? yearlyValues!.get(series.categoryId)!
         : months.map((_, i) =>
             series.categoryId === null
-              ? data.monthRows[i].uncategorizedAmount
-              : (data.monthRows[i].categoryAmounts[series.categoryId!] ?? 0),
+              ? effectiveData.monthRows[i].uncategorizedAmount
+              : (effectiveData.monthRows[i].categoryAmounts[series.categoryId!] ?? 0),
           );
       return {
         label: series.categoryName,

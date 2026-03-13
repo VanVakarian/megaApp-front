@@ -75,6 +75,12 @@ export class MoneyService {
   public readonly rateHistory$$: WritableSignal<MoneyRateHistory[]> = signal([]);
   public readonly displayCurrency$$: WritableSignal<string> = signal('RUB');
   public readonly isDisplayCurrencyChanging$$: WritableSignal<boolean> = signal(false);
+  public readonly chartRangeStart$$: WritableSignal<string | null> = signal(
+    localStorage.getItem('money_chart_range_start'),
+  );
+  public readonly chartRangeEnd$$: WritableSignal<string | null> = signal(
+    localStorage.getItem('money_chart_range_end'),
+  );
 
   private readonly loadedSources$$ = signal<Set<string>>(new Set());
   public readonly isChartDataReady$$ = computed(() => {
@@ -83,6 +89,15 @@ export class MoneyService {
   });
 
   public readonly requestResult$ = new Subject<ServerResponseBasic>();
+
+  public setChartRange(start: string | null, end: string | null): void {
+    this.chartRangeStart$$.set(start);
+    this.chartRangeEnd$$.set(end);
+    if (start !== null) localStorage.setItem('money_chart_range_start', start);
+    else localStorage.removeItem('money_chart_range_start');
+    if (end !== null) localStorage.setItem('money_chart_range_end', end);
+    else localStorage.removeItem('money_chart_range_end');
+  }
 
   constructor(private http: HttpClient) {
     // effect(() => { console.log('CURRENCIES:', this.currencies$$()) }); // prettier-ignore
