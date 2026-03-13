@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, ElementRef, computed, inject, signa
 import { MoneyService } from '@app/services/money.service';
 import { DefaultModal } from '@app/shared/components/default-modal/default-modal';
 import { FormModal } from '@app/shared/components/form-modal/form-modal';
+import { convertAmount } from '@app/shared/money-utils';
 import { AccountKind, Asset, Organization, SymbolPosition, Transaction, TransactionKind } from '@app/shared/types';
 import { VButton } from '@ui-kit/components/v-button/v-button';
 import { VCard } from '@ui-kit/components/v-card/v-card';
@@ -48,6 +49,10 @@ export class TransactionsList {
   private readonly accounts$$ = computed(() => this.moneyService.accounts$$());
   private readonly organizations$$ = computed(() => this.moneyService.organizations$$());
   private readonly assets$$ = computed(() => this.moneyService.assets$$());
+  private readonly displayCurrency$$ = computed(() => this.moneyService.displayCurrency$$());
+  protected readonly isRatesReady$$ = computed(
+    () => this.moneyService.isChartDataReady$$() && !this.moneyService.isDisplayCurrencyChanging$$(),
+  );
 
   protected readonly groupedTransactions$$ = computed(() => this.groupTransactionsByDate());
   protected readonly isDeleteConfirmOpen$$ = signal(false);
@@ -65,7 +70,7 @@ export class TransactionsList {
   private readonly GROUP_BOTTOM_MARGIN = 16;
   private readonly BUFFER_PX = 1200;
 
-  protected readonly containerHeight = 800;
+  protected readonly containerHeight = 753;
 
   private readonly scrollTop$$ = signal(0);
 
@@ -257,24 +262,49 @@ export class TransactionsList {
     const currency = this.currencies$$().find((c) => c.id === account.currencyId);
     if (!currency) return transaction.amount.toString();
 
-    const whitespace = currency.whitespace ? ' ' : '';
-    const sign =
-      transaction.kind === TransactionKind.INCOME ? '+' : transaction.kind === TransactionKind.EXPENSE ? '-' : '';
-    const amount = this.formatNumber(transaction.amount);
+    const displayTicker = this.displayCurrency$$();
 
-    if (currency.symbolPosEnum === SymbolPosition.BEFORE) {
-      return `${currency.symbol}${whitespace}${sign}${amount}`;
-    } else {
-      return `${sign}${amount}${whitespace}${currency.symbol}`;
+    if (currency.ticker === displayTicker) {
+      return this.formatWithCurrency(transaction.amount, currency, transaction.kind);
     }
+
+    const rates = this.moneyService.getRatesForDate(transaction.dateISO);
+    const converted = convertAmount(transaction.amount, currency.ticker, displayTicker, rates ?? {});
+    const displayCurrency = this.currencies$$().find((c) => c.ticker === displayTicker);
+    if (!displayCurrency) return this.formatNumber(converted);
+
+    return this.formatWithCurrency(converted, displayCurrency, transaction.kind);
   }
 
   protected formatTransferAmounts(transaction: Transaction): string {
     const twin = this.getTwinTransaction(transaction);
     if (!twin) return this.formatAmount(transaction);
-    const fromAmount = this.formatPlainAmount(transaction.accountId, transaction.amount);
-    const toAmount = this.formatPlainAmount(twin.accountId, twin.amount);
-    return `${fromAmount} → ${toAmount}`;
+
+    const displayTicker = this.displayCurrency$$();
+    const rates = this.moneyService.getRatesForDate(transaction.dateISO);
+
+    const fromAccount = this.accounts$$().find((a) => a.id === transaction.accountId);
+    const toAccount = this.accounts$$().find((a) => a.id === twin.accountId);
+    const fromCurrency = fromAccount ? this.currencies$$().find((c) => c.id === fromAccount.currencyId) : null;
+    const toCurrency = toAccount ? this.currencies$$().find((c) => c.id === toAccount.currencyId) : null;
+
+    const fromConverted = fromCurrency
+      ? convertAmount(transaction.amount, fromCurrency.ticker, displayTicker, rates ?? {})
+      : transaction.amount;
+    const toConverted = toCurrency
+      ? convertAmount(twin.amount, toCurrency.ticker, displayTicker, rates ?? {})
+      : twin.amount;
+
+    const avg = (fromConverted + toConverted) / 2;
+    const displayCurrency = this.currencies$$().find((c) => c.ticker === displayTicker);
+    if (!displayCurrency) return `≈ ${this.formatNumber(avg)}`;
+
+    const whitespace = displayCurrency.whitespace ? ' ' : '';
+    const amount = this.formatNumber(avg);
+    if (displayCurrency.symbolPosEnum === SymbolPosition.BEFORE) {
+      return `≈ ${displayCurrency.symbol}${whitespace}${amount}`;
+    }
+    return `≈ ${amount}${whitespace}${displayCurrency.symbol}`;
   }
 
   protected transactionKindIsIncome(transaction: Transaction): boolean {
@@ -330,6 +360,20 @@ export class TransactionsList {
       minimumFractionDigits: 0,
       maximumFractionDigits: 8,
     }).format(quantity);
+  }
+
+  private formatWithCurrency(
+    amount: number,
+    currency: { symbol: string; whitespace?: boolean | null; symbolPosEnum: SymbolPosition },
+    kind: TransactionKind,
+  ): string {
+    const whitespace = currency.whitespace ? ' ' : '';
+    const sign = kind === TransactionKind.INCOME ? '+' : kind === TransactionKind.EXPENSE ? '-' : '';
+    const formatted = this.formatNumber(amount);
+    if (currency.symbolPosEnum === SymbolPosition.BEFORE) {
+      return `${currency.symbol}${whitespace}${sign}${formatted}`;
+    }
+    return `${sign}${formatted}${whitespace}${currency.symbol}`;
   }
 
   private formatPlainAmount(accountId: number, amount: number): string {

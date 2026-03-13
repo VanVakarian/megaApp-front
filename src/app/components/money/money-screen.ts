@@ -2,9 +2,11 @@ import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } 
 import { VButton } from '@ui-kit/components/v-button/v-button';
 import { VCard } from '@ui-kit/components/v-card/v-card';
 import { IconName, VIcon } from '@ui-kit/components/v-icon/v-icon';
+import { VToggle, VToggleItem } from '@ui-kit/components/v-toggle/v-toggle';
 import { firstValueFrom } from 'rxjs';
 import { MoneyService } from '../../services/money.service';
 import { INCOME_CHART_ALLOWED_CATEGORIES, INCOME_VIRTUAL_SERIES } from '../../shared/chart-config';
+import { convertAmount } from '../../shared/money-utils';
 import {
   Account,
   AssetType,
@@ -42,8 +44,8 @@ enum MoneyTab {
 interface BalanceRow {
   dateISO: string;
   total: number;
-  accountRubContributions: Record<number, number>;
-  accountRubSuspendedContributions: Record<number, number>;
+  accountContributions: Record<number, number>;
+  accountSuspendedContributions: Record<number, number>;
 }
 
 @Component({
@@ -62,6 +64,7 @@ interface BalanceRow {
     VButton,
     VCard,
     VIcon,
+    VToggle,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -77,10 +80,24 @@ export class MoneyScreen implements OnInit {
   private readonly assets$$ = computed(() => this.moneyService.assets$$());
   private readonly transactions$$ = computed(() => this.moneyService.transactions$$());
   private readonly investAssetTrades$$ = computed(() => this.moneyService.investAssetTrades$$());
-  private readonly rateHistory$$ = computed(() => this.moneyService.rateHistory$$());
   private readonly categories$$ = computed(() => this.moneyService.categories$$());
-  protected readonly isChartDataReady$$ = computed(() => this.moneyService.isChartDataReady$$());
+  protected readonly isChartDataReady$$ = computed(
+    () => this.moneyService.isChartDataReady$$() && !this.moneyService.isDisplayCurrencyChanging$$(),
+  );
   private readonly fxTickers = new Set(['USD', 'EUR']);
+
+  protected readonly displayCurrency$$ = computed(() => this.moneyService.displayCurrency$$());
+  protected readonly displayCurrencySymbol$$ = computed(() => {
+    const currency = this.moneyService.currencies$$().find((c) => c.ticker === this.displayCurrency$$());
+    return currency?.symbol ?? '₽';
+  });
+
+  protected readonly currencyToggleItems: VToggleItem[] = [
+    { id: 'RUB', label: '₽' },
+    { id: 'USD', label: '$' },
+    { id: 'EUR', label: '€' },
+    { id: 'KZT', label: '₸' },
+  ];
 
   private readonly accountOrder = [
     'Яндекс.Деньги',
@@ -105,6 +122,16 @@ export class MoneyScreen implements OnInit {
   protected readonly balanceChartData$$ = computed(() => this.buildChartData());
   protected readonly incomeChartData$$ = computed(() => this.buildIncomeChartData());
   protected readonly expenseChartData$$ = computed(() => this.buildExpenseChartData());
+
+  protected setDisplayCurrency(id: string): void {
+    if (!id || id === this.moneyService.displayCurrency$$()) return;
+    if (this.moneyService.isDisplayCurrencyChanging$$()) return;
+    this.moneyService.isDisplayCurrencyChanging$$.set(true);
+    setTimeout(() => {
+      this.moneyService.displayCurrency$$.set(id);
+      setTimeout(() => this.moneyService.isDisplayCurrencyChanging$$.set(false), 0);
+    }, 0);
+  }
 
   public ngOnInit(): void {
     firstValueFrom(this.moneyService.getCurrencies());
@@ -158,8 +185,8 @@ export class MoneyScreen implements OnInit {
     rows.forEach((row) => {
       accounts.forEach((account) => {
         if (!account.id) return;
-        accountSeriesMap.get(account.id)!.push(row.accountRubContributions[account.id] ?? 0);
-        accountSuspendedSeriesMap.get(account.id)!.push(row.accountRubSuspendedContributions[account.id] ?? 0);
+        accountSeriesMap.get(account.id)!.push(row.accountContributions[account.id] ?? 0);
+        accountSuspendedSeriesMap.get(account.id)!.push(row.accountSuspendedContributions[account.id] ?? 0);
       });
     });
 
@@ -258,12 +285,11 @@ export class MoneyScreen implements OnInit {
 
       if (!this.isEndOfMonth(dateISO)) return;
 
-      const rates = this.getRatesForDate(dateISO);
-      const rubUsd = rates?.['RUB'];
-      const usdRub = typeof rubUsd === 'number' && rubUsd > 0 ? 1 / rubUsd : undefined;
+      const targetTicker = this.displayCurrency$$();
+      const rates = this.moneyService.getRatesForDate(dateISO);
 
-      const accountRubContributions: Record<number, number> = {};
-      const accountRubSuspendedContributions: Record<number, number> = {};
+      const accountContributions: Record<number, number> = {};
+      const accountSuspendedContributions: Record<number, number> = {};
       let total = 0;
 
       accounts.forEach((account) => {
@@ -272,57 +298,49 @@ export class MoneyScreen implements OnInit {
         if (this.isFxEquityAccount(account)) {
           const nativeAmount = fxInvestUnits.get(account.id) ?? 0;
           const fxTicker = this.getFxTickerForAccount(account.id);
-          const fxToRubRate = fxTicker ? this.getFxToRubRateForDate(dateISO, fxTicker) : null;
-
-          if (fxToRubRate != null) {
-            const rubEquity = nativeAmount * fxToRubRate;
-            accountRubContributions[account.id] = rubEquity;
-            accountRubSuspendedContributions[account.id] = 0;
-            total += rubEquity;
-          } else {
-            accountRubContributions[account.id] = nativeAmount;
-            accountRubSuspendedContributions[account.id] = 0;
-            total += nativeAmount;
-          }
-
+          const targetAmount =
+            fxTicker && rates ? convertAmount(nativeAmount, fxTicker, targetTicker, rates) : nativeAmount;
+          accountContributions[account.id] = targetAmount;
+          accountSuspendedContributions[account.id] = 0;
+          total += targetAmount;
           return;
         }
 
         const amount = balances.get(account.id) ?? 0;
-        const rubFromBalance = this.convertNativeToRub(amount, account.id, rates, usdRub);
-        total += rubFromBalance;
+        const convertedBalance = this.convertNativeToTarget(amount, account.id, targetTicker, rates);
+        total += convertedBalance;
 
         if (this.isBrokerAccount(account)) {
-          const virtualRub = this.getBrokerVirtualRubForAccount(
+          const virtualValue = this.getBrokerVirtualValueForAccount(
             account.id,
             brokerUnitsByAsset,
             assetsById,
-            usdRub,
+            targetTicker,
             rates,
           );
-          const suspendedVirtualRub = this.getSuspendedBrokerVirtualRubForAccount(
+          const suspendedVirtualValue = this.getSuspendedBrokerVirtualValueForAccount(
             account.id,
             brokerUnitsByAsset,
             assetsById,
             assetSuspendedSince,
             dateISO,
-            usdRub,
+            targetTicker,
             rates,
           );
-          accountRubContributions[account.id] = rubFromBalance + virtualRub;
-          accountRubSuspendedContributions[account.id] = suspendedVirtualRub;
-          total += virtualRub;
+          accountContributions[account.id] = convertedBalance + virtualValue;
+          accountSuspendedContributions[account.id] = suspendedVirtualValue;
+          total += virtualValue;
         } else {
-          accountRubContributions[account.id] = rubFromBalance;
-          accountRubSuspendedContributions[account.id] = 0;
+          accountContributions[account.id] = convertedBalance;
+          accountSuspendedContributions[account.id] = 0;
         }
       });
 
       rows.push({
         dateISO,
         total,
-        accountRubContributions,
-        accountRubSuspendedContributions,
+        accountContributions,
+        accountSuspendedContributions,
       });
     });
 
@@ -382,16 +400,16 @@ export class MoneyScreen implements OnInit {
     brokerUnitsByAsset.set(key, next > 0 ? next : 0);
   }
 
-  private getBrokerVirtualRubForAccount(
+  private getBrokerVirtualValueForAccount(
     accountId: number,
     brokerUnitsByAsset: Map<string, number>,
     assetsById: Map<number, string>,
-    usdRub: number | undefined,
+    targetTicker: string,
     rates: Record<string, number> | null,
   ): number {
-    if (!rates || typeof usdRub !== 'number' || usdRub <= 0) return 0;
+    if (!rates) return 0;
 
-    let totalRub = 0;
+    let total = 0;
     brokerUnitsByAsset.forEach((units, key) => {
       if (units <= 0) return;
 
@@ -407,24 +425,24 @@ export class MoneyScreen implements OnInit {
       const quoteUsd = rates[ticker];
       if (typeof quoteUsd !== 'number' || quoteUsd <= 0) return;
 
-      totalRub += units * quoteUsd * usdRub;
+      total += convertAmount(units * quoteUsd, 'USD', targetTicker, rates);
     });
 
-    return totalRub;
+    return total;
   }
 
-  private getSuspendedBrokerVirtualRubForAccount(
+  private getSuspendedBrokerVirtualValueForAccount(
     accountId: number,
     brokerUnitsByAsset: Map<string, number>,
     assetsById: Map<number, string>,
     assetSuspendedSince: Map<number, string>,
     currentDateISO: string,
-    usdRub: number | undefined,
+    targetTicker: string,
     rates: Record<string, number> | null,
   ): number {
-    if (!rates || typeof usdRub !== 'number' || usdRub <= 0) return 0;
+    if (!rates) return 0;
 
-    let totalRub = 0;
+    let total = 0;
     brokerUnitsByAsset.forEach((units, key) => {
       if (units <= 0) return;
 
@@ -443,31 +461,10 @@ export class MoneyScreen implements OnInit {
       const quoteUsd = rates[ticker];
       if (typeof quoteUsd !== 'number' || quoteUsd <= 0) return;
 
-      totalRub += units * quoteUsd * usdRub;
+      total += convertAmount(units * quoteUsd, 'USD', targetTicker, rates);
     });
 
-    return totalRub;
-  }
-
-  private getRatesForDate(dateISO: string): Record<string, number> | null {
-    const history = this.rateHistory$$();
-    if (!history.length) return null;
-
-    const merged: Record<string, number> = {};
-    let hasAny = false;
-
-    history
-      .filter((item) => item.dateISO <= dateISO)
-      .sort((a, b) => a.dateISO.localeCompare(b.dateISO))
-      .forEach((item) => {
-        const rates = item.ratesJson;
-        if (rates && typeof rates === 'object') {
-          Object.assign(merged, rates);
-          hasAny = true;
-        }
-      });
-
-    return hasAny ? merged : null;
+    return total;
   }
 
   private parseDetails(detailsJSON: any): any {
@@ -491,19 +488,16 @@ export class MoneyScreen implements OnInit {
     return numeric;
   }
 
-  private convertNativeToRub(
+  private convertNativeToTarget(
     amount: number,
     accountId: number,
+    targetTicker: string,
     rates: Record<string, number> | null,
-    usdRub: number | undefined,
   ): number {
+    if (!rates) return amount;
     const currency = this.getCurrencyForAccount(accountId);
-    if (!currency || currency.ticker === 'RUB') return amount;
-    if (!rates || typeof usdRub !== 'number' || usdRub <= 0) return amount;
-    if (currency.ticker === 'USD') return amount * usdRub;
-    const assetUsd = rates[currency.ticker];
-    if (typeof assetUsd !== 'number' || assetUsd <= 0) return amount;
-    return amount * assetUsd * usdRub;
+    if (!currency) return amount;
+    return convertAmount(amount, currency.ticker, targetTicker, rates);
   }
 
   private getCurrencyForAccount(accountId: number): Currency | null {
@@ -524,24 +518,6 @@ export class MoneyScreen implements OnInit {
     if (!currency?.ticker) return null;
     if (!this.fxTickers.has(currency.ticker)) return null;
     return currency.ticker;
-  }
-
-  private getFxToRubRateForDate(dateISO: string, fxTicker: string): number | null {
-    const rates = this.getRatesForDate(dateISO);
-    if (!rates) return null;
-    const rubUsd = rates['RUB'];
-    if (typeof rubUsd !== 'number' || rubUsd <= 0) return null;
-    const usdRub = 1 / rubUsd;
-
-    if (fxTicker === 'USD') return usdRub;
-
-    if (fxTicker === 'EUR') {
-      const eur = rates['EUR'];
-      if (typeof eur !== 'number' || eur <= 0) return null;
-      return eur * usdRub;
-    }
-
-    return null;
   }
 
   private isEndOfMonth(dateISO: string): boolean {
@@ -603,28 +579,28 @@ export class MoneyScreen implements OnInit {
 
     const monthIndexMap = new Map<string, number>(months.map((m, i) => [m.substring(0, 7), i]));
     const categoryValues = new Map<number | null, number[]>();
+    const targetTicker = this.displayCurrency$$();
 
     incomeTransactions.forEach((t) => {
       const monthKey = t.dateISO.substring(0, 7);
       const monthIndex = monthIndexMap.get(monthKey);
       if (monthIndex === undefined) return;
 
-      const rates = this.getRatesForDate(t.dateISO);
-      const usdRub = rates?.['RUB'] ? 1 / rates['RUB'] : undefined;
-      const rubAmount = this.convertNativeToRub(t.amount, t.accountId, rates, usdRub);
+      const rates = this.moneyService.getRatesForDate(t.dateISO);
+      const targetAmount = this.convertNativeToTarget(t.amount, t.accountId, targetTicker, rates);
 
       const catId = t.categoryId ?? null;
       if (!categoryValues.has(catId)) {
         categoryValues.set(catId, new Array(months.length).fill(0));
       }
-      categoryValues.get(catId)![monthIndex] += rubAmount;
+      categoryValues.get(catId)![monthIndex] += targetAmount;
     });
 
     const dividendValues = new Array(months.length).fill(0);
     dividendRows.forEach((row) => {
       const monthKey = row.dateISO.substring(0, 7);
       const idx = monthIndexMap.get(monthKey);
-      if (idx !== undefined) dividendValues[idx] += row.amountRub;
+      if (idx !== undefined) dividendValues[idx] += row.amount;
     });
 
     const closedValues = new Array(months.length).fill(0);
@@ -632,10 +608,10 @@ export class MoneyScreen implements OnInit {
     const cryptoClosedValues = new Array(months.length).fill(0);
     const cryptoOpenValues = new Array(months.length).fill(0);
     positionLotRows
-      .filter((r) => r.pnlRub !== null)
+      .filter((r) => r.pnl !== null)
       .forEach((row) => {
         const isCrypto = row.assetType === AssetType.CRYPTO;
-        const perMonth = row.pnlRub! / row.openMonths.length;
+        const perMonth = row.pnl! / row.openMonths.length;
         if (row.status === 'closed') {
           const target = isCrypto ? cryptoClosedValues : closedValues;
           row.openMonths.forEach((monthKey) => {
@@ -751,18 +727,18 @@ export class MoneyScreen implements OnInit {
 
     const monthAmounts = new Map<string, Map<number, number>>();
     const monthUncategorized = new Map<string, number>();
+    const targetTicker = this.displayCurrency$$();
 
     expenseTransactions.forEach((t) => {
-      const rates = this.getRatesForDate(t.dateISO);
-      const usdRub = rates?.['RUB'] ? 1 / rates['RUB'] : undefined;
-      const rubAmount = this.convertNativeToRub(t.amount, t.accountId, rates, usdRub);
+      const rates = this.moneyService.getRatesForDate(t.dateISO);
+      const targetAmount = this.convertNativeToTarget(t.amount, t.accountId, targetTicker, rates);
 
       const month = t.dateISO.substring(0, 7);
 
       const effectiveId = getEffectiveCategoryId(t);
 
       if (effectiveId == null) {
-        monthUncategorized.set(month, (monthUncategorized.get(month) ?? 0) + rubAmount);
+        monthUncategorized.set(month, (monthUncategorized.get(month) ?? 0) + targetAmount);
         return;
       }
 
@@ -770,7 +746,7 @@ export class MoneyScreen implements OnInit {
 
       if (!monthAmounts.has(month)) monthAmounts.set(month, new Map());
       const monthCats = monthAmounts.get(month)!;
-      monthCats.set(effectiveId, (monthCats.get(effectiveId) ?? 0) + rubAmount);
+      monthCats.set(effectiveId, (monthCats.get(effectiveId) ?? 0) + targetAmount);
     });
 
     const allMonths = new Set([...monthAmounts.keys(), ...monthUncategorized.keys()]);
@@ -802,13 +778,13 @@ export class MoneyScreen implements OnInit {
   }
 
   private buildDividendRows(): DividendRow[] {
+    const targetTicker = this.displayCurrency$$();
     return this.transactions$$()
       .filter((t) => t.kind === TransactionKind.INVEST_DIVIDEND)
       .map((t) => {
-        const rates = this.getRatesForDate(t.dateISO);
-        const usdRub = rates?.['RUB'] ? 1 / rates['RUB'] : undefined;
-        const amountRub = this.convertNativeToRub(t.amount, t.accountId, rates, usdRub);
-        return { dateISO: t.dateISO, amountRub };
+        const rates = this.moneyService.getRatesForDate(t.dateISO);
+        const amount = this.convertNativeToTarget(t.amount, t.accountId, targetTicker, rates);
+        return { dateISO: t.dateISO, amount };
       })
       .sort((a, b) => a.dateISO.localeCompare(b.dateISO));
   }
@@ -831,6 +807,7 @@ export class MoneyScreen implements OnInit {
     });
 
     const result: PositionLotRow[] = [];
+    const targetTicker = this.displayCurrency$$();
 
     groupMap.forEach((tradesInGroup) => {
       const buys = tradesInGroup
@@ -846,18 +823,16 @@ export class MoneyScreen implements OnInit {
       const lotQueue = buys.map((trade) => {
         const details = this.parseDetails(trade.detailsJSON);
         const qty = this.toPositiveNumber(details?.quantity) ?? 0;
-        const rates = this.getRatesForDate(trade.dateISO);
-        const usdRub = rates?.['RUB'] ? 1 / rates['RUB'] : undefined;
-        const amountRub = this.convertNativeToRub(trade.amount, trade.accountId, rates, usdRub);
-        return { trade, qty, amountRub, remaining: qty };
+        const rates = this.moneyService.getRatesForDate(trade.dateISO);
+        const amount = this.convertNativeToTarget(trade.amount, trade.accountId, targetTicker, rates);
+        return { trade, qty, amount, remaining: qty };
       });
 
       sells.forEach((sell) => {
         const sellDetails = this.parseDetails(sell.detailsJSON);
         const sellQty = this.toPositiveNumber(sellDetails?.quantity) ?? 0;
-        const sellRates = this.getRatesForDate(sell.dateISO);
-        const sellUsdRub = sellRates?.['RUB'] ? 1 / sellRates['RUB'] : undefined;
-        const sellAmountRub = this.convertNativeToRub(sell.amount, sell.accountId, sellRates, sellUsdRub);
+        const sellRates = this.moneyService.getRatesForDate(sell.dateISO);
+        const sellAmount = this.convertNativeToTarget(sell.amount, sell.accountId, targetTicker, sellRates);
 
         let remainingToMatch = sellQty;
 
@@ -866,8 +841,8 @@ export class MoneyScreen implements OnInit {
           if (lot.remaining <= 0) continue;
 
           const matchedQty = Math.min(lot.remaining, remainingToMatch);
-          const costRub = lot.qty > 0 ? lot.amountRub * (matchedQty / lot.qty) : 0;
-          const proceedsRub = sellQty > 0 ? sellAmountRub * (matchedQty / sellQty) : 0;
+          const cost = lot.qty > 0 ? lot.amount * (matchedQty / lot.qty) : 0;
+          const proceeds = sellQty > 0 ? sellAmount * (matchedQty / sellQty) : 0;
 
           const buyMonth = lot.trade.dateISO.substring(0, 7);
           const sellMonth = sell.dateISO.substring(0, 7);
@@ -878,7 +853,7 @@ export class MoneyScreen implements OnInit {
             assetType: firstTrade.assetType ?? null,
             buyDateISO: lot.trade.dateISO,
             sellDateISO: sell.dateISO,
-            pnlRub: proceedsRub - costRub,
+            pnl: proceeds - cost,
             openMonths,
           });
 
@@ -887,19 +862,18 @@ export class MoneyScreen implements OnInit {
         }
       });
 
-      const currentRates = this.getRatesForDate(currentDateISO);
-      const currentUsdRub = currentRates?.['RUB'] ? 1 / currentRates['RUB'] : undefined;
+      const currentRates = this.moneyService.getRatesForDate(currentDateISO);
 
       lotQueue.forEach((lot) => {
         if (lot.remaining <= 0) return;
 
-        const costRub = lot.qty > 0 ? lot.amountRub * (lot.remaining / lot.qty) : 0;
+        const cost = lot.qty > 0 ? lot.amount * (lot.remaining / lot.qty) : 0;
 
-        let currentValueRub: number | null = null;
-        if (currentRates && typeof currentUsdRub === 'number' && currentUsdRub > 0 && ticker !== '?') {
+        let currentValue: number | null = null;
+        if (currentRates && ticker !== '?') {
           const quoteUsd = currentRates[ticker];
           if (typeof quoteUsd === 'number' && quoteUsd > 0) {
-            currentValueRub = lot.remaining * quoteUsd * currentUsdRub;
+            currentValue = convertAmount(lot.remaining * quoteUsd, 'USD', targetTicker, currentRates);
           }
         }
 
@@ -911,7 +885,7 @@ export class MoneyScreen implements OnInit {
           assetType: firstTrade.assetType ?? null,
           buyDateISO: lot.trade.dateISO,
           sellDateISO: null,
-          pnlRub: currentValueRub !== null ? currentValueRub - costRub : null,
+          pnl: currentValue !== null ? currentValue - cost : null,
           openMonths,
         });
       });

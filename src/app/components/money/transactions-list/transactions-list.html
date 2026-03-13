@@ -1,4 +1,4 @@
-<div class="max-w-4xl mx-auto">
+<div>
   <v-card [config]="{
             padding: 4,
             borderRadius: 2,
@@ -104,10 +104,18 @@
 
                   <span class="shrink-0 font-semibold"
                         [class]="getAmountClass(transaction)">
-                    @if (transaction.kind === 'transfer') {
-                      {{ formatTransferAmounts(transaction) }}
+                    @if (isRatesReady$$()) {
+                      @if (transaction.kind === 'transfer') {
+                        {{ formatTransferAmounts(transaction) }}
+                      } @else {
+                        {{ formatAmount(transaction) }}
+                      }
                     } @else {
-                      {{ formatAmount(transaction) }}
+                      <span class="amount-loader">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                      </span>
                     }
                   </span>
                 </div>

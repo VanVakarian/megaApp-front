@@ -73,6 +73,8 @@ export class MoneyService {
   public readonly investAssetTrades$$: WritableSignal<InvestAssetTrade[]> = signal([]);
   public readonly transactions$$: WritableSignal<Transaction[]> = signal([]);
   public readonly rateHistory$$: WritableSignal<MoneyRateHistory[]> = signal([]);
+  public readonly displayCurrency$$: WritableSignal<string> = signal('RUB');
+  public readonly isDisplayCurrencyChanging$$: WritableSignal<boolean> = signal(false);
 
   private readonly loadedSources$$ = signal<Set<string>>(new Set());
   public readonly isChartDataReady$$ = computed(() => {
@@ -956,5 +958,26 @@ export class MoneyService {
         return transaction;
       }),
     );
+  }
+
+  public getRatesForDate(dateISO: string): Record<string, number> | null {
+    const history = this.rateHistory$$();
+    if (!history.length) return null;
+
+    const merged: Record<string, number> = {};
+    let hasAny = false;
+
+    history
+      .filter((item) => item.dateISO <= dateISO)
+      .sort((a, b) => a.dateISO.localeCompare(b.dateISO))
+      .forEach((item) => {
+        const rates = item.ratesJson;
+        if (rates && typeof rates === 'object') {
+          Object.assign(merged, rates);
+          hasAny = true;
+        }
+      });
+
+    return hasAny ? merged : null;
   }
 }

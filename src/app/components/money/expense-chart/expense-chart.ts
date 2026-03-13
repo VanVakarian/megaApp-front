@@ -44,6 +44,7 @@ interface ExpenseChartSeries {
 })
 export class ExpenseChart implements AfterViewInit, OnDestroy {
   readonly dataInput = input.required<ExpenseChartData>();
+  readonly currencySymbolInput = input<string>('₽');
 
   protected readonly chartCanvas = viewChild.required<ElementRef<HTMLCanvasElement>>('chartCanvas');
   protected readonly chart$$ = signal<Chart | null>(null);
@@ -146,7 +147,14 @@ export class ExpenseChart implements AfterViewInit, OnDestroy {
   public ngAfterViewInit(): void {
     const ctx = this.chartCanvas().nativeElement.getContext('2d');
     if (!ctx) return;
-    this.chart$$.set(new Chart(ctx, { ...EXPENSE_CHART_CONFIG, plugins: [this.yearSeparatorPlugin] }));
+    const chart = new Chart(ctx, { ...EXPENSE_CHART_CONFIG, plugins: [this.yearSeparatorPlugin] });
+    if (chart.options.plugins?.tooltip?.callbacks) {
+      chart.options.plugins.tooltip.callbacks.label = (ctx) => {
+        if (ctx.parsed.y === 0) return '';
+        return ` ${ctx.dataset.label}: ${new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(ctx.parsed.y)} ${this.currencySymbolInput()}`;
+      };
+    }
+    this.chart$$.set(chart);
   }
 
   public ngOnDestroy(): void {

@@ -480,7 +480,7 @@ export interface IncomeChartCategorySeries {
 
 export interface DividendRow {
   dateISO: string;
-  amountRub: number;
+  amount: number;
 }
 
 export interface PositionLotRow {
@@ -488,7 +488,7 @@ export interface PositionLotRow {
   assetType: AssetType | null;
   buyDateISO: string;
   sellDateISO: string | null;
-  pnlRub: number | null;
+  pnl: number | null;
   openMonths: string[];
 }
 

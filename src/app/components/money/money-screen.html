@@ -68,6 +68,20 @@
       </div>
     </v-card>
 
+    <v-card [config]="{
+              padding: 2,
+              borderRadius: 2,
+            }">
+      <div class="flex items-center justify-between">
+        <span class="text-sm text-gray-400">Display currency</span>
+        <div>
+          <v-toggle [items]="currencyToggleItems"
+                    [value]="[displayCurrency$$()]"
+                    (valueChange)="setDisplayCurrency($event[0])"></v-toggle>
+        </div>
+      </div>
+    </v-card>
+
     @if (activeTab$$() === MoneyTab.Setup) {
       <accounts-list />
       <organizations-list />
@@ -94,7 +108,8 @@
               borderRadius: 2,
             }">
       @if (isChartDataReady$$()) {
-        <expense-chart [dataInput]="expenseChartData$$()" />
+        <expense-chart [dataInput]="expenseChartData$$()"
+                       [currencySymbolInput]="displayCurrencySymbol$$()" />
       } @else {
         <div class="h-[279px] flex items-center justify-center">
           <div class="border-t-transparent animate-spin w-8 h-8 border-2 rounded-full"
@@ -109,7 +124,8 @@
               borderRadius: 2,
             }">
       @if (isChartDataReady$$()) {
-        <income-chart [dataInput]="incomeChartData$$()" />
+        <income-chart [dataInput]="incomeChartData$$()"
+                      [currencySymbolInput]="displayCurrencySymbol$$()" />
       } @else {
         <div class="h-[279px] flex items-center justify-center">
           <div class="border-t-transparent animate-spin w-8 h-8 border-2 rounded-full"
@@ -124,7 +140,8 @@
               borderRadius: 2,
             }">
       @if (isChartDataReady$$()) {
-        <balances-chart [dataInput]="balanceChartData$$()" />
+        <balances-chart [dataInput]="balanceChartData$$()"
+                        [currencySymbolInput]="displayCurrencySymbol$$()" />
       } @else {
         <div class="h-[324px] flex items-center justify-center">
           <div class="border-t-transparent animate-spin w-8 h-8 border-2 rounded-full"

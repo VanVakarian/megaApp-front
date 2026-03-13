@@ -22,3 +22,44 @@
     display: none;
   }
 }
+
+@keyframes dot-scale {
+
+  0%,
+  100% {
+    transform: scale(0.6);
+    opacity: 0.4;
+  }
+
+  50% {
+    transform: scale(1.15);
+    opacity: 1;
+  }
+}
+
+.amount-loader {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+
+  span {
+    display: inline-block;
+    width: 5px;
+    height: 5px;
+    border-radius: 2px;
+    background: currentColor;
+    animation: dot-scale 1s ease-in-out infinite;
+
+    &:nth-child(1) {
+      animation-delay: 0ms;
+    }
+
+    &:nth-child(2) {
+      animation-delay: 200ms;
+    }
+
+    &:nth-child(3) {
+      animation-delay: 400ms;
+    }
+  }
+}
