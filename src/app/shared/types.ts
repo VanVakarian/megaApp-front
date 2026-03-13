@@ -479,26 +479,15 @@ export interface IncomeChartCategorySeries {
 }
 
 export interface DividendRow {
-  id: number;
   dateISO: string;
-  dateDisplay: string;
-  accountTitle: string;
-  ticker: string;
   amountRub: number;
-  notes: string;
 }
 
 export interface PositionLotRow {
   status: 'closed' | 'open';
-  ticker: string;
-  accountTitle: string;
   assetType: AssetType | null;
-  qty: number;
   buyDateISO: string;
   sellDateISO: string | null;
-  costRub: number;
-  proceedsRub: number | null;
-  currentValueRub: number | null;
   pnlRub: number | null;
   openMonths: string[];
 }
@@ -506,26 +495,23 @@ export interface PositionLotRow {
 export interface IncomeChartData {
   months: string[];
   categorySeries: IncomeChartCategorySeries[];
-  dividendRows: DividendRow[];
-  positionLotRows: PositionLotRow[];
 }
 
-export interface ExpenseTableCategory {
+export interface ExpenseCategory {
   id: number;
   name: string;
 }
 
-export interface ExpenseTableRow {
+export interface ExpenseRow {
   period: string;
   categoryAmounts: Record<number, number>;
   total: number;
   uncategorizedAmount: number;
 }
 
-export interface ExpenseTablesData {
-  categories: ExpenseTableCategory[];
-  yearRows: ExpenseTableRow[];
-  monthRows: ExpenseTableRow[];
+export interface ExpenseChartData {
+  categories: ExpenseCategory[];
+  monthRows: ExpenseRow[];
 }
 
 // export interface Notification {

@@ -12,7 +12,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { EXPENSE_CATEGORY_CONFIG, EXPENSE_CHART_CONFIG, getExpenseCategoryColor } from '@app/shared/chart-config';
-import { ExpenseTablesData } from '@app/shared/types';
+import { ExpenseChartData } from '@app/shared/types';
 import { VButton } from '@ui-kit/components/v-button/v-button';
 import { VCheckbox } from '@ui-kit/components/v-checkbox/v-checkbox';
 import { VInput } from '@ui-kit/components/v-input/v-input';
@@ -43,7 +43,7 @@ interface ExpenseChartSeries {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ExpenseChart implements AfterViewInit, OnDestroy {
-  readonly dataInput = input.required<ExpenseTablesData>();
+  readonly dataInput = input.required<ExpenseChartData>();
 
   protected readonly chartCanvas = viewChild.required<ElementRef<HTMLCanvasElement>>('chartCanvas');
   protected readonly chart$$ = signal<Chart | null>(null);
@@ -206,7 +206,7 @@ export class ExpenseChart implements AfterViewInit, OnDestroy {
 
   private rebuildChartDatasets(
     chart: Chart,
-    data: ExpenseTablesData,
+    data: ExpenseChartData,
     activeSeries: ExpenseChartSeries[],
     allSeries: ExpenseChartSeries[],
     yearly: boolean,

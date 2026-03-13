@@ -94,9 +94,9 @@
               borderRadius: 2,
             }">
       @if (isChartDataReady$$()) {
-        <balances-chart [dataInput]="balanceChartData$$()" />
+        <expense-chart [dataInput]="expenseChartData$$()" />
       } @else {
-        <div class="h-[324px] flex items-center justify-center">
+        <div class="h-[279px] flex items-center justify-center">
           <div class="border-t-transparent animate-spin w-8 h-8 border-2 rounded-full"
                style="border-color: var(--v-color-primary); border-top-color: transparent;"></div>
         </div>
@@ -124,105 +124,13 @@
               borderRadius: 2,
             }">
       @if (isChartDataReady$$()) {
-        <expense-chart [dataInput]="expenseTablesData$$()" />
+        <balances-chart [dataInput]="balanceChartData$$()" />
       } @else {
-        <div class="h-[279px] flex items-center justify-center">
+        <div class="h-[324px] flex items-center justify-center">
           <div class="border-t-transparent animate-spin w-8 h-8 border-2 rounded-full"
                style="border-color: var(--v-color-primary); border-top-color: transparent;"></div>
         </div>
       }
-    </v-card>
-
-    @if (isChartDataReady$$()) {
-      <v-card class="w-full max-w-full min-w-0"
-              [config]="{
-                padding: 3,
-                borderRadius: 2,
-              }">
-        <expense-tables [dataInput]="expenseTablesData$$()" />
-      </v-card>
-    }
-
-    @if (isChartDataReady$$()) {
-      <v-card class="w-full max-w-full min-w-0"
-              [config]="{
-                padding: 3,
-                borderRadius: 2,
-              }">
-        <income-tables [dataInput]="incomeChartData$$()" />
-      </v-card>
-    }
-
-    <v-card class="w-full max-w-full min-w-0 overflow-visible"
-            [config]="{
-              padding: 2,
-              borderRadius: 2,
-            }">
-      <div class="w-full max-w-full overflow-visible">
-        @if (balanceRows$$().length === 0) {
-          <div class="opacity-60 text-sm">No data yet</div>
-        }
-
-        @else {
-          <table class="min-w-full font-mono text-sm">
-            <thead class="text-left">
-              <tr class="border-neutral-400 border-b-2">
-                <th class="sticky top-0 z-20 py-0.5 px-2 bg-white">Date</th>
-                <th class="sticky top-0 z-20 py-0.5 px-2 text-right border-l border-neutral-200 bg-white">Total</th>
-                @for (account of visibleAccountColumns$$(); track account.id) {
-                  @if (isBrokerAccount(account)) {
-                    @if (!isCryptoTradesBrokerAccount(account)) {
-                      <th class="sticky top-0 z-20 py-0.5 px-2 text-right border-l border-neutral-200 bg-white">
-                        {{ getAccountTitle(account) }} (cash)
-                      </th>
-                    }
-                    <th class="sticky top-0 z-20 py-0.5 px-2 text-right border-l border-neutral-200 bg-white">
-                      {{ getAccountTitle(account) }}
-                      (virtual)
-                    </th>
-                  }
-
-                  @else {
-                    <th class="sticky top-0 z-20 py-0.5 px-2 text-right border-l border-neutral-200 bg-white">
-                      {{ getAccountTitle(account) }}
-                    </th>
-                  }
-                }
-              </tr>
-            </thead>
-            <tbody>
-              @for (row of balanceRows$$(); track row.dateISO) {
-                <tr class="border-neutral-200 border-b"
-                    [class.border-neutral-400]="row.isYearEnd"
-                    [class.border-b-2]="row.isYearEnd">
-                  <td class="whitespace-nowrap py-0.5 px-2">{{ row.dateDisplay }}</td>
-                  <td class="whitespace-nowrap py-0.5 px-2 text-right border-l border-neutral-200">
-                    {{ formatTotal(row) }}
-                  </td>
-                  @for (account of visibleAccountColumns$$(); track account.id) {
-                    @if (isBrokerAccount(account)) {
-                      @if (!isCryptoTradesBrokerAccount(account)) {
-                        <td class="whitespace-nowrap py-0.5 px-2 text-right border-l border-neutral-200">
-                          {{ formatAccountBalance(row, account) }}
-                        </td>
-                      }
-                      <td class="whitespace-nowrap py-0.5 px-2 text-right border-l border-neutral-200">
-                        {{ formatBrokerVirtualBalance(row, account) }}
-                      </td>
-                    }
-
-                    @else {
-                      <td class="whitespace-nowrap py-0.5 px-2 text-right border-l border-neutral-200">
-                        {{ formatAccountBalance(row, account) }}
-                      </td>
-                    }
-                  }
-                </tr>
-              }
-            </tbody>
-          </table>
-        }
-      </div>
     </v-card>
   </div>
 
