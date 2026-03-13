@@ -510,6 +510,24 @@ export interface IncomeChartData {
   positionLotRows: PositionLotRow[];
 }
 
+export interface ExpenseTableCategory {
+  id: number;
+  name: string;
+}
+
+export interface ExpenseTableRow {
+  period: string;
+  categoryAmounts: Record<number, number>;
+  total: number;
+  uncategorizedAmount: number;
+}
+
+export interface ExpenseTablesData {
+  categories: ExpenseTableCategory[];
+  yearRows: ExpenseTableRow[];
+  monthRows: ExpenseTableRow[];
+}
+
 // export interface Notification {
 //   id: number;
 //   message: string;

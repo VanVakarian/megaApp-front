@@ -11,8 +11,12 @@ import {
   AssetType,
   BalanceChartAccountSeries,
   BalanceChartData,
+  Category,
   Currency,
   DividendRow,
+  ExpenseTableCategory,
+  ExpenseTableRow,
+  ExpenseTablesData,
   IncomeChartData,
   InvestAssetTrade,
   PositionLotRow,
@@ -25,6 +29,8 @@ import { AssetsList } from './assets-list/assets-list';
 import { BalancesChart } from './balances-chart/balances-chart';
 import { CategoriesList } from './categories-list/categories-list';
 import { CurrenciesList } from './currencies-list/currencies-list';
+import { ExpenseChart } from './expense-chart/expense-chart';
+import { ExpenseTables } from './expense-tables/expense-tables';
 import { IncomeChart } from './income-chart/income-chart';
 import { IncomeTables } from './income-tables/income-tables';
 import { OrganizationsList } from './organizations-list/organizations-list';
@@ -60,6 +66,8 @@ interface BalanceRow {
     AssetsList,
     TransactionsList,
     BalancesChart,
+    ExpenseChart,
+    ExpenseTables,
     IncomeChart,
     IncomeTables,
     VButton,
@@ -108,6 +116,7 @@ export class MoneyScreen implements OnInit {
   protected readonly balanceRows$$ = computed(() => this.buildBalanceRows());
   protected readonly balanceChartData$$ = computed(() => this.buildChartData());
   protected readonly incomeChartData$$ = computed(() => this.buildIncomeChartData());
+  protected readonly expenseTablesData$$ = computed(() => this.buildExpenseTablesData());
 
   public ngOnInit(): void {
     firstValueFrom(this.moneyService.getCurrencies());
@@ -783,6 +792,121 @@ export class MoneyScreen implements OnInit {
     });
 
     return { months, categorySeries, dividendRows, positionLotRows };
+  }
+
+  private buildExpenseTablesData(): ExpenseTablesData {
+    const transactions = this.transactions$$();
+    const categories = this.categories$$();
+
+    const EXCLUDED_NAMES = new Set(['Налог', 'Комиссии', 'Технический гэп']);
+
+    const categoryMap = new Map<number, Category>();
+    categories.forEach((c) => {
+      if (c.id != null) categoryMap.set(c.id, c);
+    });
+
+    const excludedRootIds = new Set<number>();
+    categories.forEach((c) => {
+      if (c.id != null && !c.parentId && EXCLUDED_NAMES.has(c.name)) {
+        excludedRootIds.add(c.id);
+      }
+    });
+
+    const getRootCategoryId = (catId: number): number => {
+      const cat = categoryMap.get(catId);
+      if (!cat || !cat.parentId) return catId;
+      return getRootCategoryId(cat.parentId);
+    };
+
+    const giftCategory = categories.find((c) => c.name === 'Подарок');
+    const giftCategoryId = giftCategory?.id ?? null;
+
+    const getEffectiveCategoryId = (t: Transaction): number | null => {
+      if (t.isGift && giftCategoryId != null) return giftCategoryId;
+      return t.categoryId ?? null;
+    };
+
+    const expenseTransactions = transactions.filter((t) => t.kind === TransactionKind.EXPENSE);
+
+    if (!expenseTransactions.length) {
+      return { categories: [], yearRows: [], monthRows: [] };
+    }
+
+    const uniqueDisplayCategoryIds = new Set<number>();
+    expenseTransactions.forEach((t) => {
+      const effectiveId = getEffectiveCategoryId(t);
+      if (effectiveId == null) return;
+      if (excludedRootIds.has(getRootCategoryId(effectiveId))) return;
+      uniqueDisplayCategoryIds.add(effectiveId);
+    });
+
+    const expenseCategories: ExpenseTableCategory[] = Array.from(uniqueDisplayCategoryIds)
+      .map((id) => {
+        const cat = categoryMap.get(id);
+        return { id, name: cat?.name ?? 'Other' };
+      })
+      .sort((a, b) => a.name.localeCompare(b.name));
+
+    const yearAmounts = new Map<string, Map<number, number>>();
+    const monthAmounts = new Map<string, Map<number, number>>();
+    const yearUncategorized = new Map<string, number>();
+    const monthUncategorized = new Map<string, number>();
+
+    expenseTransactions.forEach((t) => {
+      const rates = this.getRatesForDate(t.dateISO);
+      const usdRub = rates?.['RUB'] ? 1 / rates['RUB'] : undefined;
+      const rubAmount = this.convertNativeToRub(t.amount, t.accountId, rates, usdRub);
+
+      const year = t.dateISO.substring(0, 4);
+      const month = t.dateISO.substring(0, 7);
+
+      const effectiveId = getEffectiveCategoryId(t);
+
+      if (effectiveId == null) {
+        yearUncategorized.set(year, (yearUncategorized.get(year) ?? 0) + rubAmount);
+        monthUncategorized.set(month, (monthUncategorized.get(month) ?? 0) + rubAmount);
+        return;
+      }
+
+      if (excludedRootIds.has(getRootCategoryId(effectiveId))) return;
+
+      if (!yearAmounts.has(year)) yearAmounts.set(year, new Map());
+      const yearCats = yearAmounts.get(year)!;
+      yearCats.set(effectiveId, (yearCats.get(effectiveId) ?? 0) + rubAmount);
+
+      if (!monthAmounts.has(month)) monthAmounts.set(month, new Map());
+      const monthCats = monthAmounts.get(month)!;
+      monthCats.set(effectiveId, (monthCats.get(effectiveId) ?? 0) + rubAmount);
+    });
+
+    const allYears = new Set([...yearAmounts.keys(), ...yearUncategorized.keys()]);
+    const allMonths = new Set([...monthAmounts.keys(), ...monthUncategorized.keys()]);
+
+    const toRows = (
+      periodsSet: Set<string>,
+      amountsMap: Map<string, Map<number, number>>,
+      uncatMap: Map<string, number>,
+    ): ExpenseTableRow[] =>
+      Array.from(periodsSet)
+        .sort((a, b) => a.localeCompare(b))
+        .map((period) => {
+          const catsMap = amountsMap.get(period);
+          const categoryAmounts: Record<number, number> = {};
+          let total = 0;
+          catsMap?.forEach((amount, catId) => {
+            categoryAmounts[catId] = amount;
+            total += amount;
+          });
+          const uncategorizedAmount = uncatMap.get(period) ?? 0;
+          total += uncategorizedAmount;
+          return { period, categoryAmounts, total, uncategorizedAmount };
+        });
+
+    return {
+      categories: expenseCategories,
+      yearRows: toRows(allYears, yearAmounts, yearUncategorized),
+      monthRows: toRows(allMonths, monthAmounts, monthUncategorized),
+    };
   }
 
   private buildDividendRows(): DividendRow[] {

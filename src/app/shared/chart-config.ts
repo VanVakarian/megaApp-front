@@ -166,22 +166,22 @@ export const FOOD_STATS_MONTH_LABELS_OPTIONS: MonthLabelsPluginOptions = {
 };
 
 export const BALANCE_ACCOUNT_PALETTE = [
-  '#4e79a7',
-  '#f28e2b',
-  '#e15759',
-  '#76b7b2',
-  '#59a14f',
-  '#edc948',
-  '#b07aa1',
-  '#ff9da7',
-  '#9c755f',
-  '#bab0ac',
-  '#d37295',
-  '#a0cbe8',
-  '#ffbe7d',
-  '#86bcb6',
-  '#8cd17d',
-  '#f1ce63',
+  'rgb(78, 121, 167)',
+  'rgb(242, 142, 43)',
+  'rgb(225, 87, 89)',
+  'rgb(118, 183, 178)',
+  'rgb(89, 161, 79)',
+  'rgb(237, 201, 72)',
+  'rgb(176, 122, 161)',
+  'rgb(255, 157, 167)',
+  'rgb(156, 117, 95)',
+  'rgb(186, 176, 172)',
+  'rgb(211, 114, 149)',
+  'rgb(160, 203, 232)',
+  'rgb(255, 190, 125)',
+  'rgb(134, 188, 182)',
+  'rgb(140, 209, 125)',
+  'rgb(241, 206, 99)',
 ];
 
 export const BALANCE_CHART_CONFIG: ChartConfiguration<'line'> = {
@@ -212,7 +212,8 @@ export const BALANCE_CHART_CONFIG: ChartConfiguration<'line'> = {
     },
     scales: {
       x: {
-        ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 12 },
+        grid: { display: false },
+        ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 12, callback: () => '' },
       },
       y: {
         min: 0,
@@ -227,21 +228,21 @@ export const BALANCE_CHART_CONFIG: ChartConfiguration<'line'> = {
 
 export const INCOME_CHART_ALLOWED_CATEGORIES: ReadonlySet<string> = new Set(['Зарплата', 'Проекты', 'Проценты']);
 
-const INCOME_BASE_COLORS: [number, number, number][] = [
-  [30, 64, 175],
-  [3, 105, 161],
-  [180, 83, 9],
-  [185, 28, 28],
-  [21, 128, 61],
-  [15, 118, 110],
-  [124, 58, 237],
-  [190, 24, 93],
+const INCOME_BASE_COLORS: string[] = [
+  'rgb(30, 64, 175)',
+  'rgb(3, 105, 161)',
+  'rgb(180, 83, 9)',
+  'rgb(185, 28, 28)',
+  'rgb(21, 128, 61)',
+  'rgb(15, 118, 110)',
+  'rgb(124, 58, 237)',
+  'rgb(190, 24, 93)',
 ];
 
 const INCOME_COLOR_ALPHA = 0.8;
 
-export const INCOME_SERIES_PALETTE = INCOME_BASE_COLORS.map(
-  ([r, g, b]) => `rgba(${r}, ${g}, ${b}, ${INCOME_COLOR_ALPHA})`,
+export const INCOME_SERIES_PALETTE = INCOME_BASE_COLORS.map((rgb) =>
+  rgb.replace('rgb(', 'rgba(').replace(')', `, ${INCOME_COLOR_ALPHA})`),
 );
 
 export const INCOME_VIRTUAL_SERIES = {
@@ -261,6 +262,78 @@ export const INCOME_CHART_CONFIG: ChartConfiguration<'bar'> = {
     plugins: {
       legend: { display: false },
       tooltip: {
+        mode: 'index',
+        intersect: false,
+        callbacks: {
+          label: (ctx) => {
+            if (ctx.parsed.y === 0) return '';
+            return ` ${ctx.dataset.label}: ${new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(ctx.parsed.y)} ₽`;
+          },
+        },
+      },
+    },
+    scales: {
+      x: {
+        stacked: true,
+        grid: { display: false },
+        ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 12 },
+      },
+      y: {
+        stacked: true,
+        ticks: {
+          callback: (value) =>
+            new Intl.NumberFormat('ru-RU', { notation: 'compact', maximumFractionDigits: 1 }).format(value as number),
+        },
+      },
+    },
+  },
+};
+
+export interface ExpenseCategoryConfig {
+  name: string;
+  color: string;
+}
+
+const EXPENSE_COLOR_ALPHA = 0.85;
+
+export const EXPENSE_CATEGORY_CONFIG: ExpenseCategoryConfig[] = [
+  { name: 'Еда', color: 'rgb(147, 196, 125)' },
+  { name: 'Алкоголь', color: 'rgb(255, 153, 0)' },
+  { name: 'Квартплата', color: 'rgb(74, 134, 232)' },
+  { name: 'Развл.', color: 'rgb(56, 118, 29)' },
+  { name: 'Отдых', color: 'rgb(230, 102, 0)' },
+  { name: 'Проезд', color: 'rgb(111, 168, 220)' },
+  { name: 'Одежда', color: 'rgb(204, 0, 0)' },
+  { name: 'Связь', color: 'rgb(255, 217, 102)' },
+  { name: 'Лекарства', color: 'rgb(28, 69, 135)' },
+  { name: 'Хоз.товары', color: 'rgb(234, 153, 153)' },
+  { name: 'Запчасти', color: 'rgb(39, 78, 19)' },
+  { name: 'Прочее', color: 'rgb(183, 183, 183)' },
+  { name: 'Подарок', color: 'rgb(153, 0, 255)' },
+  { name: 'Крупн.покупки', color: 'rgb(255, 0, 0)' },
+];
+
+const EXPENSE_FALLBACK_COLOR = 'rgb(183, 183, 183)';
+
+function rgbToRgba(rgb: string, alpha: number): string {
+  return rgb.replace('rgb(', 'rgba(').replace(')', `, ${alpha})`);
+}
+
+export function getExpenseCategoryColor(categoryName: string, fallbackIndex: number): string {
+  const entry = EXPENSE_CATEGORY_CONFIG.find((c) => c.name === categoryName);
+  return rgbToRgba(entry ? entry.color : EXPENSE_FALLBACK_COLOR, EXPENSE_COLOR_ALPHA);
+}
+
+export const EXPENSE_CHART_CONFIG: ChartConfiguration<'bar'> = {
+  type: 'bar',
+  data: { labels: [], datasets: [] },
+  options: {
+    animation: false,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        itemSort: (a, b) => b.datasetIndex - a.datasetIndex,
         mode: 'index',
         intersect: false,
         callbacks: {

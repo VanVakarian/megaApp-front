@@ -1,12 +1,27 @@
 <div class="flex flex-col gap-3">
   <div class="flex items-center justify-between">
-    <div class="text-lg font-semibold">Income Sources</div>
-    <v-toggle [items]="viewToggleItems"
-              [value]="viewToggleValue()"
-              (valueChange)="onViewToggleChange($event)"></v-toggle>
+    <div class="text-lg font-semibold">Expense Categories</div>
+    <div class="flex items-center gap-2">
+      <v-input class="w-[121px]"
+               [config]="{
+                 inputmode: 'numeric',
+                 textAlign: 'right',
+                 isDisabled: yearlyMode$$(),
+               }"
+               [value]="yMaxInput$$()"
+               (valueChange)="onYMaxChange($event)">
+        <span v-prefix
+              class="ml-2 mr-1 text-sm text-gray-400">max</span>
+        <span v-postfix
+              class="ml-1 mr-2 text-sm text-gray-400">₽</span>
+      </v-input>
+      <v-toggle [items]="viewToggleItems"
+                [value]="viewToggleValue()"
+                (valueChange)="onViewToggleChange($event)"></v-toggle>
+    </div>
   </div>
 
-  <div class='h-[190px]'>
+  <div class='h-[300px]'>
     <canvas #chartCanvas></canvas>
   </div>
 
@@ -22,7 +37,7 @@
       </v-button>
     </div>
     <div class="gap-x-4 gap-y-1 flex flex-wrap">
-      @for (series of dataInput().categorySeries; track series.categoryId) {
+      @for (series of allSeriesList$$(); track series.categoryId) {
         <v-checkbox [value]="isCategoryEnabled(series.categoryId)"
                     [config]="{
                       size: 4,
@@ -32,7 +47,7 @@
                     (onChanged)="toggleCategory(series.categoryId, $event)">
           <span class="inline-flex items-center gap-1 text-xs">
             <span class="inline-block w-2.5 h-2.5 rounded-sm flex-shrink-0"
-                  [style.background]="getCategoryColor(series.categoryId)"></span>
+                  [style.background]="getCategoryColor(series.categoryId, allSeriesList$$())"></span>
             {{ series.categoryName }}
           </span>
         </v-checkbox>

@@ -25,6 +25,7 @@ import {
   LineController,
   LineElement,
   LinearScale,
+  Plugin,
   PointElement,
   Title,
   Tooltip,
@@ -46,6 +47,47 @@ export class BalancesChart implements AfterViewInit, OnDestroy {
   protected readonly showByAccount$$ = signal(false);
   protected readonly suspensionFilter$$ = signal<'all' | 'exclude' | 'only'>('all');
   protected readonly enabledAccountIds$$ = signal<Set<number>>(new Set());
+
+  private yearBoundaries: { year: string; startIdx: number; endIdx: number }[] = [];
+
+  private readonly yearSeparatorPlugin: Plugin = {
+    id: 'balanceYearSeparator',
+    afterDraw: (chart) => {
+      if (!this.yearBoundaries.length) return;
+      const xScale = chart.scales['x'];
+      if (!xScale) return;
+      const { ctx, chartArea } = chart;
+      ctx.save();
+
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.15)';
+      ctx.lineWidth = 1;
+      for (let i = 1; i < this.yearBoundaries.length; i++) {
+        const x =
+          Math.round(
+            (xScale.getPixelForValue(this.yearBoundaries[i - 1].endIdx) +
+              xScale.getPixelForValue(this.yearBoundaries[i].startIdx)) /
+              2,
+          ) + 0.5;
+        ctx.beginPath();
+        ctx.moveTo(x, chartArea.top);
+        ctx.lineTo(x, chartArea.bottom);
+        ctx.stroke();
+      }
+
+      const labelY = Math.round((chartArea.bottom + xScale.bottom) / 2);
+      const font = Chart.defaults.font;
+      ctx.fillStyle = Chart.defaults.color as string;
+      ctx.font = `${font.size ?? 12}px ${font.family ?? 'sans-serif'}`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      for (const { year, startIdx, endIdx } of this.yearBoundaries) {
+        const centerX = (xScale.getPixelForValue(startIdx) + xScale.getPixelForValue(endIdx)) / 2;
+        ctx.fillText(year, centerX, labelY);
+      }
+
+      ctx.restore();
+    },
+  };
 
   protected readonly activeAccountSeries$$ = computed(() => {
     const series = this.dataInput().accountSeries;
@@ -79,7 +121,7 @@ export class BalancesChart implements AfterViewInit, OnDestroy {
   public ngAfterViewInit(): void {
     const ctx = this.chartCanvas().nativeElement.getContext('2d');
     if (!ctx) return;
-    this.chart$$.set(new Chart(ctx, BALANCE_CHART_CONFIG));
+    this.chart$$.set(new Chart(ctx, { ...BALANCE_CHART_CONFIG, plugins: [this.yearSeparatorPlugin] }));
   }
 
   public ngOnDestroy(): void {
@@ -159,6 +201,19 @@ export class BalancesChart implements AfterViewInit, OnDestroy {
   ): void {
     const labels = data.dates.map((d) => this.formatDateLabel(d));
 
+    this.yearBoundaries = [];
+    const yearMap = new Map<string, { startIdx: number; endIdx: number }>();
+    data.dates.forEach((d, i) => {
+      const year = d.substring(0, 4);
+      const existing = yearMap.get(year);
+      if (!existing) {
+        yearMap.set(year, { startIdx: i, endIdx: i });
+      } else {
+        existing.endIdx = i;
+      }
+    });
+    yearMap.forEach((bounds, year) => this.yearBoundaries.push({ year, ...bounds }));
+
     const getEffectiveValue = (s: BalanceChartAccountSeries, i: number): number => {
       if (suspensionFilter === 'only') return Math.max(0, s.suspendedValues[i] ?? 0);
       if (suspensionFilter === 'exclude') return Math.max(0, (s.values[i] ?? 0) - (s.suspendedValues[i] ?? 0));
@@ -217,7 +272,6 @@ export class BalancesChart implements AfterViewInit, OnDestroy {
     const date = new Date(dateISO + 'T00:00:00');
     const month = date.getMonth();
     const year = date.getFullYear();
-    if (month === 0) return String(year);
     return `${String(month + 1).padStart(2, '0')}.${year}`;
   }
 }

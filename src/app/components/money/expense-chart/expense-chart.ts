@@ -11,10 +11,11 @@ import {
   untracked,
   viewChild,
 } from '@angular/core';
-import { INCOME_CHART_CONFIG, INCOME_SERIES_PALETTE } from '@app/shared/chart-config';
-import { IncomeChartCategorySeries, IncomeChartData } from '@app/shared/types';
+import { EXPENSE_CATEGORY_CONFIG, EXPENSE_CHART_CONFIG, getExpenseCategoryColor } from '@app/shared/chart-config';
+import { ExpenseTablesData } from '@app/shared/types';
 import { VButton } from '@ui-kit/components/v-button/v-button';
 import { VCheckbox } from '@ui-kit/components/v-checkbox/v-checkbox';
+import { VInput } from '@ui-kit/components/v-input/v-input';
 import { VToggle, VToggleItem } from '@ui-kit/components/v-toggle/v-toggle';
 import {
   BarController,
@@ -30,19 +31,25 @@ import {
 
 Chart.register(BarController, BarElement, CategoryScale, LinearScale, Tooltip, Legend);
 
+interface ExpenseChartSeries {
+  categoryId: number | null;
+  categoryName: string;
+}
+
 @Component({
-  selector: 'income-chart',
-  templateUrl: './income-chart.html',
-  imports: [VButton, VCheckbox, VToggle],
+  selector: 'expense-chart',
+  templateUrl: './expense-chart.html',
+  imports: [VButton, VCheckbox, VInput, VToggle],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class IncomeChart implements AfterViewInit, OnDestroy {
-  readonly dataInput = input.required<IncomeChartData>();
+export class ExpenseChart implements AfterViewInit, OnDestroy {
+  readonly dataInput = input.required<ExpenseTablesData>();
 
   protected readonly chartCanvas = viewChild.required<ElementRef<HTMLCanvasElement>>('chartCanvas');
   protected readonly chart$$ = signal<Chart | null>(null);
   protected readonly enabledCategoryIds$$ = signal<Set<number | null>>(new Set());
   protected readonly yearlyMode$$ = signal(false);
+  protected readonly yMaxInput$$ = signal<string>(localStorage.getItem('expense-chart-y-max') ?? '');
 
   private yearBoundaries: { year: string; startIdx: number; endIdx: number }[] = [];
 
@@ -51,14 +58,29 @@ export class IncomeChart implements AfterViewInit, OnDestroy {
     { id: 'yearly', label: 'Yearly' },
   ];
 
-  protected readonly activeCategorySeries$$ = computed(() => {
-    const series = this.dataInput().categorySeries;
+  protected readonly allSeriesList$$ = computed((): ExpenseChartSeries[] => {
+    const categories = this.dataInput().categories;
+    const series: ExpenseChartSeries[] = categories.map((cat) => ({ categoryId: cat.id, categoryName: cat.name }));
+    if (this.dataInput().monthRows.some((r) => r.uncategorizedAmount > 0)) {
+      series.push({ categoryId: null, categoryName: 'Uncategorized' });
+    }
+    const configOrder = new Map(EXPENSE_CATEGORY_CONFIG.map((c, i) => [c.name, i]));
+    series.sort((a, b) => {
+      const ia = configOrder.get(a.categoryName) ?? Number.MAX_SAFE_INTEGER;
+      const ib = configOrder.get(b.categoryName) ?? Number.MAX_SAFE_INTEGER;
+      return ia - ib;
+    });
+    return series;
+  });
+
+  protected readonly activeSeries$$ = computed(() => {
+    const series = this.allSeriesList$$();
     const enabled = this.enabledCategoryIds$$();
     return series.filter((s) => enabled.has(s.categoryId));
   });
 
   private readonly syncEnabledCategoriesEffect = effect(() => {
-    const series = this.dataInput().categorySeries;
+    const series = this.allSeriesList$$();
     untracked(() => {
       const current = this.enabledCategoryIds$$();
       const newIds = series.map((s) => s.categoryId).filter((id) => !current.has(id));
@@ -72,15 +94,17 @@ export class IncomeChart implements AfterViewInit, OnDestroy {
 
   private readonly chartUpdateEffect = effect(() => {
     const data = this.dataInput();
-    const activeSeries = this.activeCategorySeries$$();
+    const activeSeries = this.activeSeries$$();
+    const allSeries = this.allSeriesList$$();
     const chart = this.chart$$();
     const yearly = this.yearlyMode$$();
+    const ymax = this.yMaxInput$$();
     if (!chart) return;
-    this.rebuildChartDatasets(chart, data, activeSeries, yearly);
+    this.rebuildChartDatasets(chart, data, activeSeries, allSeries, yearly, ymax);
   });
 
   private readonly yearSeparatorPlugin: Plugin = {
-    id: 'incomeYearSeparator',
+    id: 'expenseYearSeparator',
     afterDraw: (chart) => {
       if (this.yearlyMode$$()) return;
       if (!this.yearBoundaries.length) return;
@@ -122,7 +146,7 @@ export class IncomeChart implements AfterViewInit, OnDestroy {
   public ngAfterViewInit(): void {
     const ctx = this.chartCanvas().nativeElement.getContext('2d');
     if (!ctx) return;
-    this.chart$$.set(new Chart(ctx, { ...INCOME_CHART_CONFIG, plugins: [this.yearSeparatorPlugin] }));
+    this.chart$$.set(new Chart(ctx, { ...EXPENSE_CHART_CONFIG, plugins: [this.yearSeparatorPlugin] }));
   }
 
   public ngOnDestroy(): void {
@@ -130,7 +154,7 @@ export class IncomeChart implements AfterViewInit, OnDestroy {
   }
 
   protected readonly allEnabled$$ = computed(() => {
-    const series = this.dataInput().categorySeries;
+    const series = this.allSeriesList$$();
     const enabled = this.enabledCategoryIds$$();
     return series.every((s) => enabled.has(s.categoryId));
   });
@@ -145,8 +169,13 @@ export class IncomeChart implements AfterViewInit, OnDestroy {
     this.yearlyMode$$.set(value[0] === 'yearly');
   }
 
+  protected onYMaxChange(value: string): void {
+    this.yMaxInput$$.set(value);
+    localStorage.setItem('expense-chart-y-max', value);
+  }
+
   protected toggleAll(): void {
-    const series = this.dataInput().categorySeries;
+    const series = this.allSeriesList$$();
     if (this.allEnabled$$()) {
       this.enabledCategoryIds$$.set(new Set());
     } else {
@@ -169,32 +198,28 @@ export class IncomeChart implements AfterViewInit, OnDestroy {
     return this.enabledCategoryIds$$().has(categoryId);
   }
 
-  protected getCategoryColor(categoryId: number | null): string {
-    const index = this.dataInput().categorySeries.findIndex((s) => s.categoryId === categoryId);
-    return INCOME_SERIES_PALETTE[index % INCOME_SERIES_PALETTE.length];
-  }
-
-  private formatDateLabel(monthEndISO: string): string {
-    const date = new Date(monthEndISO + 'T00:00:00');
-    const month = date.getMonth();
-    const year = date.getFullYear();
-    if (month === 0) return String(year);
-    return `${String(month + 1).padStart(2, '0')}.${year}`;
+  protected getCategoryColor(categoryId: number | null, allSeries: ExpenseChartSeries[]): string {
+    const series = allSeries.find((s) => s.categoryId === categoryId);
+    const fallbackIndex = allSeries.findIndex((s) => s.categoryId === categoryId);
+    return getExpenseCategoryColor(series?.categoryName ?? '', fallbackIndex);
   }
 
   private rebuildChartDatasets(
     chart: Chart,
-    data: IncomeChartData,
-    activeSeries: IncomeChartCategorySeries[],
+    data: ExpenseTablesData,
+    activeSeries: ExpenseChartSeries[],
+    allSeries: ExpenseChartSeries[],
     yearly: boolean,
+    yMaxRaw: string,
   ): void {
+    const months = data.monthRows.map((r) => r.period);
     let labels: string[];
     let yearlyValues: Map<number | null, number[]> | null = null;
 
     if (yearly) {
       const yearLabels: string[] = [];
       const yearIndexMap = new Map<string, number>();
-      data.months.forEach((m) => {
+      months.forEach((m) => {
         const year = m.substring(0, 4);
         if (!yearIndexMap.has(year)) {
           yearIndexMap.set(year, yearLabels.length);
@@ -205,16 +230,20 @@ export class IncomeChart implements AfterViewInit, OnDestroy {
       yearlyValues = new Map();
       activeSeries.forEach((s) => {
         const yearVals = new Array(yearLabels.length).fill(0);
-        data.months.forEach((m, i) => {
+        months.forEach((m, i) => {
           const year = m.substring(0, 4);
-          yearVals[yearIndexMap.get(year)!] += s.values[i];
+          const val =
+            s.categoryId === null
+              ? data.monthRows[i].uncategorizedAmount
+              : (data.monthRows[i].categoryAmounts[s.categoryId] ?? 0);
+          yearVals[yearIndexMap.get(year)!] += val;
         });
         yearlyValues!.set(s.categoryId, yearVals);
       });
     } else {
       this.yearBoundaries = [];
       const yearMap = new Map<string, { startIdx: number; endIdx: number }>();
-      data.months.forEach((m, i) => {
+      months.forEach((m, i) => {
         const year = m.substring(0, 4);
         const existing = yearMap.get(year);
         if (!existing) {
@@ -224,7 +253,7 @@ export class IncomeChart implements AfterViewInit, OnDestroy {
         }
       });
       yearMap.forEach((bounds, year) => this.yearBoundaries.push({ year, ...bounds }));
-      labels = data.months.map(() => '');
+      labels = months.map(() => '');
     }
 
     (chart.options.scales!['x']!.ticks as any).callback = yearly
@@ -232,19 +261,33 @@ export class IncomeChart implements AfterViewInit, OnDestroy {
       : () => '';
 
     const datasets: ChartDataset<'bar'>[] = activeSeries.map((series) => {
-      const index = data.categorySeries.findIndex((s) => s.categoryId === series.categoryId);
-      const color = INCOME_SERIES_PALETTE[index % INCOME_SERIES_PALETTE.length];
+      const fallbackIndex = allSeries.findIndex((s) => s.categoryId === series.categoryId);
+      const color = getExpenseCategoryColor(series.categoryName, fallbackIndex);
+      const seriesValues: number[] = yearly
+        ? yearlyValues!.get(series.categoryId)!
+        : months.map((_, i) =>
+            series.categoryId === null
+              ? data.monthRows[i].uncategorizedAmount
+              : (data.monthRows[i].categoryAmounts[series.categoryId!] ?? 0),
+          );
       return {
         label: series.categoryName,
-        data: yearly ? yearlyValues!.get(series.categoryId)! : series.values,
+        data: seriesValues,
         backgroundColor: color,
         borderColor: color,
         borderWidth: 0,
-        stack: 'income',
+        stack: 'expense',
       };
     });
     chart.data.labels = labels;
     chart.data.datasets = datasets;
+    const parsedMax = parseInt(yMaxRaw, 10);
+    const maxStackedValue = labels.reduce((max, _, i) => {
+      const barTotal = datasets.reduce((sum, ds) => sum + ((ds.data[i] as number) ?? 0), 0);
+      return Math.max(max, barTotal);
+    }, 0);
+    chart.options.scales!['y']!.max =
+      !yearly && parsedMax > 0 && !isNaN(parsedMax) && maxStackedValue > parsedMax ? parsedMax : undefined;
     chart.update('none');
   }
 }
