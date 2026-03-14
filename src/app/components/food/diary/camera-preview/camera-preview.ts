@@ -11,7 +11,7 @@ import {
 } from '@angular/core';
 import { FoodAddModalService } from '@app/services/food/food-add-modal.service';
 import { PhotoCaptureService } from '@app/services/photo-capture.service';
-import { CapturedPhoto } from '@app/shared/interfaces';
+import { CapturedPhoto } from '@app/shared/types';
 import { VButton } from '@ui-kit/components/v-button/v-button';
 import { IconName, VIcon } from '@ui-kit/components/v-icon/v-icon';
 

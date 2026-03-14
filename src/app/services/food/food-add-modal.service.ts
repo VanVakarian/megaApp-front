@@ -1,5 +1,5 @@
 import { Injectable, signal, WritableSignal } from '@angular/core';
-import { CatalogueEntry } from '@app/shared/interfaces';
+import { CatalogueEntry } from '@app/shared/types';
 
 export enum ModalState {
   CLOSED = 'CLOSED',

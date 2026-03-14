@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Injectable, signal, WritableSignal } from '@angular/core';
 import { DEFAULT_SETTINGS } from '@app/shared/const';
-import { UserSettings } from '@app/shared/interfaces';
+import { UserSettings } from '@app/shared/types';
 import { catchError, firstValueFrom, of } from 'rxjs';
 import { LocalStorageService } from './local-storage.service';
 import { NetworkService } from './network.service';

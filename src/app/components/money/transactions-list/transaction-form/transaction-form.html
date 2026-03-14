@@ -1,108 +1,307 @@
-<div class="bg-gray-50 p-6 rounded-lg">
-  <h3 class="mb-4 text-lg font-semibold">{{ isEditing() ? 'Edit Transaction' : 'Add New Transaction' }}</h3>
+<div class="flex justify-center items-center gap-4 mb-4 *:w-1/2">
+  <div class="text-lg font-semibold">
+    {{ isEditing$$() ? 'Edit Transaction' : 'Add Transaction' }}
+    <v-icon class="hidden"
+            [name]="Icon.CalendarMonth"
+            [size]="0"></v-icon>
+  </div>
 
-  <div class="space-y-4">
-    <div>
-      <label class="block mb-1 text-sm font-medium text-gray-700">Date <span class="text-red-500">*</span>:</label>
-      <input type="date"
-             [(ngModel)]="dateISO"
-             class="focus:outline-none focus:ring-2 focus:ring-blue-500 w-full px-3 py-2 border border-gray-300 rounded-md">
-    </div>
-
-    <div>
-      <label class="block mb-1 text-sm font-medium text-gray-700">Account <span class="text-red-500">*</span>:</label>
-      <select [(ngModel)]="accountId"
-              class="focus:outline-none focus:ring-2 focus:ring-blue-500 w-full px-3 py-2 border border-gray-300 rounded-md">
-        <option [value]="null">Select an account</option>
-        @for (account of getAccounts(); track account.id) {
-          <option [value]="account.id">{{ account.title }}</option>
-        }
-      </select>
-    </div>
-
-    <div>
-      <label class="block mb-1 text-sm font-medium text-gray-700">Amount <span class="text-red-500">*</span>:</label>
-      <input type="number"
-             step="0.01"
-             min="0"
-             placeholder="0.00"
-             [(ngModel)]="amount"
-             class="focus:outline-none focus:ring-2 focus:ring-blue-500 w-full px-3 py-2 border border-gray-300 rounded-md">
-      <p class="mt-1 text-xs text-gray-500">
-        Enter positive amount - it will be automatically
-        <span [class]="kind === 'expense' ? 'text-red-600' : 'text-green-600'">
-          {{ kind === 'expense' ? 'subtracted' : 'added' }}
+  <div class="">
+    <v-input [config]="{
+                 placeholder: 'YYYY-MM-DD',
+                 type: 'text',
+                 inputmode: 'numeric',
+               }"
+             [ngModel]="dateISO$$()"
+             (ngModelChange)="dateISO$$.set($event)">
+      <v-button class="calendar-v-button v-link v-link-static mr-2"
+                v-postfix
+                tabindex="-1"
+                [config]="{
+                    padding: 1,
+                  }"
+                (mousedown)="$event.preventDefault()"
+                (onClick)="onDateControlClick()">
+        <v-icon v-prefix
+                [name]="Icon.CalendarMonth"
+                [size]="6"></v-icon>
+        <span class="relative">
+          <input #dateInputElem
+                 id="dateInputElem"
+                 type="date"
+                 class="absolute w-0 h-0 p-0 m-0 border-0 opacity-0 top-[14px] right-[29px]"
+                 [value]="dateISO$$()"
+                 (change)="onDatePicked($event)" />
         </span>
-        based on transaction type
-      </p>
-    </div>
+      </v-button>
+    </v-input>
+  </div>
+</div>
 
-    <div>
-      <label class="block mb-1 text-sm font-medium text-gray-700">Type <span class="text-red-500">*</span>:</label>
-      <select [(ngModel)]="kind"
-              class="focus:outline-none focus:ring-2 focus:ring-blue-500 w-full px-3 py-2 border border-gray-300 rounded-md">
-        @for (kindOption of getKindValues(); track kindOption) {
-          <option [value]="kindOption">{{ getKindDisplayName(kindOption) }}</option>
-        }
-      </select>
-    </div>
+<div class="flex flex-col gap-4">
+  <v-toggle [items]="kindToggleItems$$()"
+            [value]="kindToggleValue()"
+            [config]="{
+                isDisabled: isEditing$$(),
+              }"
+            (valueChange)="onKindToggleChange($event)"></v-toggle>
 
-    <div class="flex items-center">
-      <input type="checkbox"
-             [(ngModel)]="isGift"
-             class="focus:ring-blue-500 w-4 h-4 mr-2 text-blue-600 border-gray-300 rounded">
-      <label class="text-sm font-medium text-gray-700">
-        This is a gift
-      </label>
-    </div>
+  @if (kind$$() !== TransactionKind.TRANSFER) {
+    <div class="flex gap-4">
+      <v-dropdown class="w-2/3"
+                  [label]="'Account'"
+                  [labelRight]="getSelectedAccountBalanceLabel(accountId$$())"
+                  [placeholder]="'Select an account'"
+                  [isDisabled]="isEditing$$()"
+                  [items]="accountItems()"
+                  [isRequired]="true"
+                  [ngModel]="accountId$$()"
+                  (ngModelChange)="onAccountChange($event)"></v-dropdown>
 
-    <div>
-      <label class="block mb-1 text-sm font-medium text-gray-700">Notes (optional):</label>
-      <textarea [(ngModel)]="notes"
-                placeholder="Add any notes about this transaction..."
-                rows="3"
-                class="focus:outline-none focus:ring-2 focus:ring-blue-500 w-full px-3 py-2 border border-gray-300 rounded-md resize-none"></textarea>
-    </div>
-
-    <div>
-      <label class="block mb-2 text-sm font-medium text-gray-700">Categories (optional):</label>
-      <div class="max-h-32 p-3 space-y-2 overflow-y-auto border border-gray-300 rounded-md">
-        @if (getTransactionCategories().length === 0) {
-          <p class="text-sm italic text-gray-500">No transaction categories available</p>
-        } @else {
-          @for (category of getTransactionCategories(); track category.id) {
-            <div class="flex items-center">
-              <input type="checkbox"
-                     [id]="'category-' + category.id"
-                     [checked]="isCategorySelected(category.id!)"
-                     (change)="toggleCategory(category.id!, $event)"
-                     class="focus:ring-blue-500 w-4 h-4 mr-2 text-blue-600 border-gray-300 rounded">
-              <label [for]="'category-' + category.id"
-                     class="text-sm text-gray-700">
-                {{ category.name }}
-                @if (category.groupKey) {
-                  <span class="text-gray-500">({{ category.groupKey }})</span>
-                }
-              </label>
-            </div>
+      @if (!isInvestMode$$()) {
+        <v-input class="amount-input w-1/3"
+                 [config]="{
+                     label: 'Amount',
+                     placeholder: '0.00',
+                     type: 'text',
+                     inputmode: 'decimal',
+                     textAlign: 'right',
+                   }"
+                 [ngModel]="amount$$()"
+                 (ngModelChange)="amount$$.set($event)">
+          <ng-container v-prefix>
+            @if (getCurrencyPrefix(); as currencyPrefix) {
+              <span class="mx-2">{{ currencyPrefix }}</span>
             }
+          </ng-container>
+          <ng-container v-postfix>
+            @if (getCurrencyPostfix(); as currencyPostfix) {
+              <span class="mx-2">{{ currencyPostfix }}</span>
             }
-      </div>
+          </ng-container>
+        </v-input>
+      }
     </div>
 
-    <div class="flex gap-2">
-      <button [disabled]="!isFormValid()"
-              class="hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-400 disabled:cursor-not-allowed px-4 py-2 text-white bg-blue-600 rounded-md"
-              (click)="save()"
-              type="button">
-        {{ isEditing() ? 'Update' : 'Create' }}
-      </button>
+    @if (!isInvestMode$$()) {
+      <v-dropdown [label]="'Category (optional)'"
+                  [placeholder]="'No category'"
+                  [items]="categoryItems()"
+                  [ngModel]="categoryId$$()"
+                  (ngModelChange)="categoryId$$.set($event)"></v-dropdown>
 
-      <button class="hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 px-4 py-2 text-white bg-gray-600 rounded-md"
-              (click)="cancel()"
-              type="button">
-        Cancel
-      </button>
+      <v-checkbox [value]="isGift$$()"
+                  (valueChange)="isGift$$.set($event)">
+        Gift
+      </v-checkbox>
+    }
+
+    @if (isInvestMode$$()) {
+      <v-dropdown [label]="'Asset'"
+                  [placeholder]="'Select an asset'"
+                  [items]="assetItems$$()"
+                  [isRequired]="true"
+                  [isDisabled]="!canEditInvestIdentity$$()"
+                  [ngModel]="assetId$$()"
+                  (ngModelChange)="onAssetChange($event)"></v-dropdown>
+
+      @if (kind$$() === TransactionKind.INCOME) {
+        <v-checkbox [value]="isCouponDividend$$()"
+                    [config]="{
+                        isDisabled: !canEditInvestIdentity$$(),
+                      }"
+                    (valueChange)="isCouponDividend$$.set($event)">
+          {{ couponDividendLabel$$() }}
+        </v-checkbox>
+      }
+
+      @if (!isInvestDividendMode$$()) {
+        <div class="flex gap-4">
+          <v-input class="w-1/2"
+                   [config]="{
+                       label: 'Quantity',
+                       placeholder: '0',
+                       type: 'text',
+                       inputmode: 'decimal',
+                     }"
+                   [ngModel]="quantity$$()"
+                   (ngModelChange)="quantity$$.set($event)" />
+
+          <v-input class="w-1/2"
+                   [config]="{
+                       label: 'Price',
+                       placeholder: '0.00',
+                       type: 'text',
+                       inputmode: 'decimal',
+                     }"
+                   [ngModel]="price$$()"
+                   (ngModelChange)="price$$.set($event)" />
+        </div>
+
+        <div class="flex gap-4">
+          <v-input class="w-1/2"
+                   [config]="{
+                       label: 'Commission',
+                       placeholder: '0.00',
+                       type: 'text',
+                       inputmode: 'decimal',
+                     }"
+                   [ngModel]="commissionAmount$$()"
+                   (ngModelChange)="commissionAmount$$.set($event)" />
+
+          <v-input class="w-1/2"
+                   [config]="{
+                       label: 'Accrued Interest',
+                       placeholder: '0.00',
+                       type: 'text',
+                       inputmode: 'decimal',
+                       isDisabled: !selectedAssetIsBond$$(),
+                     }"
+                   [ngModel]="accruedInterestAmount$$()"
+                   (ngModelChange)="accruedInterestAmount$$.set($event)" />
+        </div>
+      }
+
+      @if (!isInvestDividendMode$$()) {
+        <v-input [config]="{
+                     label: 'Amount',
+                     placeholder: '0.00',
+                     type: 'text',
+                     inputmode: 'decimal',
+                     textAlign: 'right',
+                     isDisabled: true,
+                   }"
+                 [ngModel]="investAmountDisplay$$()">
+          <ng-container v-prefix>
+            @if (getCurrencyPrefix(); as currencyPrefix) {
+              <span class="mx-2">{{ currencyPrefix }}</span>
+            }
+          </ng-container>
+          <ng-container v-postfix>
+            @if (getCurrencyPostfix(); as currencyPostfix) {
+              <span class="mx-2">{{ currencyPostfix }}</span>
+            }
+          </ng-container>
+        </v-input>
+      }
+
+      @if (isInvestDividendMode$$()) {
+        <v-input [config]="{
+                     label: 'Amount',
+                     placeholder: '0.00',
+                     type: 'text',
+                     inputmode: 'decimal',
+                     textAlign: 'right',
+                   }"
+                 [ngModel]="amount$$()"
+                 (ngModelChange)="amount$$.set($event)">
+          <ng-container v-prefix>
+            @if (getCurrencyPrefix(); as currencyPrefix) {
+              <span class="mx-2">{{ currencyPrefix }}</span>
+            }
+          </ng-container>
+          <ng-container v-postfix>
+            @if (getCurrencyPostfix(); as currencyPostfix) {
+              <span class="mx-2">{{ currencyPostfix }}</span>
+            }
+          </ng-container>
+        </v-input>
+      }
+    }
+
+  }
+
+  @else {
+    <div class="flex gap-4">
+      <v-dropdown class="w-2/3"
+                  [label]="'Account from'"
+                  [labelRight]="getSelectedAccountBalanceLabel(accountId$$())"
+                  [placeholder]="'Select an account'"
+                  [isDisabled]="isEditing$$()"
+                  [items]="accountItems()"
+                  [isRequired]="true"
+                  [ngModel]="accountId$$()"
+                  (ngModelChange)="accountId$$.set($event)"></v-dropdown>
+
+      <v-input class="amount-input w-1/3"
+               [config]="{
+                   label: 'Amount from',
+                   placeholder: '0.00',
+                   type: 'text',
+                   inputmode: 'decimal',
+                   textAlign: 'right',
+                 }"
+               [ngModel]="amount$$()"
+               (ngModelChange)="amount$$.set($event)">
+        <ng-container v-prefix>
+          @if (getCurrencyPrefixForAccount(accountId$$()); as currencyPrefix) {
+            <span class="mx-2">{{ currencyPrefix }}</span>
+          }
+        </ng-container>
+        <ng-container v-postfix>
+          @if (getCurrencyPostfixForAccount(accountId$$()); as currencyPostfix) {
+            <span class="mx-2">{{ currencyPostfix }}</span>
+          }
+        </ng-container>
+      </v-input>
     </div>
+
+    <div class="flex gap-4">
+      <v-dropdown class="w-2/3"
+                  [label]="'Account to'"
+                  [labelRight]="getSelectedAccountBalanceLabel(accountToId$$())"
+                  [placeholder]="'Select an account'"
+                  [isDisabled]="isEditing$$()"
+                  [items]="accountItems()"
+                  [isRequired]="true"
+                  [ngModel]="accountToId$$()"
+                  (ngModelChange)="accountToId$$.set($event)"></v-dropdown>
+
+      <v-input class="amount-input w-1/3"
+               [config]="{
+                   label: 'Amount to',
+                   placeholder: '0.00',
+                   type: 'text',
+                   inputmode: 'decimal',
+                   textAlign: 'right',
+                 }"
+               [ngModel]="amountTo$$()"
+               (ngModelChange)="amountTo$$.set($event)">
+        <ng-container v-prefix>
+          @if (getCurrencyPrefixForAccount(accountToId$$()); as currencyPrefix) {
+            <span class="mx-2">{{ currencyPrefix }}</span>
+          }
+        </ng-container>
+        <ng-container v-postfix>
+          @if (getCurrencyPostfixForAccount(accountToId$$()); as currencyPostfix) {
+            <span class="mx-2">{{ currencyPostfix }}</span>
+          }
+        </ng-container>
+      </v-input>
+    </div>
+  }
+
+  <v-input [config]="{
+               label: 'Notes (optional)',
+               placeholder: 'Add any notes about this transaction...',
+               isTextarea: true,
+               rows: 2,
+             }"
+           [ngModel]="notes$$()"
+           (ngModelChange)="notes$$.set($event)" />
+
+  <div class="flex justify-end gap-2">
+    <v-button class="v-primary"
+              [config]="{
+                  isDisabled: !isFormValid(),
+                }"
+              (onClick)="save()">
+      {{ isEditing$$() ? 'Update' : 'Add' }}
+    </v-button>
+
+    <v-button class="v-flat"
+              (onClick)="cancel()">
+      Cancel
+    </v-button>
   </div>
 </div>

@@ -1,32 +1,29 @@
 import { Routes } from '@angular/router';
-import { FoodScreen } from '@app/components/food/food-screen';
-import { MoneyScreen } from '@app/components/money/money-screen';
-import { Settings } from '@app/components/settings/settings';
 import { authResolver } from '@app/services/auth.resolver';
 import { isChapterSelected } from '@app/services/is-chapter-selected.guard';
 
 export const routes: Routes = [
   {
     path: 'food',
-    component: FoodScreen,
+    loadComponent: () => import('@app/components/food/food-screen').then((m) => m.FoodScreen),
     resolve: { auth: authResolver },
     canActivate: [isChapterSelected],
   },
   {
     path: 'food/:section',
-    component: FoodScreen,
+    loadComponent: () => import('@app/components/food/food-screen').then((m) => m.FoodScreen),
     resolve: { auth: authResolver },
     canActivate: [isChapterSelected],
   },
   {
     path: 'money',
-    component: MoneyScreen,
+    loadComponent: () => import('@app/components/money/money-screen').then((m) => m.MoneyScreen),
     resolve: { auth: authResolver },
     canActivate: [isChapterSelected],
   },
   {
     path: 'settings',
-    component: Settings,
+    loadComponent: () => import('@app/components/settings/settings').then((m) => m.Settings),
     resolve: { auth: authResolver },
     data: { allowUnauthenticated: true },
   },

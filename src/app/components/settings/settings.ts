@@ -4,7 +4,7 @@ import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { AuthForm } from '@app/components/settings/auth-form/auth-form';
 import { AuthService } from '@app/services/auth.service';
 import { SettingsService } from '@app/services/settings.service';
-import { KeyOfUserSettings, UserSettings } from '@app/shared/interfaces';
+import { KeyOfUserSettings, UserSettings } from '@app/shared/types';
 import { VCard } from '@ui-kit/components/v-card/v-card';
 import { VCheckbox } from '@ui-kit/components/v-checkbox/v-checkbox';
 import { VInput, VInputAutoSubmitResult } from '@ui-kit/components/v-input/v-input';

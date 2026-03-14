@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, effect, inject, signal, viewChild } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { FoodDiaryService } from '@app/services/food/food-diary.service';
-import { BodyWeightInterface as BodyWeightI } from '@app/shared/interfaces';
+import { BodyWeightInterface } from '@app/shared/types';
 import { VInput, VInputAutoSubmitResult } from '@ui-kit/components/v-input/v-input';
 
 interface BodyWeightForm {
@@ -58,7 +58,7 @@ export class BodyWeight {
 
     try {
       const normalizedBodyWeight = String(bodyWeightValue).replace(',', '.');
-      const bodyWeight: BodyWeightI = {
+      const bodyWeight: BodyWeightInterface = {
         bodyWeight: normalizedBodyWeight,
         dateISO: selectedDateISO,
       };
