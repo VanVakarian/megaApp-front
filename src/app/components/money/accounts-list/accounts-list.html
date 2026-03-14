@@ -28,17 +28,16 @@
       <div class="last:border-b-0 py-4 border-b border-[color:var(--v-outline-color)]">
         <div class="flex items-start justify-between gap-4">
           <div class="flex-1">
-            <div class="mb-2">
-              <span class="font-semibold">{{ account.title }}</span>
-              <span class="opacity-70 ml-2">{{ getCurrencySymbol(account.currencyId) }}</span>
+            <div class="mb-1 font-semibold">
+              {{ account.title }}
+              <span class="opacity-40 mx-1">·</span>
+              <span class="opacity-70 font-normal">{{ getCurrencyTicker(account.currencyId) }}</span>
+              <span class="opacity-40 mx-1">·</span>
+              <span class="opacity-70 font-normal">{{ getAccountKindLabel(account) }}</span>
             </div>
 
-            <div class="opacity-70 flex gap-3 text-xs">
-              @if (account.isInvest) {
-                <span>Investment</span>
-              }
-
-              <span>{{ getKindDisplayName(account.kind) }}</span>
+            <div class="text-sm opacity-70">
+              {{ getFormattedBalance(account) }}
             </div>
           </div>
 
@@ -84,17 +83,16 @@
             <div class="last:border-b-0 py-4 border-b border-[color:var(--v-outline-color)] opacity-60">
               <div class="flex items-start justify-between gap-4">
                 <div class="flex-1">
-                  <div class="mb-2">
-                    <span class="font-semibold">{{ account.title }}</span>
-                    <span class="opacity-70 ml-2">{{ getCurrencySymbol(account.currencyId) }}</span>
+                  <div class="mb-1 font-semibold">
+                    {{ account.title }}
+                    <span class="opacity-40 mx-1">·</span>
+                    <span class="opacity-70 font-normal">{{ getCurrencyTicker(account.currencyId) }}</span>
+                    <span class="opacity-40 mx-1">·</span>
+                    <span class="opacity-70 font-normal">{{ getAccountKindLabel(account) }}</span>
                   </div>
 
-                  <div class="opacity-70 flex gap-3 text-xs">
-                    @if (account.isInvest) {
-                      <span>Investment</span>
-                    }
-
-                    <span>{{ getKindDisplayName(account.kind) }}</span>
+                  <div class="text-sm opacity-70">
+                    {{ getFormattedBalance(account) }}
                   </div>
                 </div>
 

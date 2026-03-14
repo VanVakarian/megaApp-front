@@ -369,6 +369,7 @@ export class TransactionForm {
     return this.getAccounts().map((account) => ({
       value: String(account.id),
       label: account.title,
+      rightLabel: this.getAccountBalanceLabel(account),
     }));
   }
 
@@ -508,8 +509,24 @@ export class TransactionForm {
   }
 
   private getTransactionCategories(): Category[] {
+    const now = new Date();
+    const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate()).toISOString().slice(0, 10);
+
+    const usageCount = new Map<number, number>();
+    for (const tx of this.moneyService.transactions$$()) {
+      if (tx.dateISO >= threeMonthsAgo && tx.categoryId) {
+        usageCount.set(tx.categoryId, (usageCount.get(tx.categoryId) ?? 0) + 1);
+      }
+    }
+
     const categoryType = this.kind$$() === TransactionKind.INCOME ? CategoryType.INCOME : CategoryType.EXPENSE;
-    return this.moneyService.categories$$().filter((category) => category.categoryType === categoryType);
+    return this.moneyService
+      .categories$$()
+      .filter((category) => category.categoryType === categoryType)
+      .sort((a, b) => {
+        const diff = (usageCount.get(b.id!) ?? 0) - (usageCount.get(a.id!) ?? 0);
+        return diff !== 0 ? diff : a.name.localeCompare(b.name);
+      });
   }
 
   protected categoryItems(): DropdownItem[] {
@@ -630,6 +647,51 @@ export class TransactionForm {
     }
 
     return null;
+  }
+
+  private readonly accountCashBalances$$ = computed((): Map<number, number> => {
+    const balances = new Map<number, number>();
+    this.moneyService.accounts$$().forEach((a) => {
+      if (a.id) balances.set(a.id, 0);
+    });
+    for (const tx of this.moneyService.transactions$$()) {
+      const delta = this.getAccountTxDelta(tx);
+      balances.set(tx.accountId, (balances.get(tx.accountId) ?? 0) + delta);
+    }
+    return balances;
+  });
+
+  private getAccountTxDelta(tx: Transaction): number {
+    if (tx.kind === TransactionKind.INCOME) return tx.amount;
+    if (tx.kind === TransactionKind.EXPENSE) return -tx.amount;
+    if (tx.kind === TransactionKind.INVEST_BUY) return -tx.amount;
+    if (tx.kind === TransactionKind.INVEST_SELL || tx.kind === TransactionKind.INVEST_DIVIDEND) return tx.amount;
+    if (tx.kind !== TransactionKind.TRANSFER) return 0;
+    const details = this.parseDetails(tx.detailsJSON);
+    if (details?.direction === 'out') return -tx.amount;
+    if (details?.direction === 'in') return tx.amount;
+    return 0;
+  }
+
+  private getAccountBalanceLabel(account: Account): string {
+    if (!account.id) return '';
+    const cash = this.accountCashBalances$$().get(account.id) ?? 0;
+    const currency = this.moneyService.currencies$$().find((c) => c.id === account.currencyId) ?? null;
+    const formatted = new Intl.NumberFormat('ru-RU', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(Math.round(cash));
+    if (!currency?.symbol) return formatted;
+    const ws = currency.whitespace ? ' ' : '';
+    if (currency.symbolPosEnum === SymbolPosition.BEFORE) return `${currency.symbol}${ws}${formatted}`;
+    return `${formatted}${ws}${currency.symbol}`;
+  }
+
+  protected getSelectedAccountBalanceLabel(accountId: string | null): string {
+    if (!accountId) return '';
+    const account = this.moneyService.accounts$$().find((a) => a.id === Number(accountId)) ?? null;
+    if (!account) return '';
+    return `Balance: ${this.getAccountBalanceLabel(account)}`;
   }
 
   private getTwinTransaction(transaction: Transaction): Transaction | null {

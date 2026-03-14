@@ -297,7 +297,7 @@ export interface ExpenseCategoryConfig {
 const EXPENSE_COLOR_ALPHA = 0.85;
 
 export const EXPENSE_CATEGORY_CONFIG: ExpenseCategoryConfig[] = [
-  { name: 'Еда', color: 'rgb(147, 196, 125)' },
+  { name: 'Еда', color: 'rgb(103, 184, 66)' },
   { name: 'Алкоголь', color: 'rgb(255, 153, 0)' },
   { name: 'Квартплата', color: 'rgb(74, 134, 232)' },
   { name: 'Развл.', color: 'rgb(56, 118, 29)' },
@@ -305,12 +305,13 @@ export const EXPENSE_CATEGORY_CONFIG: ExpenseCategoryConfig[] = [
   { name: 'Проезд', color: 'rgb(111, 168, 220)' },
   { name: 'Одежда', color: 'rgb(204, 0, 0)' },
   { name: 'Связь', color: 'rgb(255, 217, 102)' },
+  { name: 'Рекуррентка', color: 'rgb(152, 0, 0)' },
   { name: 'Лекарства', color: 'rgb(28, 69, 135)' },
   { name: 'Хоз.товары', color: 'rgb(234, 153, 153)' },
   { name: 'Запчасти', color: 'rgb(39, 78, 19)' },
   { name: 'Прочее', color: 'rgb(183, 183, 183)' },
   { name: 'Подарок', color: 'rgb(153, 0, 255)' },
-  { name: 'Крупн.покупки', color: 'rgb(255, 0, 0)' },
+  { name: 'Техника', color: 'rgb(255, 0, 0)' },
 ];
 
 const EXPENSE_FALLBACK_COLOR = 'rgb(183, 183, 183)';

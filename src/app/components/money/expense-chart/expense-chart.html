@@ -13,7 +13,7 @@
         <span v-prefix
               class="ml-2 mr-1 text-sm text-gray-400">max</span>
         <span v-postfix
-              class="ml-1 mr-2 text-sm text-gray-400">₽</span>
+              class="ml-1 mr-2 text-sm text-gray-400">{{ currencySymbolInput() }}</span>
       </v-input>
       <v-toggle [items]="viewToggleItems"
                 [value]="viewToggleValue()"

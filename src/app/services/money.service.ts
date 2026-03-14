@@ -74,7 +74,9 @@ export class MoneyService {
   public readonly investAssetTrades$$: WritableSignal<InvestAssetTrade[]> = signal([]);
   public readonly transactions$$: WritableSignal<Transaction[]> = signal([]);
   public readonly rateHistory$$: WritableSignal<MoneyRateHistory[]> = signal([]);
-  public readonly displayCurrency$$: WritableSignal<string> = signal('RUB');
+  public readonly displayCurrency$$: WritableSignal<string> = signal(
+    localStorage.getItem('money_display_currency') ?? 'RUB',
+  );
   public readonly isDisplayCurrencyChanging$$: WritableSignal<boolean> = signal(false);
   public readonly chartRangeStart$$: WritableSignal<string | null> = signal(
     localStorage.getItem('money_chart_range_start'),

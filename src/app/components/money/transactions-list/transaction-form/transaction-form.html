@@ -50,6 +50,7 @@
     <div class="flex gap-4">
       <v-dropdown class="w-2/3"
                   [label]="'Account'"
+                  [labelRight]="getSelectedAccountBalanceLabel(accountId$$())"
                   [placeholder]="'Select an account'"
                   [isDisabled]="isEditing$$()"
                   [items]="accountItems()"
@@ -214,6 +215,7 @@
     <div class="flex gap-4">
       <v-dropdown class="w-2/3"
                   [label]="'Account from'"
+                  [labelRight]="getSelectedAccountBalanceLabel(accountId$$())"
                   [placeholder]="'Select an account'"
                   [isDisabled]="isEditing$$()"
                   [items]="accountItems()"
@@ -247,6 +249,7 @@
     <div class="flex gap-4">
       <v-dropdown class="w-2/3"
                   [label]="'Account to'"
+                  [labelRight]="getSelectedAccountBalanceLabel(accountToId$$())"
                   [placeholder]="'Select an account'"
                   [isDisabled]="isEditing$$()"
                   [items]="accountItems()"

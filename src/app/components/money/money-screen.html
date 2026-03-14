@@ -127,7 +127,8 @@
       @if (isChartDataReady$$()) {
         <expense-chart [dataInput]="expenseChartData$$()"
                        [monthRangeInput]="monthRangeForCharts$$()"
-                       [currencySymbolInput]="displayCurrencySymbol$$()" />
+                       [currencySymbolInput]="displayCurrencySymbol$$()"
+                       [currencyTickerInput]="displayCurrency$$()" />
       } @else {
         <div class="h-[400px] flex items-center justify-center">
           <div class="border-t-transparent animate-spin w-8 h-8 border-2 rounded-full"

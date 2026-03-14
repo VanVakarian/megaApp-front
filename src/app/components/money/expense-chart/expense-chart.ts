@@ -4,6 +4,7 @@ import {
   Component,
   ElementRef,
   OnDestroy,
+  WritableSignal,
   computed,
   effect,
   input,
@@ -45,13 +46,30 @@ interface ExpenseChartSeries {
 export class ExpenseChart implements AfterViewInit, OnDestroy {
   readonly dataInput = input.required<ExpenseChartData>();
   readonly currencySymbolInput = input<string>('₽');
+  readonly currencyTickerInput = input<string>('RUB');
   readonly monthRangeInput = input<[string, string] | null>(null);
 
   protected readonly chartCanvas = viewChild.required<ElementRef<HTMLCanvasElement>>('chartCanvas');
   protected readonly chart$$ = signal<Chart | null>(null);
   protected readonly enabledCategoryIds$$ = signal<Set<number | null>>(new Set());
   protected readonly yearlyMode$$ = signal(false);
-  protected readonly yMaxInput$$ = signal<string>(localStorage.getItem('expense-chart-y-max') ?? '');
+
+  private readonly yMaxMap$$: WritableSignal<Record<string, string>> = signal(
+    (() => {
+      const stored = localStorage.getItem('expense-chart-y-max-per-currency');
+      if (stored) {
+        try {
+          return JSON.parse(stored) as Record<string, string>;
+        } catch {
+          return {};
+        }
+      }
+      const legacy = localStorage.getItem('expense-chart-y-max');
+      return legacy ? { RUB: legacy } : {};
+    })(),
+  );
+
+  protected readonly yMaxInput$$ = computed(() => this.yMaxMap$$()[this.currencyTickerInput()] ?? '');
 
   private yearBoundaries: { year: string; startIdx: number; endIdx: number }[] = [];
 
@@ -180,8 +198,10 @@ export class ExpenseChart implements AfterViewInit, OnDestroy {
   }
 
   protected onYMaxChange(value: string): void {
-    this.yMaxInput$$.set(value);
-    localStorage.setItem('expense-chart-y-max', value);
+    const ticker = this.currencyTickerInput();
+    const newMap = { ...this.yMaxMap$$(), [ticker]: value };
+    this.yMaxMap$$.set(newMap);
+    localStorage.setItem('expense-chart-y-max-per-currency', JSON.stringify(newMap));
   }
 
   protected toggleAll(): void {

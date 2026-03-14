@@ -233,6 +233,7 @@ export class MoneyScreen implements OnInit {
     this.moneyService.isDisplayCurrencyChanging$$.set(true);
     setTimeout(() => {
       this.moneyService.displayCurrency$$.set(id);
+      localStorage.setItem('money_display_currency', id);
       setTimeout(() => this.moneyService.isDisplayCurrencyChanging$$.set(false), 0);
     }, 0);
   }
