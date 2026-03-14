@@ -13,7 +13,7 @@ import {
   ServerResponseProductPreview,
   ServerResponseProductSave,
   WebSocketMessageType,
-} from '@app/shared/interfaces';
+} from '@app/shared/types';
 import { transliterateEnToRu } from '@app/shared/utils';
 import { firstValueFrom } from 'rxjs';
 import { filter } from 'rxjs/operators';

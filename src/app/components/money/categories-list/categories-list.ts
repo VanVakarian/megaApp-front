@@ -1,100 +1,115 @@
-import { Component, computed } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { MoneyService } from '@app/services/money.service';
-import { Category, UsedFor } from '@app/shared/interfaces';
+import { DefaultModal } from '@app/shared/components/default-modal/default-modal';
+import { FormModal } from '@app/shared/components/form-modal/form-modal';
+import { Category, CategoryType } from '@app/shared/types';
+import { VButton } from '@ui-kit/components/v-button/v-button';
+import { VCard } from '@ui-kit/components/v-card/v-card';
+import { IconName, VIcon } from '@ui-kit/components/v-icon/v-icon';
+import { ICON_BUTTON } from '../money.const';
 import { CategoryForm } from './category-form/category-form';
-
-interface GroupedCategories {
-  [usedFor: string]: {
-    [groupKey: string]: Category[];
-  };
-}
 
 @Component({
   selector: 'categories-list',
   templateUrl: './categories-list.html',
-  standalone: true,
-  imports: [CategoryForm],
+  imports: [CategoryForm, DefaultModal, FormModal, VButton, VCard, VIcon],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class CategoriesList {
-  protected categories$$ = computed(() => this.moneyService.categories$$());
-  protected groupedCategories$$ = computed(() => this.groupCategoriesByUsedForAndGroupKey(this.categories$$()));
-  protected showForm = false;
-  protected editingCategory: Category | null = null;
+  protected readonly Icon = IconName;
+  protected readonly iconButton = ICON_BUTTON;
 
-  constructor(private moneyService: MoneyService) {}
+  private readonly moneyService = inject(MoneyService);
+
+  protected readonly categories$$ = computed(() => this.moneyService.categories$$());
+  private readonly transactions$$ = computed(() => this.moneyService.transactions$$());
+
+  protected readonly showForm$$ = signal(false);
+  protected readonly editingCategory$$ = signal<Category | null>(null);
+  protected readonly isDeleteConfirmOpen$$ = signal(false);
+
+  private readonly pendingDeleteId$$ = signal<number | null>(null);
 
   protected showCreateForm(): void {
-    this.editingCategory = null;
-    this.showForm = true;
+    this.editingCategory$$.set(null);
+    this.showForm$$.set(true);
   }
 
   protected editCategory(category: Category): void {
-    this.editingCategory = category;
-    this.showForm = true;
+    this.editingCategory$$.set(category);
+    this.showForm$$.set(true);
   }
 
   protected deleteCategory(id: number): void {
+    if (!this.canDeleteCategory(id)) return;
+    this.openConfirmationModal(id);
+  }
+
+  private openConfirmationModal(id: number): void {
+    this.pendingDeleteId$$.set(id);
+    this.isDeleteConfirmOpen$$.set(true);
+  }
+
+  protected closeConfirmationModal(): void {
+    this.isDeleteConfirmOpen$$.set(false);
+    this.pendingDeleteId$$.set(null);
+  }
+
+  protected onDeleteConfirmed(): void {
+    const id = this.pendingDeleteId$$();
+    this.isDeleteConfirmOpen$$.set(false);
+    this.pendingDeleteId$$.set(null);
+    if (!id) return;
+    if (!this.canDeleteCategory(id)) return;
     this.moneyService.deleteCategory(id).subscribe((success) => {});
   }
 
   protected onSaved(): void {
-    this.showForm = false;
-    this.editingCategory = null;
+    this.showForm$$.set(false);
+    this.editingCategory$$.set(null);
   }
 
   protected onCancelled(): void {
-    this.showForm = false;
-    this.editingCategory = null;
+    this.showForm$$.set(false);
+    this.editingCategory$$.set(null);
   }
 
-  protected getUsedForKeys(): UsedFor[] {
-    return Object.keys(this.groupedCategories$$()) as UsedFor[];
+  protected getCategoryTypes(): CategoryType[] {
+    return Object.values(CategoryType);
   }
 
-  protected getGroupKeys(usedFor: UsedFor): string[] {
-    return Object.keys(this.groupedCategories$$()[usedFor] || {});
-  }
-
-  protected getCategoriesOfGroup(usedFor: UsedFor, groupKey: string): Category[] {
-    return this.groupedCategories$$()[usedFor]?.[groupKey] || [];
-  }
-
-  protected getUsedForDisplayName(usedFor: UsedFor): string {
-    switch (usedFor) {
-      case UsedFor.TRANSACTION:
-        return 'Transactions';
-      case UsedFor.ACCOUNT:
-        return 'Accounts';
-      case UsedFor.ASSET:
-        return 'Assets';
+  protected getCategoryTypeDisplayName(categoryType: CategoryType): string {
+    switch (categoryType) {
+      case CategoryType.INCOME:
+        return 'Income';
+      case CategoryType.EXPENSE:
+        return 'Expense';
       default:
-        return String(usedFor).charAt(0).toUpperCase() + String(usedFor).slice(1);
+        return categoryType;
     }
   }
 
-  private groupCategoriesByUsedForAndGroupKey(categories: Category[]): GroupedCategories {
-    const groupedCategories: GroupedCategories = {};
+  protected getRootCategories(categoryType: CategoryType): Category[] {
+    return this.categories$$()
+      .filter((category) => category.categoryType === categoryType && !category.parentId)
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }
 
-    categories.forEach((category) => {
-      const usedFor = category.usedFor;
-      const groupKey = category.groupKey;
+  protected getChildCategories(parentId: number): Category[] {
+    return this.categories$$()
+      .filter((category) => category.parentId === parentId)
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }
 
-      if (!groupedCategories[usedFor]) {
-        groupedCategories[usedFor] = {};
-      }
-      if (!groupedCategories[usedFor][groupKey]) {
-        groupedCategories[usedFor][groupKey] = [];
-      }
+  private hasChildCategories(categoryId: number): boolean {
+    return this.categories$$().some((category) => category.parentId === categoryId);
+  }
 
-      groupedCategories[usedFor][groupKey].push(category);
-    });
+  private hasLinkedTransactions(categoryId: number): boolean {
+    return this.transactions$$().some((transaction) => transaction.categoryId === categoryId);
+  }
 
-    Object.keys(groupedCategories).forEach((usedFor) => {
-      Object.keys(groupedCategories[usedFor]).forEach((groupKey) => {
-        groupedCategories[usedFor][groupKey].sort((a, b) => a.name.localeCompare(b.name));
-      });
-    });
-
-    return groupedCategories;
+  protected canDeleteCategory(categoryId: number): boolean {
+    return !this.hasChildCategories(categoryId) && !this.hasLinkedTransactions(categoryId);
   }
 }

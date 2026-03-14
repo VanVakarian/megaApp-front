@@ -1,0 +1,85 @@
+<div>
+
+  <v-card [config]="{
+            padding: 4,
+            borderRadius: 2,
+          }">
+    <div class="flex items-center justify-between mb-4">
+      <div class="text-lg font-semibold">Organizations</div>
+      <v-button class="v-flat"
+                [config]="{
+                  paddingY: 1,
+                }"
+                (onClick)="showCreateForm()">
+        <v-icon v-prefix
+                [name]="Icon.Add"
+                [size]="6"></v-icon>
+        New Organization
+      </v-button>
+    </div>
+
+    @if (organizations$$().length === 0) {
+      <div class="opacity-70 py-8 text-center">
+        No organizations found.
+      </div>
+    }
+
+    @for (organization of organizations$$(); track organization.id) {
+      <div class="last:border-b-0 py-4 border-b border-[color:var(--v-outline-color)]">
+        <div class="flex items-center justify-between gap-4">
+          <div class="flex items-center gap-3 flex-1">
+            @if (getLogoSrc(organization.logoBase64); as src) {
+              <img [src]="src"
+                   class="w-8 h-8 rounded object-contain"
+                   alt="">
+            } @else {
+              <div class="w-8 h-8 rounded bg-[color:var(--v-outline-color)] opacity-30"></div>
+            }
+
+            <span class="font-semibold">{{ organization.title }}</span>
+          </div>
+
+          <div class="flex gap-2">
+            <v-button class="v-flat"
+                      [config]="{
+                        isLabelHidden: true,
+                        padding: iconButton.padding,
+                      }"
+                      (onClick)="editOrganization(organization)">
+              <v-icon v-prefix
+                      [name]="Icon.Edit"
+                      [size]="iconButton.size"></v-icon>
+            </v-button>
+
+            <v-button class="v-danger"
+                      [config]="{
+                        isLabelHidden: true,
+                        padding: iconButton.padding,
+                        isDisabled: !canDeleteOrganization(organization.id!),
+                      }"
+                      (onClick)="deleteOrganization(organization.id!)">
+              <v-icon v-prefix
+                      [name]="Icon.Delete"
+                      [size]="iconButton.size"></v-icon>
+            </v-button>
+          </div>
+        </div>
+      </div>
+    }
+  </v-card>
+
+  <form-modal [isModalOpen]="showForm$$()"
+              (closeOutput)="onCancelled()">
+    <organization-form [organizationInput]="editingOrganization$$()"
+                       (savedOutput)="onSaved()"
+                       (cancelledOutput)="onCancelled()"></organization-form>
+  </form-modal>
+
+  <default-modal [isModalOpen]="isDeleteConfirmOpen$$()"
+                 [modalTitle]="'Delete Organization'"
+                 [confirmButtonLabel]="'Delete'"
+                 [cancelButtonLabel]="'Cancel'"
+                 (confirmOutput)="onDeleteConfirmed()"
+                 (cancelOutput)="closeConfirmationModal()"
+                 (closeOutput)="closeConfirmationModal()" />
+</div>

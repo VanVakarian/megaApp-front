@@ -1,46 +1,43 @@
-<div class="bg-gray-50 p-6 rounded-lg">
-  <h3 class="mb-4 text-lg font-semibold">{{ isEditing() ? 'Edit Category' : 'Add New Category' }}</h3>
+<div class="mb-4 text-lg font-semibold">{{ isEditing() ? 'Edit Category' : 'Add New Category' }}</div>
 
-  <div class="space-y-4">
-    <div>
-      <label class="block mb-1 text-sm font-medium text-gray-700">Name <span class="text-red-500">*</span>:</label>
-      <input type="text"
-             placeholder="Food & Restaurants"
-             class="focus:outline-none focus:ring-2 focus:ring-blue-500 w-full px-3 py-2 border border-gray-300 rounded-md"
-             [(ngModel)]="name">
-    </div>
+<div class="flex flex-col gap-4">
+  <v-input [config]="{
+               label: 'Name',
+               placeholder: 'Food & Restaurants',
+               type: 'text',
+             }"
+           [ngModel]="name$$()"
+           (ngModelChange)="name$$.set($event)" />
 
-    <div>
-      <label class="block mb-1 text-sm font-medium text-gray-700">Used for <span class="text-red-500">*</span>:</label>
-      <select class="focus:outline-none focus:ring-2 focus:ring-blue-500 w-full px-3 py-2 border border-gray-300 rounded-md"
-              [(ngModel)]="usedFor">
-        @for (value of getUsedForValues(); track value) {
-          <option [value]="value">
-            {{ getUsedForDisplayName(value) }}
-          </option>
-        }
-      </select>
-    </div>
+  <div class="flex gap-4">
+    <v-dropdown class="flex-1"
+                [label]="'Type'"
+                [placeholder]="'Select type'"
+                [items]="categoryTypeItems()"
+                [isRequired]="true"
+                [ngModel]="categoryType$$()"
+                (ngModelChange)="categoryType$$.set($event); onCategoryTypeChange()"></v-dropdown>
 
-    <div>
-      <label class="block mb-1 text-sm font-medium text-gray-700">Group Key (optional):</label>
-      <input type="text"
-             placeholder="expenses"
-             class="focus:outline-none focus:ring-2 focus:ring-blue-500 w-full px-3 py-2 border border-gray-300 rounded-md"
-             [(ngModel)]="groupKey">
-      <p class="mt-1 text-xs text-gray-500">Example: 'expenses', 'income', 'investments'</p>
-    </div>
+    <v-dropdown class="flex-1"
+                [label]="'Parent category (optional)'"
+                [placeholder]="'No parent'"
+                [items]="parentCategoryItems()"
+                [ngModel]="parentId$$()"
+                (ngModelChange)="parentId$$.set($event)"></v-dropdown>
+  </div>
 
-    <div class="flex gap-2">
-      <button [disabled]="!name || !usedFor"
-              class="hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-400 disabled:cursor-not-allowed px-3 py-2 text-white bg-blue-600 rounded-md"
-              (click)="save()">
-        {{ isEditing() ? 'Update' : 'Create' }}
-      </button>
-      <button class="hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 px-3 py-2 text-white bg-gray-600 rounded-md"
-              (click)="cancel()">
-        Cancel
-      </button>
-    </div>
+  <div class="flex justify-end gap-2">
+    <v-button class="v-primary"
+              [config]="{
+                  isDisabled: !name$$() || !categoryType$$(),
+                }"
+              (onClick)="save()">
+      {{ isEditing() ? 'Update' : 'Create' }}
+    </v-button>
+
+    <v-button class="v-flat"
+              (onClick)="cancel()">
+      Cancel
+    </v-button>
   </div>
 </div>

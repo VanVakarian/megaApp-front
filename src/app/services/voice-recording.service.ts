@@ -1,6 +1,6 @@
 import { inject, Injectable, signal } from '@angular/core';
 import { NetworkService } from '@app/services/network.service';
-import { WebSocketMessageType } from '@app/shared/interfaces';
+import { WebSocketMessageType } from '@app/shared/types';
 
 @Injectable({
   providedIn: 'root',

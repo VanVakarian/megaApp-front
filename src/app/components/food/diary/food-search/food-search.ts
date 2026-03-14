@@ -7,7 +7,7 @@ import { FoodDiaryService } from '@app/services/food/food-diary.service';
 import { VoiceRecordingService } from '@app/services/voice-recording.service';
 import { ANIMATION_CLASSES } from '@app/shared/animations';
 import { FlipAnimateDirective } from '@app/shared/directives/flip-animate.directive';
-import { CatalogueEntry, DiaryEntry, HistoryEntryAction } from '@app/shared/interfaces';
+import { CatalogueEntry, DiaryEntry, HistoryEntryAction } from '@app/shared/types';
 import { VButton } from '@ui-kit/components/v-button/v-button';
 import { VCard } from '@ui-kit/components/v-card/v-card';
 import { IconName, VIcon } from '@ui-kit/components/v-icon/v-icon';

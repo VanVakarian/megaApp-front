@@ -1,84 +1,64 @@
-<div class="bg-gray-50 p-6 rounded-lg">
-  <h3 class="mb-4 text-lg font-semibold">{{ isEditing() ? 'Edit Account' : 'Add New Account' }}</h3>
+<div class="mb-4 text-lg font-semibold">{{ isEditing() ? 'Edit Account' : 'Add New Account' }}</div>
 
-  <div class="space-y-4">
-    <div>
-      <label class="block mb-1 text-sm font-medium text-gray-700">Title <span class="text-red-500">*</span>:</label>
-      <input type="text"
-             placeholder="My Bank Account"
-             class="focus:outline-none focus:ring-2 focus:ring-blue-500 w-full px-3 py-2 border border-gray-300 rounded-md"
-             [(ngModel)]="title">
-    </div>
+<div class="flex flex-col gap-4">
+  <div class="flex gap-4">
+    <v-input class="flex-1"
+             [config]="{
+                 label: 'Title',
+                 placeholder: 'My Bank Account',
+                 type: 'text',
+               }"
+             [ngModel]="title$$()"
+             (ngModelChange)="title$$.set($event)" />
 
-    <div>
-      <label class="block mb-1 text-sm font-medium text-gray-700">Currency <span class="text-red-500">*</span>:</label>
-      <select [(ngModel)]="currencyId"
-              class="focus:outline-none focus:ring-2 focus:ring-blue-500 w-full px-3 py-2 border border-gray-300 rounded-md">
-        @for (currency of currencies(); track currency.id) {
-          <option [value]="currency.id">{{ currency.title }} ({{ currency.ticker }})</option>
-          }
-      </select>
-    </div>
+    <v-dropdown class="flex-1"
+                [label]="'Organization'"
+                [placeholder]="'None'"
+                [items]="organizationItems()"
+                [ngModel]="organizationId$$()"
+                (ngModelChange)="organizationId$$.set($event)"></v-dropdown>
+  </div>
 
-    <div>
-      <label class="block mb-1 text-sm font-medium text-gray-700">Account Type <span
-              class="text-red-500">*</span>:</label>
-      <select class="focus:outline-none focus:ring-2 focus:ring-blue-500 w-full px-3 py-2 border border-gray-300 rounded-md"
-              [(ngModel)]="kind">
-        @for (kindOption of getKindValues(); track kindOption) {
-          <option [value]="kindOption">{{ getKindDisplayName(kindOption) }}</option>
-        }
-      </select>
-    </div>
+  <div class="flex gap-4">
+    <v-dropdown class="flex-1"
+                [label]="'Currency'"
+                [placeholder]="'Select currency'"
+                [items]="currencyItems()"
+                [isRequired]="true"
+                [ngModel]="currencyId$$()"
+                (ngModelChange)="currencyId$$.set($event)"></v-dropdown>
 
-    <div class="flex items-center">
-      <input type="checkbox"
-             class="focus:ring-blue-500 w-4 h-4 mr-2 text-blue-600 border-gray-300 rounded"
-             [(ngModel)]="invest">
-      <label class="text-sm font-medium text-gray-700">
-        Investment account
-      </label>
-    </div>
+    <v-dropdown class="flex-1"
+                [label]="'Account Type'"
+                [placeholder]="'Select type'"
+                [items]="kindItems()"
+                [isRequired]="true"
+                [ngModel]="kind$$()"
+                (ngModelChange)="kind$$.set($event)"></v-dropdown>
+  </div>
 
-    <div>
-      <label class="block mb-2 text-sm font-medium text-gray-700">Categories (optional):</label>
-      <div class="max-h-32 p-3 space-y-2 overflow-y-auto border border-gray-300 rounded-md">
-        @if (categories().length === 0) {
-          <p class="text-sm italic text-gray-500">No account categories available</p>
-        } @else {
-          @for (category of categories(); track category.id) {
-            <div class="flex items-center">
-              <input type="checkbox"
-                     [id]="'category-' + category.id"
-                     class="focus:ring-blue-500 w-4 h-4 mr-2 text-blue-600 border-gray-300 rounded"
-                     [checked]="isCategorySelected(category.id!)"
-                     (change)="toggleCategory(category.id!, $event)">
-              <label [for]="'category-' + category.id"
-                     class="text-sm text-gray-700">
-                {{ category.name }}
-                @if (category.groupKey) {
-                  <span class="text-gray-500">({{ category.groupKey }})</span>
-                }
-              </label>
-            </div>
-            }
-            }
-      </div>
-    </div>
+  <v-checkbox [value]="isInvest$$()"
+              (valueChange)="isInvest$$.set($event)">
+    Investment account
+  </v-checkbox>
 
-    <div class="flex gap-2">
-      <button type="button"
-              class="hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-400 disabled:cursor-not-allowed px-4 py-2 text-white bg-blue-600 rounded-md"
-              [disabled]="!isFormValid()"
-              (click)="save()">
-        {{ isEditing() ? 'Update' : 'Create' }}
-      </button>
+  <v-checkbox [value]="isArchived$$()"
+              (valueChange)="isArchived$$.set($event)">
+    Archived account
+  </v-checkbox>
 
-      <button type="button"
-              class="hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 px-4 py-2 text-white bg-gray-600 rounded-md"
-              (click)="cancel()">
-        Cancel
-      </button>
-    </div>
+  <div class="flex justify-end gap-2">
+    <v-button class="v-primary"
+              [config]="{
+                  isDisabled: !isFormValid(),
+                }"
+              (onClick)="save()">
+      {{ isEditing() ? 'Update' : 'Create' }}
+    </v-button>
+
+    <v-button class="v-flat"
+              (onClick)="cancel()">
+      Cancel
+    </v-button>
   </div>
 </div>

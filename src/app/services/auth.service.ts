@@ -1,7 +1,7 @@
 import { HttpClient, HttpResponse } from '@angular/common/http';
 import { inject, Injectable, signal } from '@angular/core';
 import { NetworkService } from '@app/services/network.service';
-import { AuthResponse, UserCreds } from '@app/shared/interfaces';
+import { AuthResponse, UserCreds } from '@app/shared/types';
 import jwt_decode from 'jwt-decode';
 import { Observable, of } from 'rxjs';
 import { catchError, map, tap } from 'rxjs/operators';

@@ -2,7 +2,7 @@ import { computed, inject, Injectable, signal } from '@angular/core';
 
 import { RouterService } from '@app/services/router.service';
 import { SettingsService } from '@app/services/settings.service';
-import { SettingsChapterNames } from '@app/shared/interfaces';
+import { SettingsChapterNames } from '@app/shared/types';
 import { IconName } from '@ui-kit/components/v-icon/v-icon';
 
 enum MenuPlace {

@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Injectable, signal, WritableSignal } from '@angular/core';
 import { exhaustRequest } from '@app/shared/decorators/exhaust-request.decorator';
-import { Coefficients, ServerResponseWithData } from '@app/shared/interfaces';
+import { Coefficients, ServerResponseWithData } from '@app/shared/types';
 import { firstValueFrom } from 'rxjs';
 import { LocalStorageService } from '../local-storage.service';
 import { NetworkService } from '../network.service';

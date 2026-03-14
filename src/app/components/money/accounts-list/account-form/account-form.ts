@@ -1,82 +1,114 @@
-import { Component, input, OnInit, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, effect, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MoneyService } from '@app/services/money.service';
-import { Account, AccountKind, Category, Currency } from '@app/shared/interfaces';
+import { Account, AccountKind, Currency, Organization } from '@app/shared/types';
+import { VButton } from '@ui-kit/components/v-button/v-button';
+import { VCheckbox } from '@ui-kit/components/v-checkbox/v-checkbox';
+import { DropdownItem, VDropdown } from '@ui-kit/components/v-dropdown/v-dropdown';
+import { VInput } from '@ui-kit/components/v-input/v-input';
 
 @Component({
   selector: 'account-form',
   templateUrl: './account-form.html',
-  standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, VButton, VDropdown, VCheckbox, VInput],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class AccountForm implements OnInit {
-  public readonly account = input<Account | null>(null);
-  public readonly currencies = input<Currency[]>([]);
-  public readonly categories = input<Category[]>([]);
+export class AccountForm {
+  public readonly accountInput = input<Account | null>(null);
+  public readonly currenciesInput = input<Currency[]>([]);
+  public readonly organizationsInput = input<Organization[]>([]);
 
-  public readonly saved = output<void>();
-  public readonly cancelled = output<void>();
+  public readonly savedOutput = output<void>();
+  public readonly cancelledOutput = output<void>();
 
-  protected title = '';
-  protected currencyId: number | null = null;
-  protected invest = false;
-  protected kind: AccountKind | null = null;
-  protected selectedCategoryIds: number[] = [];
+  protected readonly title$$ = signal('');
+  protected readonly currencyId$$ = signal<string | null>(null);
+  protected readonly isInvest$$ = signal(false);
+  protected readonly isArchived$$ = signal(false);
+  protected readonly kind$$ = signal<AccountKind | ''>('');
+  protected readonly organizationId$$ = signal<string | null>(null);
 
-  constructor(private moneyService: MoneyService) {}
-
-  public ngOnInit(): void {
-    const currentAccount = this.account();
-    if (currentAccount) {
-      this.fillForm(currentAccount);
-    }
+  constructor(private moneyService: MoneyService) {
+    effect(() => {
+      const currentAccount = this.accountInput();
+      if (currentAccount) {
+        this.fillForm(currentAccount);
+      } else {
+        this.resetForm();
+      }
+    });
   }
 
   protected save(): void {
     if (!this.isFormValid()) return;
 
     const accountData: Account = {
-      title: this.title,
-      currencyId: this.currencyId!,
-      invest: this.invest,
-      kind: this.kind!,
-      categoryIds: this.selectedCategoryIds,
+      title: this.title$$(),
+      currencyId: Number(this.currencyId$$()),
+      isInvest: this.isInvest$$(),
+      isArchived: this.isArchived$$(),
+      kind: this.kind$$() as AccountKind,
+      organizationId: this.organizationId$$() ? Number(this.organizationId$$()) : null,
     };
 
-    const currentAccount = this.account();
+    const currentAccount = this.accountInput();
     if (currentAccount?.id) {
       accountData.id = currentAccount.id;
       this.moneyService.updateAccount(accountData).subscribe((success) => {
         if (success) {
-          this.saved.emit();
+          this.savedOutput.emit();
         }
       });
     } else {
       this.moneyService.createAccount(accountData).subscribe((success) => {
         if (success) {
-          this.saved.emit();
+          this.savedOutput.emit();
         }
       });
     }
   }
 
   protected cancel(): void {
-    this.cancelled.emit();
+    this.cancelledOutput.emit();
   }
 
   protected isEditing(): boolean {
-    return Boolean(this.account()?.id);
+    return Boolean(this.accountInput()?.id);
   }
 
   protected isFormValid(): boolean {
-    return Boolean(this.title && this.currencyId && this.kind);
+    return Boolean(this.title$$() && this.currencyId$$() && this.kind$$());
   }
 
-  protected getKindValues(): AccountKind[] {
+  protected currencyItems(): DropdownItem[] {
+    return this.currenciesInput().map((currency) => ({
+      value: String(currency.id),
+      label: `${currency.title} (${currency.ticker})`,
+    }));
+  }
+
+  protected organizationItems(): DropdownItem[] {
+    return [
+      { value: '', label: 'None' },
+      ...this.organizationsInput().map((org) => ({
+        value: String(org.id),
+        label: org.title,
+      })),
+    ];
+  }
+
+  protected kindItems(): DropdownItem[] {
+    return this.getKindValues().map((kind) => ({
+      value: kind,
+      label: this.getKindDisplayName(kind),
+    }));
+  }
+
+  private getKindValues(): AccountKind[] {
     return Object.values(AccountKind);
   }
 
-  protected getKindDisplayName(kind: AccountKind): string {
+  private getKindDisplayName(kind: AccountKind): string {
     switch (kind) {
       case AccountKind.CASH:
         return 'Cash';
@@ -95,26 +127,21 @@ export class AccountForm implements OnInit {
     }
   }
 
-  protected isCategorySelected(categoryId: number): boolean {
-    return this.selectedCategoryIds.includes(categoryId);
-  }
-
-  protected toggleCategory(categoryId: number, event: Event): void {
-    const checkbox = event.target as HTMLInputElement;
-    if (checkbox.checked) {
-      if (!this.selectedCategoryIds.includes(categoryId)) {
-        this.selectedCategoryIds.push(categoryId);
-      }
-    } else {
-      this.selectedCategoryIds = this.selectedCategoryIds.filter((id) => id !== categoryId);
-    }
-  }
-
   private fillForm(account: Account): void {
-    this.title = account.title;
-    this.currencyId = account.currencyId;
-    this.invest = account.invest;
-    this.kind = account.kind;
-    this.selectedCategoryIds = [...(account.categoryIds || [])];
+    this.title$$.set(account.title);
+    this.currencyId$$.set(String(account.currencyId));
+    this.isInvest$$.set(account.isInvest);
+    this.isArchived$$.set(account.isArchived);
+    this.kind$$.set(account.kind);
+    this.organizationId$$.set(account.organizationId ? String(account.organizationId) : null);
+  }
+
+  private resetForm(): void {
+    this.title$$.set('');
+    this.currencyId$$.set(null);
+    this.isInvest$$.set(false);
+    this.isArchived$$.set(false);
+    this.kind$$.set('');
+    this.organizationId$$.set(null);
   }
 }

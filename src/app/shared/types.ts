@@ -364,17 +364,16 @@ export interface Currency {
   whitespace: boolean;
 }
 
-export enum UsedFor {
-  TRANSACTION = 'transaction',
-  ACCOUNT = 'account',
-  ASSET = 'asset',
+export enum CategoryType {
+  INCOME = 'income',
+  EXPENSE = 'expense',
 }
 
 export interface Category {
   id?: number;
   name: string;
-  usedFor: UsedFor;
-  groupKey: string;
+  parentId?: number | null;
+  categoryType: CategoryType;
 }
 
 export enum AccountKind {
@@ -386,18 +385,59 @@ export enum AccountKind {
   CRYPTO = 'crypto',
 }
 
+export interface Organization {
+  id?: number;
+  title: string;
+  logoBase64?: string | null;
+}
+
 export interface Account {
   id?: number;
   title: string;
   currencyId: number;
-  invest: boolean;
+  isInvest: boolean;
+  isArchived: boolean;
   kind: AccountKind;
-  categoryIds: number[];
+  organizationId?: number | null;
+}
+
+export enum AssetType {
+  STOCK = 'stock',
+  BOND = 'bond',
+  CRYPTO = 'crypto',
+}
+
+export interface Asset {
+  id?: number;
+  title: string;
+  ticker: string;
+  type: AssetType;
+  accountIds: number[];
+  suspendedSince?: string | null;
+  suspendedUntil?: string | null;
 }
 
 export enum TransactionKind {
   INCOME = 'income',
   EXPENSE = 'expense',
+  TRANSFER = 'transfer',
+  INVEST_BUY = 'invest_buy',
+  INVEST_SELL = 'invest_sell',
+  INVEST_DIVIDEND = 'invest_dividend',
+}
+
+export interface InvestAssetTrade {
+  id: number;
+  dateISO: string;
+  accountId: number;
+  amount: number;
+  kind: TransactionKind.INVEST_BUY | TransactionKind.INVEST_SELL;
+  notes?: string | null;
+  detailsJSON?: any;
+  assetId?: number | null;
+  assetTitle?: string | null;
+  assetTicker?: string | null;
+  assetType?: AssetType | null;
 }
 
 export interface Transaction {
@@ -405,11 +445,74 @@ export interface Transaction {
   dateISO: string;
   accountId: number;
   amount: number;
-  categoryIds: number[];
+  categoryId?: number | null;
   kind: TransactionKind;
   isGift: boolean;
   notes?: string;
-  details?: any;
+  detailsJSON?: any;
+  twinId?: number | null;
+}
+
+export interface MoneyRateHistory {
+  id?: number;
+  dateISO: string;
+  ratesJson: Record<string, number> | string;
+}
+
+export interface BalanceChartAccountSeries {
+  accountId: number;
+  accountTitle: string;
+  values: number[];
+  suspendedValues: number[];
+  isSuspended: boolean;
+}
+
+export interface BalanceChartData {
+  dates: string[];
+  totals: number[];
+  accountSeries: BalanceChartAccountSeries[];
+}
+
+export interface IncomeChartCategorySeries {
+  categoryId: number | null;
+  categoryName: string;
+  values: number[];
+}
+
+export interface DividendRow {
+  dateISO: string;
+  amount: number;
+}
+
+export interface PositionLotRow {
+  status: 'closed' | 'open';
+  assetType: AssetType | null;
+  buyDateISO: string;
+  sellDateISO: string | null;
+  pnl: number | null;
+  openMonths: string[];
+}
+
+export interface IncomeChartData {
+  months: string[];
+  categorySeries: IncomeChartCategorySeries[];
+}
+
+export interface ExpenseCategory {
+  id: number;
+  name: string;
+}
+
+export interface ExpenseRow {
+  period: string;
+  categoryAmounts: Record<number, number>;
+  total: number;
+  uncategorizedAmount: number;
+}
+
+export interface ExpenseChartData {
+  categories: ExpenseCategory[];
+  monthRows: ExpenseRow[];
 }
 
 // export interface Notification {

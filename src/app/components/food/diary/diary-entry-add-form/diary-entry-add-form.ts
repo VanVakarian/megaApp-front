@@ -5,7 +5,7 @@ import { FoodCatalogueService } from '@app/services/food/food-catalogue.service'
 import { FoodCoefficientsService } from '@app/services/food/food-coefficients.service';
 import { FoodDiaryService } from '@app/services/food/food-diary.service';
 import { FoodStatsService } from '@app/services/food/food-stats.service';
-import { DiaryEntry, HistoryEntryAction } from '@app/shared/interfaces';
+import { DiaryEntry, HistoryEntryAction } from '@app/shared/types';
 import { VButton } from '@ui-kit/components/v-button/v-button';
 import { IconName, VIcon } from '@ui-kit/components/v-icon/v-icon';
 import { VInput } from '@ui-kit/components/v-input/v-input';

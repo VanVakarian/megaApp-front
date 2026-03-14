@@ -1,8 +1,19 @@
 import { HttpClient } from '@angular/common/http';
-import { Injectable, signal, WritableSignal } from '@angular/core';
+import { computed, Injectable, signal, WritableSignal } from '@angular/core';
 import { Observable, of, Subject } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
-import { Account, Category, Currency, ServerResponseBasic, Transaction } from '../shared/interfaces';
+import {
+  Account,
+  Asset,
+  Category,
+  Currency,
+  InvestAssetTrade,
+  MoneyRateHistory,
+  Organization,
+  ServerResponseBasic,
+  Transaction,
+  TransactionKind,
+} from '../shared/types';
 
 interface BaseResponse {
   success: boolean;
@@ -20,17 +31,34 @@ interface CurrenciesResponse extends DataResponse<Currency[]> {}
 
 interface CategoriesResponse extends DataResponse<Category[]> {}
 
+interface OrganizationsResponse extends DataResponse<Organization[]> {}
+
 interface AccountsResponse extends DataResponse<Account[]> {}
 
+interface AssetsResponse extends DataResponse<Asset[]> {}
+
+interface InvestAssetTradesResponse extends DataResponse<InvestAssetTrade[]> {}
+
+interface AccountApi extends Omit<Account, 'isInvest' | 'isArchived'> {
+  isInvest?: boolean | number | string;
+  isArchived?: boolean | number | string;
+}
+
 interface TransactionsResponse extends DataResponse<Transaction[]> {}
+
+interface RateHistoryResponse extends DataResponse<MoneyRateHistory[]> {}
 
 interface CreateCurrencyResponse extends DataResponse<{ id: number }> {}
 
 interface CreateCategoryResponse extends DataResponse<{ id: number }> {}
 
+interface CreateOrganizationResponse extends DataResponse<{ id: number }> {}
+
 interface CreateAccountResponse extends DataResponse<{ id: number }> {}
 
-interface CreateTransactionResponse extends DataResponse<{ id: number }> {}
+interface CreateAssetResponse extends DataResponse<{ id: number }> {}
+
+interface CreateTransactionResponse extends DataResponse<{ id: number; twinId?: number }> {}
 
 interface BasicResponse extends MessageResponse {}
 
@@ -38,23 +66,55 @@ interface BasicResponse extends MessageResponse {}
   providedIn: 'root',
 })
 export class MoneyService {
-  public currencies$$: WritableSignal<Currency[]> = signal([]);
-  public categories$$: WritableSignal<Category[]> = signal([]);
-  public accounts$$: WritableSignal<Account[]> = signal([]);
-  public transactions$$: WritableSignal<Transaction[]> = signal([]);
+  public readonly currencies$$: WritableSignal<Currency[]> = signal([]);
+  public readonly categories$$: WritableSignal<Category[]> = signal([]);
+  public readonly organizations$$: WritableSignal<Organization[]> = signal([]);
+  public readonly accounts$$: WritableSignal<Account[]> = signal([]);
+  public readonly assets$$: WritableSignal<Asset[]> = signal([]);
+  public readonly investAssetTrades$$: WritableSignal<InvestAssetTrade[]> = signal([]);
+  public readonly transactions$$: WritableSignal<Transaction[]> = signal([]);
+  public readonly rateHistory$$: WritableSignal<MoneyRateHistory[]> = signal([]);
+  public readonly displayCurrency$$: WritableSignal<string> = signal(
+    localStorage.getItem('money_display_currency') ?? 'RUB',
+  );
+  public readonly isDisplayCurrencyChanging$$: WritableSignal<boolean> = signal(false);
+  public readonly chartRangeStart$$: WritableSignal<string | null> = signal(
+    localStorage.getItem('money_chart_range_start'),
+  );
+  public readonly chartRangeEnd$$: WritableSignal<string | null> = signal(
+    localStorage.getItem('money_chart_range_end'),
+  );
 
-  public postRequestResult$ = new Subject<ServerResponseBasic>();
+  private readonly loadedSources$$ = signal<Set<string>>(new Set());
+  public readonly isChartDataReady$$ = computed(() => {
+    const loaded = this.loadedSources$$();
+    return loaded.has('accounts') && loaded.has('assets') && loaded.has('transactions') && loaded.has('rateHistory');
+  });
+
+  public readonly requestResult$ = new Subject<ServerResponseBasic>();
+
+  public resetLoadingState(): void {
+    this.loadedSources$$.set(new Set());
+  }
+
+  public setChartRange(start: string | null, end: string | null): void {
+    this.chartRangeStart$$.set(start);
+    this.chartRangeEnd$$.set(end);
+    if (start !== null) localStorage.setItem('money_chart_range_start', start);
+    else localStorage.removeItem('money_chart_range_start');
+    if (end !== null) localStorage.setItem('money_chart_range_end', end);
+    else localStorage.removeItem('money_chart_range_end');
+  }
 
   constructor(private http: HttpClient) {
     // effect(() => { console.log('CURRENCIES:', this.currencies$$()) }); // prettier-ignore
     // effect(() => { console.log('CATEGORIES:', this.categories$$()) }); // prettier-ignore
     // effect(() => { console.log('ACCOUNTS:', this.accounts$$()) }); // prettier-ignore
     // effect(() => { console.log('TRANSACTIONS:', this.transactions$$()) }); // prettier-ignore
+    // effect(() => { console.log('RATE HISTORY:', this.rateHistory$$()) }); // prettier-ignore
   }
 
-  // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  // ~                                                ~~~ CURRENCIES ~~~                                               ~
-  // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  //                                                          ~~~ CURRENCIES ~~~
 
   public getCurrencies(): Observable<Currency[]> {
     return this.http.get<CurrenciesResponse>('/api/money/currencies').pipe(
@@ -67,7 +127,7 @@ export class MoneyService {
       }),
       catchError((error) => {
         console.error('Error fetching currencies:', error);
-        this.postRequestResult$.next({ result: false });
+        this.requestResult$.next({ result: false });
         return of([]);
       }),
     );
@@ -82,15 +142,15 @@ export class MoneyService {
             ...currencyData,
           };
           this.addCurrencyToState(newCurrency);
-          this.postRequestResult$.next({ result: true });
+          this.requestResult$.next({ result: true });
           return true;
         }
-        this.postRequestResult$.next({ result: false });
+        this.requestResult$.next({ result: false });
         return false;
       }),
       catchError((error) => {
         console.error('Error creating currency:', error);
-        this.postRequestResult$.next({ result: false });
+        this.requestResult$.next({ result: false });
         return of(false);
       }),
     );
@@ -99,7 +159,7 @@ export class MoneyService {
   public updateCurrency(currencyData: Currency): Observable<boolean> {
     if (!currencyData.id) {
       console.error('Currency ID is required for update');
-      this.postRequestResult$.next({ result: false });
+      this.requestResult$.next({ result: false });
       return of(false);
     }
 
@@ -107,15 +167,15 @@ export class MoneyService {
       map((response: BasicResponse) => {
         if (response.success) {
           this.updateCurrencyInState(currencyData);
-          this.postRequestResult$.next({ result: true });
+          this.requestResult$.next({ result: true });
           return true;
         }
-        this.postRequestResult$.next({ result: false });
+        this.requestResult$.next({ result: false });
         return false;
       }),
       catchError((error) => {
         console.error('Error updating currency:', error);
-        this.postRequestResult$.next({ result: false });
+        this.requestResult$.next({ result: false });
         return of(false);
       }),
     );
@@ -126,15 +186,15 @@ export class MoneyService {
       map((response: BasicResponse) => {
         if (response.success) {
           this.removeCurrencyFromState(currencyId);
-          this.postRequestResult$.next({ result: true });
+          this.requestResult$.next({ result: true });
           return true;
         }
-        this.postRequestResult$.next({ result: false });
+        this.requestResult$.next({ result: false });
         return false;
       }),
       catchError((error) => {
         console.error('Error deleting currency:', error);
-        this.postRequestResult$.next({ result: false });
+        this.requestResult$.next({ result: false });
         return of(false);
       }),
     );
@@ -158,14 +218,12 @@ export class MoneyService {
     );
   }
 
-  // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  // ~                                                ~~~ CATEGORIES ~~~                                               ~
-  // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  //                                                          ~~~ CATEGORIES ~~~
 
   public getCategories(): Observable<Category[]> {
     return this.http.get<CategoriesResponse>('/api/money/categories').pipe(
-      map((response: CategoriesResponse) => {
-        if (response.success && response.data) {
+      map((response: CategoriesResponse | null) => {
+        if (response?.success && response.data) {
           this.categories$$.set(response.data);
           return response.data;
         }
@@ -173,7 +231,7 @@ export class MoneyService {
       }),
       catchError((error) => {
         console.error('Error fetching categories:', error);
-        this.postRequestResult$.next({ result: false });
+        this.requestResult$.next({ result: false });
         return of([]);
       }),
     );
@@ -188,15 +246,15 @@ export class MoneyService {
             ...categoryData,
           };
           this.addCategoryToState(newCategory);
-          this.postRequestResult$.next({ result: true });
+          this.requestResult$.next({ result: true });
           return true;
         }
-        this.postRequestResult$.next({ result: false });
+        this.requestResult$.next({ result: false });
         return false;
       }),
       catchError((error) => {
         console.error('Error creating category:', error);
-        this.postRequestResult$.next({ result: false });
+        this.requestResult$.next({ result: false });
         return of(false);
       }),
     );
@@ -205,7 +263,7 @@ export class MoneyService {
   public updateCategory(categoryData: Category): Observable<boolean> {
     if (!categoryData.id) {
       console.error('Category ID is required for update');
-      this.postRequestResult$.next({ result: false });
+      this.requestResult$.next({ result: false });
       return of(false);
     }
 
@@ -213,15 +271,15 @@ export class MoneyService {
       map((response: BasicResponse) => {
         if (response.success) {
           this.updateCategoryInState(categoryData);
-          this.postRequestResult$.next({ result: true });
+          this.requestResult$.next({ result: true });
           return true;
         }
-        this.postRequestResult$.next({ result: false });
+        this.requestResult$.next({ result: false });
         return false;
       }),
       catchError((error) => {
         console.error('Error updating category:', error);
-        this.postRequestResult$.next({ result: false });
+        this.requestResult$.next({ result: false });
         return of(false);
       }),
     );
@@ -232,15 +290,15 @@ export class MoneyService {
       map((response: BasicResponse) => {
         if (response.success) {
           this.removeCategoryFromState(categoryId);
-          this.postRequestResult$.next({ result: true });
+          this.requestResult$.next({ result: true });
           return true;
         }
-        this.postRequestResult$.next({ result: false });
+        this.requestResult$.next({ result: false });
         return false;
       }),
       catchError((error) => {
         console.error('Error deleting category:', error);
-        this.postRequestResult$.next({ result: false });
+        this.requestResult$.next({ result: false });
         return of(false);
       }),
     );
@@ -264,38 +322,135 @@ export class MoneyService {
     );
   }
 
-  // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  // ~                                                 ~~~ ACCOUNTS ~~~                                                ~
-  // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  //                                                        ~~~ ORGANIZATIONS ~~~
 
-  public getAccounts(): Observable<Account[]> {
-    return this.http.get<AccountsResponse>('/api/money/accounts').pipe(
-      map((response: AccountsResponse) => {
+  public getOrganizations(): Observable<Organization[]> {
+    return this.http.get<OrganizationsResponse>('/api/money/organizations').pipe(
+      map((response: OrganizationsResponse) => {
         if (response.success && response.data) {
-          const accounts = response.data.map((account: any) => ({
-            ...account,
-            categoryIds: account.categoryIds ? JSON.parse(account.categoryIds) : [],
-          }));
-          this.accounts$$.set(accounts);
-          return accounts;
+          this.organizations$$.set(response.data);
+          return response.data;
         }
         return [];
       }),
       catchError((error) => {
+        console.error('Error fetching organizations:', error);
+        this.requestResult$.next({ result: false });
+        return of([]);
+      }),
+    );
+  }
+
+  public createOrganization(organizationData: Organization): Observable<boolean> {
+    return this.http.post<CreateOrganizationResponse>('/api/money/organizations', organizationData).pipe(
+      map((response: CreateOrganizationResponse) => {
+        if (response.success && response.data?.id) {
+          const newOrganization: Organization = {
+            id: response.data.id,
+            ...organizationData,
+          };
+          this.addOrganizationToState(newOrganization);
+          this.requestResult$.next({ result: true });
+          return true;
+        }
+        this.requestResult$.next({ result: false });
+        return false;
+      }),
+      catchError((error) => {
+        console.error('Error creating organization:', error);
+        this.requestResult$.next({ result: false });
+        return of(false);
+      }),
+    );
+  }
+
+  public updateOrganization(organizationData: Organization): Observable<boolean> {
+    if (!organizationData.id) {
+      console.error('Organization ID is required for update');
+      this.requestResult$.next({ result: false });
+      return of(false);
+    }
+
+    return this.http.put<BasicResponse>(`/api/money/organizations/${organizationData.id}`, organizationData).pipe(
+      map((response: BasicResponse) => {
+        if (response.success) {
+          this.updateOrganizationInState(organizationData);
+          this.requestResult$.next({ result: true });
+          return true;
+        }
+        this.requestResult$.next({ result: false });
+        return false;
+      }),
+      catchError((error) => {
+        console.error('Error updating organization:', error);
+        this.requestResult$.next({ result: false });
+        return of(false);
+      }),
+    );
+  }
+
+  public deleteOrganization(organizationId: number): Observable<boolean> {
+    return this.http.delete<BasicResponse>(`/api/money/organizations/${organizationId}`).pipe(
+      map((response: BasicResponse) => {
+        if (response.success) {
+          this.removeOrganizationFromState(organizationId);
+          this.requestResult$.next({ result: true });
+          return true;
+        }
+        this.requestResult$.next({ result: false });
+        return false;
+      }),
+      catchError((error) => {
+        console.error('Error deleting organization:', error);
+        this.requestResult$.next({ result: false });
+        return of(false);
+      }),
+    );
+  }
+
+  private addOrganizationToState(organization: Organization): void {
+    this.organizations$$.update((organizations: Organization[]) => [...organizations, organization]);
+  }
+
+  private updateOrganizationInState(updatedOrganization: Organization): void {
+    this.organizations$$.update((organizations: Organization[]) =>
+      organizations.map((organization: Organization) =>
+        organization.id === updatedOrganization.id ? { ...organization, ...updatedOrganization } : organization,
+      ),
+    );
+  }
+
+  private removeOrganizationFromState(organizationId: number): void {
+    this.organizations$$.update((organizations: Organization[]) =>
+      organizations.filter((organization: Organization) => organization.id !== organizationId),
+    );
+  }
+
+  //                                                            ~~~ ACCOUNTS ~~~
+
+  public getAccounts(): Observable<Account[]> {
+    return this.http.get<AccountsResponse>('/api/money/accounts').pipe(
+      map((response: AccountsResponse) => {
+        if (response?.success && response.data) {
+          const normalizedAccounts = response.data.map((account) => this.normalizeAccount(account as AccountApi));
+          this.accounts$$.set(normalizedAccounts);
+          this.loadedSources$$.update((s) => new Set([...s, 'accounts']));
+          return normalizedAccounts;
+        }
+        this.loadedSources$$.update((s) => new Set([...s, 'accounts']));
+        return [];
+      }),
+      catchError((error) => {
         console.error('Error fetching accounts:', error);
-        this.postRequestResult$.next({ result: false });
+        this.loadedSources$$.update((s) => new Set([...s, 'accounts']));
+        this.requestResult$.next({ result: false });
         return of([]);
       }),
     );
   }
 
   public createAccount(accountData: Account): Observable<boolean> {
-    const requestData = {
-      ...accountData,
-      categoryIds: accountData.categoryIds || [],
-    };
-
-    return this.http.post<CreateAccountResponse>('/api/money/accounts', requestData).pipe(
+    return this.http.post<CreateAccountResponse>('/api/money/accounts', this.toAccountApiPayload(accountData)).pipe(
       map((response: CreateAccountResponse) => {
         if (response.success && response.data?.id) {
           const newAccount: Account = {
@@ -303,15 +458,15 @@ export class MoneyService {
             ...accountData,
           };
           this.addAccountToState(newAccount);
-          this.postRequestResult$.next({ result: true });
+          this.requestResult$.next({ result: true });
           return true;
         }
-        this.postRequestResult$.next({ result: false });
+        this.requestResult$.next({ result: false });
         return false;
       }),
       catchError((error) => {
         console.error('Error creating account:', error);
-        this.postRequestResult$.next({ result: false });
+        this.requestResult$.next({ result: false });
         return of(false);
       }),
     );
@@ -320,31 +475,28 @@ export class MoneyService {
   public updateAccount(accountData: Account): Observable<boolean> {
     if (!accountData.id) {
       console.error('Account ID is required for update');
-      this.postRequestResult$.next({ result: false });
+      this.requestResult$.next({ result: false });
       return of(false);
     }
 
-    const requestData = {
-      ...accountData,
-      categoryIds: accountData.categoryIds || [],
-    };
-
-    return this.http.put<BasicResponse>(`/api/money/accounts/${accountData.id}`, requestData).pipe(
-      map((response: BasicResponse) => {
-        if (response.success) {
-          this.updateAccountInState(accountData);
-          this.postRequestResult$.next({ result: true });
-          return true;
-        }
-        this.postRequestResult$.next({ result: false });
-        return false;
-      }),
-      catchError((error) => {
-        console.error('Error updating account:', error);
-        this.postRequestResult$.next({ result: false });
-        return of(false);
-      }),
-    );
+    return this.http
+      .put<BasicResponse>(`/api/money/accounts/${accountData.id}`, this.toAccountApiPayload(accountData))
+      .pipe(
+        map((response: BasicResponse) => {
+          if (response.success) {
+            this.updateAccountInState(accountData);
+            this.requestResult$.next({ result: true });
+            return true;
+          }
+          this.requestResult$.next({ result: false });
+          return false;
+        }),
+        catchError((error) => {
+          console.error('Error updating account:', error);
+          this.requestResult$.next({ result: false });
+          return of(false);
+        }),
+      );
   }
 
   public deleteAccount(accountId: number): Observable<boolean> {
@@ -352,15 +504,15 @@ export class MoneyService {
       map((response: BasicResponse) => {
         if (response.success) {
           this.removeAccountFromState(accountId);
-          this.postRequestResult$.next({ result: true });
+          this.requestResult$.next({ result: true });
           return true;
         }
-        this.postRequestResult$.next({ result: false });
+        this.requestResult$.next({ result: false });
         return false;
       }),
       catchError((error) => {
         console.error('Error deleting account:', error);
-        this.postRequestResult$.next({ result: false });
+        this.requestResult$.next({ result: false });
         return of(false);
       }),
     );
@@ -382,38 +534,223 @@ export class MoneyService {
     this.accounts$$.update((accounts: Account[]) => accounts.filter((account: Account) => account.id !== accountId));
   }
 
-  // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  // ~                                               ~~~ TRANSACTIONS ~~~                                              ~
-  // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  private normalizeAccount(account: AccountApi): Account {
+    return {
+      id: account.id,
+      title: account.title,
+      currencyId: account.currencyId,
+      isInvest: this.toBoolean(account.isInvest),
+      isArchived: this.toBoolean(account.isArchived),
+      kind: account.kind,
+      organizationId: account.organizationId ?? null,
+    };
+  }
 
-  public getTransactions(): Observable<Transaction[]> {
-    return this.http.get<TransactionsResponse>('/api/money/transactions').pipe(
-      map((response: TransactionsResponse) => {
+  private toAccountApiPayload(accountData: Account): AccountApi {
+    return {
+      id: accountData.id,
+      title: accountData.title,
+      currencyId: accountData.currencyId,
+      isInvest: this.toBoolean(accountData.isInvest),
+      isArchived: this.toBoolean(accountData.isArchived),
+      kind: accountData.kind,
+      organizationId: accountData.organizationId ?? null,
+    };
+  }
+
+  private toBoolean(value: boolean | number | string | undefined): boolean {
+    return value === true || value === 1 || value === '1' || value === 'true';
+  }
+
+  //                                                              ~~~ ASSETS ~~~
+
+  public getAssets(): Observable<Asset[]> {
+    return this.http.get<AssetsResponse>('/api/money/assets').pipe(
+      map((response: AssetsResponse) => {
         if (response.success && response.data) {
-          const transactions = response.data.map((transaction: any) => ({
-            ...transaction,
-            categoryIds: transaction.categoryIds ? JSON.parse(transaction.categoryIds) : [],
-          }));
-          this.transactions$$.set(transactions);
-          return transactions;
+          this.assets$$.set(response.data);
+          this.loadedSources$$.update((s) => new Set([...s, 'assets']));
+          return response.data;
         }
+        this.loadedSources$$.update((s) => new Set([...s, 'assets']));
         return [];
       }),
       catchError((error) => {
-        console.error('Error fetching transactions:', error);
-        this.postRequestResult$.next({ result: false });
+        console.error('Error fetching assets:', error);
+        this.loadedSources$$.update((s) => new Set([...s, 'assets']));
+        this.requestResult$.next({ result: false });
         return of([]);
       }),
     );
   }
 
-  public createTransaction(transactionData: Transaction): Observable<boolean> {
-    const requestData = {
-      ...transactionData,
-      categoryIds: transactionData.categoryIds || [],
-    };
+  public createAsset(assetData: Asset): Observable<boolean> {
+    return this.http.post<CreateAssetResponse>('/api/money/assets', assetData).pipe(
+      map((response: CreateAssetResponse) => {
+        if (response.success && response.data?.id) {
+          const newAsset: Asset = {
+            id: response.data.id,
+            ...assetData,
+          };
+          this.addAssetToState(newAsset);
+          this.requestResult$.next({ result: true });
+          return true;
+        }
+        this.requestResult$.next({ result: false });
+        return false;
+      }),
+      catchError((error) => {
+        console.error('Error creating asset:', error);
+        this.requestResult$.next({ result: false });
+        return of(false);
+      }),
+    );
+  }
 
-    return this.http.post<CreateTransactionResponse>('/api/money/transactions', requestData).pipe(
+  public updateAsset(assetData: Asset): Observable<boolean> {
+    if (!assetData.id) {
+      console.error('Asset ID is required for update');
+      this.requestResult$.next({ result: false });
+      return of(false);
+    }
+
+    return this.http.put<BasicResponse>(`/api/money/assets/${assetData.id}`, assetData).pipe(
+      map((response: BasicResponse) => {
+        if (response.success) {
+          this.updateAssetInState(assetData);
+          this.requestResult$.next({ result: true });
+          return true;
+        }
+        this.requestResult$.next({ result: false });
+        return false;
+      }),
+      catchError((error) => {
+        console.error('Error updating asset:', error);
+        this.requestResult$.next({ result: false });
+        return of(false);
+      }),
+    );
+  }
+
+  public deleteAsset(assetId: number): Observable<boolean> {
+    return this.http.delete<BasicResponse>(`/api/money/assets/${assetId}`).pipe(
+      map((response: BasicResponse) => {
+        if (response.success) {
+          this.removeAssetFromState(assetId);
+          this.requestResult$.next({ result: true });
+          return true;
+        }
+        this.requestResult$.next({ result: false });
+        return false;
+      }),
+      catchError((error) => {
+        console.error('Error deleting asset:', error);
+        this.requestResult$.next({ result: false });
+        return of(false);
+      }),
+    );
+  }
+
+  public getInvestAssetTrades(): Observable<InvestAssetTrade[]> {
+    return this.http.get<InvestAssetTradesResponse>('/api/money/trades').pipe(
+      map((response: InvestAssetTradesResponse) => {
+        if (response.success && response.data) {
+          this.investAssetTrades$$.set(response.data);
+          return response.data;
+        }
+        return [];
+      }),
+      catchError((error) => {
+        console.error('Error fetching invest asset trades:', error);
+        this.requestResult$.next({ result: false });
+        return of([]);
+      }),
+    );
+  }
+
+  private addAssetToState(asset: Asset): void {
+    this.assets$$.update((assets: Asset[]) => [...assets, asset]);
+  }
+
+  private updateAssetInState(updatedAsset: Asset): void {
+    this.assets$$.update((assets: Asset[]) =>
+      assets.map((asset: Asset) => (asset.id === updatedAsset.id ? { ...asset, ...updatedAsset } : asset)),
+    );
+  }
+
+  private removeAssetFromState(assetId: number): void {
+    this.assets$$.update((assets: Asset[]) => assets.filter((asset: Asset) => asset.id !== assetId));
+  }
+
+  //                                                        ~~~ TRANSACTIONS ~~~
+
+  public getTransactions(): Observable<Transaction[]> {
+    return this.http.get<TransactionsResponse>('/api/money/transactions').pipe(
+      map((response: TransactionsResponse) => {
+        if (response.success && response.data) {
+          this.transactions$$.set(response.data);
+          this.loadedSources$$.update((s) => new Set([...s, 'transactions']));
+          return response.data;
+        }
+        this.loadedSources$$.update((s) => new Set([...s, 'transactions']));
+        return [];
+      }),
+      catchError((error) => {
+        console.error('Error fetching transactions:', error);
+        this.loadedSources$$.update((s) => new Set([...s, 'transactions']));
+        this.requestResult$.next({ result: false });
+        return of([]);
+      }),
+    );
+  }
+
+  public getRateHistory(): Observable<MoneyRateHistory[]> {
+    return this.http.get<RateHistoryResponse>('/api/money/rate-history').pipe(
+      map((response: RateHistoryResponse | null) => {
+        if (!response || !response.success || !Array.isArray(response.data)) {
+          this.rateHistory$$.set([]);
+          this.loadedSources$$.update((s) => new Set([...s, 'rateHistory']));
+          return [];
+        }
+
+        const parsed = response.data.map((item) => ({
+          ...item,
+          ratesJson: this.parseRatesJson(item.ratesJson),
+        }));
+        this.rateHistory$$.set(parsed);
+        this.loadedSources$$.update((s) => new Set([...s, 'rateHistory']));
+        return parsed;
+      }),
+      catchError((error) => {
+        console.error('Error fetching money rate history:', error);
+        this.loadedSources$$.update((s) => new Set([...s, 'rateHistory']));
+        this.requestResult$.next({ result: false });
+        return of([]);
+      }),
+    );
+  }
+
+  private parseRatesJson(ratesJson: Record<string, number> | string): Record<string, number> {
+    if (ratesJson && typeof ratesJson === 'object') {
+      return ratesJson;
+    }
+
+    if (typeof ratesJson === 'string') {
+      try {
+        const parsed = JSON.parse(ratesJson);
+        if (parsed && typeof parsed === 'object') {
+          return parsed as Record<string, number>;
+        }
+      } catch {
+        return {};
+      }
+    }
+
+    return {};
+  }
+
+  public createTransaction(transactionData: Transaction): Observable<boolean> {
+    return this.http.post<CreateTransactionResponse>('/api/money/transactions', transactionData).pipe(
       map((response: CreateTransactionResponse) => {
         if (response.success && response.data?.id) {
           const newTransaction: Transaction = {
@@ -421,15 +758,15 @@ export class MoneyService {
             ...transactionData,
           };
           this.addTransactionToState(newTransaction);
-          this.postRequestResult$.next({ result: true });
+          this.requestResult$.next({ result: true });
           return true;
         }
-        this.postRequestResult$.next({ result: false });
+        this.requestResult$.next({ result: false });
         return false;
       }),
       catchError((error) => {
         console.error('Error creating transaction:', error);
-        this.postRequestResult$.next({ result: false });
+        this.requestResult$.next({ result: false });
         return of(false);
       }),
     );
@@ -438,28 +775,23 @@ export class MoneyService {
   public updateTransaction(transactionData: Transaction): Observable<boolean> {
     if (!transactionData.id) {
       console.error('Transaction ID is required for update');
-      this.postRequestResult$.next({ result: false });
+      this.requestResult$.next({ result: false });
       return of(false);
     }
 
-    const requestData = {
-      ...transactionData,
-      categoryIds: transactionData.categoryIds || [],
-    };
-
-    return this.http.put<BasicResponse>(`/api/money/transactions/${transactionData.id}`, requestData).pipe(
+    return this.http.put<BasicResponse>(`/api/money/transactions/${transactionData.id}`, transactionData).pipe(
       map((response: BasicResponse) => {
         if (response.success) {
           this.updateTransactionInState(transactionData);
-          this.postRequestResult$.next({ result: true });
+          this.requestResult$.next({ result: true });
           return true;
         }
-        this.postRequestResult$.next({ result: false });
+        this.requestResult$.next({ result: false });
         return false;
       }),
       catchError((error) => {
         console.error('Error updating transaction:', error);
-        this.postRequestResult$.next({ result: false });
+        this.requestResult$.next({ result: false });
         return of(false);
       }),
     );
@@ -469,19 +801,122 @@ export class MoneyService {
     return this.http.delete<BasicResponse>(`/api/money/transactions/${transactionId}`).pipe(
       map((response: BasicResponse) => {
         if (response.success) {
-          this.removeTransactionFromState(transactionId);
-          this.postRequestResult$.next({ result: true });
+          this.removeTransactionPairFromState(transactionId);
+          this.requestResult$.next({ result: true });
           return true;
         }
-        this.postRequestResult$.next({ result: false });
+        this.requestResult$.next({ result: false });
         return false;
       }),
       catchError((error) => {
         console.error('Error deleting transaction:', error);
-        this.postRequestResult$.next({ result: false });
+        this.requestResult$.next({ result: false });
         return of(false);
       }),
     );
+  }
+
+  public createTransfer(transferData: {
+    dateISO: string;
+    accountId: number;
+    amount: number;
+    twinAccountId: number;
+    twinAmount: number;
+    notes?: string;
+  }): Observable<boolean> {
+    return this.http
+      .post<CreateTransactionResponse>('/api/money/transactions', {
+        ...transferData,
+        kind: TransactionKind.TRANSFER,
+        isGift: false,
+        categoryId: null,
+      })
+      .pipe(
+        map((response: CreateTransactionResponse) => {
+          if (response.success && response.data?.id && response.data?.twinId) {
+            const fromTransaction: Transaction = {
+              id: response.data.id,
+              dateISO: transferData.dateISO,
+              accountId: transferData.accountId,
+              amount: transferData.amount,
+              categoryId: null,
+              kind: TransactionKind.TRANSFER,
+              isGift: false,
+              notes: transferData.notes,
+              detailsJSON: JSON.stringify({ direction: 'out' }),
+              twinId: response.data.twinId,
+            };
+
+            const toTransaction: Transaction = {
+              id: response.data.twinId,
+              dateISO: transferData.dateISO,
+              accountId: transferData.twinAccountId,
+              amount: transferData.twinAmount,
+              categoryId: null,
+              kind: TransactionKind.TRANSFER,
+              isGift: false,
+              notes: transferData.notes,
+              detailsJSON: JSON.stringify({ direction: 'in' }),
+              twinId: response.data.id,
+            };
+
+            this.transactions$$.update((transactions: Transaction[]) => [
+              fromTransaction,
+              toTransaction,
+              ...transactions,
+            ]);
+            this.requestResult$.next({ result: true });
+            return true;
+          }
+          this.requestResult$.next({ result: false });
+          return false;
+        }),
+        catchError((error) => {
+          console.error('Error creating transfer:', error);
+          this.requestResult$.next({ result: false });
+          return of(false);
+        }),
+      );
+  }
+
+  public updateTransfer(transferData: {
+    id: number;
+    twinId: number;
+    dateISO: string;
+    accountId: number;
+    amount: number;
+    twinAccountId: number;
+    twinAmount: number;
+    notes?: string;
+  }): Observable<boolean> {
+    return this.http
+      .put<BasicResponse>(`/api/money/transactions/${transferData.id}`, {
+        dateISO: transferData.dateISO,
+        accountId: transferData.accountId,
+        amount: transferData.amount,
+        twinAccountId: transferData.twinAccountId,
+        twinAmount: transferData.twinAmount,
+        kind: TransactionKind.TRANSFER,
+        isGift: false,
+        categoryId: null,
+        notes: transferData.notes,
+      })
+      .pipe(
+        map((response: BasicResponse) => {
+          if (response.success) {
+            this.updateTransferInState(transferData);
+            this.requestResult$.next({ result: true });
+            return true;
+          }
+          this.requestResult$.next({ result: false });
+          return false;
+        }),
+        catchError((error) => {
+          console.error('Error updating transfer:', error);
+          this.requestResult$.next({ result: false });
+          return of(false);
+        }),
+      );
   }
 
   private addTransactionToState(transaction: Transaction): void {
@@ -500,5 +935,73 @@ export class MoneyService {
     this.transactions$$.update((transactions: Transaction[]) =>
       transactions.filter((transaction: Transaction) => transaction.id !== transactionId),
     );
+  }
+
+  private removeTransactionPairFromState(transactionId: number): void {
+    const transactions = this.transactions$$();
+    const target = transactions.find((transaction) => transaction.id === transactionId);
+    const twinId = target?.twinId;
+
+    this.transactions$$.update((items: Transaction[]) =>
+      items.filter((transaction) => transaction.id !== transactionId && transaction.id !== twinId),
+    );
+  }
+
+  private updateTransferInState(transferData: {
+    id: number;
+    twinId: number;
+    dateISO: string;
+    accountId: number;
+    amount: number;
+    twinAccountId: number;
+    twinAmount: number;
+    notes?: string;
+  }): void {
+    this.transactions$$.update((transactions: Transaction[]) =>
+      transactions.map((transaction: Transaction) => {
+        if (transaction.id === transferData.id) {
+          return {
+            ...transaction,
+            dateISO: transferData.dateISO,
+            accountId: transferData.accountId,
+            amount: transferData.amount,
+            notes: transferData.notes,
+          };
+        }
+
+        if (transaction.id === transferData.twinId) {
+          return {
+            ...transaction,
+            dateISO: transferData.dateISO,
+            accountId: transferData.twinAccountId,
+            amount: transferData.twinAmount,
+            notes: transferData.notes,
+          };
+        }
+
+        return transaction;
+      }),
+    );
+  }
+
+  public getRatesForDate(dateISO: string): Record<string, number> | null {
+    const history = this.rateHistory$$();
+    if (!history.length) return null;
+
+    const merged: Record<string, number> = {};
+    let hasAny = false;
+
+    history
+      .filter((item) => item.dateISO <= dateISO)
+      .sort((a, b) => a.dateISO.localeCompare(b.dateISO))
+      .forEach((item) => {
+        const rates = item.ratesJson;
+        if (rates && typeof rates === 'object') {
+          Object.assign(merged, rates);
+          hasAny = true;
+        }
+      });
+
+    return hasAny ? merged : null;
   }
 }
