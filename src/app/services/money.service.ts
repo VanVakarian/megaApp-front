@@ -1,5 +1,5 @@
 import { HttpClient } from '@angular/common/http';
-import { computed, Injectable, signal, WritableSignal } from '@angular/core';
+import { computed, Injectable, Signal, signal, WritableSignal } from '@angular/core';
 import { Observable, of, Subject } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import {
@@ -14,6 +14,7 @@ import {
   Transaction,
   TransactionKind,
 } from '../shared/types';
+import { SyncOperationType, SyncQueueService } from './sync-queue.service';
 
 interface BaseResponse {
   success: boolean;
@@ -74,6 +75,14 @@ export class MoneyService {
   public readonly investAssetTrades$$: WritableSignal<InvestAssetTrade[]> = signal([]);
   public readonly transactions$$: WritableSignal<Transaction[]> = signal([]);
   public readonly rateHistory$$: WritableSignal<MoneyRateHistory[]> = signal([]);
+  private readonly rateSnapshots$$: Signal<{ dateISO: string; rates: Record<string, number> }[]> = computed(() => {
+    const sorted = [...this.rateHistory$$()].sort((a, b) => a.dateISO.localeCompare(b.dateISO));
+    let accumulated: Record<string, number> = {};
+    return sorted.map((item) => {
+      accumulated = { ...accumulated, ...(item.ratesJson as Record<string, number>) };
+      return { dateISO: item.dateISO, rates: accumulated };
+    });
+  });
   public readonly displayCurrency$$: WritableSignal<string> = signal(
     localStorage.getItem('money_display_currency') ?? 'RUB',
   );
@@ -106,7 +115,10 @@ export class MoneyService {
     else localStorage.removeItem('money_chart_range_end');
   }
 
-  constructor(private http: HttpClient) {
+  constructor(
+    private http: HttpClient,
+    private syncQueue: SyncQueueService,
+  ) {
     // effect(() => { console.log('CURRENCIES:', this.currencies$$()) }); // prettier-ignore
     // effect(() => { console.log('CATEGORIES:', this.categories$$()) }); // prettier-ignore
     // effect(() => { console.log('ACCOUNTS:', this.accounts$$()) }); // prettier-ignore
@@ -750,26 +762,30 @@ export class MoneyService {
   }
 
   public createTransaction(transactionData: Transaction): Observable<boolean> {
-    return this.http.post<CreateTransactionResponse>('/api/money/transactions', transactionData).pipe(
-      map((response: CreateTransactionResponse) => {
+    const tempId = Date.now();
+    const snapshot = this.transactions$$();
+
+    this.addTransactionToState({ ...transactionData, id: tempId });
+
+    this.syncQueue.addOperation({
+      type: SyncOperationType.CREATE,
+      endpoint: '/api/money/transactions',
+      data: transactionData,
+      successCallback: (response: CreateTransactionResponse) => {
         if (response.success && response.data?.id) {
-          const newTransaction: Transaction = {
-            id: response.data.id,
-            ...transactionData,
-          };
-          this.addTransactionToState(newTransaction);
-          this.requestResult$.next({ result: true });
-          return true;
+          this.transactions$$.update((txs) =>
+            txs.map((tx) => (tx.id === tempId ? { ...tx, id: response.data.id } : tx)),
+          );
         }
+        this.requestResult$.next({ result: true });
+      },
+      rollbackCallback: () => {
+        this.transactions$$.set(snapshot);
         this.requestResult$.next({ result: false });
-        return false;
-      }),
-      catchError((error) => {
-        console.error('Error creating transaction:', error);
-        this.requestResult$.next({ result: false });
-        return of(false);
-      }),
-    );
+      },
+    });
+
+    return of(true);
   }
 
   public updateTransaction(transactionData: Transaction): Observable<boolean> {
@@ -779,41 +795,43 @@ export class MoneyService {
       return of(false);
     }
 
-    return this.http.put<BasicResponse>(`/api/money/transactions/${transactionData.id}`, transactionData).pipe(
-      map((response: BasicResponse) => {
-        if (response.success) {
-          this.updateTransactionInState(transactionData);
-          this.requestResult$.next({ result: true });
-          return true;
-        }
+    const snapshot = this.transactions$$();
+    this.updateTransactionInState(transactionData);
+
+    this.syncQueue.addOperation({
+      type: SyncOperationType.UPDATE,
+      endpoint: `/api/money/transactions/${transactionData.id}`,
+      data: transactionData,
+      successCallback: () => {
+        this.requestResult$.next({ result: true });
+      },
+      rollbackCallback: () => {
+        this.transactions$$.set(snapshot);
         this.requestResult$.next({ result: false });
-        return false;
-      }),
-      catchError((error) => {
-        console.error('Error updating transaction:', error);
-        this.requestResult$.next({ result: false });
-        return of(false);
-      }),
-    );
+      },
+    });
+
+    return of(true);
   }
 
   public deleteTransaction(transactionId: number): Observable<boolean> {
-    return this.http.delete<BasicResponse>(`/api/money/transactions/${transactionId}`).pipe(
-      map((response: BasicResponse) => {
-        if (response.success) {
-          this.removeTransactionPairFromState(transactionId);
-          this.requestResult$.next({ result: true });
-          return true;
-        }
+    const snapshot = this.transactions$$();
+    this.removeTransactionPairFromState(transactionId);
+
+    this.syncQueue.addOperation({
+      type: SyncOperationType.DELETE,
+      endpoint: `/api/money/transactions/${transactionId}`,
+      data: null,
+      successCallback: () => {
+        this.requestResult$.next({ result: true });
+      },
+      rollbackCallback: () => {
+        this.transactions$$.set(snapshot);
         this.requestResult$.next({ result: false });
-        return false;
-      }),
-      catchError((error) => {
-        console.error('Error deleting transaction:', error);
-        this.requestResult$.next({ result: false });
-        return of(false);
-      }),
-    );
+      },
+    });
+
+    return of(true);
   }
 
   public createTransfer(transferData: {
@@ -824,59 +842,61 @@ export class MoneyService {
     twinAmount: number;
     notes?: string;
   }): Observable<boolean> {
-    return this.http
-      .post<CreateTransactionResponse>('/api/money/transactions', {
-        ...transferData,
+    const tempId1 = Date.now();
+    const tempId2 = tempId1 + 1;
+    const snapshot = this.transactions$$();
+
+    this.transactions$$.update((txs) => [
+      {
+        id: tempId1,
+        dateISO: transferData.dateISO,
+        accountId: transferData.accountId,
+        amount: transferData.amount,
+        categoryId: null,
         kind: TransactionKind.TRANSFER,
         isGift: false,
+        notes: transferData.notes,
+        detailsJSON: JSON.stringify({ direction: 'out' }),
+        twinId: tempId2,
+      },
+      {
+        id: tempId2,
+        dateISO: transferData.dateISO,
+        accountId: transferData.twinAccountId,
+        amount: transferData.twinAmount,
         categoryId: null,
-      })
-      .pipe(
-        map((response: CreateTransactionResponse) => {
-          if (response.success && response.data?.id && response.data?.twinId) {
-            const fromTransaction: Transaction = {
-              id: response.data.id,
-              dateISO: transferData.dateISO,
-              accountId: transferData.accountId,
-              amount: transferData.amount,
-              categoryId: null,
-              kind: TransactionKind.TRANSFER,
-              isGift: false,
-              notes: transferData.notes,
-              detailsJSON: JSON.stringify({ direction: 'out' }),
-              twinId: response.data.twinId,
-            };
+        kind: TransactionKind.TRANSFER,
+        isGift: false,
+        notes: transferData.notes,
+        detailsJSON: JSON.stringify({ direction: 'in' }),
+        twinId: tempId1,
+      },
+      ...txs,
+    ]);
 
-            const toTransaction: Transaction = {
-              id: response.data.twinId,
-              dateISO: transferData.dateISO,
-              accountId: transferData.twinAccountId,
-              amount: transferData.twinAmount,
-              categoryId: null,
-              kind: TransactionKind.TRANSFER,
-              isGift: false,
-              notes: transferData.notes,
-              detailsJSON: JSON.stringify({ direction: 'in' }),
-              twinId: response.data.id,
-            };
+    this.syncQueue.addOperation({
+      type: SyncOperationType.CREATE,
+      endpoint: '/api/money/transactions',
+      data: { ...transferData, kind: TransactionKind.TRANSFER, isGift: false, categoryId: null },
+      successCallback: (response: CreateTransactionResponse) => {
+        if (response.success && response.data?.id && response.data?.twinId) {
+          this.transactions$$.update((txs) =>
+            txs.map((tx) => {
+              if (tx.id === tempId1) return { ...tx, id: response.data.id, twinId: response.data.twinId };
+              if (tx.id === tempId2) return { ...tx, id: response.data.twinId, twinId: response.data.id };
+              return tx;
+            }),
+          );
+        }
+        this.requestResult$.next({ result: true });
+      },
+      rollbackCallback: () => {
+        this.transactions$$.set(snapshot);
+        this.requestResult$.next({ result: false });
+      },
+    });
 
-            this.transactions$$.update((transactions: Transaction[]) => [
-              fromTransaction,
-              toTransaction,
-              ...transactions,
-            ]);
-            this.requestResult$.next({ result: true });
-            return true;
-          }
-          this.requestResult$.next({ result: false });
-          return false;
-        }),
-        catchError((error) => {
-          console.error('Error creating transfer:', error);
-          this.requestResult$.next({ result: false });
-          return of(false);
-        }),
-      );
+    return of(true);
   }
 
   public updateTransfer(transferData: {
@@ -889,8 +909,13 @@ export class MoneyService {
     twinAmount: number;
     notes?: string;
   }): Observable<boolean> {
-    return this.http
-      .put<BasicResponse>(`/api/money/transactions/${transferData.id}`, {
+    const snapshot = this.transactions$$();
+    this.updateTransferInState(transferData);
+
+    this.syncQueue.addOperation({
+      type: SyncOperationType.UPDATE,
+      endpoint: `/api/money/transactions/${transferData.id}`,
+      data: {
         dateISO: transferData.dateISO,
         accountId: transferData.accountId,
         amount: transferData.amount,
@@ -900,23 +925,17 @@ export class MoneyService {
         isGift: false,
         categoryId: null,
         notes: transferData.notes,
-      })
-      .pipe(
-        map((response: BasicResponse) => {
-          if (response.success) {
-            this.updateTransferInState(transferData);
-            this.requestResult$.next({ result: true });
-            return true;
-          }
-          this.requestResult$.next({ result: false });
-          return false;
-        }),
-        catchError((error) => {
-          console.error('Error updating transfer:', error);
-          this.requestResult$.next({ result: false });
-          return of(false);
-        }),
-      );
+      },
+      successCallback: () => {
+        this.requestResult$.next({ result: true });
+      },
+      rollbackCallback: () => {
+        this.transactions$$.set(snapshot);
+        this.requestResult$.next({ result: false });
+      },
+    });
+
+    return of(true);
   }
 
   private addTransactionToState(transaction: Transaction): void {
@@ -985,23 +1004,22 @@ export class MoneyService {
   }
 
   public getRatesForDate(dateISO: string): Record<string, number> | null {
-    const history = this.rateHistory$$();
-    if (!history.length) return null;
+    const snapshots = this.rateSnapshots$$();
+    if (!snapshots.length) return null;
 
-    const merged: Record<string, number> = {};
-    let hasAny = false;
+    let lo = 0,
+      hi = snapshots.length - 1,
+      result = -1;
+    while (lo <= hi) {
+      const mid = (lo + hi) >> 1;
+      if (snapshots[mid].dateISO <= dateISO) {
+        result = mid;
+        lo = mid + 1;
+      } else {
+        hi = mid - 1;
+      }
+    }
 
-    history
-      .filter((item) => item.dateISO <= dateISO)
-      .sort((a, b) => a.dateISO.localeCompare(b.dateISO))
-      .forEach((item) => {
-        const rates = item.ratesJson;
-        if (rates && typeof rates === 'object') {
-          Object.assign(merged, rates);
-          hasAny = true;
-        }
-      });
-
-    return hasAny ? merged : null;
+    return result >= 0 ? snapshots[result].rates : null;
   }
 }
