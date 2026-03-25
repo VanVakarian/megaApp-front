@@ -7,6 +7,7 @@ import { VToggle, VToggleItem } from '@ui-kit/components/v-toggle/v-toggle';
 import { MoneyComputeService } from '../../services/money-compute.service';
 import { MoneyService } from '../../services/money.service';
 import { BalanceChartData } from '../../shared/types';
+import { AccountsBalance } from './accounts-balance/accounts-balance';
 import { AccountsList } from './accounts-list/accounts-list';
 import { AssetsList } from './assets-list/assets-list';
 import { BalancesChart } from './balances-chart/balances-chart';
@@ -31,6 +32,7 @@ enum MoneyTab {
     CurrenciesList,
     CategoriesList,
     AccountsList,
+    AccountsBalance,
     OrganizationsList,
     AssetsList,
     TransactionsList,

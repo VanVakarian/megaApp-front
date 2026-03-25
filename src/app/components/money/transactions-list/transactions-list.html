@@ -3,7 +3,7 @@
             padding: 4,
             borderRadius: 2,
           }">
-    <div class="flex items-center justify-between mb-4">
+    <div class="flex items-center justify-between mb-2">
       <div class="text-lg font-semibold">Transactions</div>
       <div class="flex items-center gap-2">
         <v-button class="v-flat"
@@ -15,16 +15,6 @@
                   [name]="Icon.Add"
                   [size]="5"></v-icon>
           New transaction
-        </v-button>
-        <v-button [class]="keepNativeCurrency$$() ? 'v-primary' : 'v-flat'"
-                  [config]="{
-                    isLabelHidden: true,
-                    padding: 2,
-                  }"
-                  (onClick)="toggleKeepNativeCurrency()">
-          <v-icon v-prefix
-                  [name]="keepNativeCurrency$$() ? Icon.Keep : Icon.KeepOff"
-                  [size]="4"></v-icon>
         </v-button>
       </div>
     </div>
@@ -39,7 +29,7 @@
         <div [style.height.px]="paddingTop$$()"></div>
 
         @for (m of visibleMeasurements$$(); track m.group.date) {
-          <div class="mb-4">
+          <div class="mb-2">
             <div class="py-0 mb-0">
               <div class="group relative flex items-center justify-between">
                 <div class="text-sm">{{ m.group.dateDisplay }}</div>
@@ -171,10 +161,12 @@
 
 <form-modal [isModalOpen]="showForm$$()"
             (closeOutput)="hideForm()">
-  <transaction-form [dateIsoInput]="formDateISO$$()"
-                    [transactionInput]="editingTransaction$$()"
-                    (savedOutput)="hideForm()"
-                    (cancelledOutput)="hideForm()" />
+  @if (showForm$$()) {
+    <transaction-form [dateIsoInput]="formDateISO$$()"
+                      [transactionInput]="editingTransaction$$()"
+                      (savedOutput)="hideForm()"
+                      (cancelledOutput)="hideForm()" />
+  }
 </form-modal>
 
 <default-modal [isModalOpen]="isDeleteConfirmOpen$$()"

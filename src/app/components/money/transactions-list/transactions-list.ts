@@ -69,7 +69,7 @@ export class TransactionsList {
   private readonly GROUP_BOTTOM_MARGIN = 16;
   private readonly BUFFER_PX = 1200;
 
-  protected readonly containerHeight = 680;
+  protected readonly containerHeight = 613;
 
   private readonly scrollTop$$ = signal(0);
 

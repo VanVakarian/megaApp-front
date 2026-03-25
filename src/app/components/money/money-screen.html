@@ -68,38 +68,39 @@
       </div>
     </v-card>
 
-    <v-card [config]="{
-              padding: 2,
-              borderRadius: 2,
-            }">
-      <div class="flex items-center justify-between">
-        <span class="text-sm text-gray-400">Display currency</span>
-        <div>
-          <v-toggle [items]="currencyToggleItems"
-                    [value]="[displayCurrency$$()]"
-                    (valueChange)="setDisplayCurrency($event[0])"></v-toggle>
-        </div>
-      </div>
-      @if (!isChartDataReady$$()) {
-        <div class="dark:border-gray-700 mt-3 pt-2 border-t border-gray-200 h-[61px] flex items-center justify-center">
-          <div class="animate-spin w-4 h-4 border-2 rounded-full"
-               style="border-color: var(--v-color-primary); border-top-color: transparent;"></div>
-        </div>
-      } @else if (allChartMonths$$().length > 1) {
-        <div class="dark:border-gray-700 pt-2 mt-3 border-t border-gray-200">
-          <div class="flex justify-between mb-2 text-xs text-gray-400">
-            <span>{{ sliderStartLabel$$() }}</span>
-            <span>Selected: {{ sliderRangeLabel$$() }}</span>
-            <span>{{ sliderEndLabel$$() }}</span>
-          </div>
-          <v-slider [range]="sliderRange$$()"
-                    [config]="chartRangeSliderConfig$$()"
-                    (rangeChange)="onChartRangeChange($event)" />
-        </div>
-      }
-    </v-card>
-
     @if (activeTab$$() === MoneyTab.Setup) {
+      <v-card [config]="{
+                padding: 2,
+                borderRadius: 2,
+              }">
+        <div class="flex items-center justify-between">
+          <span class="text-sm text-gray-400">Display currency</span>
+          <div>
+            <v-toggle [items]="currencyToggleItems"
+                      [value]="[displayCurrency$$()]"
+                      (valueChange)="setDisplayCurrency($event[0])"></v-toggle>
+          </div>
+        </div>
+        @if (!isChartDataReady$$()) {
+          <div
+               class="dark:border-gray-700 mt-3 pt-2 border-t border-gray-200 h-[61px] flex items-center justify-center">
+            <div class="animate-spin w-4 h-4 border-2 rounded-full"
+                 style="border-color: var(--v-color-primary); border-top-color: transparent;"></div>
+          </div>
+        } @else if (allChartMonths$$().length > 1) {
+          <div class="dark:border-gray-700 pt-2 mt-3 border-t border-gray-200">
+            <div class="flex justify-between mb-2 text-xs text-gray-400">
+              <span>{{ sliderStartLabel$$() }}</span>
+              <span>Selected: {{ sliderRangeLabel$$() }}</span>
+              <span>{{ sliderEndLabel$$() }}</span>
+            </div>
+            <v-slider [range]="sliderRange$$()"
+                      [config]="chartRangeSliderConfig$$()"
+                      (rangeChange)="onChartRangeChange($event)" />
+          </div>
+        }
+      </v-card>
+
       <accounts-list />
       <organizations-list />
       <currencies-list />
@@ -114,6 +115,7 @@
     }
 
     @if (activeTab$$() === MoneyTab.Transactions) {
+      <accounts-balance />
       <transactions-list />
     }
   </div>

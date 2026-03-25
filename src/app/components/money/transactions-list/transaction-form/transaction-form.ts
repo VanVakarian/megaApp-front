@@ -42,6 +42,7 @@ export class TransactionForm {
   protected readonly Icon = IconName;
   protected readonly TransactionKind = TransactionKind;
   private readonly dateInputElem = viewChild<ElementRef<HTMLInputElement>>('dateInputElem');
+  private readonly amountInputElem = viewChild<VInput>('amountInputElem');
 
   public readonly dateIsoInput = input<string | null>(null);
   public readonly transactionInput = input<Transaction | null>(null);
@@ -109,6 +110,41 @@ export class TransactionForm {
   );
 
   protected readonly selectedAssetIsBond$$ = computed(() => this.selectedAsset$$()?.type === AssetType.BOND);
+
+  protected readonly topAccounts$$ = computed(() =>
+    this.getAccounts().map((account) => ({ id: String(account.id), title: account.title })),
+  );
+
+  protected readonly topCategoryItems$$ = computed(() =>
+    this.getTransactionCategories().map((cat) => ({
+      id: String(cat.id),
+      label: this.getCategoryLabel(cat),
+    })),
+  );
+
+  protected readonly topNoteItems$$ = computed(() => {
+    const categoryIdValue = this.categoryId$$();
+    const categoryId = categoryIdValue ? Number(categoryIdValue) : null;
+    const notesFilter = this.notes$$().trim().toLowerCase();
+
+    const oneYearAgo = new Date();
+    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+    const oneYearAgoISO = oneYearAgo.toISOString().slice(0, 10);
+
+    const noteCount = new Map<string, number>();
+    for (const tx of this.moneyService.transactions$$()) {
+      if (!tx.notes || tx.dateISO < oneYearAgoISO) continue;
+      if (categoryId != null && Number.isFinite(categoryId) && tx.categoryId !== categoryId) continue;
+      noteCount.set(tx.notes, (noteCount.get(tx.notes) ?? 0) + 1);
+    }
+
+    const sorted = Array.from(noteCount.entries())
+      .sort((a, b) => b[1] - a[1])
+      .map(([note]) => note);
+
+    if (!notesFilter) return sorted;
+    return sorted.filter((note) => note.toLowerCase().includes(notesFilter));
+  });
 
   protected readonly canEditInvestIdentity$$ = computed(() => !this.isEditing$$());
 
@@ -391,6 +427,16 @@ export class TransactionForm {
   protected onAccountChange(value: string | null): void {
     this.accountId$$.set(value);
     this.categoryId$$.set(null);
+
+    if (!this.isEditing$$() && value) {
+      setTimeout(() => {
+        if (!this.isInvestMode$$()) {
+          const inputEl = this.amountInputElem()?.inputElement().nativeElement;
+          inputEl?.focus();
+          inputEl?.select();
+        }
+      });
+    }
 
     const selectedAsset = this.selectedAsset$$();
     const accountId = value ? Number(value) : null;
