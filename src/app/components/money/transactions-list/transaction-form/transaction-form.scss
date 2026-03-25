@@ -7,3 +7,12 @@
     // height: 48px;
   }
 }
+
+.account-chips-list {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}

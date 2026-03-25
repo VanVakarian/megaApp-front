@@ -4,14 +4,15 @@ import {
   Component,
   ElementRef,
   OnDestroy,
-  WritableSignal,
   computed,
   effect,
+  inject,
   input,
   signal,
   untracked,
   viewChild,
 } from '@angular/core';
+import { MoneyService } from '@app/services/money.service';
 import { EXPENSE_CATEGORY_CONFIG, EXPENSE_CHART_CONFIG, getExpenseCategoryColor } from '@app/shared/chart-config';
 import { ExpenseChartData } from '@app/shared/types';
 import { VButton } from '@ui-kit/components/v-button/v-button';
@@ -50,26 +51,17 @@ export class ExpenseChart implements AfterViewInit, OnDestroy {
   readonly monthRangeInput = input<[string, string] | null>(null);
 
   protected readonly chartCanvas = viewChild.required<ElementRef<HTMLCanvasElement>>('chartCanvas');
+  protected readonly yMaxElem = viewChild.required<VInput>('yMaxElem');
   protected readonly chart$$ = signal<Chart | null>(null);
   protected readonly enabledCategoryIds$$ = signal<Set<number | null>>(new Set());
   protected readonly yearlyMode$$ = signal(false);
 
-  private readonly yMaxMap$$: WritableSignal<Record<string, string>> = signal(
-    (() => {
-      const stored = localStorage.getItem('expense-chart-y-max-per-currency');
-      if (stored) {
-        try {
-          return JSON.parse(stored) as Record<string, string>;
-        } catch {
-          return {};
-        }
-      }
-      const legacy = localStorage.getItem('expense-chart-y-max');
-      return legacy ? { RUB: legacy } : {};
-    })(),
-  );
+  private readonly moneyService = inject(MoneyService);
 
-  protected readonly yMaxInput$$ = computed(() => this.yMaxMap$$()[this.currencyTickerInput()] ?? '');
+  protected readonly yMaxInput$$ = computed(
+    () => this.moneyService.expenseChartYMaxPerCurrency$$()[this.currencyTickerInput()] ?? '',
+  );
+  protected readonly yMaxWidth$$ = computed(() => Math.max(60, 60 + this.yMaxInput$$().length * 10));
 
   private yearBoundaries: { year: string; startIdx: number; endIdx: number }[] = [];
 
@@ -199,9 +191,12 @@ export class ExpenseChart implements AfterViewInit, OnDestroy {
 
   protected onYMaxChange(value: string): void {
     const ticker = this.currencyTickerInput();
-    const newMap = { ...this.yMaxMap$$(), [ticker]: value };
-    this.yMaxMap$$.set(newMap);
-    localStorage.setItem('expense-chart-y-max-per-currency', JSON.stringify(newMap));
+    const newMap = { ...this.moneyService.expenseChartYMaxPerCurrency$$(), [ticker]: value };
+    this.moneyService.setExpenseChartYMaxPerCurrency(newMap);
+  }
+
+  protected focusYMaxInput(): void {
+    this.yMaxElem().focus();
   }
 
   protected toggleAll(): void {

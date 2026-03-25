@@ -2,7 +2,8 @@
   <div class="flex items-center justify-between">
     <div class="text-lg font-semibold">Expense Categories</div>
     <div class="flex items-center gap-2">
-      <v-input class="w-[121px]"
+      <v-input #yMaxElem
+               [style.width.px]="yMaxWidth$$()"
                [config]="{
                  inputmode: 'numeric',
                  textAlign: 'right',
@@ -13,7 +14,8 @@
         <span v-prefix
               class="ml-2 mr-1 text-sm text-gray-400">max</span>
         <span v-postfix
-              class="ml-1 mr-2 text-sm text-gray-400">{{ currencySymbolInput() }}</span>
+              class="ml-1 mr-2 text-sm text-gray-400 cursor-pointer"
+              (click)="focusYMaxInput()">{{ currencySymbolInput() }}</span>
       </v-input>
       <v-toggle [items]="viewToggleItems"
                 [value]="viewToggleValue()"

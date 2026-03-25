@@ -1,0 +1,42 @@
+<v-card [config]="{
+          padding: 4,
+          borderRadius: 2,
+        }">
+  <div class="flex items-center justify-between mb-1">
+    <div class="text-lg font-semibold">Balances</div>
+    <v-button class="v-flat"
+              [config]="{
+                isLabelHidden: true,
+                padding: 2,
+              }"
+              (onClick)="toggleKeepNativeCurrency()">
+      <v-icon v-prefix
+              [name]="keepNativeCurrency$$() ? Icon.Keep : Icon.KeepOff"
+              [size]="4"></v-icon>
+    </v-button>
+  </div>
+
+  @for (account of activeAccounts$$(); track account.id) {
+    <div class="last:border-b-0 py-1 last:pb-0 border-b border-[rgba(0,0,0,0.1)]">
+      <div class="flex items-center gap-3 text-sm">
+        <div class="flex-1 flex items-center gap-1.5 min-w-0 overflow-hidden">
+          <span class="shrink-0 flex items-center gap-0.5">
+            <v-icon [name]="getKindIcon(account)"
+                    [size]="4"></v-icon>
+            <span class="shrink-0 w-4 h-4">
+              @if (getOrgLogoSrc(account); as orgLogo) {
+                <img [src]="orgLogo"
+                     class="object-contain w-4 h-4 rounded"
+                     alt="">
+              }
+            </span>
+          </span>
+          <span class="truncate">{{ account.title }}</span>
+        </div>
+        <span class="shrink-0 font-semibold">{{ getBalance(account) }}</span>
+      </div>
+    </div>
+  } @empty {
+    <div class="opacity-70 py-4 text-sm text-center">No accounts found.</div>
+  }
+</v-card>
