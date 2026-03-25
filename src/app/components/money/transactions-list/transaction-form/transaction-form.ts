@@ -43,6 +43,9 @@ export class TransactionForm {
   protected readonly TransactionKind = TransactionKind;
   private readonly dateInputElem = viewChild<ElementRef<HTMLInputElement>>('dateInputElem');
   private readonly amountInputElem = viewChild<VInput>('amountInputElem');
+  private readonly investDividendAmountElem = viewChild<VInput>('investDividendAmountElem');
+  private readonly amountFromElem = viewChild<VInput>('amountFromElem');
+  private readonly amountToElem = viewChild<VInput>('amountToElem');
 
   public readonly dateIsoInput = input<string | null>(null);
   public readonly transactionInput = input<Transaction | null>(null);
@@ -465,6 +468,22 @@ export class TransactionForm {
     }
   }
 
+  protected focusAmountInput(): void {
+    this.amountInputElem()?.focus();
+  }
+
+  protected focusInvestDividendAmount(): void {
+    this.investDividendAmountElem()?.focus();
+  }
+
+  protected focusAmountFrom(): void {
+    this.amountFromElem()?.focus();
+  }
+
+  protected focusAmountTo(): void {
+    this.amountToElem()?.focus();
+  }
+
   protected onDateControlClick(): void {
     this.openNativeDatePicker(this.dateInputElem()?.nativeElement);
   }
@@ -747,8 +766,9 @@ export class TransactionForm {
 
   private parseAmount(value: string): number | null {
     if (!value) return null;
-    if (value === '-' || value === '+') return null;
-    const parsed = Number(value);
+    const normalized = value.replace(/\s/g, '').replace(',', '.');
+    if (normalized === '-' || normalized === '+') return null;
+    const parsed = Number(normalized);
     return Number.isFinite(parsed) ? parsed : null;
   }
 
