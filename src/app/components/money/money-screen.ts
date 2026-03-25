@@ -54,9 +54,7 @@ export class MoneyScreen implements OnInit {
   private readonly moneyComputeService = inject(MoneyComputeService);
   private readonly sliderMonthFormatter = new Intl.DateTimeFormat('en-US', { month: 'short', year: 'numeric' });
 
-  protected readonly isChartDataReady$$ = computed(
-    () => this.moneyService.isChartDataReady$$() && !this.moneyService.isDisplayCurrencyChanging$$(),
-  );
+  protected readonly isChartDataReady$$ = computed(() => this.moneyService.isChartDataReady$$());
 
   protected readonly displayCurrency$$ = computed(() => this.moneyService.displayCurrency$$());
   protected readonly displayCurrencySymbol$$ = computed(() => {
@@ -66,9 +64,9 @@ export class MoneyScreen implements OnInit {
 
   protected readonly currencyToggleItems: VToggleItem[] = [
     { id: 'RUB', label: '₽' },
+    { id: 'KZT', label: '₸' },
     { id: 'USD', label: '$' },
     { id: 'EUR', label: '€' },
-    { id: 'KZT', label: '₸' },
   ];
 
   protected readonly balanceChartData$$ = this.moneyComputeService.balanceChartData$$;
@@ -178,13 +176,7 @@ export class MoneyScreen implements OnInit {
 
   protected setDisplayCurrency(id: string): void {
     if (!id || id === this.moneyService.displayCurrency$$()) return;
-    if (this.moneyService.isDisplayCurrencyChanging$$()) return;
-    this.moneyService.isDisplayCurrencyChanging$$.set(true);
-    setTimeout(() => {
-      this.moneyService.displayCurrency$$.set(id);
-      localStorage.setItem('money_display_currency', id);
-      setTimeout(() => this.moneyService.isDisplayCurrencyChanging$$.set(false), 0);
-    }, 0);
+    this.moneyService.setDisplayCurrency(id);
   }
 
   public ngOnInit(): void {

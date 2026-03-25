@@ -5,16 +5,28 @@
           }">
     <div class="flex items-center justify-between mb-4">
       <div class="text-lg font-semibold">Transactions</div>
-      <v-button class="v-flat"
-                [config]="{
-                  paddingY: 1,
-                }"
-                (onClick)="showNewTransactionForm()">
-        <v-icon v-prefix
-                [name]="Icon.Add"
-                [size]="6"></v-icon>
-        New transaction
-      </v-button>
+      <div class="flex items-center gap-2">
+        <v-button class="v-flat"
+                  [config]="{
+                    paddingY: 1,
+                  }"
+                  (onClick)="showNewTransactionForm()">
+          <v-icon v-prefix
+                  [name]="Icon.Add"
+                  [size]="5"></v-icon>
+          New transaction
+        </v-button>
+        <v-button [class]="keepNativeCurrency$$() ? 'v-primary' : 'v-flat'"
+                  [config]="{
+                    isLabelHidden: true,
+                    padding: 2,
+                  }"
+                  (onClick)="toggleKeepNativeCurrency()">
+          <v-icon v-prefix
+                  [name]="keepNativeCurrency$$() ? Icon.Keep : Icon.KeepOff"
+                  [size]="4"></v-icon>
+        </v-button>
+      </div>
     </div>
 
     <div #scrollContainer
@@ -104,18 +116,10 @@
 
                   <span class="shrink-0 font-semibold"
                         [class]="getAmountClass(transaction)">
-                    @if (isRatesReady$$()) {
-                      @if (transaction.kind === 'transfer') {
-                        {{ formatTransferAmounts(transaction) }}
-                      } @else {
-                        {{ formatAmount(transaction) }}
-                      }
+                    @if (transaction.kind === 'transfer') {
+                      {{ formatTransferAmounts(transaction) }}
                     } @else {
-                      <span class="amount-loader">
-                        <span></span>
-                        <span></span>
-                        <span></span>
-                      </span>
+                      {{ formatAmount(transaction) }}
                     }
                   </span>
                 </div>
@@ -146,9 +150,16 @@
             }
           </div>
         } @empty {
-          <div class="opacity-70 py-8 text-center">
-            No transactions found.
-          </div>
+          @if (!isRatesReady$$()) {
+            <div class="flex justify-center py-8">
+              <div class="animate-spin w-4 h-4 border-2 rounded-full"
+                   style="border-color: var(--v-color-primary); border-top-color: transparent;"></div>
+            </div>
+          } @else {
+            <div class="opacity-70 py-8 text-center">
+              No transactions found.
+            </div>
+          }
         }
 
         <div [style.height.px]="paddingBottom$$()"></div>

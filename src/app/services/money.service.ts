@@ -46,6 +46,34 @@ interface MoneySnapshot {
 
 interface SnapshotResponse extends DataResponse<MoneySnapshot> {}
 
+interface MoneySettings {
+  displayCurrency: string;
+  chartRangeStart: string | null;
+  chartRangeEnd: string | null;
+  expenseChartYMaxPerCurrency: Record<string, string>;
+  keepTransactionCurrency: boolean;
+}
+
+const SETTINGS_KEY = 'money_settings';
+
+function readSettings(): MoneySettings {
+  try {
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    if (raw) return { ...defaultSettings(), ...JSON.parse(raw) };
+  } catch {}
+  return defaultSettings();
+}
+
+function defaultSettings(): MoneySettings {
+  return {
+    displayCurrency: 'RUB',
+    chartRangeStart: null,
+    chartRangeEnd: null,
+    expenseChartYMaxPerCurrency: {},
+    keepTransactionCurrency: true,
+  };
+}
+
 interface CreateCurrencyResponse extends DataResponse<{ id: number }> {}
 
 interface CreateCategoryResponse extends DataResponse<{ id: number }> {}
@@ -80,29 +108,45 @@ export class MoneyService {
       return { dateISO: item.dateISO, rates: accumulated };
     });
   });
-  public readonly displayCurrency$$: WritableSignal<string> = signal(
-    localStorage.getItem('money_display_currency') ?? 'RUB',
+  public readonly displayCurrency$$: WritableSignal<string> = signal(readSettings().displayCurrency);
+  public readonly chartRangeStart$$: WritableSignal<string | null> = signal(readSettings().chartRangeStart);
+  public readonly chartRangeEnd$$: WritableSignal<string | null> = signal(readSettings().chartRangeEnd);
+  public readonly expenseChartYMaxPerCurrency$$: WritableSignal<Record<string, string>> = signal(
+    readSettings().expenseChartYMaxPerCurrency,
   );
-  public readonly isDisplayCurrencyChanging$$: WritableSignal<boolean> = signal(false);
-  public readonly chartRangeStart$$: WritableSignal<string | null> = signal(
-    localStorage.getItem('money_chart_range_start'),
-  );
-  public readonly chartRangeEnd$$: WritableSignal<string | null> = signal(
-    localStorage.getItem('money_chart_range_end'),
-  );
+  public readonly keepTransactionCurrency$$: WritableSignal<boolean> = signal(readSettings().keepTransactionCurrency);
 
   private readonly isDataReady$$: WritableSignal<boolean> = signal(false);
-  public readonly isChartDataReady$$ = computed(() => this.isDataReady$$() && !this.isDisplayCurrencyChanging$$());
+  public readonly isChartDataReady$$ = computed(() => this.isDataReady$$());
 
   public readonly requestResult$ = new Subject<ServerResponseBasic>();
 
   public setChartRange(start: string | null, end: string | null): void {
     this.chartRangeStart$$.set(start);
     this.chartRangeEnd$$.set(end);
-    if (start !== null) localStorage.setItem('money_chart_range_start', start);
-    else localStorage.removeItem('money_chart_range_start');
-    if (end !== null) localStorage.setItem('money_chart_range_end', end);
-    else localStorage.removeItem('money_chart_range_end');
+    this.saveSettings({ chartRangeStart: start, chartRangeEnd: end });
+  }
+
+  public setDisplayCurrency(id: string): void {
+    this.displayCurrency$$.set(id);
+    this.saveSettings({ displayCurrency: id });
+  }
+
+  public setExpenseChartYMaxPerCurrency(map: Record<string, string>): void {
+    this.expenseChartYMaxPerCurrency$$.set(map);
+    this.saveSettings({ expenseChartYMaxPerCurrency: map });
+  }
+
+  public setKeepTransactionCurrency(value: boolean): void {
+    this.keepTransactionCurrency$$.set(value);
+    this.saveSettings({ keepTransactionCurrency: value });
+  }
+
+  private saveSettings(patch: Partial<MoneySettings>): void {
+    try {
+      const current = readSettings();
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify({ ...current, ...patch }));
+    } catch {}
   }
 
   constructor(
@@ -124,20 +168,11 @@ export class MoneyService {
     const cached = localStorage.getItem('money_snapshot');
     if (cached) {
       try {
-        this.applySnapshot(JSON.parse(cached), false);
+        this.applySnapshot(JSON.parse(cached), true);
       } catch {
         // ignore corrupted cache
       }
     }
-
-    this.readIDB<MoneyRateHistory[]>('rateHistory').then((rateHistory) => {
-      if (rateHistory && !this.isDataReady$$()) {
-        this.rateHistory$$.set(
-          rateHistory.map((item) => ({ ...item, ratesJson: this.parseRatesJson(item.ratesJson) })),
-        );
-        this.isDataReady$$.set(true);
-      }
-    });
 
     this.fetchSnapshot();
   }
@@ -183,49 +218,11 @@ export class MoneyService {
         assets: this.assets$$(),
         investAssetTrades: this.investAssetTrades$$(),
         transactions: this.transactions$$(),
+        rateHistory: this.rateHistory$$(),
       };
       localStorage.setItem('money_snapshot', JSON.stringify(snapshot));
     } catch {
       // storage quota exceeded or unavailable
-    }
-    void this.writeIDB('rateHistory', this.rateHistory$$());
-  }
-
-  private openIDB(): Promise<IDBDatabase> {
-    return new Promise((resolve, reject) => {
-      const request = indexedDB.open('money_cache', 1);
-      request.onupgradeneeded = (event) => {
-        (event.target as IDBOpenDBRequest).result.createObjectStore('kv');
-      };
-      request.onsuccess = (event) => resolve((event.target as IDBOpenDBRequest).result);
-      request.onerror = () => reject(request.error);
-    });
-  }
-
-  private async readIDB<T>(key: string): Promise<T | null> {
-    try {
-      const db = await this.openIDB();
-      return new Promise((resolve) => {
-        const request = db.transaction('kv', 'readonly').objectStore('kv').get(key);
-        request.onsuccess = () => resolve((request.result as T) ?? null);
-        request.onerror = () => resolve(null);
-      });
-    } catch {
-      return null;
-    }
-  }
-
-  private async writeIDB(key: string, value: unknown): Promise<void> {
-    try {
-      const db = await this.openIDB();
-      return new Promise((resolve) => {
-        const tx = db.transaction('kv', 'readwrite');
-        tx.objectStore('kv').put(value, key);
-        tx.oncomplete = () => resolve();
-        tx.onerror = () => resolve();
-      });
-    } catch {
-      // ignore
     }
   }
 

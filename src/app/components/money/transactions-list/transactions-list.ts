@@ -50,9 +50,8 @@ export class TransactionsList {
   private readonly organizations$$ = computed(() => this.moneyService.organizations$$());
   private readonly assets$$ = computed(() => this.moneyService.assets$$());
   private readonly displayCurrency$$ = computed(() => this.moneyService.displayCurrency$$());
-  protected readonly isRatesReady$$ = computed(
-    () => this.moneyService.isChartDataReady$$() && !this.moneyService.isDisplayCurrencyChanging$$(),
-  );
+  protected readonly isRatesReady$$ = computed(() => this.moneyService.isChartDataReady$$());
+  protected readonly keepNativeCurrency$$ = this.moneyService.keepTransactionCurrency$$;
 
   protected readonly groupedTransactions$$ = computed(() => this.groupTransactionsByDate());
   protected readonly isDeleteConfirmOpen$$ = signal(false);
@@ -264,7 +263,7 @@ export class TransactionsList {
 
     const displayTicker = this.displayCurrency$$();
 
-    if (currency.ticker === displayTicker) {
+    if (this.keepNativeCurrency$$() || currency.ticker === displayTicker) {
       return this.formatWithCurrency(transaction.amount, currency, transaction.kind);
     }
 
@@ -276,9 +275,17 @@ export class TransactionsList {
     return this.formatWithCurrency(converted, displayCurrency, transaction.kind);
   }
 
+  protected toggleKeepNativeCurrency(): void {
+    this.moneyService.setKeepTransactionCurrency(!this.keepNativeCurrency$$());
+  }
+
   protected formatTransferAmounts(transaction: Transaction): string {
     const twin = this.getTwinTransaction(transaction);
     if (!twin) return this.formatAmount(transaction);
+
+    if (this.keepNativeCurrency$$()) {
+      return `${this.formatPlainAmount(transaction.accountId, transaction.amount)} → ${this.formatPlainAmount(twin.accountId, twin.amount)}`;
+    }
 
     const displayTicker = this.displayCurrency$$();
     const rates = this.moneyService.getRatesForDate(transaction.dateISO);
