@@ -4,7 +4,6 @@ import { VCard } from '@ui-kit/components/v-card/v-card';
 import { IconName, VIcon } from '@ui-kit/components/v-icon/v-icon';
 import { VSlider, VSliderConfig, VSliderRangeValue } from '@ui-kit/components/v-slider/v-slider';
 import { VToggle, VToggleItem } from '@ui-kit/components/v-toggle/v-toggle';
-import { firstValueFrom } from 'rxjs';
 import { MoneyComputeService } from '../../services/money-compute.service';
 import { MoneyService } from '../../services/money.service';
 import { BalanceChartData } from '../../shared/types';
@@ -189,15 +188,7 @@ export class MoneyScreen implements OnInit {
   }
 
   public ngOnInit(): void {
-    this.moneyService.resetLoadingState();
-    firstValueFrom(this.moneyService.getCurrencies());
-    firstValueFrom(this.moneyService.getCategories());
-    firstValueFrom(this.moneyService.getAccounts());
-    firstValueFrom(this.moneyService.getOrganizations());
-    firstValueFrom(this.moneyService.getAssets());
-    firstValueFrom(this.moneyService.getTransactions());
-    firstValueFrom(this.moneyService.getRateHistory());
-    firstValueFrom(this.moneyService.getInvestAssetTrades());
+    this.moneyService.loadData();
   }
 
   protected setActiveTab(tab: MoneyTab): void {
