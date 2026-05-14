@@ -6,6 +6,7 @@ import {
   BodyWeightToUpdate,
   DayTotals,
   Diary,
+  DiaryDayToDelete,
   DiaryEntry,
   DiaryEntryToCreate,
   DiaryEntryToDelete,
@@ -273,6 +274,46 @@ export class FoodDiaryService extends BaseFoodService {
     return true;
   }
 
+  public async deleteSelectedDayEntries(): Promise<boolean> {
+    if (!this.checkNetworkAvailability()) {
+      console.error('Network not available for deleting diary day entries');
+      return false;
+    }
+
+    const selectedDay = this.selectedDayIso$$();
+    const originalDiary = { ...this.diaryRaw$$() };
+    const deletedEntries = Object.values(originalDiary[selectedDay]?.food || {});
+
+    if (!deletedEntries.length) {
+      console.error('Cannot delete diary day entries: day is empty');
+      return false;
+    }
+
+    const { kcalsDelta, nutrientsDelta } = this.calculateRemovedEntriesDelta(deletedEntries);
+    const statsRollback = this.foodStatsService.createStatsRollback(selectedDay);
+
+    this.clearDiaryEntriesForDay(selectedDay);
+    this.updateNutrientsOptimistically(selectedDay, nutrientsDelta, kcalsDelta);
+    this.saveToLocalStorage(this.diaryRaw$$());
+
+    this.foodStatsService.updateStatsOptimistically(selectedDay, 0, kcalsDelta);
+
+    const rollbackFunction = () => {
+      this.diaryRaw$$.set(originalDiary);
+      this.saveToLocalStorage(originalDiary);
+      statsRollback();
+    };
+
+    this.addSyncOperation({
+      type: SyncOperationType.DELETE,
+      endpoint: `/api/food/diary/day/${selectedDay}`,
+      data: {},
+      rollbackCallback: rollbackFunction,
+    });
+
+    return true;
+  }
+
   private calculateEntryNutrients(entry: DiaryEntry): NutrientDelta {
     const portionMultiplier = entry.foodWeight / 100;
     const product = this.catalogueService.catalogue$$()[entry.foodCatalogueId];
@@ -444,6 +485,31 @@ export class FoodDiaryService extends BaseFoodService {
     });
   }
 
+  private calculateRemovedEntriesDelta(entries: DiaryEntry[]): { kcalsDelta: number; nutrientsDelta: NutrientDelta } {
+    return entries.reduce(
+      (acc, entry) => {
+        const entryNutrients = this.calculateEntryNutrients(entry);
+
+        acc.kcalsDelta -= this.calculateEntryKcals(entry);
+        acc.nutrientsDelta.protein -= entryNutrients.protein;
+        acc.nutrientsDelta.fat -= entryNutrients.fat;
+        acc.nutrientsDelta.carbs -= entryNutrients.carbs;
+        acc.nutrientsDelta.fiber -= entryNutrients.fiber;
+
+        return acc;
+      },
+      {
+        kcalsDelta: 0,
+        nutrientsDelta: {
+          protein: 0,
+          fat: 0,
+          carbs: 0,
+          fiber: 0,
+        },
+      },
+    );
+  }
+
   private updateDiaryEntryWithNewValues(updatedDiaryEntry: DiaryEntry): void {
     this.diaryRaw$$.update((oldDiary) => {
       const selectedDay = this.selectedDayIso$$();
@@ -484,6 +550,24 @@ export class FoodDiaryService extends BaseFoodService {
 
       updatedDay.food = updatedFood;
       updatedDiary[selectedDay] = updatedDay;
+      return updatedDiary;
+    });
+  }
+
+  private clearDiaryEntriesForDay(dateISO: string): void {
+    this.diaryRaw$$.update((oldDiary) => {
+      const updatedDiary = { ...oldDiary };
+      const updatedDay = updatedDiary[dateISO];
+
+      if (!updatedDay) {
+        return updatedDiary;
+      }
+
+      updatedDiary[dateISO] = {
+        ...updatedDay,
+        food: {},
+      };
+
       return updatedDiary;
     });
   }
@@ -611,6 +695,12 @@ export class FoodDiaryService extends BaseFoodService {
           }
           break;
 
+        case WebSocketMessageType.DIARY_DAY_DELETED:
+          if (this.isValidDeletedDiaryDayPayload(message.payload)) {
+            this.handleDiaryDayDeleted(message.payload.dateISO);
+          }
+          break;
+
         case WebSocketMessageType.BODY_WEIGHT_UPDATED:
           if (this.isValidBodyWeightUpdatePayload(message.payload)) {
             this.handleBodyWeightUpdated(message.payload);
@@ -682,6 +772,10 @@ export class FoodDiaryService extends BaseFoodService {
     this.saveToLocalStorage(this.diaryRaw$$());
 
     const kcalsDelta = this.calculateEntryKcals(diaryEntry);
+    const nutrientsDelta = this.calculateEntryNutrients(diaryEntry);
+
+    this.updateNutrientsOptimistically(dateISO, nutrientsDelta, kcalsDelta);
+
     if (kcalsDelta !== 0) {
       this.foodStatsService.updateStatsOptimistically(dateISO, 0, kcalsDelta);
     }
@@ -747,6 +841,16 @@ export class FoodDiaryService extends BaseFoodService {
 
     const newKcals = this.calculateEntryKcals(updatedEntry);
     const kcalsDelta = newKcals - originalKcals;
+    const originalNutrients = this.calculateEntryNutrients(originalEntry);
+    const updatedNutrients = this.calculateEntryNutrients(updatedEntry);
+    const nutrientsDelta: NutrientDelta = {
+      protein: updatedNutrients.protein - originalNutrients.protein,
+      fat: updatedNutrients.fat - originalNutrients.fat,
+      carbs: updatedNutrients.carbs - originalNutrients.carbs,
+      fiber: updatedNutrients.fiber - originalNutrients.fiber,
+    };
+
+    this.updateNutrientsOptimistically(dateISO, nutrientsDelta, kcalsDelta);
 
     if (kcalsDelta !== 0) {
       this.foodStatsService.updateStatsOptimistically(dateISO, 0, kcalsDelta);
@@ -755,6 +859,10 @@ export class FoodDiaryService extends BaseFoodService {
 
   private isValidDeletedDiaryEntryPayload(payload: DiaryEntryToDelete): payload is DiaryEntryToDelete {
     return payload && typeof payload.deletedDiaryEntryId === 'number';
+  }
+
+  private isValidDeletedDiaryDayPayload(payload: DiaryDayToDelete): payload is DiaryDayToDelete {
+    return payload && typeof payload.dateISO === 'string';
   }
 
   private handleDiaryEntryDeleted(deletedDiaryEntryId: number): void {
@@ -775,7 +883,7 @@ export class FoodDiaryService extends BaseFoodService {
       return;
     }
 
-    const deletedKcals = this.calculateEntryKcals(deletedEntry);
+    const { kcalsDelta, nutrientsDelta } = this.calculateRemovedEntriesDelta([deletedEntry]);
 
     this.diaryRaw$$.update((diary) => {
       const updatedDiary = { ...diary };
@@ -795,7 +903,23 @@ export class FoodDiaryService extends BaseFoodService {
     });
 
     this.saveToLocalStorage(this.diaryRaw$$());
-    this.foodStatsService.updateStatsOptimistically(dateISO, 0, -deletedKcals);
+    this.updateNutrientsOptimistically(dateISO, nutrientsDelta, kcalsDelta);
+    this.foodStatsService.updateStatsOptimistically(dateISO, 0, kcalsDelta);
+  }
+
+  private handleDiaryDayDeleted(dateISO: string): void {
+    const deletedEntries = Object.values(this.diaryRaw$$()[dateISO]?.food || {});
+
+    if (!deletedEntries.length) {
+      return;
+    }
+
+    const { kcalsDelta, nutrientsDelta } = this.calculateRemovedEntriesDelta(deletedEntries);
+
+    this.clearDiaryEntriesForDay(dateISO);
+    this.updateNutrientsOptimistically(dateISO, nutrientsDelta, kcalsDelta);
+    this.saveToLocalStorage(this.diaryRaw$$());
+    this.foodStatsService.updateStatsOptimistically(dateISO, 0, kcalsDelta);
   }
 
   private isValidBodyWeightUpdatePayload(payload: BodyWeightToUpdate): payload is BodyWeightToUpdate {

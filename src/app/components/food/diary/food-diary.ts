@@ -22,11 +22,11 @@ import { DeviceInfoService } from '@app/services/device-info.service';
 import { FoodAddModalService, ModalState } from '@app/services/food/food-add-modal.service';
 import { FoodCatalogueService } from '@app/services/food/food-catalogue.service';
 import { FoodDiaryService } from '@app/services/food/food-diary.service';
-
 import { VButton } from '@ui-kit/components/v-button/v-button';
 import { VCard } from '@ui-kit/components/v-card/v-card';
 import { VAccordion } from '@ui-kit/components/v-expand/v-accordion';
 import { VExpand } from '@ui-kit/components/v-expand/v-expand';
+import { IconName, VIcon } from '@ui-kit/components/v-icon/v-icon';
 import { VModal } from '@ui-kit/components/v-modal/v-modal';
 import { AccordionGroupService } from '@ui-kit/services/accordion-group.service';
 import { CatalogueEntryEditForm } from './catalogue-entry-edit-form/catalogue-entry-edit-form';
@@ -52,6 +52,7 @@ import { NutritionSummary } from './nutrition-summary/nutrition-summary';
     VAccordion,
     VExpand,
     VCard,
+    VIcon,
   ],
 })
 export class FoodDiary implements AfterViewInit {
@@ -87,6 +88,8 @@ export class FoodDiary implements AfterViewInit {
     return Math.round(this.foodDiaryService.selectedDayTotals$$().kcalsPercent * 10) / 10;
   });
 
+  protected readonly hasSelectedDayDiaryEntries$$ = computed(() => this.selectedDayDiaryEntries$$().length > 0);
+
   protected readonly caloriesDisplayText$$ = computed(() => {
     const percent = this.selectedDaysFormattedConsumedPercent$$();
     if (Number.isNaN(percent)) return '';
@@ -98,6 +101,9 @@ export class FoodDiary implements AfterViewInit {
     if (this.deviceInfoService.isDesktopScreen$$()) return 'primary';
     return this.openedDiaryEntryId$$() !== null ? 'raised' : 'primary';
   });
+
+  protected isDeleteDayConfirmOpen = false;
+  protected readonly Icon = IconName;
 
   private readonly columnWidthsSyncEffect$$ = effect(() => {
     this.selectedDayDiaryEntries$$();
@@ -149,6 +155,22 @@ export class FoodDiary implements AfterViewInit {
   protected openAddFoodModal() {
     this.closeAllAccordions();
     this.foodAddModalService.openModal();
+  }
+
+  protected openDeleteDayConfirmationModal(): void {
+    if (!this.hasSelectedDayDiaryEntries$$()) return;
+
+    this.closeAllAccordions();
+    this.isDeleteDayConfirmOpen = true;
+  }
+
+  protected closeDeleteDayConfirmationModal(): void {
+    this.isDeleteDayConfirmOpen = false;
+  }
+
+  protected async onDeleteDayConfirmed(): Promise<void> {
+    this.isDeleteDayConfirmOpen = false;
+    await this.foodDiaryService.deleteSelectedDayEntries();
   }
 
   private syncColumnWidths(): void {
