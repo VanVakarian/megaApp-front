@@ -235,10 +235,15 @@ export class FoodStats implements OnInit, AfterViewInit {
     if (end <= start) return;
     this.foodStatsService.selectedDateIdxStart$$.set(start);
     this.foodStatsService.selectedDateIdxEnd$$.set(end);
+    this.foodStatsService.saveDateRange(start, end);
   }
 
   protected clipDateRange(daysAmtToShow: number): void {
     this.foodStatsService.clipDateRange(daysAmtToShow);
+    this.foodStatsService.saveDateRange(
+      this.foodStatsService.selectedDateIdxStart$$(),
+      this.foodStatsService.selectedDateIdxEnd$$(),
+    );
   }
 
   protected animateClipDateRange(daysAmtToShow: number): void {
@@ -513,6 +518,7 @@ export class FoodStats implements OnInit, AfterViewInit {
 
       this.foodStatsService.selectedDateIdxStart$$.set(targetRange[0]);
       this.foodStatsService.selectedDateIdxEnd$$.set(targetRange[1]);
+      this.foodStatsService.saveDateRange(targetRange[0], targetRange[1]);
       this.rangeAnimationFrameId = null;
     };
 
