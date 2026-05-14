@@ -133,10 +133,11 @@ export class FoodDiary implements AfterViewInit {
     this.shouldRecalcColumns$$.update((val) => val + 1);
   }
 
-  protected setBackgroundStyle(percent: number): { [key: string]: string } {
+  protected setBackgroundStyle(percent: number, ltr = false): { [key: string]: string } {
     const percentCapped = percent <= 100 ? percent : 100;
+    const dir = ltr ? 'to right' : 'to left';
     return {
-      background: `linear-gradient(to left, var(--gradient-color) ${percentCapped}%, var(--gradient-bg) ${percentCapped}%)`,
+      background: `linear-gradient(${dir}, var(--gradient-color) ${percentCapped}%, var(--gradient-bg) ${percentCapped}%)`,
     };
   }
 

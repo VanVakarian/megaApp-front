@@ -20,7 +20,7 @@
             (onOpened)="onBMIExpandOpened($event)">
     <div v-header
          class="v-header w-full p-2 text-center"
-         [ngStyle]="setBackgroundStyle(selectedDaysKcalsPercent$$())">
+         [ngStyle]="setBackgroundStyle(selectedDaysKcalsPercent$$(), true)">
       <span class=" font-normal">{{ caloriesDisplayText$$() }}</span>
     </div>
 
