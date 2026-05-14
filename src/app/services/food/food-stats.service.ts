@@ -23,6 +23,7 @@ export class FoodStatsService {
     FoodStatsService.GRANULARITY_MONTH_SWITCH_YEARS * FoodStatsService.DAYS_IN_YEAR;
 
   private readonly STATS_STORAGE_KEY = 'food_stats';
+  private readonly SLIDER_KEY = 'food_stats_slider';
 
   private readonly stats$$: WritableSignal<Stats> = signal({});
   public readonly statsChartData$$: Signal<StatsChartData> = computed(() => this.prepareChartData());
@@ -59,9 +60,7 @@ export class FoodStatsService {
       this.stats$$.set(serverStats);
       this.saveStatsToLocalStorage();
 
-      if (isLocalStatsEmpty) {
-        this.setupInitialDateRange();
-      }
+      this.applyDateRangeOnLoad(isLocalStatsEmpty);
     } catch (error) {
       console.error('Failed fetching stats from server:', error);
     }
@@ -81,13 +80,39 @@ export class FoodStatsService {
     }
   }
 
-  private setupInitialDateRange() {
+  private applyDateRangeOnLoad(useDefaultIfNoSaved: boolean): void {
     setTimeout(() => {
-      const totalDaysAvailable = this.statsChartData$$().dates.length;
-      if (totalDaysAvailable === 0) return;
-      this.selectedDateIdxEnd$$.set(totalDaysAvailable - 1);
+      if (this.tryRestoreSavedDateRange()) return;
+      if (!useDefaultIfNoSaved) return;
+      const total = this.statsChartData$$().dates.length;
+      if (total === 0) return;
+      this.selectedDateIdxEnd$$.set(total - 1);
       this.clipDateRange(90);
     }, 1);
+  }
+
+  public saveDateRange(startIdx: number, endIdx: number): void {
+    const dates = this.statsChartData$$().dates;
+    const maxIdx = dates.length - 1;
+    if (maxIdx < 0) return;
+    const startVal = startIdx === 0 ? 'first' : (dates[startIdx] ?? 'first');
+    const endVal = endIdx >= maxIdx ? 'last' : (dates[endIdx] ?? 'last');
+    this.localStorageService.set(this.SLIDER_KEY, { start: startVal, end: endVal });
+  }
+
+  private tryRestoreSavedDateRange(): boolean {
+    const saved = this.localStorageService.get<{ start: string; end: string }>(this.SLIDER_KEY);
+    if (!saved) return false;
+    const dates = this.statsChartData$$().dates;
+    const maxIdx = dates.length - 1;
+    if (maxIdx < 0) return false;
+    const startIdx = saved.start === 'first' ? 0 : Math.max(0, dates.indexOf(saved.start));
+    const rawEndIdx = saved.end === 'last' ? maxIdx : dates.indexOf(saved.end);
+    const endIdx = rawEndIdx === -1 ? maxIdx : rawEndIdx;
+    if (startIdx >= endIdx) return false;
+    this.selectedDateIdxStart$$.set(startIdx);
+    this.selectedDateIdxEnd$$.set(endIdx);
+    return true;
   }
 
   private prepareChartData(): StatsChartData {
@@ -403,7 +428,7 @@ export class FoodStatsService {
     const savedStats = this.loadStatsFromLocalStorage();
     if (savedStats && Object.keys(savedStats).length > 0) {
       this.stats$$.set(savedStats);
-      this.setupInitialDateRange();
+      this.applyDateRangeOnLoad(true);
     }
   }
 

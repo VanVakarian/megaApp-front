@@ -20,6 +20,7 @@ export enum WebSocketMessageType {
   DIARY_ENTRY_CREATED = 'DIARY_ENTRY_CREATED',
   DIARY_ENTRY_UPDATED = 'DIARY_ENTRY_UPDATED',
   DIARY_ENTRY_DELETED = 'DIARY_ENTRY_DELETED',
+  DIARY_DAY_DELETED = 'DIARY_DAY_DELETED',
   BODY_WEIGHT_UPDATED = 'BODY_WEIGHT_UPDATED',
   START_VOICE_RECORDING = 'START_VOICE_RECORDING',
   AUDIO_CHUNK = 'AUDIO_CHUNK',
@@ -68,6 +69,15 @@ export interface DiaryEntryToDelete {
 export interface DiaryEntryDeletedWsMessage {
   type: WebSocketMessageType.DIARY_ENTRY_DELETED;
   payload: DiaryEntryToDelete;
+}
+
+export interface DiaryDayToDelete {
+  dateISO: string;
+}
+
+export interface DiaryDayDeletedWsMessage {
+  type: WebSocketMessageType.DIARY_DAY_DELETED;
+  payload: DiaryDayToDelete;
 }
 
 export interface BodyWeightToUpdate {
@@ -129,6 +139,7 @@ export type IncomingWsMessage =
   | DiaryEntryCreatedWsMessage
   | DiaryEntryUpdatedWsMessage
   | DiaryEntryDeletedWsMessage
+  | DiaryDayDeletedWsMessage
   | BodyWeightUpdatedWsMessage
   | SearchResultsWsMessage
   | CatalogueEntrySavedWsMessage
