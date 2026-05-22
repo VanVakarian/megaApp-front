@@ -10,8 +10,10 @@ import {
   ProductSaveRequest,
   SearchQueryWsMessage,
   SearchResultsWsMessage,
+  ServerResponseBasic,
   ServerResponseProductPreview,
   ServerResponseProductSave,
+  ServerResponseWithData,
   WebSocketMessageType,
 } from '@app/shared/types';
 import { transliterateEnToRu } from '@app/shared/utils';
@@ -192,15 +194,7 @@ export class FoodCatalogueService extends BaseFoodService {
   }
 
   private handleCatalogueEntrySaved(msg: CatalogueEntrySavedWsMessage): void {
-    const entry = msg.payload;
-
-    const updatedCatalogue = {
-      ...this.catalogue$$(),
-      [entry.id]: entry,
-    };
-
-    this.catalogue$$.set(updatedCatalogue);
-    this.saveToLocalStorage(updatedCatalogue);
+    this.upsertCatalogueEntry(msg.payload);
   }
 
   private handleCatalogueImageGenerated(msg: CatalogueImageGeneratedWsMessage): void {
@@ -306,18 +300,73 @@ export class FoodCatalogueService extends BaseFoodService {
 
       const catalogueEntry = response.data.catalogueEntry;
 
-      const updatedCatalogue = {
-        ...this.catalogue$$(),
-        [catalogueEntry.id]: catalogueEntry,
-      };
-      this.catalogue$$.set(updatedCatalogue);
-      this.saveToLocalStorage(updatedCatalogue);
+      this.upsertCatalogueEntry(catalogueEntry);
 
       return catalogueEntry;
     } catch (error: any) {
       console.error('Failed to save product:', error);
       throw error;
     }
+  }
+
+  public async getProductById(catalogueId: number): Promise<CatalogueEntry> {
+    try {
+      const response = await firstValueFrom(
+        this.http.get<ServerResponseWithData<CatalogueEntry>>(`/api/food/catalogue/${catalogueId}`),
+      );
+
+      if (!response.result || !response.data) {
+        throw new Error('Failed to load product');
+      }
+
+      this.upsertCatalogueEntry(response.data);
+
+      return response.data;
+    } catch (error) {
+      console.error('Failed to load product:', error);
+      throw error;
+    }
+  }
+
+  public async deleteProduct(catalogueId: number): Promise<void> {
+    try {
+      const response = await firstValueFrom(
+        this.http.delete<ServerResponseBasic>(`/api/food/catalogue/${catalogueId}`),
+      );
+
+      if (!response.result) {
+        throw new Error('Failed to delete product');
+      }
+
+      this.removeCatalogueEntry(catalogueId);
+    } catch (error) {
+      console.error('Failed to delete product:', error);
+      throw error;
+    }
+  }
+
+  private upsertCatalogueEntry(entry: CatalogueEntry): void {
+    const updatedCatalogue = {
+      ...this.catalogue$$(),
+      [entry.id]: entry,
+    };
+
+    this.catalogue$$.set(updatedCatalogue);
+    this.saveToLocalStorage(updatedCatalogue);
+
+    this.searchResults$$.update((results) => results.map((item) => (item.id === entry.id ? entry : item)));
+    this.legacySearchResults$$.update((results) => results.map((item) => (item.id === entry.id ? entry : item)));
+  }
+
+  private removeCatalogueEntry(catalogueId: number): void {
+    const updatedCatalogue = { ...this.catalogue$$() };
+    delete updatedCatalogue[catalogueId];
+
+    this.catalogue$$.set(updatedCatalogue);
+    this.saveToLocalStorage(updatedCatalogue);
+
+    this.searchResults$$.update((results) => results.filter((item) => item.id !== catalogueId));
+    this.legacySearchResults$$.update((results) => results.filter((item) => item.id !== catalogueId));
   }
 
   public getSquircleImageUrl(catalogueId: number): string | undefined {
