@@ -322,6 +322,7 @@ export interface CatalogueEntry {
   fiber: number;
   description: string;
   imageVersion?: number;
+  canDelete?: boolean;
 }
 
 export interface Catalogue {

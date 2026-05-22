@@ -16,6 +16,7 @@ enum ModalEvent {
   SELECT_PRODUCT,
   ADD_PRODUCT,
   EDIT_PRODUCT,
+  DELETE_PRODUCT,
   GO_BACK,
   SUBMIT_SUCCESS,
   TAKE_PHOTO,
@@ -67,6 +68,7 @@ export class FoodAddModalService {
     },
     [ModalState.EDIT_PRODUCT]: {
       [ModalEvent.GO_BACK]: ModalState.ADD_DIARY_ENTRY,
+      [ModalEvent.DELETE_PRODUCT]: ModalState.SEARCH,
       [ModalEvent.SUBMIT_SUCCESS]: ModalState.ADD_DIARY_ENTRY,
       [ModalEvent.CLOSE]: ModalState.CLOSED,
     },
@@ -104,7 +106,11 @@ export class FoodAddModalService {
         if (from === ModalState.CLOSED) {
           this.searchQuery$$.set('');
         }
-        if (from === ModalState.ADD_DIARY_ENTRY || from === ModalState.CREATE_NEW_PRODUCT) {
+        if (
+          from === ModalState.ADD_DIARY_ENTRY ||
+          from === ModalState.CREATE_NEW_PRODUCT ||
+          from === ModalState.EDIT_PRODUCT
+        ) {
           this.selectedProduct$$.set(null);
         }
         break;
@@ -152,5 +158,9 @@ export class FoodAddModalService {
 
   public editProduct(product: CatalogueEntry): void {
     this.transition(ModalEvent.EDIT_PRODUCT, product);
+  }
+
+  public deletedProduct(): void {
+    this.transition(ModalEvent.DELETE_PRODUCT);
   }
 }

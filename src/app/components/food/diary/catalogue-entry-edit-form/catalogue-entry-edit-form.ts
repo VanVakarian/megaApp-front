@@ -2,7 +2,8 @@ import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { FoodAddModalService } from '@app/services/food/food-add-modal.service';
 import { FoodCatalogueService } from '@app/services/food/food-catalogue.service';
-import { ProductPreviewData, ProductSaveRequest } from '@app/shared/types';
+import { DefaultModal } from '@app/shared/components/default-modal/default-modal';
+import { CatalogueEntry, ProductPreviewData, ProductSaveRequest } from '@app/shared/types';
 import { VButton } from '@ui-kit/components/v-button/v-button';
 import { IconName, VIcon } from '@ui-kit/components/v-icon/v-icon';
 import { VInput } from '@ui-kit/components/v-input/v-input';
@@ -18,7 +19,7 @@ const POSITIVE_DECIMAL_PATTERN = /^\d*[.,]?\d*$/;
 @Component({
   selector: 'catalogue-entry-edit-form',
   templateUrl: './catalogue-entry-edit-form.html',
-  imports: [ReactiveFormsModule, VButton, VIcon, VInput],
+  imports: [DefaultModal, ReactiveFormsModule, VButton, VIcon, VInput],
 })
 export class CatalogueEntryEditForm implements OnInit {
   protected readonly Icon = IconName;
@@ -36,6 +37,8 @@ export class CatalogueEntryEditForm implements OnInit {
 
   protected readonly isLoadingPreview$$ = signal(false);
   protected readonly isSaving$$ = signal(false);
+  protected readonly isDeleting$$ = signal(false);
+  protected readonly isDeleteConfirmOpen$$ = signal(false);
   protected readonly error$$ = signal<string | null>(null);
 
   protected readonly searchQuery$$ = computed(() => this.foodAddModalService.searchQuery$$());
@@ -83,13 +86,13 @@ export class CatalogueEntryEditForm implements OnInit {
     const mode = this.mode$$();
 
     if (mode === this.formMode.Edit) {
-      this.loadExistingProductData();
+      await this.loadExistingProductData();
     } else {
       await this.loadProductPreview();
     }
   }
 
-  private loadExistingProductData(): void {
+  private async loadExistingProductData(): Promise<void> {
     const product = this.productToEdit$$();
 
     console.log('[CatalogueEditForm] Loading existing product data:', product);
@@ -99,6 +102,18 @@ export class CatalogueEntryEditForm implements OnInit {
       return;
     }
 
+    this.patchFormWithProduct(product);
+
+    try {
+      const freshProduct = await this.foodCatalogueService.getProductById(product.id);
+      this.foodAddModalService.selectedProduct$$.set(freshProduct);
+      this.patchFormWithProduct(freshProduct);
+    } catch (error) {
+      console.error('Failed to refresh product before editing:', error);
+    }
+  }
+
+  private patchFormWithProduct(product: CatalogueEntry): void {
     this.catalogueEditForm.patchValue({
       name: product.name,
       kcals: String(product.kcals),
@@ -151,7 +166,7 @@ export class CatalogueEntryEditForm implements OnInit {
   }
 
   protected async submitForm(): Promise<void> {
-    if (!this.isFormValid() || this.isSaving$$()) {
+    if (!this.isFormValid() || this.isSaving$$() || this.isDeleting$$()) {
       return;
     }
 
@@ -206,5 +221,54 @@ export class CatalogueEntryEditForm implements OnInit {
 
   protected goBack(): void {
     this.foodAddModalService.goBackToSearch();
+  }
+
+  protected openDeleteConfirmation(): void {
+    if (!this.productToEdit$$()?.canDelete || this.isSaving$$() || this.isDeleting$$()) {
+      return;
+    }
+
+    this.isDeleteConfirmOpen$$.set(true);
+  }
+
+  protected closeDeleteConfirmation(): void {
+    this.isDeleteConfirmOpen$$.set(false);
+  }
+
+  protected onDeleteConfirmed(): void {
+    this.isDeleteConfirmOpen$$.set(false);
+    void this.deleteProduct();
+  }
+
+  private async deleteProduct(): Promise<void> {
+    const product = this.productToEdit$$();
+
+    if (!product?.canDelete || this.isDeleting$$()) {
+      return;
+    }
+
+    this.isDeleting$$.set(true);
+    this.error$$.set(null);
+
+    try {
+      await this.foodCatalogueService.deleteProduct(product.id);
+      this.foodAddModalService.deletedProduct();
+    } catch (error: any) {
+      console.error('Failed to delete product:', error);
+
+      if (error?.error?.error === 'Product is used in diary entries') {
+        this.error$$.set('Продукт уже используется в дневнике и не может быть удалён.');
+        this.foodAddModalService.selectedProduct$$.set({
+          ...product,
+          canDelete: false,
+        });
+      } else if (error?.error?.error === 'Product not found') {
+        this.foodAddModalService.deletedProduct();
+      } else {
+        this.error$$.set('Не удалось удалить продукт. Попробуйте ещё раз.');
+      }
+    } finally {
+      this.isDeleting$$.set(false);
+    }
   }
 }

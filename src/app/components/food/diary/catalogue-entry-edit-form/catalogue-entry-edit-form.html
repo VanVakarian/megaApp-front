@@ -100,14 +100,36 @@
                 [size]="10" />
       </v-button>
 
-      <v-button class="v-primary"
-                type="submit"
-                [config]="{
-                  type: 'submit',
-                  isDisabled: !isFormValid() || isSaving$$(),
-                }">
-        {{ isSaving$$() ? 'Сохранение...' : (mode$$() === this.formMode.Edit ? 'Сохранить изменения' : 'Добавить продукт') }}
-      </v-button>
+      <div class="flex gap-3 ml-auto">
+        @if (mode$$() === this.formMode.Edit && productToEdit$$()?.canDelete) {
+          <v-button class="v-danger"
+                    [config]="{
+                      type: 'button',
+                      isDisabled: isSaving$$() || isDeleting$$(),
+                    }"
+                    (click)="openDeleteConfirmation()">
+            {{ isDeleting$$() ? 'Удаление...' : 'Удалить' }}
+          </v-button>
+        }
+
+        <v-button class="v-primary"
+                  type="submit"
+                  [config]="{
+                    type: 'submit',
+                    isDisabled: !isFormValid() || isSaving$$() || isDeleting$$(),
+                  }">
+          {{ isSaving$$() ? 'Сохранение...' : (mode$$() === this.formMode.Edit ? 'Сохранить изменения' : 'Добавить продукт') }}
+        </v-button>
+      </div>
     </div>
   }
 </form>
+
+<default-modal [isModalOpen]="isDeleteConfirmOpen$$()"
+               [modalTitle]="'Удалить продукт?'"
+               [modalMessage]="'Продукт будет удалён из каталога без возможности восстановления.'"
+               [confirmButtonLabel]="'Удалить'"
+               [cancelButtonLabel]="'Отмена'"
+               (confirmOutput)="onDeleteConfirmed()"
+               (cancelOutput)="closeDeleteConfirmation()"
+               (closeOutput)="closeDeleteConfirmation()"></default-modal>
