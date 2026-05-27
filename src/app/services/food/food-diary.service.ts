@@ -5,16 +5,20 @@ import {
   BodyWeightInterface,
   BodyWeightToUpdate,
   DayTotals,
+  DeletedDiaryDaySnapshot,
   Diary,
+  DiaryDayRestoreRequest,
   DiaryDayToDelete,
   DiaryEntry,
   DiaryEntryToCreate,
   DiaryEntryToDelete,
+  DiaryEntryToRestore,
   DiaryEntryToUpdate,
   DiaryEntryWithFullData,
   HistoryEntry,
   IncomingWsMessage,
   NutrientDelta,
+  ServerResponseWithDiaryEntries,
   ServerResponseWithDiaryId,
   UnifiedDiary,
   UserDataLastModifiedTs,
@@ -24,6 +28,7 @@ import { calculateTodayIsoWithUserTimeShift } from '@app/shared/utils';
 import { firstValueFrom, Subject } from 'rxjs';
 import { LocalStorageService } from '../local-storage.service';
 import { NetworkService } from '../network.service';
+import { SettingsService } from '../settings.service';
 import { SyncOperationType, SyncQueueService } from '../sync-queue.service';
 import { BaseFoodService } from './food-base.service';
 import { FoodCatalogueService } from './food-catalogue.service';
@@ -48,16 +53,28 @@ const DEFAULT_NUTRIENTS = {
 })
 export class FoodDiaryService extends BaseFoodService {
   private readonly diaryRaw$$: WritableSignal<Diary> = signal({});
+  private readonly deletedDaySnapshot$$: WritableSignal<DeletedDiaryDaySnapshot | null> = signal(null);
 
   public readonly diary$$: Signal<UnifiedDiary> = computed(() => this.prepUnifiedDiary());
 
   public readonly selectedDayIso$$: WritableSignal<string> = signal(calculateTodayIsoWithUserTimeShift());
+  public readonly selectedDayDeletedSnapshot$$: Signal<DeletedDiaryDaySnapshot | null> = computed(() => {
+    const snapshot = this.deletedDaySnapshot$$();
+    const selectedDay = this.selectedDayIso$$();
+
+    if (!snapshot || snapshot.dateISO !== selectedDay) {
+      return null;
+    }
+
+    return snapshot;
+  });
   public readonly selectedDayTotals$$: Signal<DayTotals> = computed(() => this.extractSelectedDayTotals());
 
   public readonly diaryEntryFocusId$$: WritableSignal<number | null> = signal(null);
   public readonly diaryEntryResetId$$: WritableSignal<number | null> = signal(null);
 
   private readonly DIARY_STORAGE_KEY = 'food_diary';
+  private readonly DELETED_DAY_SNAPSHOT_STORAGE_KEY = 'food_diary_deleted_day_snapshot';
   private readonly FETCH_OFFSET = 7;
   private readonly FETCH_THRESHOLD = 3;
   private readonly loadedRange$$: WritableSignal<{ start: string; end: string } | null> = signal(null);
@@ -72,6 +89,7 @@ export class FoodDiaryService extends BaseFoodService {
   private readonly catalogueService = inject(FoodCatalogueService);
   private readonly coefficientsService = inject(FoodCoefficientsService);
   private readonly foodStatsService = inject(FoodStatsService);
+  private readonly settingsService = inject(SettingsService);
 
   private readonly loadMoreDiaryEffect$$ = effect(() => {
     if (this.shouldLoadMore()) this.fetchMoreDiaryTrigger$.next();
@@ -85,6 +103,7 @@ export class FoodDiaryService extends BaseFoodService {
   ) {
     super(http, localStorageService, networkService, syncQueueService);
     this.loadDiaryFromLocalStorage();
+    this.loadDeletedDaySnapshotFromLocalStorage();
     this.subscribe();
   }
 
@@ -290,8 +309,10 @@ export class FoodDiaryService extends BaseFoodService {
     }
 
     const { kcalsDelta, nutrientsDelta } = this.calculateRemovedEntriesDelta(deletedEntries);
+    const deletedDaySnapshot = this.createDeletedDaySnapshot(selectedDay, deletedEntries);
     const statsRollback = this.foodStatsService.createStatsRollback(selectedDay);
 
+    this.saveDeletedDaySnapshot(deletedDaySnapshot);
     this.clearDiaryEntriesForDay(selectedDay);
     this.updateNutrientsOptimistically(selectedDay, nutrientsDelta, kcalsDelta);
     this.saveToLocalStorage(this.diaryRaw$$());
@@ -301,6 +322,7 @@ export class FoodDiaryService extends BaseFoodService {
     const rollbackFunction = () => {
       this.diaryRaw$$.set(originalDiary);
       this.saveToLocalStorage(originalDiary);
+      this.clearDeletedDaySnapshot();
       statsRollback();
     };
 
@@ -308,6 +330,59 @@ export class FoodDiaryService extends BaseFoodService {
       type: SyncOperationType.DELETE,
       endpoint: `/api/food/diary/day/${selectedDay}`,
       data: {},
+      rollbackCallback: rollbackFunction,
+    });
+
+    return true;
+  }
+
+  public async restoreSelectedDayEntries(): Promise<boolean> {
+    if (!this.checkNetworkAvailability()) {
+      console.error('Network not available for restoring diary day entries');
+      return false;
+    }
+
+    const snapshot = this.selectedDayDeletedSnapshot$$();
+
+    if (!snapshot?.entries.length) {
+      console.error('Cannot restore diary day entries: snapshot not found');
+      return false;
+    }
+
+    const originalDiary = { ...this.diaryRaw$$() };
+    const restoredEntries = this.cloneDiaryEntries(snapshot.entries);
+    const tempEntries = restoredEntries.map((entry, index) => ({
+      ...entry,
+      id: Date.now() + index,
+      dateISO: snapshot.dateISO,
+    }));
+    const { kcalsDelta, nutrientsDelta } = this.calculateAddedEntriesDelta(restoredEntries);
+    const statsRollback = this.foodStatsService.createStatsRollback(snapshot.dateISO);
+
+    this.clearDeletedDaySnapshot();
+    this.addDiaryEntriesForDay(snapshot.dateISO, tempEntries);
+    this.updateNutrientsOptimistically(snapshot.dateISO, nutrientsDelta, kcalsDelta);
+    this.saveToLocalStorage(this.diaryRaw$$());
+    this.foodStatsService.updateStatsOptimistically(snapshot.dateISO, 0, kcalsDelta);
+
+    const successCallback = (response: ServerResponseWithDiaryEntries) => {
+      if (response.result && response.diaryEntries?.length) {
+        this.replaceDiaryEntriesForDay(snapshot.dateISO, tempEntries, response.diaryEntries);
+      }
+    };
+
+    const rollbackFunction = () => {
+      this.diaryRaw$$.set(originalDiary);
+      this.saveToLocalStorage(originalDiary);
+      this.saveDeletedDaySnapshot(snapshot);
+      statsRollback();
+    };
+
+    this.addSyncOperation({
+      type: SyncOperationType.CREATE,
+      endpoint: `/api/food/diary/day/${snapshot.dateISO}/restore`,
+      data: this.createDiaryDayRestoreRequest(restoredEntries),
+      successCallback: successCallback,
       rollbackCallback: rollbackFunction,
     });
 
@@ -510,6 +585,31 @@ export class FoodDiaryService extends BaseFoodService {
     );
   }
 
+  private calculateAddedEntriesDelta(entries: DiaryEntry[]): { kcalsDelta: number; nutrientsDelta: NutrientDelta } {
+    return entries.reduce(
+      (acc, entry) => {
+        const entryNutrients = this.calculateEntryNutrients(entry);
+
+        acc.kcalsDelta += this.calculateEntryKcals(entry);
+        acc.nutrientsDelta.protein += entryNutrients.protein;
+        acc.nutrientsDelta.fat += entryNutrients.fat;
+        acc.nutrientsDelta.carbs += entryNutrients.carbs;
+        acc.nutrientsDelta.fiber += entryNutrients.fiber;
+
+        return acc;
+      },
+      {
+        kcalsDelta: 0,
+        nutrientsDelta: {
+          protein: 0,
+          fat: 0,
+          carbs: 0,
+          fiber: 0,
+        },
+      },
+    );
+  }
+
   private updateDiaryEntryWithNewValues(updatedDiaryEntry: DiaryEntry): void {
     this.diaryRaw$$.update((oldDiary) => {
       const selectedDay = this.selectedDayIso$$();
@@ -539,6 +639,32 @@ export class FoodDiaryService extends BaseFoodService {
     });
   }
 
+  private addDiaryEntriesForDay(dateISO: string, diaryEntries: DiaryEntry[]): void {
+    this.diaryRaw$$.update((oldDiary) => {
+      const updatedDiary = { ...oldDiary };
+      const updatedDay = updatedDiary[dateISO]
+        ? { ...updatedDiary[dateISO] }
+        : {
+            food: {},
+            bodyWeight: null,
+            nutrients: DEFAULT_NUTRIENTS,
+          };
+      const updatedFood = { ...updatedDay.food };
+
+      diaryEntries.forEach((diaryEntry) => {
+        updatedFood[diaryEntry.id] = {
+          ...diaryEntry,
+          dateISO,
+          history: [...diaryEntry.history],
+        };
+      });
+
+      updatedDay.food = updatedFood;
+      updatedDiary[dateISO] = updatedDay;
+      return updatedDiary;
+    });
+  }
+
   private removeDiaryEntry(diaryEntryId: number): void {
     this.diaryRaw$$.update((oldDiary) => {
       const selectedDay = this.selectedDayIso$$();
@@ -552,6 +678,36 @@ export class FoodDiaryService extends BaseFoodService {
       updatedDiary[selectedDay] = updatedDay;
       return updatedDiary;
     });
+  }
+
+  private replaceDiaryEntriesForDay(dateISO: string, tempEntries: DiaryEntry[], diaryEntries: DiaryEntry[]): void {
+    this.diaryRaw$$.update((oldDiary) => {
+      const updatedDiary = { ...oldDiary };
+      const updatedDay = updatedDiary[dateISO] ? { ...updatedDiary[dateISO] } : null;
+
+      if (!updatedDay) {
+        return updatedDiary;
+      }
+
+      const updatedFood = { ...updatedDay.food };
+
+      tempEntries.forEach((tempEntry, index) => {
+        const restoredEntry = diaryEntries[index];
+
+        if (!restoredEntry) {
+          return;
+        }
+
+        delete updatedFood[tempEntry.id];
+        updatedFood[restoredEntry.id] = restoredEntry;
+      });
+
+      updatedDay.food = updatedFood;
+      updatedDiary[dateISO] = updatedDay;
+      return updatedDiary;
+    });
+
+    this.saveToLocalStorage(this.diaryRaw$$());
   }
 
   private clearDiaryEntriesForDay(dateISO: string): void {
@@ -590,6 +746,55 @@ export class FoodDiaryService extends BaseFoodService {
       return updatedDiary;
     });
     this.saveToLocalStorage(this.diaryRaw$$());
+  }
+
+  private getDeletedDaySnapshotStorageKey(): string {
+    const userName = this.settingsService.settings$$().userName?.trim();
+    return userName ? `${this.DELETED_DAY_SNAPSHOT_STORAGE_KEY}_${userName}` : this.DELETED_DAY_SNAPSHOT_STORAGE_KEY;
+  }
+
+  private loadDeletedDaySnapshotFromLocalStorage(): void {
+    const snapshot = this.localStorageService.get<DeletedDiaryDaySnapshot>(this.getDeletedDaySnapshotStorageKey());
+
+    if (snapshot?.dateISO && Array.isArray(snapshot.entries)) {
+      this.deletedDaySnapshot$$.set(snapshot);
+    }
+  }
+
+  private saveDeletedDaySnapshot(snapshot: DeletedDiaryDaySnapshot): void {
+    this.deletedDaySnapshot$$.set(snapshot);
+    this.localStorageService.set(this.getDeletedDaySnapshotStorageKey(), snapshot);
+  }
+
+  private clearDeletedDaySnapshot(): void {
+    this.deletedDaySnapshot$$.set(null);
+    this.localStorageService.remove(this.getDeletedDaySnapshotStorageKey());
+  }
+
+  private createDeletedDaySnapshot(dateISO: string, entries: DiaryEntry[]): DeletedDiaryDaySnapshot {
+    return {
+      dateISO,
+      entries: this.cloneDiaryEntries(entries),
+    };
+  }
+
+  private createDiaryDayRestoreRequest(entries: DiaryEntry[]): DiaryDayRestoreRequest {
+    return {
+      entries: entries.map(
+        (entry): DiaryEntryToRestore => ({
+          foodCatalogueId: entry.foodCatalogueId,
+          foodWeight: entry.foodWeight,
+          history: [...entry.history],
+        }),
+      ),
+    };
+  }
+
+  private cloneDiaryEntries(entries: DiaryEntry[]): DiaryEntry[] {
+    return entries.map((entry) => ({
+      ...entry,
+      history: [...entry.history],
+    }));
   }
 
   private shouldLoadMore(): boolean {
