@@ -89,6 +89,9 @@ export class FoodDiary implements AfterViewInit {
   });
 
   protected readonly hasSelectedDayDiaryEntries$$ = computed(() => this.selectedDayDiaryEntries$$().length > 0);
+  protected readonly canRestoreSelectedDay$$ = computed(
+    () => this.foodDiaryService.selectedDayDeletedSnapshot$$() !== null,
+  );
 
   protected readonly caloriesDisplayText$$ = computed(() => {
     const percent = this.selectedDaysFormattedConsumedPercent$$();
@@ -171,6 +174,10 @@ export class FoodDiary implements AfterViewInit {
   protected async onDeleteDayConfirmed(): Promise<void> {
     this.isDeleteDayConfirmOpen = false;
     await this.foodDiaryService.deleteSelectedDayEntries();
+  }
+
+  protected async onRestoreDayClicked(): Promise<void> {
+    await this.foodDiaryService.restoreSelectedDayEntries();
   }
 
   private syncColumnWidths(): void {

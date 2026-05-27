@@ -75,6 +75,21 @@ export interface DiaryDayToDelete {
   dateISO: string;
 }
 
+export interface DiaryEntryToRestore {
+  foodCatalogueId: number;
+  foodWeight: number;
+  history: HistoryEntry[];
+}
+
+export interface DiaryDayRestoreRequest {
+  entries: DiaryEntryToRestore[];
+}
+
+export interface DeletedDiaryDaySnapshot {
+  dateISO: string;
+  entries: DiaryEntry[];
+}
+
 export interface DiaryDayDeletedWsMessage {
   type: WebSocketMessageType.DIARY_DAY_DELETED;
   payload: DiaryDayToDelete;
@@ -167,6 +182,10 @@ export interface ServerResponseWithMessage extends ServerResponseBasic {
 
 export interface ServerResponseWithDiaryId extends ServerResponseBasic {
   diaryId: number;
+}
+
+export interface ServerResponseWithDiaryEntries extends ServerResponseBasic {
+  diaryEntries: DiaryEntry[];
 }
 
 export interface ServerResponseWithCatalogueEntry extends ServerResponseBasic {

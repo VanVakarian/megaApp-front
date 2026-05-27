@@ -113,7 +113,7 @@
   }
 </v-accordion>
 
-@if (deviceInfoService.isDesktopScreen$$() || hasSelectedDayDiaryEntries$$()) {
+@if (deviceInfoService.isDesktopScreen$$() || hasSelectedDayDiaryEntries$$() || canRestoreSelectedDay$$()) {
   <div class="flex justify-start gap-4 mt-4">
     @if (hasSelectedDayDiaryEntries$$()) {
       <v-button class="v-flat shrink-0"
@@ -124,6 +124,19 @@
                 (onClick)="openDeleteDayConfirmationModal()">
         <v-icon v-prefix
                 [name]="Icon.Delete"
+                [size]="6" />
+      </v-button>
+    }
+
+    @if (canRestoreSelectedDay$$()) {
+      <v-button class="v-flat shrink-0"
+                [config]="{
+                  isLabelHidden: true,
+                  padding: 2,
+                }"
+                (onClick)="onRestoreDayClicked()">
+        <v-icon v-prefix
+                [name]="Icon.Undo"
                 [size]="6" />
       </v-button>
     }
@@ -187,7 +200,7 @@
          }"
          (onClose)="closeDeleteDayConfirmationModal()">
   <div class="flex flex-col gap-4">
-    <div class="text-xl font-medium text-center">
+    <div class="text-3xl font-extrabold leading-tight text-center text-red-600">
       Вы уверены, что хотите удалить все записи за этот день?
     </div>
 
