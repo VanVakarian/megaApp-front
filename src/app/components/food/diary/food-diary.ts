@@ -11,6 +11,7 @@ import {
   viewChild,
   viewChildren,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { BMI } from '@app/components/food/diary/bmi/bmi';
 import { BodyWeight } from '@app/components/food/diary/body-weight/body-weight';
 import { CameraPreview } from '@app/components/food/diary/camera-preview/camera-preview';
@@ -22,6 +23,7 @@ import { DeviceInfoService } from '@app/services/device-info.service';
 import { FoodAddModalService, ModalState } from '@app/services/food/food-add-modal.service';
 import { FoodCatalogueService } from '@app/services/food/food-catalogue.service';
 import { FoodDiaryService } from '@app/services/food/food-diary.service';
+import { KeyboardService } from '@app/services/keyboard.service';
 import { VButton } from '@ui-kit/components/v-button/v-button';
 import { VCard } from '@ui-kit/components/v-card/v-card';
 import { VAccordion } from '@ui-kit/components/v-expand/v-accordion';
@@ -133,6 +135,17 @@ export class FoodDiary implements AfterViewInit {
   protected readonly foodCatalogueService = inject(FoodCatalogueService);
   private readonly accordionGroupService = inject(AccordionGroupService);
   private readonly ngZone = inject(NgZone);
+  private readonly keyboardService = inject(KeyboardService);
+
+  private readonly shortcutSubscription = this.keyboardService
+    .shortcut$({
+      code: 'KeyN',
+      when: () => this.foodAddModalService.currentState$$() === ModalState.CLOSED,
+    })
+    .pipe(takeUntilDestroyed())
+    .subscribe(() => {
+      this.openAddFoodModal();
+    });
 
   public ngAfterViewInit(): void {
     this.triggerColumnRecalc();

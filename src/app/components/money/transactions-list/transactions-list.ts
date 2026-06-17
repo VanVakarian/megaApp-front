@@ -1,4 +1,6 @@
 import { ChangeDetectionStrategy, Component, ElementRef, computed, inject, signal, viewChild } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { KeyboardService } from '@app/services/keyboard.service';
 import { MoneyService } from '@app/services/money.service';
 import { DefaultModal } from '@app/shared/components/default-modal/default-modal';
 import { FormModal } from '@app/shared/components/form-modal/form-modal';
@@ -32,6 +34,17 @@ export class TransactionsList {
   protected readonly Icon = IconName;
 
   private readonly moneyService = inject(MoneyService);
+  private readonly keyboardService = inject(KeyboardService);
+
+  private readonly shortcutSubscription = this.keyboardService
+    .shortcut$({
+      code: 'KeyN',
+      when: () => !this.showForm$$(),
+    })
+    .pipe(takeUntilDestroyed())
+    .subscribe(() => {
+      this.showNewTransactionForm();
+    });
 
   /**
    * Thousands separator. Options (narrowest to widest):

@@ -1,25 +1,56 @@
 import { Injectable } from '@angular/core';
-import { combineLatest, fromEvent, Observable, Subject } from 'rxjs';
-import { filter, map, startWith } from 'rxjs/operators';
+import { fromEvent, Observable } from 'rxjs';
+import { filter } from 'rxjs/operators';
+
+export interface KeyboardShortcut {
+  code: string;
+  altKey?: boolean;
+  ctrlKey?: boolean;
+  metaKey?: boolean;
+  shiftKey?: boolean;
+  preventDefault?: boolean;
+  allowRepeat?: boolean;
+  allowInEditable?: boolean;
+  when?: () => boolean;
+}
 
 @Injectable({
   providedIn: 'root',
 })
 export class KeyboardService {
-  private readonly inputFocusSubject = new Subject<boolean>();
-
   private readonly keyboardEvents$ = fromEvent<KeyboardEvent>(document, 'keydown');
 
-  public readonly inputIsInFocus$ = this.inputFocusSubject.asObservable().pipe(startWith(false));
-
-  private setInputFocus(isInFocus: boolean) {
-    this.inputFocusSubject.next(isInFocus);
+  public shortcut$(shortcut: KeyboardShortcut): Observable<KeyboardEvent> {
+    return this.keyboardEvents$.pipe(filter((event) => this.matchesShortcut(event, shortcut)));
   }
 
-  private getKeyboardEvents$(): Observable<KeyboardEvent> {
-    return combineLatest([this.keyboardEvents$, this.inputIsInFocus$]).pipe(
-      filter(([event, isInputFocused]) => !isInputFocused),
-      map(([event]) => event),
-    );
+  private matchesShortcut(event: KeyboardEvent, shortcut: KeyboardShortcut): boolean {
+    if (event.defaultPrevented) return false;
+    if (shortcut.when && !shortcut.when()) return false;
+    if (!shortcut.allowRepeat && event.repeat) return false;
+    if (!shortcut.allowInEditable && this.isEditableTarget(event.target)) return false;
+
+    const matches =
+      event.code === shortcut.code &&
+      event.altKey === Boolean(shortcut.altKey) &&
+      event.ctrlKey === Boolean(shortcut.ctrlKey) &&
+      event.metaKey === Boolean(shortcut.metaKey) &&
+      event.shiftKey === Boolean(shortcut.shiftKey);
+
+    if (!matches) return false;
+    if (shortcut.preventDefault !== false) {
+      event.preventDefault();
+    }
+    return true;
+  }
+
+  private isEditableTarget(target: EventTarget | null): boolean {
+    if (!(target instanceof HTMLElement)) return false;
+
+    const editableParent = target.closest('[contenteditable="true"]');
+    if (editableParent) return true;
+
+    const tagName = target.tagName.toLowerCase();
+    return tagName === 'input' || tagName === 'textarea' || tagName === 'select';
   }
 }
