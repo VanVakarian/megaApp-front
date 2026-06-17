@@ -1,9 +1,7 @@
 import { Injectable, WritableSignal, computed, inject, signal } from '@angular/core';
 import { tokenGetter } from '@app/services/auth.service';
 import { IncomingWsMessage, OutgoingWsMessage, WebSocketMessageType } from '@app/shared/types';
-import { EMPTY, Subject, timer } from 'rxjs';
-import { catchError, retry, tap } from 'rxjs/operators';
-import { WebSocketSubject, webSocket } from 'rxjs/webSocket';
+import { Subject } from 'rxjs';
 import { NotificationService } from './notification.service';
 
 @Injectable({
@@ -14,10 +12,14 @@ export class NetworkService {
   public readonly isConnected$$: WritableSignal<boolean> = signal(false);
   public readonly isNetworkAvailable$$ = computed(() => this.isOnline$$());
 
-  private socket$: WebSocketSubject<any> | undefined;
-  private reconnectDelaySec = 5;
   public readonly wsMessages$ = new Subject<IncomingWsMessage>();
+
+  private socket: WebSocket | null = null;
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private readonly reconnectDelayMs = 5000;
   private readonly clientId: string;
+  private shouldReconnect = true;
+  private isConnecting = false;
 
   private readonly notifications = inject(NotificationService);
 
@@ -31,7 +33,9 @@ export class NetworkService {
   }
 
   public connect(): void {
-    if (this.socket$ && !this.socket$.closed) {
+    this.shouldReconnect = true;
+
+    if (this.isConnecting || this.isSocketActive()) {
       return;
     }
 
@@ -41,53 +45,76 @@ export class NetworkService {
       return;
     }
 
-    this.socket$ = this.createWebSocket(token);
+    this.clearReconnectTimer();
+    this.isConnecting = true;
 
-    this.socket$
-      .pipe(
-        tap(() => {
-          this.isConnected$$.set(true);
-        }),
-        retry({
-          delay: (error, retryCount) => {
-            console.log(`WebSocket reconnecting, attempt #${retryCount}`);
-            this.isConnected$$.set(false);
-            return timer(this.reconnectDelaySec * 1000);
-          },
-        }),
-        catchError((error) => {
-          console.error('WebSocket connection failed:', error);
-          this.isConnected$$.set(false);
-          return EMPTY;
-        }),
-      )
-      .subscribe({
-        next: (message) => this.handleIncomingMessage(message),
-        error: (error) => {
-          console.error('WebSocket error:', error);
-          this.isConnected$$.set(false);
-        },
-        complete: () => {
-          console.warn('WebSocket connection closed');
-          this.isConnected$$.set(false);
-        },
-      });
+    const socket = new WebSocket(this.buildWebSocketURL(token));
+    this.socket = socket;
+
+    socket.onopen = () => {
+      if (this.socket !== socket) {
+        socket.close();
+        return;
+      }
+
+      this.isConnecting = false;
+      this.isConnected$$.set(true);
+    };
+
+    socket.onmessage = (event: MessageEvent<string>) => {
+      if (this.socket !== socket) {
+        return;
+      }
+
+      try {
+        const message = JSON.parse(event.data) as IncomingWsMessage;
+        this.handleIncomingMessage(message);
+      } catch (error) {
+        console.error('WebSocket message parse failed:', error);
+      }
+    };
+
+    socket.onerror = () => {
+      this.isConnected$$.set(false);
+    };
+
+    socket.onclose = () => {
+      if (this.socket === socket) {
+        this.socket = null;
+      }
+
+      this.isConnecting = false;
+      this.isConnected$$.set(false);
+
+      if (this.shouldReconnect && this.isOnline$$() && tokenGetter()) {
+        this.scheduleReconnect();
+      }
+    };
   }
 
   public disconnect(): void {
-    if (this.socket$) {
-      this.socket$.complete();
-      this.socket$ = undefined;
+    this.shouldReconnect = false;
+    this.clearReconnectTimer();
+    this.isConnecting = false;
+
+    const socket = this.socket;
+    this.socket = null;
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      socket.close(1000, 'Client disconnect');
+    } else if (socket && socket.readyState === WebSocket.CONNECTING) {
+      socket.close();
     }
+
     this.isConnected$$.set(false);
   }
 
-  public sendMessage(message: OutgoingWsMessage): void {
-    if (this.socket$ && !this.socket$.closed && this.isConnected$$()) {
-      this.socket$.next(message);
-    } else {
-      console.warn('WebSocket not connected, cannot send message:', message);
+  public sendMessage(message: OutgoingWsMessage | { type: 'PONG' }): void {
+    if (this.socket && this.socket.readyState === WebSocket.OPEN && this.isConnected$$()) {
+      this.socket.send(JSON.stringify(message));
+      return;
     }
+
+    console.warn('WebSocket not connected, cannot send message:', message);
   }
 
   private initNetworkEvents(): void {
@@ -102,25 +129,69 @@ export class NetworkService {
 
     if (!isOnline) {
       this.notifications.showOfflineMode();
+      return;
+    }
+
+    if (this.shouldReconnect && !this.isSocketActive()) {
+      this.connect();
     }
   }
 
-  private createWebSocket(token: string): WebSocketSubject<any> {
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host = window.location.host;
+  private buildWebSocketURL(token: string): string {
     const encodedToken = encodeURIComponent(token);
     const encodedClientId = encodeURIComponent(this.clientId);
+    const baseURL = this.getBaseWebSocketURL();
 
-    const wsUrl = `${protocol}//${host}/api/ws?token=${encodedToken}&clientId=${encodedClientId}`;
+    return `${baseURL}?token=${encodedToken}&clientId=${encodedClientId}`;
+  }
 
-    return webSocket(wsUrl);
+  private getBaseWebSocketURL(): string {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const hostname = window.location.hostname;
+    const port = this.resolveWebSocketPort(window.location.port);
+
+    return `${protocol}//${hostname}${port ? `:${port}` : ''}/api/ws`;
+  }
+
+  private resolveWebSocketPort(currentPort: string): string {
+    if (currentPort === '4200' || currentPort === '4201') {
+      return '3000';
+    }
+
+    return currentPort;
+  }
+
+  private isSocketActive(): boolean {
+    if (!this.socket) {
+      return false;
+    }
+
+    return this.socket.readyState === WebSocket.OPEN || this.socket.readyState === WebSocket.CONNECTING;
+  }
+
+  private scheduleReconnect(): void {
+    if (this.reconnectTimer) {
+      return;
+    }
+
+    this.reconnectTimer = setTimeout(() => {
+      this.reconnectTimer = null;
+      this.connect();
+    }, this.reconnectDelayMs);
+  }
+
+  private clearReconnectTimer(): void {
+    if (!this.reconnectTimer) {
+      return;
+    }
+
+    clearTimeout(this.reconnectTimer);
+    this.reconnectTimer = null;
   }
 
   private handleIncomingMessage(data: IncomingWsMessage): void {
     if (data.type === WebSocketMessageType.PING) {
-      if (this.socket$ && !this.socket$.closed) {
-        this.socket$.next({ type: 'PONG' });
-      }
+      this.sendMessage({ type: 'PONG' });
       return;
     }
 
