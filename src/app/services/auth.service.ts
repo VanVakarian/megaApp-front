@@ -2,7 +2,6 @@ import { HttpClient, HttpResponse } from '@angular/common/http';
 import { inject, Injectable, signal } from '@angular/core';
 import { NetworkService } from '@app/services/network.service';
 import { AuthResponse, UserCreds } from '@app/shared/types';
-import jwt_decode from 'jwt-decode';
 import { Observable, of } from 'rxjs';
 import { catchError, map, tap } from 'rxjs/operators';
 
@@ -67,34 +66,22 @@ export class AuthService {
 
   public checkAuth(): Observable<boolean> {
     const token = localStorage.getItem(this.ACCESS_TOKEN_KEY);
-    if (token) {
-      const decodedToken = jwt_decode(token) as { exp: number };
-      const currentTime = Math.round(new Date().getTime() / 1000);
+    if (!token) {
+      this.isAuthenticated$$.set(false);
+      return of(false);
+    }
 
-      if (decodedToken.exp > currentTime) {
+    return this.http.get('/api/auth/verify').pipe(
+      map(() => {
         this.isAuthenticated$$.set(true);
         this.networkService.connect();
-        return of(true);
-      } else {
-        return this.refreshToken().pipe(
-          map((response: AuthResponse) => {
-            if (response.accessToken) {
-              this.setTokens(response);
-              this.isAuthenticated$$.set(true);
-              this.networkService.connect();
-              return true;
-            }
-            return false;
-          }),
-          catchError(() => {
-            this.isAuthenticated$$.set(false);
-            return of(false);
-          }),
-        );
-      }
-    }
-    this.isAuthenticated$$.set(false);
-    return of(false);
+        return true;
+      }),
+      catchError(() => {
+        this.isAuthenticated$$.set(false);
+        return of(false);
+      }),
+    );
   }
 
   private setTokens(response: AuthResponse): void {
