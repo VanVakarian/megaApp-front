@@ -1,8 +1,14 @@
-<div class="flex">
-  <navigation />
+@if (authService.sessionState$$() === AuthSessionState.Unknown) {
+  <div class="flex items-center justify-center w-screen h-screen text-lg">
+    Загрузка...
+  </div>
+} @else {
+  <div class="flex">
+    <navigation />
 
-  <main class="flex flex-col flex-grow w-0 min-w-0"
-        [style.margin-left]="navigationService.navbarWidth$$()">
-    <router-outlet />
-  </main>
-</div>
+    <main class="flex flex-col flex-grow w-0 min-w-0"
+          [style.margin-left]="navigationService.navbarWidth$$()">
+      <router-outlet />
+    </main>
+  </div>
+}

@@ -1,7 +1,8 @@
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from '@app/services/auth.service';
+import { computeLandingRoute } from '@app/services/landing-route';
 import { SettingsService } from '@app/services/settings.service';
 import { UserCreds } from '@app/shared/types';
 import { VButton } from '@ui-kit/components/v-button/v-button';
@@ -14,7 +15,7 @@ import { firstValueFrom } from 'rxjs';
   templateUrl: './auth-form.html',
   imports: [ReactiveFormsModule, VCard, VInput, VButton],
 })
-export class AuthForm implements OnInit {
+export class AuthForm {
   protected readonly submitted$$ = signal(false);
   protected readonly isLoginMode$$ = signal(true);
   protected readonly justRegistered$$ = signal(false);
@@ -23,21 +24,22 @@ export class AuthForm implements OnInit {
   protected readonly passwordErrorMessage$$ = computed(() => this.getPasswordErrorMessage());
 
   protected readonly authService = inject(AuthService);
-  protected readonly settingsService = inject(SettingsService);
+  private readonly settingsService = inject(SettingsService);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
 
   protected readonly authForm = new FormGroup({
     username: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
     password: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.minLength(6)] }),
   });
 
-  public ngOnInit(): void {
-    this.authService.checkAuth().subscribe();
-  }
-
   protected toggleMode(): void {
     this.isLoginMode$$.update((value) => !value);
     this.justRegistered$$.set(false);
+  }
+
+  protected retryBootstrap(): void {
+    void this.authService.retryBootstrap();
   }
 
   protected async submit(): Promise<void> {
@@ -52,8 +54,9 @@ export class AuthForm implements OnInit {
     try {
       if (this.isLoginMode$$()) {
         await firstValueFrom(this.authService.login(user));
+        await this.settingsService.ensureReady();
         this.authForm.reset();
-        this.router.navigate(['']);
+        await this.router.navigateByUrl(this.resolveLandingUrl());
       } else {
         await firstValueFrom(this.authService.register(user));
         this.authForm.reset();
@@ -65,6 +68,15 @@ export class AuthForm implements OnInit {
     } finally {
       this.submitted$$.set(false);
     }
+  }
+
+  private resolveLandingUrl(): string {
+    const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl');
+    if (returnUrl && returnUrl.startsWith('/') && !returnUrl.startsWith('/auth')) {
+      return returnUrl;
+    }
+
+    return computeLandingRoute(this.settingsService.settings$$());
   }
 
   private getUsernameErrorMessage(): string {

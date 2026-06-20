@@ -1,5 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { computed, effect, inject, Injectable, signal, Signal, WritableSignal } from '@angular/core';
+import { AuthService, AuthSessionState } from '@app/services/auth.service';
 import { exhaustRequest } from '@app/shared/decorators/exhaust-request.decorator';
 import {
   BodyWeightInterface,
@@ -28,7 +29,6 @@ import { calculateTodayIsoWithUserTimeShift } from '@app/shared/utils';
 import { firstValueFrom, Subject } from 'rxjs';
 import { LocalStorageService } from '../local-storage.service';
 import { NetworkService } from '../network.service';
-import { SettingsService } from '../settings.service';
 import { SyncOperationType, SyncQueueService } from '../sync-queue.service';
 import { BaseFoodService } from './food-base.service';
 import { FoodCatalogueService } from './food-catalogue.service';
@@ -89,10 +89,17 @@ export class FoodDiaryService extends BaseFoodService {
   private readonly catalogueService = inject(FoodCatalogueService);
   private readonly coefficientsService = inject(FoodCoefficientsService);
   private readonly foodStatsService = inject(FoodStatsService);
-  private readonly settingsService = inject(SettingsService);
+  private readonly authService = inject(AuthService);
 
   private readonly loadMoreDiaryEffect$$ = effect(() => {
+    if (this.authService.sessionState$$() !== AuthSessionState.Authenticated) return;
     if (this.shouldLoadMore()) this.fetchMoreDiaryTrigger$.next();
+  });
+
+  private readonly resetOnAuthLossEffect$$ = effect(() => {
+    if (this.authService.sessionState$$() === AuthSessionState.Guest) {
+      this.reset();
+    }
   });
 
   constructor(
@@ -105,6 +112,16 @@ export class FoodDiaryService extends BaseFoodService {
     this.loadDiaryFromLocalStorage();
     this.loadDeletedDaySnapshotFromLocalStorage();
     this.subscribe();
+  }
+
+  public reset(): void {
+    this.diaryRaw$$.set({});
+    this.deletedDaySnapshot$$.set(null);
+    this.selectedDayIso$$.set(calculateTodayIsoWithUserTimeShift());
+    this.diaryEntryFocusId$$.set(null);
+    this.diaryEntryResetId$$.set(null);
+    this.loadedRange$$.set(null);
+    this.lastSyncTs = 0;
   }
 
   public calculateEntryKcals(entry: DiaryEntry): number {
@@ -748,13 +765,10 @@ export class FoodDiaryService extends BaseFoodService {
     this.saveToLocalStorage(this.diaryRaw$$());
   }
 
-  private getDeletedDaySnapshotStorageKey(): string {
-    const userName = this.settingsService.settings$$().userName?.trim();
-    return userName ? `${this.DELETED_DAY_SNAPSHOT_STORAGE_KEY}_${userName}` : this.DELETED_DAY_SNAPSHOT_STORAGE_KEY;
-  }
-
   private loadDeletedDaySnapshotFromLocalStorage(): void {
-    const snapshot = this.localStorageService.get<DeletedDiaryDaySnapshot>(this.getDeletedDaySnapshotStorageKey());
+    const snapshot = this.localStorageService.getUserScoped<DeletedDiaryDaySnapshot>(
+      this.DELETED_DAY_SNAPSHOT_STORAGE_KEY,
+    );
 
     if (snapshot?.dateISO && Array.isArray(snapshot.entries)) {
       this.deletedDaySnapshot$$.set(snapshot);
@@ -763,12 +777,12 @@ export class FoodDiaryService extends BaseFoodService {
 
   private saveDeletedDaySnapshot(snapshot: DeletedDiaryDaySnapshot): void {
     this.deletedDaySnapshot$$.set(snapshot);
-    this.localStorageService.set(this.getDeletedDaySnapshotStorageKey(), snapshot);
+    this.localStorageService.setUserScoped(this.DELETED_DAY_SNAPSHOT_STORAGE_KEY, snapshot);
   }
 
   private clearDeletedDaySnapshot(): void {
     this.deletedDaySnapshot$$.set(null);
-    this.localStorageService.remove(this.getDeletedDaySnapshotStorageKey());
+    this.localStorageService.removeUserScoped(this.DELETED_DAY_SNAPSHOT_STORAGE_KEY);
   }
 
   private createDeletedDaySnapshot(dateISO: string, entries: DiaryEntry[]): DeletedDiaryDaySnapshot {

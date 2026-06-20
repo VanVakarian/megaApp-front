@@ -2,32 +2,36 @@ import { HttpErrorResponse, HttpEvent, HttpHandler, HttpInterceptor, HttpRequest
 import { Injectable, inject } from '@angular/core';
 import { AuthService } from '@app/services/auth.service';
 import { NetworkService } from '@app/services/network.service';
-import { BehaviorSubject, Observable, throwError } from 'rxjs';
-import { catchError, filter, switchMap, take } from 'rxjs/operators';
+import { Observable, throwError } from 'rxjs';
+import { catchError, finalize, map, shareReplay, switchMap } from 'rxjs/operators';
+
+const AUTH_ENDPOINTS = ['/api/auth/login', '/api/auth/register', '/api/auth/refresh'];
 
 @Injectable()
 export class AuthInterceptor implements HttpInterceptor {
-  private isRefreshing = false;
-  private readonly refreshTokenSubject: BehaviorSubject<any> = new BehaviorSubject<any>(null);
+  private refreshInFlight$: Observable<string> | null = null;
 
   private readonly networkService = inject(NetworkService);
   private readonly authService = inject(AuthService);
 
   public intercept(request: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
+    const isAuthEndpoint = AUTH_ENDPOINTS.some((path) => request.url.includes(path));
+
+    let preparedRequest = this.addClientId(request);
+
     const accessToken = localStorage.getItem('access_token');
-    if (accessToken) {
-      request = this.addToken(request, accessToken);
+    if (accessToken && !isAuthEndpoint) {
+      preparedRequest = this.addToken(preparedRequest, accessToken);
     }
 
-    request = this.addClientId(request);
-
-    return next.handle(request).pipe(
+    return next.handle(preparedRequest).pipe(
       catchError((error) => {
-        if (error instanceof HttpErrorResponse && error.status === 401) {
-          return this.handle401Error(request, next);
-        } else {
-          return throwError(() => new Error(error.message));
+        const canAttemptRefresh = !isAuthEndpoint && !!localStorage.getItem('refresh_token');
+
+        if (error instanceof HttpErrorResponse && error.status === 401 && canAttemptRefresh) {
+          return this.handle401Error(preparedRequest, next);
         }
+        return throwError(() => error);
       }),
     );
   }
@@ -49,30 +53,16 @@ export class AuthInterceptor implements HttpInterceptor {
   }
 
   private handle401Error(request: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
-    if (!this.isRefreshing) {
-      this.isRefreshing = true;
-      this.refreshTokenSubject.next(null);
-
-      return this.authService.refreshToken().pipe(
-        switchMap((response: any) => {
-          this.isRefreshing = false;
-          this.refreshTokenSubject.next(response.accessToken);
-          return next.handle(this.addToken(request, response.accessToken));
+    if (!this.refreshInFlight$) {
+      this.refreshInFlight$ = this.authService.refreshToken().pipe(
+        map((response) => response.accessToken),
+        finalize(() => {
+          this.refreshInFlight$ = null;
         }),
-        catchError((error) => {
-          this.isRefreshing = false;
-          this.authService.logout();
-          return throwError(() => new Error(error.message));
-        }),
-      );
-    } else {
-      return this.refreshTokenSubject.pipe(
-        filter((token) => token != null),
-        take(1),
-        switchMap((jwt) => {
-          return next.handle(this.addToken(request, jwt));
-        }),
+        shareReplay(1),
       );
     }
+
+    return this.refreshInFlight$.pipe(switchMap((token) => next.handle(this.addToken(request, token))));
   }
 }

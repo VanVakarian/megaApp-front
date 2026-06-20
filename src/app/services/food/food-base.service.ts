@@ -16,11 +16,11 @@ export abstract class BaseFoodService {
   ) {}
 
   protected saveToLocalStorage<T>(data: T): void {
-    this.localStorageService.set(this.getStorageKey(), data);
+    this.localStorageService.setUserScoped(this.getStorageKey(), data);
   }
 
   protected loadFromLocalStorage<T>(): T | null {
-    return this.localStorageService.get<T>(this.getStorageKey());
+    return this.localStorageService.getUserScoped<T>(this.getStorageKey());
   }
 
   protected checkNetworkAvailability(): boolean {

@@ -1,5 +1,7 @@
 import { HttpClient } from '@angular/common/http';
-import { computed, Injectable, Signal, signal, WritableSignal } from '@angular/core';
+import { computed, effect, inject, Injectable, Signal, signal, WritableSignal } from '@angular/core';
+import { AuthService, AuthSessionState } from '@app/services/auth.service';
+import { buildCacheKey } from '@app/shared/cache';
 import { Observable, of, Subject } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import {
@@ -58,7 +60,7 @@ const SETTINGS_KEY = 'money_settings';
 
 function readSettings(): MoneySettings {
   try {
-    const raw = localStorage.getItem(SETTINGS_KEY);
+    const raw = localStorage.getItem(buildCacheKey(SETTINGS_KEY));
     if (raw) return { ...defaultSettings(), ...JSON.parse(raw) };
   } catch {}
   return defaultSettings();
@@ -121,6 +123,14 @@ export class MoneyService {
 
   public readonly requestResult$ = new Subject<ServerResponseBasic>();
 
+  private readonly authService = inject(AuthService);
+
+  private readonly resetOnAuthLossEffect$$ = effect(() => {
+    if (this.authService.sessionState$$() === AuthSessionState.Guest) {
+      this.reset();
+    }
+  });
+
   public setChartRange(start: string | null, end: string | null): void {
     this.chartRangeStart$$.set(start);
     this.chartRangeEnd$$.set(end);
@@ -145,7 +155,7 @@ export class MoneyService {
   private saveSettings(patch: Partial<MoneySettings>): void {
     try {
       const current = readSettings();
-      localStorage.setItem(SETTINGS_KEY, JSON.stringify({ ...current, ...patch }));
+      localStorage.setItem(buildCacheKey(SETTINGS_KEY), JSON.stringify({ ...current, ...patch }));
     } catch {}
   }
 
@@ -160,12 +170,31 @@ export class MoneyService {
     // effect(() => { console.log('RATE HISTORY:', this.rateHistory$$()) }); // prettier-ignore
   }
 
+  public reset(): void {
+    this.currencies$$.set([]);
+    this.categories$$.set([]);
+    this.organizations$$.set([]);
+    this.accounts$$.set([]);
+    this.assets$$.set([]);
+    this.investAssetTrades$$.set([]);
+    this.transactions$$.set([]);
+    this.rateHistory$$.set([]);
+    this.isDataReady$$.set(false);
+
+    const defaults = defaultSettings();
+    this.displayCurrency$$.set(defaults.displayCurrency);
+    this.chartRangeStart$$.set(defaults.chartRangeStart);
+    this.chartRangeEnd$$.set(defaults.chartRangeEnd);
+    this.expenseChartYMaxPerCurrency$$.set(defaults.expenseChartYMaxPerCurrency);
+    this.keepTransactionCurrency$$.set(defaults.keepTransactionCurrency);
+  }
+
   //                                                            ~~~ BOOTSTRAP ~~~
 
   public loadData(): void {
     localStorage.removeItem('money_snapshot_v1');
 
-    const cached = localStorage.getItem('money_snapshot');
+    const cached = localStorage.getItem(buildCacheKey('money_snapshot'));
     if (cached) {
       try {
         this.applySnapshot(JSON.parse(cached), true);
@@ -220,7 +249,7 @@ export class MoneyService {
         transactions: this.transactions$$(),
         rateHistory: this.rateHistory$$(),
       };
-      localStorage.setItem('money_snapshot', JSON.stringify(snapshot));
+      localStorage.setItem(buildCacheKey('money_snapshot'), JSON.stringify(snapshot));
     } catch {
       // storage quota exceeded or unavailable
     }

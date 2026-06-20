@@ -56,3 +56,20 @@ export const DEFAULT_SETTINGS: UserSettings = {
 export const BACKGROUND_SYNC_RETRIES_MAX: number = 3;
 
 export const BACKGROUND_SYNC_TIMEOUT_MS: number = 8000;
+
+export const CACHE_SCHEMA_VERSION: number = 1;
+
+export const USER_SCOPED_CACHE_BASE_KEYS: string[] = [
+  'settings',
+  'food_stats',
+  'food_stats_slider',
+  'food_catalogue',
+  'food_search_cache',
+  'food_coefficients',
+  'food_diary',
+  'food_diary_deleted_day_snapshot',
+  'money_settings',
+  'money_snapshot',
+];
+
+export const SESSION_BOOTSTRAP_TIMEOUT_MS: number = 9000;
