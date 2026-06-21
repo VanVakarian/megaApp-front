@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { LocalStorageService } from '../local-storage.service';
 import { NetworkService } from '../network.service';
-import { SyncOperationType, SyncQueueService } from '../sync-queue.service';
+import { SyncOperationFeedback, SyncOperationType, SyncQueueService } from '../sync-queue.service';
 
 @Injectable()
 export abstract class BaseFoodService {
@@ -33,6 +33,7 @@ export abstract class BaseFoodService {
     data: any;
     successCallback?: (response: any) => void;
     rollbackCallback?: () => void;
+    feedback?: SyncOperationFeedback;
   }): void {
     this.syncQueueService.addOperation(operation);
   }

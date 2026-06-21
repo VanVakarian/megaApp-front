@@ -73,3 +73,7 @@ export const USER_SCOPED_CACHE_BASE_KEYS: string[] = [
 ];
 
 export const SESSION_BOOTSTRAP_TIMEOUT_MS: number = 9000;
+
+export const NOTIFICATION_PENDING_DELAY_MS: number = 1500;
+
+export const NOTIFICATION_DEFAULT_DURATION_MS: number = 3000;

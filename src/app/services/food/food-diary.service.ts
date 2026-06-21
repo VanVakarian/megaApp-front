@@ -29,6 +29,7 @@ import { calculateTodayIsoWithUserTimeShift } from '@app/shared/utils';
 import { firstValueFrom, Subject } from 'rxjs';
 import { LocalStorageService } from '../local-storage.service';
 import { NetworkService } from '../network.service';
+import { NotificationService } from '../notification.service';
 import { SyncOperationType, SyncQueueService } from '../sync-queue.service';
 import { BaseFoodService } from './food-base.service';
 import { FoodCatalogueService } from './food-catalogue.service';
@@ -90,6 +91,7 @@ export class FoodDiaryService extends BaseFoodService {
   private readonly coefficientsService = inject(FoodCoefficientsService);
   private readonly foodStatsService = inject(FoodStatsService);
   private readonly authService = inject(AuthService);
+  private readonly notificationService = inject(NotificationService);
 
   private readonly loadMoreDiaryEffect$$ = effect(() => {
     if (this.authService.sessionState$$() !== AuthSessionState.Authenticated) return;
@@ -162,6 +164,7 @@ export class FoodDiaryService extends BaseFoodService {
   public async createDiaryEntry(diaryEntry: DiaryEntry): Promise<{ result: boolean; diaryId: number }> {
     if (!this.checkNetworkAvailability()) {
       console.error('Network not available for creating diary entry');
+      this.notificationService.addNotification('error', 'Нет соединения — запись не сохранена');
       return { result: false, diaryId: 0 };
     }
 
@@ -200,6 +203,11 @@ export class FoodDiaryService extends BaseFoodService {
       data: diaryEntry,
       successCallback: successCallback,
       rollbackCallback: rollbackFunction,
+      feedback: {
+        successMessage: 'Запись добавлена',
+        errorMessage: 'Не удалось сохранить запись',
+        pendingMessage: 'Сохраняю запись...',
+      },
     });
 
     return { result: true, diaryId: tempId };
@@ -208,6 +216,7 @@ export class FoodDiaryService extends BaseFoodService {
   public async editDiaryEntry(diaryEntry: DiaryEntry): Promise<boolean> {
     if (!this.checkNetworkAvailability()) {
       console.error('Network not available for editing diary entry');
+      this.notificationService.addNotification('error', 'Нет соединения — изменения не сохранены');
       return false;
     }
 
@@ -217,6 +226,7 @@ export class FoodDiaryService extends BaseFoodService {
 
     if (!originalEntry) {
       console.error('Cannot edit diary entry: entry not found');
+      this.notificationService.addNotification('error', 'Не удалось найти запись для редактирования');
       return false;
     }
 
@@ -256,6 +266,11 @@ export class FoodDiaryService extends BaseFoodService {
       endpoint: '/api/food/diary',
       data: diaryEntry,
       rollbackCallback: rollbackFunction,
+      feedback: {
+        successMessage: 'Изменения сохранены',
+        errorMessage: 'Не удалось сохранить изменения',
+        pendingMessage: 'Сохраняю изменения...',
+      },
     });
 
     return true;
@@ -264,6 +279,7 @@ export class FoodDiaryService extends BaseFoodService {
   public async deleteDiaryEntry(diaryEntryId: number): Promise<boolean> {
     if (!this.checkNetworkAvailability()) {
       console.error('Network not available for deleting diary entry');
+      this.notificationService.addNotification('error', 'Нет соединения — запись не удалена');
       return false;
     }
 
@@ -273,6 +289,7 @@ export class FoodDiaryService extends BaseFoodService {
 
     if (!deletedEntry) {
       console.error('Cannot delete diary entry: entry not found');
+      this.notificationService.addNotification('error', 'Не удалось найти запись для удаления');
       return false;
     }
 
@@ -305,6 +322,11 @@ export class FoodDiaryService extends BaseFoodService {
       endpoint: `/api/food/diary/${diaryEntryId}`,
       data: {},
       rollbackCallback: rollbackFunction,
+      feedback: {
+        successMessage: 'Запись удалена',
+        errorMessage: 'Не удалось удалить запись',
+        pendingMessage: 'Удаляю запись...',
+      },
     });
 
     return true;
@@ -313,6 +335,7 @@ export class FoodDiaryService extends BaseFoodService {
   public async deleteSelectedDayEntries(): Promise<boolean> {
     if (!this.checkNetworkAvailability()) {
       console.error('Network not available for deleting diary day entries');
+      this.notificationService.addNotification('error', 'Нет соединения — записи не удалены');
       return false;
     }
 
@@ -348,6 +371,11 @@ export class FoodDiaryService extends BaseFoodService {
       endpoint: `/api/food/diary/day/${selectedDay}`,
       data: {},
       rollbackCallback: rollbackFunction,
+      feedback: {
+        successMessage: 'Записи за день удалены',
+        errorMessage: 'Не удалось удалить записи за день',
+        pendingMessage: 'Удаляю записи за день...',
+      },
     });
 
     return true;
@@ -356,6 +384,7 @@ export class FoodDiaryService extends BaseFoodService {
   public async restoreSelectedDayEntries(): Promise<boolean> {
     if (!this.checkNetworkAvailability()) {
       console.error('Network not available for restoring diary day entries');
+      this.notificationService.addNotification('error', 'Нет соединения — день не восстановлен');
       return false;
     }
 
@@ -401,6 +430,11 @@ export class FoodDiaryService extends BaseFoodService {
       data: this.createDiaryDayRestoreRequest(restoredEntries),
       successCallback: successCallback,
       rollbackCallback: rollbackFunction,
+      feedback: {
+        successMessage: 'День восстановлен',
+        errorMessage: 'Не удалось восстановить записи за день',
+        pendingMessage: 'Восстанавливаю день...',
+      },
     });
 
     return true;
@@ -421,6 +455,7 @@ export class FoodDiaryService extends BaseFoodService {
   public async setUserBodyWeight(bodyWeight: BodyWeightInterface): Promise<boolean> {
     if (!this.checkNetworkAvailability()) {
       console.error('Network not available for setting body weight');
+      this.notificationService.addNotification('error', 'Нет соединения — вес не сохранён');
       return false;
     }
 
@@ -461,6 +496,11 @@ export class FoodDiaryService extends BaseFoodService {
       endpoint: '/api/food/body-weight',
       data: bodyWeight,
       rollbackCallback: rollbackFunction,
+      feedback: {
+        successMessage: 'Вес сохранён',
+        errorMessage: 'Не удалось сохранить вес',
+        pendingMessage: 'Сохраняю вес...',
+      },
     });
 
     return true;

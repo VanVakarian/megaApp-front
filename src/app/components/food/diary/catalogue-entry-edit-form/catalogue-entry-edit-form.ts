@@ -2,6 +2,7 @@ import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { FoodAddModalService } from '@app/services/food/food-add-modal.service';
 import { FoodCatalogueService } from '@app/services/food/food-catalogue.service';
+import { NotificationService } from '@app/services/notification.service';
 import { DefaultModal } from '@app/shared/components/default-modal/default-modal';
 import { CatalogueEntry, ProductPreviewData, ProductSaveRequest } from '@app/shared/types';
 import { VButton } from '@ui-kit/components/v-button/v-button';
@@ -26,6 +27,7 @@ export class CatalogueEntryEditForm implements OnInit {
 
   private readonly foodAddModalService = inject(FoodAddModalService);
   private readonly foodCatalogueService = inject(FoodCatalogueService);
+  private readonly notificationService = inject(NotificationService);
 
   protected formMode = FormMode;
   protected readonly mode$$ = computed(() => {
@@ -205,6 +207,7 @@ export class CatalogueEntryEditForm implements OnInit {
         this.foodCatalogueService.searchProducts(this.searchQuery$$());
       }
 
+      this.notificationService.addNotification('success', mode === this.formMode.Create ? 'Продукт добавлен' : 'Продукт обновлён');
       this.foodAddModalService.submitSuccess();
     } catch (error: any) {
       console.error('Failed to save product:', error);
@@ -252,6 +255,7 @@ export class CatalogueEntryEditForm implements OnInit {
 
     try {
       await this.foodCatalogueService.deleteProduct(product.id);
+      this.notificationService.addNotification('success', 'Продукт удалён');
       this.foodAddModalService.deletedProduct();
     } catch (error: any) {
       console.error('Failed to delete product:', error);
