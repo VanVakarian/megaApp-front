@@ -361,3 +361,35 @@ export const EXPENSE_CHART_CONFIG: ChartConfiguration<'bar'> = {
     },
   },
 };
+
+export const METRICS_CHART_CONFIG: ChartConfiguration<'line'> = {
+  type: 'line',
+  data: { labels: [], datasets: [] },
+  options: {
+    animation: false,
+    elements: { line: { tension: 0.3 }, point: { radius: 0, hitRadius: 20 } },
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: true },
+      tooltip: { mode: 'nearest', intersect: false },
+    },
+    scales: {
+      x: {
+        grid: { display: false },
+        ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 12 },
+      },
+      y: {
+        min: 0,
+        ticks: { precision: 0 },
+      },
+    },
+  },
+};
+
+export const METRICS_SERIES_PALETTE: string[] = [
+  'rgb(87, 143, 146)',
+  'rgb(214, 130, 60)',
+  'rgb(180, 83, 9)',
+  'rgb(21, 128, 61)',
+  'rgb(124, 58, 237)',
+];

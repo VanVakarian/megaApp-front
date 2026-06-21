@@ -10,6 +10,14 @@ export interface UserCreds {
 export interface AuthResponse {
   accessToken: string;
   refreshToken: string;
+  isAdmin: boolean;
+}
+
+export interface VerifyResponse {
+  authenticated: boolean;
+  userId: number;
+  username: string;
+  isAdmin: boolean;
 }
 
 //                                                                            WS
@@ -29,6 +37,10 @@ export enum WebSocketMessageType {
   SEARCH_RESULTS = 'SEARCH_RESULTS',
   CATALOGUE_ENTRY_SAVED = 'CATALOGUE_ENTRY_SAVED',
   CATALOGUE_IMAGE_GENERATED = 'CATALOGUE_IMAGE_GENERATED',
+  METRICS_HEALTH = 'METRICS_HEALTH',
+  METRICS_UPDATE = 'METRICS_UPDATE',
+  METRICS_SUBSCRIBE = 'METRICS_SUBSCRIBE',
+  METRICS_UNSUBSCRIBE = 'METRICS_UNSUBSCRIBE',
 }
 
 export interface PingWsMessage {
@@ -148,6 +160,35 @@ export interface CatalogueImageGeneratedWsMessage {
   };
 }
 
+export interface MetricsHealthStatus {
+  severity: 'ok' | 'warn' | 'error';
+}
+
+export interface MetricsHealthWsMessage {
+  type: WebSocketMessageType.METRICS_HEALTH;
+  payload: MetricsHealthStatus;
+}
+
+export interface MetricPoint {
+  name: string;
+  bucket: number;
+  value: number;
+}
+
+export interface MetricsUpdateWsMessage {
+  type: WebSocketMessageType.METRICS_UPDATE;
+  payload: { points: MetricPoint[] };
+}
+
+export interface MetricsSubscribeWsMessage {
+  type: WebSocketMessageType.METRICS_SUBSCRIBE;
+  cursor: number;
+}
+
+export interface MetricsUnsubscribeWsMessage {
+  type: WebSocketMessageType.METRICS_UNSUBSCRIBE;
+}
+
 export type IncomingWsMessage =
   | PingWsMessage
   | SyncStatusWsMessage
@@ -156,6 +197,8 @@ export type IncomingWsMessage =
   | DiaryEntryDeletedWsMessage
   | DiaryDayDeletedWsMessage
   | BodyWeightUpdatedWsMessage
+  | MetricsHealthWsMessage
+  | MetricsUpdateWsMessage
   | SearchResultsWsMessage
   | CatalogueEntrySavedWsMessage
   | CatalogueImageGeneratedWsMessage;
@@ -164,7 +207,9 @@ export type OutgoingWsMessage =
   | StartVoiceRecordingWsMessage
   | AudioChunkWsMessage
   | StopVoiceRecordingWsMessage
-  | SearchQueryWsMessage;
+  | SearchQueryWsMessage
+  | MetricsSubscribeWsMessage
+  | MetricsUnsubscribeWsMessage;
 
 //                                                                        SERVER
 

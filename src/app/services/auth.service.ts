@@ -7,7 +7,7 @@ import { SettingsService } from '@app/services/settings.service';
 import { SyncQueueService } from '@app/services/sync-queue.service';
 import { clearAllUserScopedCaches } from '@app/shared/cache';
 import { SESSION_BOOTSTRAP_TIMEOUT_MS } from '@app/shared/const';
-import { AuthResponse, UserCreds } from '@app/shared/types';
+import { AuthResponse, UserCreds, VerifyResponse } from '@app/shared/types';
 import { firstValueFrom, Observable, throwError } from 'rxjs';
 import { catchError, map, tap, timeout } from 'rxjs/operators';
 
@@ -24,6 +24,7 @@ export class AuthService {
   public readonly sessionState$$ = signal<AuthSessionState>(AuthSessionState.Unknown);
   public readonly isAuthenticated$$ = computed(() => this.sessionState$$() === AuthSessionState.Authenticated);
   public readonly bootstrapError$$ = signal(false);
+  public readonly isAdmin$$ = signal(false);
 
   private readonly ACCESS_TOKEN_KEY = 'access_token';
   private readonly REFRESH_TOKEN_KEY = 'refresh_token';
@@ -59,6 +60,7 @@ export class AuthService {
 
         this.setTokens(response.body);
         this.sessionState$$.set(AuthSessionState.Authenticated);
+        this.isAdmin$$.set(response.body.isAdmin);
         this.networkService.connect();
         return response.body;
       }),
@@ -87,7 +89,10 @@ export class AuthService {
     }
 
     return this.http.post<AuthResponse>('/api/auth/refresh', { refreshToken }).pipe(
-      tap((response: AuthResponse) => this.setTokens(response)),
+      tap((response: AuthResponse) => {
+        this.setTokens(response);
+        this.isAdmin$$.set(response.isAdmin);
+      }),
       catchError((error: HttpErrorResponse) => {
         if (error.status === 401) {
           this.terminateSession();
@@ -105,8 +110,11 @@ export class AuthService {
     }
 
     try {
-      await firstValueFrom(this.http.get('/api/auth/verify').pipe(timeout(SESSION_BOOTSTRAP_TIMEOUT_MS)));
+      const response = await firstValueFrom(
+        this.http.get<VerifyResponse>('/api/auth/verify').pipe(timeout(SESSION_BOOTSTRAP_TIMEOUT_MS)),
+      );
       this.sessionState$$.set(AuthSessionState.Authenticated);
+      this.isAdmin$$.set(response.isAdmin);
       this.networkService.connect();
     } catch {
       if (this.sessionState$$() !== AuthSessionState.Guest) {
@@ -128,6 +136,7 @@ export class AuthService {
     this.notificationService.clearAll();
     clearAllUserScopedCaches();
     this.sessionState$$.set(AuthSessionState.Guest);
+    this.isAdmin$$.set(false);
     void this.router.navigateByUrl('/auth');
   }
 

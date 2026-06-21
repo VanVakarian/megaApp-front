@@ -30,6 +30,12 @@
 
       <!-- collapse sidebar button -->
       <div class="flex flex-col gap-2 mt-auto">
+        @if (authService.isAdmin$$()) {
+          <div class="flex justify-center">
+            <metrics-health-dot />
+          </div>
+        }
+
         <v-button class="v-link v-link-static menu-item"
                   [config]="{
                     padding: 2,
