@@ -12,13 +12,11 @@ export const isChapterSelected: CanActivateFn = (route, state) => {
   const settings = settingsService.settings$$();
 
   if (url.startsWith('/food') && !settings.selectedChapterFood) {
-    router.navigate(['/settings']);
-    return false;
+    return router.createUrlTree(['/settings']);
   }
 
   if (url.startsWith('/money') && !settings.selectedChapterMoney) {
-    router.navigate(['/settings']);
-    return false;
+    return router.createUrlTree(['/settings']);
   }
 
   return true;

@@ -1,32 +1,36 @@
 import { Routes } from '@angular/router';
-import { authResolver } from '@app/services/auth.resolver';
+import { authGuard } from '@app/services/auth.guard';
+import { guestOnlyGuard } from '@app/services/guest-only.guard';
 import { isChapterSelected } from '@app/services/is-chapter-selected.guard';
+import { rootRedirectGuard } from '@app/services/root-redirect.guard';
+import { settingsReadyGuard } from '@app/services/settings-ready.guard';
 
 export const routes: Routes = [
   {
+    path: 'auth',
+    loadComponent: () => import('@app/components/auth/auth-form/auth-form').then((m) => m.AuthForm),
+    canActivate: [guestOnlyGuard],
+  },
+  {
     path: 'food',
     loadComponent: () => import('@app/components/food/food-screen').then((m) => m.FoodScreen),
-    resolve: { auth: authResolver },
-    canActivate: [isChapterSelected],
+    canActivate: [authGuard, settingsReadyGuard, isChapterSelected],
   },
   {
     path: 'food/:section',
     loadComponent: () => import('@app/components/food/food-screen').then((m) => m.FoodScreen),
-    resolve: { auth: authResolver },
-    canActivate: [isChapterSelected],
+    canActivate: [authGuard, settingsReadyGuard, isChapterSelected],
   },
   {
     path: 'money',
     loadComponent: () => import('@app/components/money/money-screen').then((m) => m.MoneyScreen),
-    resolve: { auth: authResolver },
-    canActivate: [isChapterSelected],
+    canActivate: [authGuard, settingsReadyGuard, isChapterSelected],
   },
   {
     path: 'settings',
     loadComponent: () => import('@app/components/settings/settings').then((m) => m.Settings),
-    resolve: { auth: authResolver },
-    data: { allowUnauthenticated: true },
+    canActivate: [authGuard, settingsReadyGuard],
   },
-  { path: '', redirectTo: 'food', pathMatch: 'full' },
-  { path: '**', redirectTo: 'food', pathMatch: 'full' },
+  { path: '', pathMatch: 'full', canActivate: [rootRedirectGuard], children: [] },
+  { path: '**', canActivate: [rootRedirectGuard], children: [] },
 ];

@@ -1,10 +1,10 @@
 import { Component, effect, inject, signal, viewChild } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 
-import { AuthForm } from '@app/components/settings/auth-form/auth-form';
 import { AuthService } from '@app/services/auth.service';
 import { SettingsService } from '@app/services/settings.service';
 import { KeyOfUserSettings, UserSettings } from '@app/shared/types';
+import { VButton } from '@ui-kit/components/v-button/v-button';
 import { VCard } from '@ui-kit/components/v-card/v-card';
 import { VCheckbox } from '@ui-kit/components/v-checkbox/v-checkbox';
 import { VInput, VInputAutoSubmitResult } from '@ui-kit/components/v-input/v-input';
@@ -21,7 +21,7 @@ type FormFields = keyof SettingsForm;
 @Component({
   selector: 'settings',
   templateUrl: './settings.html',
-  imports: [ReactiveFormsModule, AuthForm, VCard, VCheckbox, VInput],
+  imports: [ReactiveFormsModule, VButton, VCard, VCheckbox, VInput],
 })
 export class Settings {
   protected readonly KeyOfSettings = KeyOfUserSettings;
@@ -45,7 +45,7 @@ export class Settings {
   protected readonly heightAutoSubmitResult$$ = signal<VInputAutoSubmitResult | null>(null);
 
   protected readonly authService = inject(AuthService);
-  private readonly settingsService = inject(SettingsService);
+  protected readonly settingsService = inject(SettingsService);
 
   private readonly syncSettingsEffect = effect(() => {
     this.applySettingsToForm();

@@ -1,5 +1,6 @@
 import { HttpClient } from '@angular/common/http';
-import { inject, Injectable, signal, WritableSignal } from '@angular/core';
+import { effect, inject, Injectable, signal, WritableSignal } from '@angular/core';
+import { AuthService, AuthSessionState } from '@app/services/auth.service';
 import { exhaustRequest } from '@app/shared/decorators/exhaust-request.decorator';
 import { Coefficients, ServerResponseWithData } from '@app/shared/types';
 import { firstValueFrom } from 'rxjs';
@@ -22,6 +23,13 @@ export class FoodCoefficientsService extends BaseFoodService {
   }
 
   private readonly settingsService = inject(SettingsService);
+  private readonly authService = inject(AuthService);
+
+  private readonly resetOnAuthLossEffect$$ = effect(() => {
+    if (this.authService.sessionState$$() === AuthSessionState.Guest) {
+      this.reset();
+    }
+  });
 
   constructor(
     http: HttpClient,
@@ -31,6 +39,10 @@ export class FoodCoefficientsService extends BaseFoodService {
   ) {
     super(http, localStorageService, networkService, syncQueueService);
     this.loadCoefficientsFromLocalStorage();
+  }
+
+  public reset(): void {
+    this.coefficients$$.set({});
   }
 
   @exhaustRequest()

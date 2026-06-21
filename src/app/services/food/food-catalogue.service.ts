@@ -1,5 +1,6 @@
 import { HttpClient } from '@angular/common/http';
-import { Injectable, signal, WritableSignal } from '@angular/core';
+import { effect, inject, Injectable, signal, WritableSignal } from '@angular/core';
+import { AuthService, AuthSessionState } from '@app/services/auth.service';
 import { exhaustRequest } from '@app/shared/decorators/exhaust-request.decorator';
 import {
   Catalogue,
@@ -47,6 +48,14 @@ export class FoodCatalogueService extends BaseFoodService {
     return this.CATALOGUE_STORAGE_KEY;
   }
 
+  private readonly authService = inject(AuthService);
+
+  private readonly resetOnAuthLossEffect$$ = effect(() => {
+    if (this.authService.sessionState$$() === AuthSessionState.Guest) {
+      this.reset();
+    }
+  });
+
   constructor(
     http: HttpClient,
     localStorageService: LocalStorageService,
@@ -57,6 +66,17 @@ export class FoodCatalogueService extends BaseFoodService {
     this.loadCatalogueFromLocalStorage();
     this.loadSearchCacheFromLocalStorage();
     this.setupSearchWebSocketListener();
+  }
+
+  public reset(): void {
+    this.catalogue$$.set({});
+    this.searchQuery$$.set('');
+    this.searchResults$$.set([]);
+    this.isLegacySearch$$.set(false);
+    this.legacySearchResults$$.set([]);
+    this.searchCache = {};
+    this.searchSequenceNumber = 0;
+    this.lastDisplayedSequenceNumber = 0;
   }
 
   @exhaustRequest()
@@ -245,7 +265,7 @@ export class FoodCatalogueService extends BaseFoodService {
 
   private loadSearchCacheFromLocalStorage(): void {
     try {
-      const savedCache = this.localStorageService.get<Record<string, number[]>>(this.SEARCH_CACHE_KEY);
+      const savedCache = this.localStorageService.getUserScoped<Record<string, number[]>>(this.SEARCH_CACHE_KEY);
       if (savedCache) {
         this.searchCache = savedCache;
       }
@@ -257,7 +277,7 @@ export class FoodCatalogueService extends BaseFoodService {
 
   private saveSearchCacheToLocalStorage(): void {
     try {
-      this.localStorageService.set(this.SEARCH_CACHE_KEY, this.searchCache);
+      this.localStorageService.setUserScoped(this.SEARCH_CACHE_KEY, this.searchCache);
     } catch (error) {
       console.error('Failed to save search cache to localStorage:', error);
     }

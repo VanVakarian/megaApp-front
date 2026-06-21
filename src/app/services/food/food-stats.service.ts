@@ -1,5 +1,6 @@
 import { HttpClient } from '@angular/common/http';
-import { computed, Injectable, Signal, signal, WritableSignal } from '@angular/core';
+import { computed, effect, inject, Injectable, Signal, signal, WritableSignal } from '@angular/core';
+import { AuthService, AuthSessionState } from '@app/services/auth.service';
 import { exhaustRequest } from '@app/shared/decorators/exhaust-request.decorator';
 import { Stats, StatsChartData } from '@app/shared/types';
 import { firstValueFrom } from 'rxjs';
@@ -39,11 +40,25 @@ export class FoodStatsService {
   public readonly selectedDateIdxStart$$: WritableSignal<number> = signal(0);
   public readonly selectedDateIdxEnd$$: WritableSignal<number> = signal(0);
 
+  private readonly authService = inject(AuthService);
+
+  private readonly resetOnAuthLossEffect$$ = effect(() => {
+    if (this.authService.sessionState$$() === AuthSessionState.Guest) {
+      this.reset();
+    }
+  });
+
   constructor(
     private http: HttpClient,
     private localStorageService: LocalStorageService,
   ) {
     this.loadStatsFromLocalStorageOnInit();
+  }
+
+  public reset(): void {
+    this.stats$$.set({});
+    this.selectedDateIdxStart$$.set(0);
+    this.selectedDateIdxEnd$$.set(0);
   }
 
   @exhaustRequest()
@@ -97,11 +112,11 @@ export class FoodStatsService {
     if (maxIdx < 0) return;
     const startVal = startIdx === 0 ? 'first' : (dates[startIdx] ?? 'first');
     const endVal = endIdx >= maxIdx ? 'last' : (dates[endIdx] ?? 'last');
-    this.localStorageService.set(this.SLIDER_KEY, { start: startVal, end: endVal });
+    this.localStorageService.setUserScoped(this.SLIDER_KEY, { start: startVal, end: endVal });
   }
 
   private tryRestoreSavedDateRange(): boolean {
-    const saved = this.localStorageService.get<{ start: string; end: string }>(this.SLIDER_KEY);
+    const saved = this.localStorageService.getUserScoped<{ start: string; end: string }>(this.SLIDER_KEY);
     if (!saved) return false;
     const dates = this.statsChartData$$().dates;
     const maxIdx = dates.length - 1;
@@ -417,11 +432,11 @@ export class FoodStatsService {
   }
 
   private saveStatsToLocalStorage(): void {
-    this.localStorageService.set(this.STATS_STORAGE_KEY, this.stats$$());
+    this.localStorageService.setUserScoped(this.STATS_STORAGE_KEY, this.stats$$());
   }
 
   private loadStatsFromLocalStorage(): Stats | null {
-    return this.localStorageService.get<Stats>(this.STATS_STORAGE_KEY);
+    return this.localStorageService.getUserScoped<Stats>(this.STATS_STORAGE_KEY);
   }
 
   private loadStatsFromLocalStorageOnInit(): void {

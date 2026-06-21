@@ -2,11 +2,13 @@ import { HttpClient } from '@angular/common/http';
 import { inject, Injectable, signal, WritableSignal } from '@angular/core';
 import { DEFAULT_SETTINGS } from '@app/shared/const';
 import { UserSettings } from '@app/shared/types';
-import { catchError, firstValueFrom, of } from 'rxjs';
+import { firstValueFrom } from 'rxjs';
 import { LocalStorageService } from './local-storage.service';
 import { NetworkService } from './network.service';
 import { NotificationService } from './notification.service';
 import { SyncOperationType, SyncQueueService } from './sync-queue.service';
+
+export type SettingsStatus = 'idle' | 'loading' | 'ready' | 'error';
 
 @Injectable({
   providedIn: 'root',
@@ -15,6 +17,9 @@ export class SettingsService {
   private readonly SETTINGS_STORAGE_KEY = 'settings';
 
   public readonly settings$$: WritableSignal<UserSettings> = signal(DEFAULT_SETTINGS);
+  public readonly status$$: WritableSignal<SettingsStatus> = signal('idle');
+
+  private readyPromise: Promise<void> | null = null;
 
   private readonly http = inject(HttpClient);
   private readonly localStorage = inject(LocalStorageService);
@@ -22,48 +27,23 @@ export class SettingsService {
   private readonly networkService = inject(NetworkService);
   private readonly syncQueue = inject(SyncQueueService);
 
-  constructor() {
-    this.initializeFromLocalStorage();
-    this.performBackgroundSync();
+  public ensureReady(): Promise<void> {
+    if (this.status$$() === 'ready') {
+      return Promise.resolve();
+    }
+
+    if (!this.readyPromise) {
+      this.readyPromise = this.loadSettings();
+    }
+
+    return this.readyPromise;
   }
 
-  private initializeFromLocalStorage(): void {
-    const localSettings = this.localStorage.get<UserSettings>(this.SETTINGS_STORAGE_KEY);
-    if (localSettings) {
-      this.settings$$.set(localSettings);
-      this.applyTheme(localSettings.darkTheme);
-    }
-  }
-
-  private async performBackgroundSync(): Promise<void> {
-    if (!this.networkService.isNetworkAvailable$$()) {
-      return;
-    }
-
-    try {
-      const serverSettings = await firstValueFrom(
-        this.http.get<UserSettings>('/api/settings/').pipe(
-          catchError((error) => {
-            console.error('Failed to fetch settings from server:', error);
-            return of(null);
-          }),
-        ),
-      );
-
-      if (serverSettings) {
-        const currentSettings = this.settings$$();
-
-        const hasChanges = JSON.stringify(currentSettings) !== JSON.stringify(serverSettings);
-        if (hasChanges) {
-          this.settings$$.set(serverSettings);
-          this.localStorage.set(this.SETTINGS_STORAGE_KEY, serverSettings);
-          this.applyTheme(serverSettings.darkTheme);
-          this.notificationsService.showSyncSuccess('Settings updated from server');
-        }
-      }
-    } catch (error) {
-      console.error('Background sync initialization failed:', error);
-    }
+  public reset(): void {
+    this.settings$$.set(DEFAULT_SETTINGS);
+    this.status$$.set('idle');
+    this.readyPromise = null;
+    this.applyTheme(DEFAULT_SETTINGS.darkTheme);
   }
 
   async updateSetting<K extends keyof UserSettings>(key: K, value: UserSettings[K]): Promise<boolean> {
@@ -75,7 +55,7 @@ export class SettingsService {
     const newSettings = { ...currentSettings, [key]: value };
 
     this.settings$$.set(newSettings);
-    this.localStorage.set(this.SETTINGS_STORAGE_KEY, newSettings);
+    this.localStorage.setUserScoped(this.SETTINGS_STORAGE_KEY, newSettings);
 
     if (key === 'darkTheme') {
       this.applyTheme(value as boolean);
@@ -99,7 +79,7 @@ export class SettingsService {
     const rolledBackSettings = { ...currentSettings, [key]: previousValue };
 
     this.settings$$.set(rolledBackSettings);
-    this.localStorage.set(this.SETTINGS_STORAGE_KEY, rolledBackSettings);
+    this.localStorage.setUserScoped(this.SETTINGS_STORAGE_KEY, rolledBackSettings);
 
     if (key === 'darkTheme') {
       this.applyTheme(previousValue as boolean);
@@ -123,5 +103,31 @@ export class SettingsService {
     }
 
     return false;
+  }
+
+  private async loadSettings(): Promise<void> {
+    this.status$$.set('loading');
+
+    const cachedSettings = this.localStorage.getUserScoped<UserSettings>(this.SETTINGS_STORAGE_KEY);
+    if (cachedSettings) {
+      this.settings$$.set(cachedSettings);
+      this.applyTheme(cachedSettings.darkTheme);
+    }
+
+    try {
+      const serverSettings = await firstValueFrom(this.http.get<UserSettings>('/api/settings/'));
+
+      this.settings$$.set(serverSettings);
+      this.localStorage.setUserScoped(this.SETTINGS_STORAGE_KEY, serverSettings);
+      this.applyTheme(serverSettings.darkTheme);
+      this.status$$.set('ready');
+    } catch (error) {
+      console.error('Failed to fetch settings from server:', error);
+      this.status$$.set(cachedSettings ? 'ready' : 'error');
+
+      if (this.status$$() === 'error') {
+        this.readyPromise = null;
+      }
+    }
   }
 }

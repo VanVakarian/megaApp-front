@@ -28,6 +28,11 @@ export class SyncQueueService {
 
   private readonly http = inject(HttpClient);
 
+  public reset(): void {
+    this.queue.length = 0;
+    this.isProcessing = false;
+  }
+
   public addOperation(operation: Omit<SyncOperation, 'retryCount'>): void {
     const fullOperation: SyncOperation = {
       ...operation,
