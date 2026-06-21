@@ -286,14 +286,10 @@ export class DiaryEntryEditForm implements OnChanges {
 
     const kcalsDelta = this.calculateKcalsDelta(foodWeight);
 
-    try {
-      const res = await this.foodDiaryService.editDiaryEntry(preppedFormValues);
-      this.diaryEntryForm.enable();
-      this.diaryEntryForm.reset();
-      this.onServerSuccessfullEditResponse.emit();
-    } catch {
-      this.diaryEntryForm.enable();
-    }
+    await this.foodDiaryService.editDiaryEntry(preppedFormValues);
+    this.diaryEntryForm.enable();
+    this.diaryEntryForm.reset();
+    this.onServerSuccessfullEditResponse.emit();
   }
 
   protected openConfirmationModal(): void {
@@ -370,14 +366,10 @@ export class DiaryEntryEditForm implements OnChanges {
 
   private async deleteDiaryEntry(): Promise<void> {
     this.diaryEntryForm.disable();
-    try {
-      const res = await this.foodDiaryService.deleteDiaryEntry(this.diaryEntryForm.getRawValue().id);
-      this.diaryEntryForm.enable();
-      this.diaryEntryForm.reset();
-      this.onServerSuccessfullEditResponse.emit();
-    } catch {
-      this.diaryEntryForm.enable();
-    }
+    await this.foodDiaryService.deleteDiaryEntry(this.diaryEntryForm.getRawValue().id);
+    this.diaryEntryForm.enable();
+    this.diaryEntryForm.reset();
+    this.onServerSuccessfullEditResponse.emit();
   }
 
   private calculateKcalsDelta(weightValue: number): number {

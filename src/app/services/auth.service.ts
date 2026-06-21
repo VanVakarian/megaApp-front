@@ -2,6 +2,7 @@ import { HttpClient, HttpErrorResponse, HttpResponse } from '@angular/common/htt
 import { computed, inject, Injectable, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { NetworkService } from '@app/services/network.service';
+import { NotificationService } from '@app/services/notification.service';
 import { SettingsService } from '@app/services/settings.service';
 import { SyncQueueService } from '@app/services/sync-queue.service';
 import { clearAllUserScopedCaches } from '@app/shared/cache';
@@ -34,6 +35,7 @@ export class AuthService {
   private readonly router = inject(Router);
   private readonly syncQueue = inject(SyncQueueService);
   private readonly settingsService = inject(SettingsService);
+  private readonly notificationService = inject(NotificationService);
 
   public ensureBootstrapped(): Promise<void> {
     if (!this.bootstrapPromise) {
@@ -123,6 +125,7 @@ export class AuthService {
     this.networkService.disconnect();
     this.syncQueue.reset();
     this.settingsService.reset();
+    this.notificationService.clearAll();
     clearAllUserScopedCaches();
     this.sessionState$$.set(AuthSessionState.Guest);
     void this.router.navigateByUrl('/auth');

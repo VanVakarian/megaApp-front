@@ -1,10 +1,17 @@
 import { Injectable, signal, WritableSignal } from '@angular/core';
+import { NOTIFICATION_DEFAULT_DURATION_MS } from '@app/shared/const';
 
 export interface NotificationMessage {
   id: string;
   type: 'error' | 'warning' | 'info' | 'success';
   message: string;
   timestamp: number;
+  persistent: boolean;
+}
+
+export interface AddNotificationOptions {
+  persistent?: boolean;
+  durationMs?: number;
 }
 
 @Injectable({
@@ -25,40 +32,30 @@ export class NotificationService {
     this.addNotification('warning', 'You are offline. Changes will be synchronized when connection is restored.');
   }
 
-  public showSyncInProgress(): void {
-    this.addNotification('info', 'Synchronizing data...');
-  }
-
-  public showNetworkError(): void {
-    this.addNotification('error', 'Network error. Please check your connection.');
-  }
-
-  private addNotification(type: NotificationMessage['type'], message: string): void {
+  public addNotification(type: NotificationMessage['type'], message: string, options?: AddNotificationOptions): string {
     const notification: NotificationMessage = {
-      id: this.generateId(),
+      id: crypto.randomUUID(),
       type,
       message,
       timestamp: Date.now(),
+      persistent: options?.persistent ?? false,
     };
 
-    const current = this.notifications$$();
-    this.notifications$$.set([...current, notification]);
+    this.notifications$$.update((current) => [...current, notification]);
 
-    setTimeout(() => {
-      this.removeNotification(notification.id);
-    }, 5000);
+    if (!options?.persistent) {
+      const durationMs = options?.durationMs ?? NOTIFICATION_DEFAULT_DURATION_MS;
+      setTimeout(() => this.removeNotification(notification.id), durationMs);
+    }
+
+    return notification.id;
   }
 
-  private removeNotification(id: string): void {
-    const current = this.notifications$$();
-    this.notifications$$.set(current.filter((n) => n.id !== id));
+  public removeNotification(id: string): void {
+    this.notifications$$.update((current) => current.filter((n) => n.id !== id));
   }
 
-  private clearAll(): void {
+  public clearAll(): void {
     this.notifications$$.set([]);
-  }
-
-  private generateId(): string {
-    return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   }
 }
