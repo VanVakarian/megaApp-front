@@ -15,7 +15,7 @@ const getLatestGitCommitHash = () => {
 const getLatestGitCommitDateTime = () => {
   try {
     const timestamp = childProcess.execSync('git show -s --format=%ci HEAD').toString().trim();
-    return new Date(timestamp).toLocaleString('ru-RU', { dateStyle: 'short', timeStyle: 'medium' });
+    return new Date(timestamp).toLocaleString('ru-RU', { dateStyle: 'short', timeStyle: 'medium', timeZone: 'UTC' });
   } catch (e) {
     return 'unknown';
   }
