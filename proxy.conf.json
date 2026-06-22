@@ -3,6 +3,8 @@
     "target": "http://localhost:3001",
     "secure": false,
     "changeOrigin": true,
-    "ws": true
+    "ws": true,
+    "timeout": 120000,
+    "proxyTimeout": 120000
   }
 }

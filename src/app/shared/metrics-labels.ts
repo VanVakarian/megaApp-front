@@ -15,3 +15,5 @@ const METRIC_LABELS: Record<string, string> = {
 export function metricLabel(name: string): string {
   return METRIC_LABELS[name] ?? name;
 }
+
+export const KNOWN_METRIC_NAMES: string[] = Object.keys(METRIC_LABELS);
