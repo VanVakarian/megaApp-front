@@ -1,5 +1,6 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
 
+import { AuthService } from '@app/services/auth.service';
 import { RouterService } from '@app/services/router.service';
 import { SettingsService } from '@app/services/settings.service';
 import { SettingsChapterNames } from '@app/shared/types';
@@ -17,6 +18,7 @@ export interface MenuButton {
   link: string | string[];
   selected?: boolean;
   chapterSettingName?: SettingsChapterNames;
+  adminOnly?: boolean;
   iconName: IconName;
   bgClass?: string;
 }
@@ -75,6 +77,15 @@ export class NavigationService {
       bgClass: 'money-bg',
     },
     {
+      label: 'Метрики',
+      place: MenuPlace.Both,
+      link: '/metrics',
+      selected: false,
+      adminOnly: true,
+      iconName: IconName.Analytics,
+      bgClass: 'settings-bg',
+    },
+    {
       label: 'DarkThemeSwitch',
       place: MenuPlace.Desktop,
       link: '',
@@ -92,6 +103,7 @@ export class NavigationService {
 
   private readonly routerService = inject(RouterService);
   private readonly settingsService = inject(SettingsService);
+  private readonly authService = inject(AuthService);
 
   constructor() {
     this.subscribeToRouteChanges();
@@ -116,7 +128,8 @@ export class NavigationService {
     return this.buttons.filter((button) => {
       const chapterName: SettingsChapterNames = button.chapterSettingName as SettingsChapterNames;
       const chapterSelected = chapterName ? this.settingsService.settings$$()[chapterName] : true;
-      return (button.place === place || button.place === 'both') && chapterSelected;
+      const adminAllowed = !button.adminOnly || this.authService.isAdmin$$();
+      return (button.place === place || button.place === 'both') && chapterSelected && adminAllowed;
     });
   }
 

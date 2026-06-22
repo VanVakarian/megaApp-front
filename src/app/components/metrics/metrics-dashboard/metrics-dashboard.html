@@ -1,0 +1,26 @@
+<div class="flex flex-col gap-4 p-4">
+  <div>
+    <div class="opacity-70 mb-2 text-sm font-semibold">Services Health</div>
+    <div class="flex flex-wrap gap-3">
+      @for (service of metricsHealthService.services$$(); track service.service) {
+        <metric-card [labelInput]="service.service"
+                     [valueInput]="serviceSeverityLabel(service.severity)"
+                     [dotClassInput]="serviceDotClass(service.severity)" />
+      } @empty {
+        <div class="opacity-60 text-sm">Нет данных</div>
+      }
+    </div>
+  </div>
+
+  <div>
+    <div class="opacity-70 mb-2 text-sm font-semibold">Метрики</div>
+    <div class="flex flex-wrap gap-3">
+      @for (card of metricCards$$(); track card.name) {
+        <metric-chart-card [labelInput]="card.label"
+                           [totalInput]="card.total"
+                           [colorInput]="card.color"
+                           [seriesInput]="card.series" />
+      }
+    </div>
+  </div>
+</div>

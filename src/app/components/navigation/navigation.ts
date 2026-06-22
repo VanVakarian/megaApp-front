@@ -7,13 +7,14 @@ import { NavigationService } from '@app/services/navigation.service';
 import { ANIMATION_DURATION_MS } from '@app/shared/animations';
 import { VButton } from '@ui-kit/components/v-button/v-button';
 import { IconName, VIcon } from '@ui-kit/components/v-icon/v-icon';
+import { MetricsHealthDot } from '../metrics/metrics-health-dot/metrics-health-dot';
 import { DarkSwitch } from '../settings/dark-switch/dark-switch';
 
 @Component({
   selector: 'navigation',
   templateUrl: './navigation.html',
   styleUrl: './navigation.scss',
-  imports: [VButton, VIcon, NgClass, DarkSwitch],
+  imports: [VButton, VIcon, NgClass, DarkSwitch, MetricsHealthDot],
 })
 export class Navigation implements OnInit {
   protected readonly desktopNav = viewChild<ElementRef>('desktopNav');

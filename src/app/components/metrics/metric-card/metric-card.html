@@ -1,0 +1,17 @@
+<v-card class="block w-40"
+        [config]="{
+          padding: 3,
+          borderRadius: 2,
+          minHeight: '72px',
+        }">
+  <div class="flex items-center gap-1.5 text-sm opacity-70">
+    @if (dotClassInput()) {
+      <div class="w-2 h-2 rounded-full shrink-0"
+           [class]="dotClassInput()"></div>
+    }
+    <span class="truncate">{{ labelInput() }}</span>
+  </div>
+  @if (valueInput()) {
+    <div class="text-2xl font-semibold mt-1">{{ valueInput() }}</div>
+  }
+</v-card>
