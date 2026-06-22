@@ -1,11 +1,30 @@
-<div class="flex flex-col gap-3 p-4">
-  <div class="text-lg font-semibold">Метрики</div>
+<div class="flex flex-col gap-4 p-4">
+  <div>
+    <div class="text-sm font-semibold opacity-70 mb-2">Services Health</div>
+    <div class="flex flex-wrap gap-3">
+      @for (service of metricsHealthService.services$$(); track service.service) {
+        <metric-card [labelInput]="service.service"
+                     [valueInput]="serviceSeverityLabel(service.severity)"
+                     [dotClassInput]="serviceDotClass(service.severity)" />
+      } @empty {
+        <div class="text-sm opacity-60">Нет данных</div>
+      }
+    </div>
+  </div>
+
+  <div>
+    <div class="text-sm font-semibold opacity-70 mb-2">Метрики</div>
+    <div class="flex flex-wrap gap-3">
+      @for (card of metricCards$$(); track card.name) {
+        <metric-card [labelInput]="card.label"
+                     [valueInput]="card.total.toString()" />
+      } @empty {
+        <div class="text-sm opacity-60">Пока нет данных</div>
+      }
+    </div>
+  </div>
 
   <div class="h-[320px]">
     <canvas #chartCanvas></canvas>
   </div>
-
-  @if (metricNames$$().length === 0) {
-    <div class="text-sm opacity-60">Пока нет данных</div>
-  }
 </div>

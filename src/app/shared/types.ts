@@ -160,8 +160,15 @@ export interface CatalogueImageGeneratedWsMessage {
   };
 }
 
+export type MetricsHealthSeverity = 'ok' | 'warn' | 'error';
+
+export interface ServiceHealth {
+  service: string;
+  severity: MetricsHealthSeverity;
+}
+
 export interface MetricsHealthStatus {
-  severity: 'ok' | 'warn' | 'error';
+  services: ServiceHealth[];
 }
 
 export interface MetricsHealthWsMessage {
@@ -170,6 +177,7 @@ export interface MetricsHealthWsMessage {
 }
 
 export interface MetricPoint {
+  service: string;
   name: string;
   bucket: number;
   value: number;

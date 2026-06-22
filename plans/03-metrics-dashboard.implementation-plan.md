@@ -59,6 +59,30 @@ Frontend-часть единого плана [`METRICS._implementation-plan.md`
 - ✅ Кэш скользящего окна через `LocalStorageService.getUserScoped`/`setUserScoped` (ключ `metrics_detail`, добавлен в `USER_SCOPED_CACHE_BASE_KEYS`).
 - ✅ `metrics-dashboard` компонент (маршрут `/metrics`) + `METRICS_CHART_CONFIG`/`METRICS_SERIES_PALETTE` в `chart-config.ts`, рендер по образцу `balances-chart.ts` (chart.js line chart, один датасет на метрику).
 - ✅ `adminOnlyGuard` на маршруте, `adminOnly`-фильтр в `NavigationService`, `@if (authService.isAdmin$$())` для виджета в сайдбаре.
-- ✅ Проверено: `tsc --noEmit`, `ng build --configuration dev` (lazy chunk `metrics-dashboard` собирается отдельно), `prettier --check` — чисто. **Не проверено вручную в браузере** (нет запущенного бэка с реальными админ-данными в этой сессии) — перед использованием стоит открыть `/metrics` живым админом и убедиться, что график рисуется и health-точка обновляется.
+- ✅ Проверено: `tsc --noEmit`, `ng build --configuration dev`, `prettier --check`, и **вживую в браузере** (нашли и исправили гонку гвардов, см. выше).
 
-Этап 1 (бэк-сборщик) и Этап 3 (внешний приём) — без участия фронта, см. backend-план.
+## Этап 3: UI — карточки метрик
+
+Запрос пользователя: на странице `/metrics` — ряд карточек "Services Health" (детализация по сервисам, сейчас один — `megaapp`, общий индикатор в сайдбаре остаётся агрегированным "худшим" статусом), и отдельный ряд карточек по каждой метрике (сейчас 5). Карточки — фиксированного размера, в `flex flex-wrap` ряду, перенос строки сам по ширине экрана, без медиа-запросов. Стиль — на базе `v-card` из UI-кита (единообразие, как и весь остальной проект).
+
+### Как сделано
+
+- **`HealthStatus` на бэке расширен до списка по сервисам** (`{services: [{service, severity}]}`) — см. backend-план. Фронтовый тип `MetricsHealthStatus` зеркалит это (`ServiceHealth[]`).
+- `metrics-health.service.ts`: `severity$$` (одно значение) заменён на `services$$: ServiceHealth[]` + `overallSeverity$$` (computed, "худший" статус среди всех сервисов — error > warn > ok). Сайдбар-точка (`metrics-health-dot`) теперь читает `overallSeverity$$`, не `severity$$`.
+- Общая логика severity → цвет/текст вынесена в `src/app/shared/metrics-severity.ts` (`severityDotClass`, `severityLabel`) — раньше дублировалась бы между точкой в сайдбаре и карточками на странице, теперь одно место.
+- Человеко-читаемые подписи метрик (бэк отдаёт только технические имена типа `food_diary_entry_created`, в соответствии с принципом "бэк агностичен к смыслу метрик") — `src/app/shared/metrics-labels.ts` (`metricLabel`).
+- Новый переиспользуемый presentational-компонент `metric-card` (`src/app/components/metrics/metric-card/`) — обёртка над `v-card`, фиксированная ширина (`w-40`), опциональный цветной dot + лейбл + значение. Используется и для health-карточек, и для карточек метрик — один визуальный язык.
+- `metrics-dashboard.html`: два ряда `flex flex-wrap gap-3` с `metric-card` (health — по `metricsHealthService.services$$()`; метрики — по `metricCards$$()`, сумма значений за всё загруженное окно на каждую метрику), график чарта оставлен ниже как есть (история по времени) — карточки добавлены, а не заменили его.
+
+### Этап 3 — ✅ готово
+- ✅ `ServiceHealth[]` в `MetricsHealthStatus` (`types.ts`), `metrics-health.service.ts` — `services$$`/`overallSeverity$$`.
+- ✅ `metrics-severity.ts` (`severityDotClass`/`severityLabel`), `metrics-labels.ts` (`metricLabel`).
+- ✅ `metric-card` компонент (фиксированный размер, `v-card`-based).
+- ✅ Два ряда карточек на `metrics-dashboard` (health + по каждой метрике), `flex flex-wrap`.
+- ✅ `tsc --noEmit`, `ng build --configuration dev`, `prettier --check` (ts — чисто; html не форматируется prettier в этом проекте никак, см. существующие файлы — не регрессия).
+
+### Ревизия под политику "не бояться breaking changes" (см. корневой план)
+
+`MetricPoint` (`types.ts`) получил поле `service: string` — зеркалит такую же правку в таблице `metrics` на бэке (см. backend-план). Сейчас не используется для группировки в UI (метрик-карточки и график группируются только по `name` — пока один сервис, разницы нет), но тип уже на это готов: когда появится больше источников метрик (Этап 4), группировку по `(service, name)` можно будет добавить без новой правки контракта.
+
+Этап 1 (бэк-сборщик) и Этап 4 (внешний приём) — без участия фронта, см. backend-план.

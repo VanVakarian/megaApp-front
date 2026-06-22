@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { MetricsHealthService } from '@app/services/metrics-health.service';
+import { severityDotClass } from '@app/shared/metrics-severity';
 
 @Component({
   selector: 'metrics-health-dot',
@@ -9,16 +10,5 @@ import { MetricsHealthService } from '@app/services/metrics-health.service';
 export class MetricsHealthDot {
   protected readonly metricsHealthService = inject(MetricsHealthService);
 
-  protected readonly dotClass$$ = computed(() => {
-    switch (this.metricsHealthService.severity$$()) {
-      case 'ok':
-        return 'bg-green-500';
-      case 'warn':
-        return 'bg-yellow-500';
-      case 'error':
-        return 'bg-red-500';
-      default:
-        return 'bg-gray-400';
-    }
-  });
+  protected readonly dotClass$$ = computed(() => severityDotClass(this.metricsHealthService.overallSeverity$$()));
 }
