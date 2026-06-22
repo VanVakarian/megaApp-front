@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router';
+import { adminOnlyGuard } from '@app/services/admin-only.guard';
 import { authGuard } from '@app/services/auth.guard';
 import { guestOnlyGuard } from '@app/services/guest-only.guard';
 import { isChapterSelected } from '@app/services/is-chapter-selected.guard';
@@ -30,6 +31,12 @@ export const routes: Routes = [
     path: 'settings',
     loadComponent: () => import('@app/components/settings/settings').then((m) => m.Settings),
     canActivate: [authGuard, settingsReadyGuard],
+  },
+  {
+    path: 'metrics',
+    loadComponent: () =>
+      import('@app/components/metrics/metrics-dashboard/metrics-dashboard').then((m) => m.MetricsDashboard),
+    canActivate: [authGuard, settingsReadyGuard, adminOnlyGuard],
   },
   { path: '', pathMatch: 'full', canActivate: [rootRedirectGuard], children: [] },
   { path: '**', canActivate: [rootRedirectGuard], children: [] },

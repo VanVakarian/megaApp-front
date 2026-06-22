@@ -70,6 +70,7 @@ export const USER_SCOPED_CACHE_BASE_KEYS: string[] = [
   'food_diary_deleted_day_snapshot',
   'money_settings',
   'money_snapshot',
+  'metrics_detail',
 ];
 
 export const SESSION_BOOTSTRAP_TIMEOUT_MS: number = 9000;

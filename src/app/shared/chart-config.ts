@@ -316,7 +316,7 @@ export const EXPENSE_CATEGORY_CONFIG: ExpenseCategoryConfig[] = [
 
 const EXPENSE_FALLBACK_COLOR = 'rgb(183, 183, 183)';
 
-function rgbToRgba(rgb: string, alpha: number): string {
+export function rgbToRgba(rgb: string, alpha: number): string {
   return rgb.replace('rgb(', 'rgba(').replace(')', `, ${alpha})`);
 }
 
@@ -361,3 +361,54 @@ export const EXPENSE_CHART_CONFIG: ChartConfiguration<'bar'> = {
     },
   },
 };
+
+export const METRICS_WINDOW_MINUTES = 24 * 60;
+export const METRICS_TICK_INTERVAL_MINUTES = 6 * 60;
+
+export function createMetricSparklineConfig(color: string): ChartConfiguration<'line'> {
+  return {
+    type: 'line',
+    data: {
+      labels: [],
+      datasets: [
+        {
+          data: [],
+          borderColor: color,
+          backgroundColor: rgbToRgba(color, 0.15),
+          borderWidth: 1.5,
+          fill: true,
+          pointRadius: 0,
+          pointHitRadius: 12,
+        },
+      ],
+    },
+    options: {
+      animation: false,
+      maintainAspectRatio: false,
+      elements: { line: { tension: 0.3 } },
+      plugins: {
+        legend: { display: false },
+        tooltip: { mode: 'nearest', intersect: false },
+      },
+      scales: {
+        x: {
+          grid: { color: 'rgba(0, 0, 0, 0.06)' },
+          ticks: { maxRotation: 0, autoSkip: false },
+        },
+        y: {
+          min: 0,
+          display: false,
+          ticks: { precision: 0 },
+        },
+      },
+    },
+  };
+}
+
+export const METRICS_SERIES_PALETTE: string[] = [
+  'rgb(87, 143, 146)',
+  'rgb(214, 130, 60)',
+  'rgb(180, 83, 9)',
+  'rgb(21, 128, 61)',
+  'rgb(124, 58, 237)',
+];
