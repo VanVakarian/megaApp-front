@@ -50,8 +50,8 @@ export class MetricsService {
     this.networkService.sendMessage({ type: WebSocketMessageType.METRICS_SUBSCRIBE, cursor });
   }
 
-  private mergePoints(newPoints: MetricPoint[]): void {
-    if (newPoints.length === 0) return;
+  private mergePoints(newPoints: MetricPoint[] | null): void {
+    if (!newPoints || newPoints.length === 0) return;
 
     const merged = [...this.points$$(), ...newPoints];
     this.points$$.set(merged);
