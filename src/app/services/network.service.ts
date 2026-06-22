@@ -155,7 +155,7 @@ export class NetworkService {
 
   private resolveWebSocketPort(currentPort: string): string {
     if (currentPort === '4200' || currentPort === '4201') {
-      return '3000';
+      return '3001';
     }
 
     return currentPort;
