@@ -23,7 +23,7 @@ Chart.register(CategoryScale, LinearScale, PointElement, LineElement, LineContro
 })
 export class MetricChartCard implements AfterViewInit, OnDestroy {
   public readonly labelInput = input.required<string>();
-  public readonly totalInput = input<number>(0);
+  public readonly valueInput = input<number>(0);
   public readonly colorInput = input.required<string>();
   public readonly seriesInput = input.required<MetricSeriesPoint[]>();
 

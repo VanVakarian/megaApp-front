@@ -3,7 +3,7 @@
     <div class="opacity-70 mb-2 text-sm font-semibold">Services Health</div>
     <div class="flex flex-wrap gap-3">
       @for (service of metricsHealthService.services$$(); track service.service) {
-        <metric-card [labelInput]="service.service"
+        <metric-card [labelInput]="serviceLabel(service.service)"
                      [valueInput]="serviceSeverityLabel(service.severity)"
                      [dotClassInput]="serviceDotClass(service.severity)" />
       } @empty {
@@ -13,14 +13,36 @@
   </div>
 
   <div>
-    <div class="opacity-70 mb-2 text-sm font-semibold">Метрики</div>
-    <div class="flex flex-wrap gap-3">
-      @for (card of metricCards$$(); track card.name) {
-        <metric-chart-card [labelInput]="card.label"
-                           [totalInput]="card.total"
-                           [colorInput]="card.color"
-                           [seriesInput]="card.series" />
+    <div class="opacity-70 mb-2 text-sm font-semibold">Сервис</div>
+    <div class="flex flex-wrap gap-2">
+      @for (service of serviceOptions$$(); track service.service) {
+        <button type="button"
+                class="rounded-md border px-3 py-2 text-sm transition-colors"
+                [class.border-cyan-500]="isServiceSelected(service.service)"
+                [class.bg-cyan-500]="isServiceSelected(service.service)"
+                [class.text-black]="isServiceSelected(service.service)"
+                [class.border-zinc-700]="!isServiceSelected(service.service)"
+                [class.opacity-80]="!isServiceSelected(service.service)"
+                (click)="selectService(service.service)">
+          {{ service.label }}
+        </button>
+      } @empty {
+        <div class="opacity-60 text-sm">Нет сервисов</div>
       }
     </div>
   </div>
+
+  @for (group of metricGroups$$(); track group.id) {
+    <div>
+      <div class="opacity-70 mb-2 text-sm font-semibold">{{ group.label }}</div>
+      <div class="flex flex-wrap gap-3">
+        @for (card of group.cards; track card.key) {
+          <metric-chart-card [labelInput]="card.label"
+                             [valueInput]="card.value"
+                             [colorInput]="card.color"
+                             [seriesInput]="card.series" />
+        }
+      </div>
+    </div>
+  }
 </div>
