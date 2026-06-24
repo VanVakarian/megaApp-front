@@ -86,3 +86,81 @@ Frontend-часть единого плана [`METRICS._implementation-plan.md`
 `MetricPoint` (`types.ts`) получил поле `service: string` — зеркалит такую же правку в таблице `metrics` на бэке (см. backend-план). Сейчас не используется для группировки в UI (метрик-карточки и график группируются только по `name` — пока один сервис, разницы нет), но тип уже на это готов: когда появится больше источников метрик (Этап 4), группировку по `(service, name)` можно будет добавить без новой правки контракта.
 
 Этап 1 (бэк-сборщик) и Этап 4 (внешний приём) — без участия фронта, см. backend-план.
+
+## План расширения: multi-service dashboard
+
+Подключение `spread-capture-bot/v3` нельзя делать простым добавлением ещё 20+ технических имён в текущий `KNOWN_METRIC_NAMES`.
+
+Так `/metrics` превратится в длинный шумный список, где:
+
+- метрики `megaapp`;
+- метрики торгового бота;
+- будущие внешние сервисы
+
+будут смешаны в одну плоскость.
+
+### Этап 4A: локальный MVP
+
+Фронт становится service-aware:
+
+- строка `Services Health` остаётся общей;
+- ниже появляется выбор текущего сервиса;
+- карточки и графики строятся только по выбранному сервису.
+
+Для этого нужен front-only registry:
+
+- service id -> display label;
+- service id -> список видимых metric groups;
+- service id -> подписи метрик;
+- service id -> порядок карточек и графиков.
+
+Бэк этого не знает.
+
+### Как показывать `spread-capture-bot/v3`
+
+Для первого источника достаточно трёх групп:
+
+- `Runtime`
+  - длительность цикла;
+  - кандидаты / ex-candidates;
+  - открытые ордера;
+  - missing books;
+  - cycle errors;
+  - no-mutation streak.
+- `Actions`
+  - `sell_place`, `sell_replace`, `sell_blocked`, `sell_stop`;
+  - `buy_place`, `buy_replace`, `buy_blocked`, `buy_stop`;
+  - `trade_post`, `trade_cancel`.
+- `Reasons`
+  - ключевые серии из `reconcile_breakdown`.
+
+Карточки должны показывать:
+
+- для gauges — последнее значение окна;
+- для minute counters — значение за последнее окно, не сумму за весь локальный кэш.
+
+Исторические charts остаются line-based, но уже по `(service, metricName)`.
+
+### Что надо поменять в текущем фронте
+
+- `metrics.service.ts` хранит points как сейчас, но селекторы строятся по `(service, name)`, не только по `name`.
+- `metrics-labels.ts` превращается из одного flat map в service-aware registry.
+- `KNOWN_METRIC_NAMES` уходит; вместо него у каждого сервиса свой preset.
+- `metrics-dashboard` получает service selection state.
+- Для сервиса `megaapp` текущий UI почти не меняется; он просто становится первым preset-ом.
+
+### Этап 4B: remote-ready
+
+- UI должен уметь показывать stale service отдельно от просто нулевых значений.
+- Для batch/backfill нельзя склеивать график с дубликатами одного окна.
+- При приходе позднего backfill UI должен заменять существующий bucket, а не append-ить второй такой же.
+
+### Checklist
+
+- ✅ Сделать `/metrics` service-aware вместо одного global metric list.
+- ✅ Добавить front-only registry сервисов и их metric presets.
+- ✅ Перевести labels и card ordering на `(service, metricName)`.
+- ✅ Для `spread-capture-bot-v3` добавить три группы: `Runtime`, `Actions`, `Reasons`.
+- ✅ Для minute counters на карточках показывать последнее окно, не накопительную сумму за весь cache window.
+- ✅ При merge входящих данных дедуплицировать по `(service, metricName, minuteBucket)`.
+- ⭕ Для этапа 4B добавить stale-state и корректную замену bucket при backfill.

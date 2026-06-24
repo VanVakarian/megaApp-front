@@ -13,13 +13,15 @@ export function severityDotClass(severity: MetricsHealthSeverity | null): string
   }
 }
 
-export function severityLabel(severity: MetricsHealthSeverity): string {
+export function severityColor(severity: MetricsHealthSeverity | null): string {
   switch (severity) {
     case 'ok':
-      return 'Норма';
+      return '#22c55e';
     case 'warn':
-      return 'Внимание';
+      return '#eab308';
     case 'error':
-      return 'Ошибка';
+      return '#ef4444';
+    default:
+      return '#9ca3af';
   }
 }
