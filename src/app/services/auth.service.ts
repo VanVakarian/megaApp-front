@@ -5,8 +5,9 @@ import { NetworkService } from '@app/services/network.service';
 import { NotificationService } from '@app/services/notification.service';
 import { SettingsService } from '@app/services/settings.service';
 import { SyncQueueService } from '@app/services/sync-queue.service';
-import { clearAllUserScopedCaches } from '@app/shared/cache';
+import { buildCacheKey, clearAllUserScopedCaches } from '@app/shared/cache';
 import { SESSION_BOOTSTRAP_TIMEOUT_MS } from '@app/shared/const';
+import { idbRemove } from '@app/shared/idb-cache';
 import { AuthResponse, UserCreds, VerifyResponse } from '@app/shared/types';
 import { firstValueFrom, Observable, throwError } from 'rxjs';
 import { catchError, map, tap, timeout } from 'rxjs/operators';
@@ -135,6 +136,7 @@ export class AuthService {
     this.settingsService.reset();
     this.notificationService.clearAll();
     clearAllUserScopedCaches();
+    void idbRemove(buildCacheKey('metrics_detail'));
     this.sessionState$$.set(AuthSessionState.Guest);
     this.isAdmin$$.set(false);
     void this.router.navigateByUrl('/auth');
