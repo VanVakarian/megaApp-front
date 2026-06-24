@@ -18,9 +18,14 @@ export function buildMetricsWindowBuckets(latestBucket: number, windowMinutes: n
   return buckets;
 }
 
-export function zeroFillMetricSeries(points: MetricPoint[], name: string, buckets: number[]): MetricSeriesPoint[] {
+export function zeroFillMetricSeries(
+  points: MetricPoint[],
+  service: string,
+  name: string,
+  buckets: number[],
+): MetricSeriesPoint[] {
   const valueByBucket = new Map(
-    points.filter((point) => point.name === name).map((point) => [point.bucket, point.value]),
+    points.filter((point) => point.service === service && point.name === name).map((point) => [point.bucket, point.value]),
   );
   return buckets.map((bucket) => ({ bucket, value: valueByBucket.get(bucket) ?? 0 }));
 }

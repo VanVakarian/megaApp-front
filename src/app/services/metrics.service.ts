@@ -4,6 +4,7 @@ import { NetworkService } from '@app/services/network.service';
 import { MetricPoint, WebSocketMessageType } from '@app/shared/types';
 
 const STORAGE_KEY = 'metrics_detail';
+const METRICS_WINDOW_SECONDS = 48 * 60 * 60;
 
 @Injectable({
   providedIn: 'root',
@@ -25,7 +26,7 @@ export class MetricsService {
   constructor() {
     const cached = this.localStorageService.getUserScoped<MetricPoint[]>(STORAGE_KEY);
     if (cached) {
-      this.points$$.set(cached);
+      this.points$$.set(cached.filter((point) => !!point?.service && !!point?.name && Number.isFinite(point?.bucket)));
     }
 
     this.networkService.wsMessages$.subscribe((message) => {
@@ -46,15 +47,38 @@ export class MetricsService {
   }
 
   private sendSubscribe(): void {
-    const cursor = this.points$$().reduce((max, point) => Math.max(max, point.bucket), 0);
+    const latestBucket = this.points$$().reduce((max, point) => Math.max(max, point.bucket), 0);
+    const cursor = latestBucket > 0 ? Math.max(0, latestBucket - METRICS_WINDOW_SECONDS) : 0;
     this.networkService.sendMessage({ type: WebSocketMessageType.METRICS_SUBSCRIBE, cursor });
   }
 
   private mergePoints(newPoints: MetricPoint[] | null): void {
     if (!newPoints || newPoints.length === 0) return;
 
-    const merged = [...this.points$$(), ...newPoints];
-    this.points$$.set(merged);
-    this.localStorageService.setUserScoped(STORAGE_KEY, merged);
+    const byKey = new Map<string, MetricPoint>();
+    for (const point of this.points$$()) {
+      byKey.set(this.pointKey(point), point);
+    }
+    for (const point of newPoints) {
+      byKey.set(this.pointKey(point), point);
+    }
+
+    const merged = Array.from(byKey.values())
+      .sort((a, b) => {
+        if (a.bucket !== b.bucket) return a.bucket - b.bucket;
+        if (a.service !== b.service) return a.service.localeCompare(b.service);
+        return a.name.localeCompare(b.name);
+      });
+
+    const latestBucket = merged.reduce((max, point) => Math.max(max, point.bucket), 0);
+    const minBucket = latestBucket > 0 ? latestBucket - METRICS_WINDOW_SECONDS : 0;
+    const pruned = merged.filter((point) => point.bucket >= minBucket);
+
+    this.points$$.set(pruned);
+    this.localStorageService.setUserScoped(STORAGE_KEY, pruned);
+  }
+
+  private pointKey(point: MetricPoint): string {
+    return `${point.service}:${point.name}:${point.bucket}`;
   }
 }
