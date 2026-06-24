@@ -1,4 +1,4 @@
-import { Injectable, effect, inject, signal } from '@angular/core';
+import { Injectable, effect, inject, signal, untracked } from '@angular/core';
 import { LocalStorageService } from '@app/services/local-storage.service';
 import { NetworkService } from '@app/services/network.service';
 import { MetricPoint, WebSocketMessageType } from '@app/shared/types';
@@ -18,8 +18,9 @@ export class MetricsService {
   private isSubscribed = false;
 
   private readonly resubscribeOnReconnectEffect = effect(() => {
-    if (this.networkService.isConnected$$() && this.isSubscribed) {
-      this.sendSubscribe();
+    const isConnected = this.networkService.isConnected$$();
+    if (isConnected && this.isSubscribed) {
+      untracked(() => this.sendSubscribe());
     }
   });
 
