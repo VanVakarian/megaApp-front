@@ -2,7 +2,8 @@ import { ChangeDetectionStrategy, Component, computed, inject, OnDestroy, OnInit
 import { LocalStorageService } from '@app/services/local-storage.service';
 import { MetricsHealthService } from '@app/services/metrics-health.service';
 import { MetricsService } from '@app/services/metrics.service';
-import { METRICS_SERIES_PALETTE, METRICS_WINDOW_MINUTES } from '@app/shared/chart-config';
+import { METRICS_WINDOW_MINUTES } from '@app/shared/chart-config';
+import { metricDescription } from '@app/shared/metrics-descriptions';
 import {
   metricLabel,
   metricsServiceDefinition,
@@ -11,17 +12,23 @@ import {
 } from '@app/shared/metrics-labels';
 import {
   buildMetricsWindowBuckets,
+  buildSparseBarSeries,
+  buildSparseLineSeries,
   MetricSeriesPoint,
   previousMinuteBucket,
   zeroFillMetricSeries,
 } from '@app/shared/metrics-series';
-import { metricDescription } from '@app/shared/metrics-descriptions';
 import { severityColor } from '@app/shared/metrics-severity';
-import { IconName, VIcon } from '@ui-kit/components/v-icon/v-icon';
 import { VButton } from '@ui-kit/components/v-button/v-button';
 import { VExpand } from '@ui-kit/components/v-expand/v-expand';
+import { IconName, VIcon } from '@ui-kit/components/v-icon/v-icon';
 import { VInput } from '@ui-kit/components/v-input/v-input';
-import { DEFAULT_CARD_WIDTH_PX, DEFAULT_CHART_HEIGHT_PX, MetricChartCard } from '../metric-chart-card/metric-chart-card';
+import {
+  DEFAULT_CARD_WIDTH_PX,
+  DEFAULT_CHART_HEIGHT_PX,
+  MetricChartCard,
+  MetricChartMode,
+} from '../metric-chart-card/metric-chart-card';
 
 const NOW_TICK_INTERVAL_MS = 30_000;
 const MONEY_METRIC_NAMES = new Set(['free_cash', 'estimated_account_value']);
@@ -30,12 +37,28 @@ const CARD_WIDTH_STORAGE_KEY = 'metrics_card_width_px';
 const CARD_HEIGHT_STORAGE_KEY = 'metrics_card_height_px';
 const SETTINGS_PANEL_KEY = '__settings__';
 
+function buildChartModeOverrides(): Map<string, MetricChartMode> {
+  const overrides = new Map<string, MetricChartMode>();
+  metricsServiceDefinition('megaapp')?.groups.forEach((group) =>
+    group.metrics.forEach((name) => overrides.set(`megaapp:${name}`, 'bar')),
+  );
+  metricsServiceDefinition('spread-capture-bot-v3')?.groups.forEach((group) =>
+    group.metrics.forEach((name) => overrides.set(`spread-capture-bot-v3:${name}`, 'sparse-line')),
+  );
+  return overrides;
+}
+
+const CHART_MODE_OVERRIDES = buildChartModeOverrides();
+
 interface MetricChartCardData {
   key: string;
   label: string;
   value: number;
   color: string;
   series: MetricSeriesPoint[];
+  chartMode: MetricChartMode;
+  windowStartBucket: number;
+  windowEndBucket: number;
   description: string;
 }
 
@@ -95,6 +118,7 @@ export class MetricsDashboard implements OnInit, OnDestroy {
   protected readonly metricGroupsByService$$ = computed<Map<string, MetricGroupData[]>>(() => {
     const latestBucket = previousMinuteBucket(this.now$$());
     const buckets = buildMetricsWindowBuckets(latestBucket, METRICS_WINDOW_MINUTES);
+    const windowStartBucket = buckets[0];
     const points = this.metricsService.points$$();
 
     const result = new Map<string, MetricGroupData[]>();
@@ -105,22 +129,30 @@ export class MetricsDashboard implements OnInit, OnDestroy {
         continue;
       }
 
-      let colorIndex = 0;
       const groups = definition.groups.map((group) => ({
         id: group.id,
         label: group.label,
         cards: group.metrics.map((name) => {
-          const series = zeroFillMetricSeries(points, option.service, name, buckets);
+          const key = `${option.service}:${name}`;
+          const chartMode = CHART_MODE_OVERRIDES.get(key) ?? 'filled';
+          const series =
+            chartMode === 'bar'
+              ? buildSparseBarSeries(points, option.service, name, windowStartBucket, latestBucket)
+              : chartMode === 'sparse-line'
+                ? buildSparseLineSeries(points, option.service, name, windowStartBucket, latestBucket)
+                : zeroFillMetricSeries(points, option.service, name, buckets);
           const rawValue = series[series.length - 1]?.value ?? 0;
           const value = MONEY_METRIC_NAMES.has(name) ? Math.round(rawValue * 100) / 100 : rawValue;
-          const color = METRICS_SERIES_PALETTE[colorIndex % METRICS_SERIES_PALETTE.length];
-          colorIndex++;
+          const color = definition.metricColors[name] ?? '#578f92';
           return {
-            key: `${option.service}:${name}`,
+            key,
             label: metricLabel(option.service, name),
             value,
             color,
             series,
+            chartMode,
+            windowStartBucket,
+            windowEndBucket: latestBucket,
             description: metricDescription(option.service, name),
           };
         }),

@@ -1,3 +1,4 @@
+import { formatMetricBucketLabel } from '@app/shared/metrics-series';
 import { ChartConfiguration } from 'chart.js';
 
 interface ChartColors {
@@ -405,10 +406,92 @@ export function createMetricSparklineConfig(color: string): ChartConfiguration<'
   };
 }
 
-export const METRICS_SERIES_PALETTE: string[] = [
-  'rgb(87, 143, 146)',
-  'rgb(214, 130, 60)',
-  'rgb(180, 83, 9)',
-  'rgb(21, 128, 61)',
-  'rgb(124, 58, 237)',
-];
+const metricSparseTooltipOptions = {
+  mode: 'nearest' as const,
+  intersect: false,
+  callbacks: {
+    title: (items: { parsed: { x: number } }[]) => formatMetricBucketLabel(items[0].parsed.x),
+  },
+};
+
+export function formatMetricAxisValue(value: number): string {
+  return new Intl.NumberFormat('ru-RU', { notation: 'compact', maximumFractionDigits: 1 }).format(value);
+}
+
+export function createMetricSparseLineConfig(color: string): ChartConfiguration<'line'> {
+  return {
+    type: 'line',
+    data: {
+      labels: [],
+      datasets: [
+        {
+          data: [],
+          borderColor: color,
+          backgroundColor: rgbToRgba(color, 0.15),
+          borderWidth: 1.5,
+          fill: true,
+          spanGaps: false,
+          pointRadius: 0,
+          pointHitRadius: 12,
+        },
+      ],
+    },
+    options: {
+      animation: false,
+      maintainAspectRatio: false,
+      elements: { line: { tension: 0.3 } },
+      plugins: {
+        legend: { display: false },
+        tooltip: metricSparseTooltipOptions,
+      },
+      scales: {
+        x: {
+          type: 'linear',
+          grid: { color: 'rgba(0, 0, 0, 0.06)' },
+          ticks: { maxRotation: 0, autoSkip: false, callback: (value) => formatMetricBucketLabel(value as number) },
+        },
+        y: {
+          display: true,
+          ticks: { callback: (value) => formatMetricAxisValue(value as number) },
+        },
+      },
+    },
+  };
+}
+
+export function createMetricBarConfig(color: string): ChartConfiguration<'bar'> {
+  return {
+    type: 'bar',
+    data: {
+      labels: [],
+      datasets: [
+        {
+          data: [],
+          backgroundColor: color,
+          borderWidth: 0,
+          barThickness: 1,
+        },
+      ],
+    },
+    options: {
+      animation: false,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: metricSparseTooltipOptions,
+      },
+      scales: {
+        x: {
+          type: 'linear',
+          grid: { color: 'rgba(0, 0, 0, 0.06)' },
+          ticks: { maxRotation: 0, autoSkip: false, callback: (value) => formatMetricBucketLabel(value as number) },
+        },
+        y: {
+          min: 0,
+          display: true,
+          ticks: { callback: (value) => formatMetricAxisValue(value as number) },
+        },
+      },
+    },
+  };
+}
