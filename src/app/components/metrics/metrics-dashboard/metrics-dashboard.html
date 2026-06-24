@@ -7,6 +7,9 @@
                 }"
                 (onClick)="toggleServiceExpanded(service.service)">
         {{ service.label }}
+        <v-icon v-postfix
+                [name]="isServiceExpanded(service.service) ? Icon.CheckBox : Icon.CheckBoxOutlineBlank"
+                [size]="5" />
       </v-button>
     } @empty {
       <div class="opacity-60 text-sm">Нет сервисов</div>
