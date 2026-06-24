@@ -1,48 +1,76 @@
-<div class="flex flex-col gap-4 p-4">
-  <div>
-    <div class="opacity-70 mb-2 text-sm font-semibold">Services Health</div>
-    <div class="flex flex-wrap gap-3">
-      @for (service of metricsHealthService.services$$(); track service.service) {
-        <metric-card [labelInput]="serviceLabel(service.service)"
-                     [valueInput]="serviceSeverityLabel(service.severity)"
-                     [dotClassInput]="serviceDotClass(service.severity)" />
-      } @empty {
-        <div class="opacity-60 text-sm">Нет данных</div>
-      }
-    </div>
+<div class="flex flex-col p-4">
+  <div class="flex flex-wrap gap-2 mb-4">
+    @for (service of serviceOptions$$(); track service.service) {
+      <v-button [class]="isServiceExpanded(service.service) ? 'v-primary v-raised' : 'v-primary v-flat'"
+                [config]="{
+                  color: serviceColor(service.service),
+                }"
+                (onClick)="toggleServiceExpanded(service.service)">
+        {{ service.label }}
+      </v-button>
+    } @empty {
+      <div class="opacity-60 text-sm">Нет сервисов</div>
+    }
+
+    <v-button [class]="isServiceExpanded(settingsPanelKey) ? 'v-raised' : 'v-flat'"
+              [config]="{
+                isLabelHidden: true,
+                padding: 2,
+              }"
+              (onClick)="toggleServiceExpanded(settingsPanelKey)">
+      <v-icon v-prefix
+              [name]="Icon.Settings"
+              [size]="6" />
+    </v-button>
   </div>
 
-  <div>
-    <div class="opacity-70 mb-2 text-sm font-semibold">Сервис</div>
-    <div class="flex flex-wrap gap-2">
-      @for (service of serviceOptions$$(); track service.service) {
-        <button type="button"
-                class="rounded-md border px-3 py-2 text-sm transition-colors"
-                [class.border-cyan-500]="isServiceSelected(service.service)"
-                [class.bg-cyan-500]="isServiceSelected(service.service)"
-                [class.text-black]="isServiceSelected(service.service)"
-                [class.border-zinc-700]="!isServiceSelected(service.service)"
-                [class.opacity-80]="!isServiceSelected(service.service)"
-                (click)="selectService(service.service)">
-          {{ service.label }}
-        </button>
-      } @empty {
-        <div class="opacity-60 text-sm">Нет сервисов</div>
-      }
+  <v-expand class="mb-4"
+            [isExpanded]="isServiceExpanded(settingsPanelKey)">
+    <div v-body
+         class="flex flex-wrap gap-3 p-4">
+      <v-input [value]="cardWidthPx$$().toString()"
+               (valueChange)="onCardWidthChange($event)"
+               [config]="{
+                 type: 'number',
+                 inputmode: 'numeric',
+                 label: 'Ширина карточки, px',
+                 textAlign: 'right',
+               }" />
+      <v-input [value]="cardHeightPx$$().toString()"
+               (valueChange)="onCardHeightChange($event)"
+               [config]="{
+                 type: 'number',
+                 inputmode: 'numeric',
+                 label: 'Высота графика, px',
+                 textAlign: 'right',
+               }" />
     </div>
-  </div>
+  </v-expand>
 
-  @for (group of metricGroups$$(); track group.id) {
-    <div>
-      <div class="opacity-70 mb-2 text-sm font-semibold">{{ group.label }}</div>
-      <div class="flex flex-wrap gap-3">
-        @for (card of group.cards; track card.key) {
-          <metric-chart-card [labelInput]="card.label"
-                             [valueInput]="card.value"
-                             [colorInput]="card.color"
-                             [seriesInput]="card.series" />
+  @for (service of serviceOptions$$(); track service.service) {
+    <v-expand class="mb-4"
+              [isExpanded]="isServiceExpanded(service.service)">
+      <div v-body
+           class="flex flex-col gap-4 p-4">
+        @for (group of metricGroupsByService$$().get(service.service) ?? []; track group.id) {
+          <div>
+            <div class="opacity-70 mb-2 text-sm font-semibold">{{ group.label }}</div>
+            <div class="flex flex-wrap gap-3">
+              @for (card of group.cards; track card.key) {
+                <metric-chart-card [labelInput]="card.label"
+                                   [valueInput]="card.value"
+                                   [colorInput]="card.color"
+                                   [seriesInput]="card.series"
+                                   [descriptionInput]="card.description"
+                                   [widthPxInput]="cardWidthPx$$()"
+                                   [heightPxInput]="cardHeightPx$$()" />
+              }
+            </div>
+          </div>
+        } @empty {
+          <div class="opacity-60 text-sm">Нет метрик</div>
         }
       </div>
-    </div>
+    </v-expand>
   }
 </div>

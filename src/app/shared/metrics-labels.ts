@@ -19,6 +19,8 @@ const METRICS_SERVICE_DEFINITIONS: MetricsServiceDefinition[] = [
         id: 'runtime',
         label: 'Runtime',
         metrics: [
+          'free_cash',
+          'estimated_account_value',
           'catalog_candidates',
           'catalog_markets_total',
           'worklist_candidates',
@@ -140,6 +142,8 @@ const METRIC_LABELS: Record<string, Record<string, string>> = {
     backup_job_ran: 'Прогоны бэкапа',
   },
   'spread-capture-bot-v3': {
+    free_cash: 'Свободный кэш',
+    estimated_account_value: 'Текущая стоимость портфеля',
     catalog_candidates: 'Кандидаты в каталоге',
     catalog_markets_total: 'Рынки в каталоге',
     worklist_candidates: 'Worklist кандидаты',

@@ -1,21 +1,34 @@
-import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, computed, effect, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, OnDestroy, OnInit, signal } from '@angular/core';
+import { LocalStorageService } from '@app/services/local-storage.service';
 import { MetricsHealthService } from '@app/services/metrics-health.service';
 import { MetricsService } from '@app/services/metrics.service';
 import { METRICS_SERIES_PALETTE, METRICS_WINDOW_MINUTES } from '@app/shared/chart-config';
 import {
+  metricLabel,
   metricsServiceDefinition,
   metricsServiceDefinitions,
   metricsServiceLabel,
-  metricLabel,
-  MetricsServiceDefinition,
 } from '@app/shared/metrics-labels';
-import { buildMetricsWindowBuckets, MetricSeriesPoint, previousMinuteBucket, zeroFillMetricSeries } from '@app/shared/metrics-series';
-import { severityDotClass, severityLabel } from '@app/shared/metrics-severity';
-import { MetricsHealthSeverity } from '@app/shared/types';
-import { MetricCard } from '../metric-card/metric-card';
-import { MetricChartCard } from '../metric-chart-card/metric-chart-card';
+import {
+  buildMetricsWindowBuckets,
+  MetricSeriesPoint,
+  previousMinuteBucket,
+  zeroFillMetricSeries,
+} from '@app/shared/metrics-series';
+import { metricDescription } from '@app/shared/metrics-descriptions';
+import { severityColor } from '@app/shared/metrics-severity';
+import { IconName, VIcon } from '@ui-kit/components/v-icon/v-icon';
+import { VButton } from '@ui-kit/components/v-button/v-button';
+import { VExpand } from '@ui-kit/components/v-expand/v-expand';
+import { VInput } from '@ui-kit/components/v-input/v-input';
+import { DEFAULT_CARD_WIDTH_PX, DEFAULT_CHART_HEIGHT_PX, MetricChartCard } from '../metric-chart-card/metric-chart-card';
 
 const NOW_TICK_INTERVAL_MS = 30_000;
+const MONEY_METRIC_NAMES = new Set(['free_cash', 'estimated_account_value']);
+const EXPANDED_SERVICES_STORAGE_KEY = 'metrics_expanded_services';
+const CARD_WIDTH_STORAGE_KEY = 'metrics_card_width_px';
+const CARD_HEIGHT_STORAGE_KEY = 'metrics_card_height_px';
+const SETTINGS_PANEL_KEY = '__settings__';
 
 interface MetricChartCardData {
   key: string;
@@ -23,6 +36,7 @@ interface MetricChartCardData {
   value: number;
   color: string;
   series: MetricSeriesPoint[];
+  description: string;
 }
 
 interface MetricGroupData {
@@ -39,15 +53,25 @@ interface MetricsServiceOption {
 @Component({
   selector: 'metrics-dashboard',
   templateUrl: './metrics-dashboard.html',
-  imports: [MetricCard, MetricChartCard],
+  imports: [VButton, VExpand, VInput, VIcon, MetricChartCard],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class MetricsDashboard implements OnInit, OnDestroy {
   protected readonly metricsService = inject(MetricsService);
   protected readonly metricsHealthService = inject(MetricsHealthService);
+  protected readonly Icon = IconName;
+  protected readonly settingsPanelKey = SETTINGS_PANEL_KEY;
+
+  private readonly localStorageService = inject(LocalStorageService);
 
   private readonly now$$ = signal(Date.now());
-  private readonly selectedService$$ = signal<string | null>(null);
+  private readonly expandedServices$$ = signal<Set<string>>(this.loadExpandedServices());
+  protected readonly cardWidthPx$$ = signal<number>(
+    this.localStorageService.getUserScoped<number>(CARD_WIDTH_STORAGE_KEY) ?? DEFAULT_CARD_WIDTH_PX,
+  );
+  protected readonly cardHeightPx$$ = signal<number>(
+    this.localStorageService.getUserScoped<number>(CARD_HEIGHT_STORAGE_KEY) ?? DEFAULT_CHART_HEIGHT_PX,
+  );
   private nowTickIntervalId: ReturnType<typeof setInterval> | null = null;
 
   protected readonly serviceOptions$$ = computed<MetricsServiceOption[]>(() => {
@@ -68,48 +92,42 @@ export class MetricsDashboard implements OnInit, OnDestroy {
     }));
   });
 
-  protected readonly selectedServiceDefinition$$ = computed<MetricsServiceDefinition | null>(() =>
-    metricsServiceDefinition(this.selectedService$$()),
-  );
-
-  protected readonly metricGroups$$ = computed<MetricGroupData[]>(() => {
-    const definition = this.selectedServiceDefinition$$();
-    const selectedService = this.selectedService$$();
-    if (!definition || !selectedService) return [];
-
+  protected readonly metricGroupsByService$$ = computed<Map<string, MetricGroupData[]>>(() => {
     const latestBucket = previousMinuteBucket(this.now$$());
     const buckets = buildMetricsWindowBuckets(latestBucket, METRICS_WINDOW_MINUTES);
     const points = this.metricsService.points$$();
 
-    let colorIndex = 0;
-    return definition.groups.map((group) => ({
-      id: group.id,
-      label: group.label,
-      cards: group.metrics.map((name) => {
-        const series = zeroFillMetricSeries(points, selectedService, name, buckets);
-        const value = series[series.length - 1]?.value ?? 0;
-        const color = METRICS_SERIES_PALETTE[colorIndex % METRICS_SERIES_PALETTE.length];
-        colorIndex++;
-        return {
-          key: `${selectedService}:${name}`,
-          label: metricLabel(selectedService, name),
-          value,
-          color,
-          series,
-        };
-      }),
-    }));
-  });
+    const result = new Map<string, MetricGroupData[]>();
+    for (const option of this.serviceOptions$$()) {
+      const definition = metricsServiceDefinition(option.service);
+      if (!definition) {
+        result.set(option.service, []);
+        continue;
+      }
 
-  private readonly syncSelectedServiceEffect = effect(() => {
-    const options = this.serviceOptions$$();
-    const selected = this.selectedService$$();
-
-    if (selected && options.some((option) => option.service === selected)) {
-      return;
+      let colorIndex = 0;
+      const groups = definition.groups.map((group) => ({
+        id: group.id,
+        label: group.label,
+        cards: group.metrics.map((name) => {
+          const series = zeroFillMetricSeries(points, option.service, name, buckets);
+          const rawValue = series[series.length - 1]?.value ?? 0;
+          const value = MONEY_METRIC_NAMES.has(name) ? Math.round(rawValue * 100) / 100 : rawValue;
+          const color = METRICS_SERIES_PALETTE[colorIndex % METRICS_SERIES_PALETTE.length];
+          colorIndex++;
+          return {
+            key: `${option.service}:${name}`,
+            label: metricLabel(option.service, name),
+            value,
+            color,
+            series,
+            description: metricDescription(option.service, name),
+          };
+        }),
+      }));
+      result.set(option.service, groups);
     }
-
-    this.selectedService$$.set(options[0]?.service ?? null);
+    return result;
   });
 
   public ngOnInit(): void {
@@ -124,23 +142,46 @@ export class MetricsDashboard implements OnInit, OnDestroy {
     }
   }
 
-  protected serviceDotClass(severity: MetricsHealthSeverity): string {
-    return severityDotClass(severity);
-  }
-
-  protected serviceSeverityLabel(severity: MetricsHealthSeverity): string {
-    return severityLabel(severity);
-  }
-
   protected serviceLabel(service: string): string {
     return metricsServiceLabel(service);
   }
 
-  protected selectService(service: string): void {
-    this.selectedService$$.set(service);
+  protected serviceColor(service: string): string {
+    const severity =
+      this.metricsHealthService.services$$().find((entry) => entry.service === service)?.severity ?? null;
+    return severityColor(severity);
   }
 
-  protected isServiceSelected(service: string): boolean {
-    return this.selectedService$$() === service;
+  protected isServiceExpanded(service: string): boolean {
+    return this.expandedServices$$().has(service);
+  }
+
+  protected toggleServiceExpanded(service: string): void {
+    const expanded = new Set(this.expandedServices$$());
+    if (expanded.has(service)) {
+      expanded.delete(service);
+    } else {
+      expanded.add(service);
+    }
+    this.expandedServices$$.set(expanded);
+    this.localStorageService.setUserScoped(EXPANDED_SERVICES_STORAGE_KEY, Array.from(expanded));
+  }
+
+  protected onCardWidthChange(value: string): void {
+    const widthPx = Number(value);
+    if (!Number.isFinite(widthPx) || widthPx <= 0) return;
+    this.cardWidthPx$$.set(widthPx);
+    this.localStorageService.setUserScoped(CARD_WIDTH_STORAGE_KEY, widthPx);
+  }
+
+  protected onCardHeightChange(value: string): void {
+    const heightPx = Number(value);
+    if (!Number.isFinite(heightPx) || heightPx <= 0) return;
+    this.cardHeightPx$$.set(heightPx);
+    this.localStorageService.setUserScoped(CARD_HEIGHT_STORAGE_KEY, heightPx);
+  }
+
+  private loadExpandedServices(): Set<string> {
+    return new Set(this.localStorageService.getUserScoped<string[]>(EXPANDED_SERVICES_STORAGE_KEY) ?? []);
   }
 }
