@@ -3,6 +3,7 @@ import { LocalStorageService } from '@app/services/local-storage.service';
 import { MetricsHealthService } from '@app/services/metrics-health.service';
 import { MetricsService } from '@app/services/metrics.service';
 import { METRICS_WINDOW_MINUTES } from '@app/shared/chart-config';
+import { MetricChartMode, pickDynamicMetricChartMode } from '@app/shared/metrics-chart-mode';
 import { metricDescription } from '@app/shared/metrics-descriptions';
 import {
   metricLabel,
@@ -11,12 +12,13 @@ import {
   metricsServiceLabel,
 } from '@app/shared/metrics-labels';
 import {
+  buildMetricPointsIndex,
   buildMetricsWindowBuckets,
-  buildSparseBarSeries,
-  buildSparseLineSeries,
+  buildSparseBarSeriesFromPoints,
+  buildSparseLineSeriesFromPoints,
+  metricPointsIndexKey,
   MetricSeriesPoint,
   previousMinuteBucket,
-  zeroFillMetricSeries,
 } from '@app/shared/metrics-series';
 import { severityColor } from '@app/shared/metrics-severity';
 import { VButton } from '@ui-kit/components/v-button/v-button';
@@ -27,7 +29,6 @@ import {
   DEFAULT_CARD_WIDTH_PX,
   DEFAULT_CHART_HEIGHT_PX,
   MetricChartCard,
-  MetricChartMode,
 } from '../metric-chart-card/metric-chart-card';
 
 const NOW_TICK_INTERVAL_MS = 30_000;
@@ -37,22 +38,10 @@ const CARD_WIDTH_STORAGE_KEY = 'metrics_card_width_px';
 const CARD_HEIGHT_STORAGE_KEY = 'metrics_card_height_px';
 const SETTINGS_PANEL_KEY = '__settings__';
 
-function buildChartModeOverrides(): Map<string, MetricChartMode> {
-  const overrides = new Map<string, MetricChartMode>();
-  metricsServiceDefinition('megaapp')?.groups.forEach((group) =>
-    group.metrics.forEach((name) => overrides.set(`megaapp:${name}`, 'bar')),
-  );
-  metricsServiceDefinition('spread-capture-bot-v3')?.groups.forEach((group) =>
-    group.metrics.forEach((name) => overrides.set(`spread-capture-bot-v3:${name}`, 'sparse-line')),
-  );
-  return overrides;
-}
-
-const CHART_MODE_OVERRIDES = buildChartModeOverrides();
-
 interface MetricChartCardData {
   key: string;
   label: string;
+  technicalName: string;
   value: number;
   color: string;
   series: MetricSeriesPoint[];
@@ -120,6 +109,8 @@ export class MetricsDashboard implements OnInit, OnDestroy {
     const buckets = buildMetricsWindowBuckets(latestBucket, METRICS_WINDOW_MINUTES);
     const windowStartBucket = buckets[0];
     const points = this.metricsService.points$$();
+    const pointsIndex = buildMetricPointsIndex(points, windowStartBucket, latestBucket);
+    const windowBucketCount = buckets.length;
 
     const result = new Map<string, MetricGroupData[]>();
     for (const option of this.serviceOptions$$()) {
@@ -133,20 +124,20 @@ export class MetricsDashboard implements OnInit, OnDestroy {
         id: group.id,
         label: group.label,
         cards: group.metrics.map((name) => {
-          const key = `${option.service}:${name}`;
-          const chartMode = CHART_MODE_OVERRIDES.get(key) ?? 'filled';
+          const key = metricPointsIndexKey(option.service, name);
+          const metricPoints = pointsIndex.get(key) ?? [];
+          const chartMode = pickDynamicMetricChartMode(metricPoints.length, windowBucketCount);
           const series =
             chartMode === 'bar'
-              ? buildSparseBarSeries(points, option.service, name, windowStartBucket, latestBucket)
-              : chartMode === 'sparse-line'
-                ? buildSparseLineSeries(points, option.service, name, windowStartBucket, latestBucket)
-                : zeroFillMetricSeries(points, option.service, name, buckets);
-          const rawValue = series[series.length - 1]?.value ?? 0;
+              ? buildSparseBarSeriesFromPoints(metricPoints)
+              : buildSparseLineSeriesFromPoints(metricPoints);
+          const rawValue = metricPoints[metricPoints.length - 1]?.value ?? 0;
           const value = MONEY_METRIC_NAMES.has(name) ? Math.round(rawValue * 100) / 100 : rawValue;
           const color = definition.metricColors[name] ?? '#578f92';
           return {
             key,
             label: metricLabel(option.service, name),
+            technicalName: name,
             value,
             color,
             series,

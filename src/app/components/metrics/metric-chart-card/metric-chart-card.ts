@@ -1,19 +1,11 @@
-import {
-  AfterViewInit,
-  ChangeDetectionStrategy,
-  Component,
-  effect,
-  ElementRef,
-  input,
-  OnDestroy,
-  viewChild,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, effect, ElementRef, input, OnDestroy, viewChild } from '@angular/core';
 import {
   createMetricBarConfig,
   createMetricSparklineConfig,
   createMetricSparseLineConfig,
   METRICS_TICK_INTERVAL_MINUTES,
 } from '@app/shared/chart-config';
+import { MetricChartMode } from '@app/shared/metrics-chart-mode';
 import {
   buildRoundTickBuckets,
   buildRoundTickIndices,
@@ -50,16 +42,15 @@ Chart.register(
 export const DEFAULT_CARD_WIDTH_PX = 304;
 export const DEFAULT_CHART_HEIGHT_PX = 112;
 
-export type MetricChartMode = 'filled' | 'bar' | 'sparse-line';
-
 @Component({
   selector: 'metric-chart-card',
   templateUrl: './metric-chart-card.html',
   imports: [VCard, VIcon, VTooltip],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class MetricChartCard implements AfterViewInit, OnDestroy {
+export class MetricChartCard implements OnDestroy {
   public readonly labelInput = input.required<string>();
+  public readonly technicalNameInput = input<string>('');
   public readonly valueInput = input<number>(0);
   public readonly colorInput = input.required<string>();
   public readonly seriesInput = input.required<MetricSeriesPoint[]>();
@@ -72,33 +63,56 @@ export class MetricChartCard implements AfterViewInit, OnDestroy {
 
   protected readonly Icon = IconName;
 
-  private readonly chartCanvasElem = viewChild.required<ElementRef<HTMLCanvasElement>>('chartCanvas');
+  private readonly chartCanvasElem = viewChild<ElementRef<HTMLCanvasElement>>('chartCanvas');
   private chart: Chart | null = null;
+  private chartSignature = '';
 
   private readonly chartUpdateEffect = effect(() => {
-    this.updateChart(this.seriesInput());
+    const canvasElem = this.chartCanvasElem();
+    const chartMode = this.chartModeInput();
+    const color = this.colorInput();
+    const series = this.seriesInput();
+    this.windowStartInput();
+    this.windowEndInput();
+    if (!canvasElem) return;
+    this.ensureChart(canvasElem.nativeElement, chartMode, color);
+    this.updateChart(series);
   });
-
-  public ngAfterViewInit(): void {
-    const ctx = this.chartCanvasElem().nativeElement.getContext('2d');
-    if (!ctx) return;
-    this.chart = new Chart(ctx, this.createChartConfig());
-    this.updateChart(this.seriesInput());
-  }
 
   public ngOnDestroy(): void {
     this.chart?.destroy();
+    this.chart = null;
+    this.chartSignature = '';
   }
 
-  private createChartConfig(): ChartConfiguration {
-    switch (this.chartModeInput()) {
+  private createChartConfig(chartMode: MetricChartMode, color: string): ChartConfiguration {
+    switch (chartMode) {
       case 'bar':
-        return createMetricBarConfig(this.colorInput());
+        return createMetricBarConfig(color);
       case 'sparse-line':
-        return createMetricSparseLineConfig(this.colorInput());
+        return createMetricSparseLineConfig(color);
       default:
-        return createMetricSparklineConfig(this.colorInput());
+        return createMetricSparklineConfig(color);
     }
+  }
+
+  private ensureChart(canvas: HTMLCanvasElement, chartMode: MetricChartMode, color: string): void {
+    const signature = `${chartMode}:${color}`;
+    if (this.chart && this.chartSignature === signature) {
+      return;
+    }
+
+    this.chart?.destroy();
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+      this.chart = null;
+      this.chartSignature = '';
+      return;
+    }
+
+    this.chart = new Chart(ctx, this.createChartConfig(chartMode, color));
+    this.chartSignature = signature;
   }
 
   private updateChart(series: MetricSeriesPoint[]): void {
