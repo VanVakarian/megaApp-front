@@ -38,6 +38,7 @@ export enum WebSocketMessageType {
   CATALOGUE_ENTRY_SAVED = 'CATALOGUE_ENTRY_SAVED',
   CATALOGUE_IMAGE_GENERATED = 'CATALOGUE_IMAGE_GENERATED',
   METRICS_HEALTH = 'METRICS_HEALTH',
+  METRICS_LATEST = 'METRICS_LATEST',
   METRICS_UPDATE = 'METRICS_UPDATE',
   METRICS_SUBSCRIBE = 'METRICS_SUBSCRIBE',
   METRICS_UNSUBSCRIBE = 'METRICS_UNSUBSCRIBE',
@@ -176,6 +177,21 @@ export interface MetricsHealthWsMessage {
   payload: MetricsHealthStatus;
 }
 
+export interface ServiceLatest {
+  service: string;
+  lastBucket: number;
+  metrics: Record<string, number>;
+}
+
+export interface MetricsLatestSnapshot {
+  services: ServiceLatest[];
+}
+
+export interface MetricsLatestWsMessage {
+  type: WebSocketMessageType.METRICS_LATEST;
+  payload: MetricsLatestSnapshot;
+}
+
 export interface MetricPoint {
   service: string;
   name: string;
@@ -206,6 +222,7 @@ export type IncomingWsMessage =
   | DiaryDayDeletedWsMessage
   | BodyWeightUpdatedWsMessage
   | MetricsHealthWsMessage
+  | MetricsLatestWsMessage
   | MetricsUpdateWsMessage
   | SearchResultsWsMessage
   | CatalogueEntrySavedWsMessage
