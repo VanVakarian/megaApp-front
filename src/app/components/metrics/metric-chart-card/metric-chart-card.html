@@ -5,8 +5,9 @@
           borderRadius: 2,
         }">
   <div class="flex items-center justify-between gap-2 text-sm">
-    <span class="flex items-center gap-1 min-w-0">
-      <span class="truncate opacity-70">{{ labelInput() }}</span>
+    <span class="flex items-center min-w-0 gap-1">
+      <span class="opacity-70 truncate"
+            [attr.title]="technicalNameInput() || null">{{ labelInput() }}</span>
       @if (descriptionInput()) {
         <v-tooltip class="shrink-0"
                    [text]="descriptionInput()">

@@ -61,9 +61,13 @@
             <div class="flex flex-wrap gap-3">
               @for (card of group.cards; track card.key) {
                 <metric-chart-card [labelInput]="card.label"
+                                   [technicalNameInput]="card.technicalName"
                                    [valueInput]="card.value"
                                    [colorInput]="card.color"
                                    [seriesInput]="card.series"
+                                   [chartModeInput]="card.chartMode"
+                                   [windowStartInput]="card.windowStartBucket"
+                                   [windowEndInput]="card.windowEndBucket"
                                    [descriptionInput]="card.description"
                                    [widthPxInput]="cardWidthPx$$()"
                                    [heightPxInput]="cardHeightPx$$()" />
