@@ -11,6 +11,10 @@ export interface MetricsServiceDefinition {
   metricColors: Record<string, string>;
 }
 
+const METRICS_SERVICE_VARIANTS: Record<string, { baseService: string; label: string }> = {
+  'megaapp-test': { baseService: 'megaapp', label: 'MegaApp Test' },
+};
+
 const METRICS_SERVICE_DEFINITIONS: MetricsServiceDefinition[] = [
   {
     service: 'spread-capture-bot-v3',
@@ -29,6 +33,11 @@ const METRICS_SERVICE_DEFINITIONS: MetricsServiceDefinition[] = [
           'blacklisted_entries',
           'no_mutation_streak',
         ],
+      },
+      {
+        id: 'performance',
+        label: 'Performance',
+        metrics: ['fetch_ms', 'books_ms', 'reconcile_ms', 'cycle_duration_ms', 'discovery_duration_ms'],
       },
       {
         id: 'market',
@@ -77,11 +86,6 @@ const METRICS_SERVICE_DEFINITIONS: MetricsServiceDefinition[] = [
           'sell_replace_reduce',
           'sell_stop_no_inventory',
         ],
-      },
-      {
-        id: 'performance',
-        label: 'Performance',
-        metrics: ['fetch_ms', 'books_ms', 'reconcile_ms', 'cycle_duration_ms', 'discovery_duration_ms'],
       },
       {
         id: 'discovery-filters',
@@ -268,7 +272,23 @@ const METRIC_LABELS: Record<string, Record<string, string>> = {
 
 export function metricsServiceDefinition(service: string | null | undefined): MetricsServiceDefinition | null {
   if (!service) return null;
-  return METRICS_SERVICE_DEFINITIONS.find((definition) => definition.service === service) ?? null;
+
+  const definition = METRICS_SERVICE_DEFINITIONS.find((item) => item.service === service);
+  if (definition) {
+    return definition;
+  }
+
+  const variant = METRICS_SERVICE_VARIANTS[service];
+  if (!variant) {
+    return null;
+  }
+
+  const baseDefinition = METRICS_SERVICE_DEFINITIONS.find((item) => item.service === variant.baseService);
+  if (!baseDefinition) {
+    return null;
+  }
+
+  return { ...baseDefinition, service, label: variant.label };
 }
 
 export function metricsServiceDefinitions(): MetricsServiceDefinition[] {
@@ -276,9 +296,10 @@ export function metricsServiceDefinitions(): MetricsServiceDefinition[] {
 }
 
 export function metricsServiceLabel(service: string): string {
-  return metricsServiceDefinition(service)?.label ?? service;
+  return METRICS_SERVICE_VARIANTS[service]?.label ?? metricsServiceDefinition(service)?.label ?? service;
 }
 
 export function metricLabel(service: string, name: string): string {
-  return METRIC_LABELS[service]?.[name] ?? name;
+  const catalogService = METRICS_SERVICE_VARIANTS[service]?.baseService ?? service;
+  return METRIC_LABELS[catalogService]?.[name] ?? name;
 }

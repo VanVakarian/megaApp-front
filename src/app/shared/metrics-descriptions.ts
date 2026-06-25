@@ -137,5 +137,6 @@ const METRIC_DESCRIPTIONS: Record<string, Record<string, string>> = {
 };
 
 export function metricDescription(service: string, name: string): string {
-  return METRIC_DESCRIPTIONS[service]?.[name] ?? '';
+  const catalogService = service === 'megaapp-test' ? 'megaapp' : service;
+  return METRIC_DESCRIPTIONS[catalogService]?.[name] ?? '';
 }
