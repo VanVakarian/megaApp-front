@@ -17,7 +17,7 @@
         </v-tooltip>
       }
     </span>
-    <span class="shrink-0 text-base font-semibold">{{ valueInput() }}</span>
+    <span class="shrink-0 text-base font-semibold">{{ displayValueInput() || valueInput() }}</span>
   </div>
   <div class="mt-1"
        [style.height.px]="heightPxInput()">
