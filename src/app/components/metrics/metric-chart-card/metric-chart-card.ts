@@ -52,6 +52,7 @@ export class MetricChartCard implements OnDestroy {
   public readonly labelInput = input.required<string>();
   public readonly technicalNameInput = input<string>('');
   public readonly valueInput = input<number>(0);
+  public readonly displayValueInput = input<string>('');
   public readonly colorInput = input.required<string>();
   public readonly seriesInput = input.required<MetricSeriesPoint[]>();
   public readonly chartModeInput = input<MetricChartMode>('filled');

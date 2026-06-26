@@ -2,8 +2,8 @@ import { AfterViewInit, Component, effect, inject, viewChild } from '@angular/co
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { FoodAddModalService } from '@app/services/food/food-add-modal.service';
 import { FoodCatalogueService } from '@app/services/food/food-catalogue.service';
-import { FoodCoefficientsService } from '@app/services/food/food-coefficients.service';
 import { FoodDiaryService } from '@app/services/food/food-diary.service';
+import { FoodPersonalKcalsService } from '@app/services/food/food-personal-kcals.service';
 import { FoodStatsService } from '@app/services/food/food-stats.service';
 import { DiaryEntry, HistoryEntryAction } from '@app/shared/types';
 import { VButton } from '@ui-kit/components/v-button/v-button';
@@ -21,8 +21,7 @@ export class DiaryEntryAddForm implements AfterViewInit {
 
   private selectedDaysTargerKcals = 0;
   private selectedDaysConsumedPercent = 0;
-  private selectedFoodKcals = 0;
-  private diaryEntriesCoefficient = 1;
+  private selectedFoodPersonalKcalsPer100g = 0;
   protected projectedSelectedDaysConsumedPercentNum = 0;
   protected projectedSelectedDaysConsumedPercentPadded = '0';
 
@@ -31,7 +30,7 @@ export class DiaryEntryAddForm implements AfterViewInit {
   protected readonly foodCatalogueService = inject(FoodCatalogueService);
   protected readonly foodAddModalService = inject(FoodAddModalService);
   private readonly foodDiaryService = inject(FoodDiaryService);
-  private readonly foodCoefficientsService = inject(FoodCoefficientsService);
+  private readonly foodPersonalKcalsService = inject(FoodPersonalKcalsService);
   private readonly foodStatsService = inject(FoodStatsService);
 
   private readonly selectedDayTotalsEffect$$ = effect(() => {
@@ -45,8 +44,8 @@ export class DiaryEntryAddForm implements AfterViewInit {
     const product = this.foodAddModalService.selectedProduct$$();
     if (!product) return;
 
-    this.selectedFoodKcals = product.kcals;
-    this.diaryEntriesCoefficient = this.foodCoefficientsService.coefficients$$()?.[product.id] ?? 1;
+    this.selectedFoodPersonalKcalsPer100g =
+      this.foodPersonalKcalsService.personalKcals$$()?.[product.id] ?? product.kcals;
     this.updateProjectedDaysConsumedPercent(this.foodWeightControl.value || 0);
   });
 
@@ -74,18 +73,16 @@ export class DiaryEntryAddForm implements AfterViewInit {
   }
 
   private updateProjectedDaysConsumedPercent(weightValue: number): void {
-    if (!this.selectedFoodKcals) {
+    if (!this.selectedFoodPersonalKcalsPer100g) {
       this.projectedSelectedDaysConsumedPercentNum = this.selectedDaysConsumedPercent;
       this.projectedSelectedDaysConsumedPercentPadded = this.selectedDaysConsumedPercent.toFixed(1);
       return;
     }
 
     if (this.selectedDaysTargerKcals) {
-      const weightKcalsPerHundredGrams = this.selectedFoodKcals;
-      const weightKcalsTotal = (weightValue / 100) * weightKcalsPerHundredGrams;
-      const weightKcalsWithCoefficient = weightKcalsTotal * this.diaryEntriesCoefficient;
+      const weightKcalsTotal = (weightValue / 100) * this.selectedFoodPersonalKcalsPer100g;
 
-      const deltaInPercent = (weightKcalsWithCoefficient / this.selectedDaysTargerKcals) * 100;
+      const deltaInPercent = (weightKcalsTotal / this.selectedDaysTargerKcals) * 100;
       const totalPercent = this.selectedDaysConsumedPercent + deltaInPercent;
 
       this.projectedSelectedDaysConsumedPercentNum = totalPercent;
@@ -106,6 +103,7 @@ export class DiaryEntryAddForm implements AfterViewInit {
       dateISO: this.foodDiaryService.selectedDayIso$$(),
       foodCatalogueId: product.id,
       foodWeight: Number(foodWeight) || 0,
+      kcals: 0,
       history: [{ action: HistoryEntryAction.INIT, value: Number(foodWeight) || 0 }],
     };
 

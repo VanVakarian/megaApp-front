@@ -115,7 +115,7 @@ export class NutritionSummary {
     const portionMultiplier = entry.foodWeight / 100;
 
     return {
-      kcalsConsumed: product.kcals * portionMultiplier,
+      kcalsConsumed: entry.kcals,
       kcalsPercent: 0,
       bodyWeight: null,
       targetKcals: dayTotals.targetKcals,

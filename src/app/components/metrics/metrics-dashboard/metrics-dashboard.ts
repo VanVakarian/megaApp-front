@@ -32,17 +32,37 @@ import {
 } from '../metric-chart-card/metric-chart-card';
 
 const NOW_TICK_INTERVAL_MS = 30_000;
-const MONEY_METRIC_NAMES = new Set(['free_cash', 'estimated_account_value']);
 const EXPANDED_SERVICES_STORAGE_KEY = 'metrics_expanded_services';
 const CARD_WIDTH_STORAGE_KEY = 'metrics_card_width_px';
 const CARD_HEIGHT_STORAGE_KEY = 'metrics_card_height_px';
 const SETTINGS_PANEL_KEY = '__settings__';
+const RATIO_METRIC_NAMES = new Set([
+  'cpu_busy_ratio_avg',
+  'cpu_busy_ratio_max',
+  'cpu_iowait_ratio_avg',
+  'cpu_iowait_ratio_max',
+  'cpu_steal_ratio_avg',
+  'cpu_steal_ratio_max',
+  'process_cpu_ratio_avg',
+  'process_cpu_ratio_max',
+  'memory_used_ratio',
+  'disk_used_ratio',
+]);
+const BYTE_METRIC_NAMES = new Set([
+  'memory_available_bytes',
+  'memory_total_bytes',
+  'disk_free_bytes',
+  'process_rss_bytes',
+]);
+const LOAD_METRIC_NAMES = new Set(['load1', 'load5', 'load15']);
+const MONEY_METRIC_NAMES = new Set(['free_cash', 'estimated_account_value']);
 
 interface MetricChartCardData {
   key: string;
   label: string;
   technicalName: string;
   value: number;
+  displayValue: string;
   color: string;
   series: MetricSeriesPoint[];
   chartMode: MetricChartMode;
@@ -101,7 +121,7 @@ export class MetricsDashboard implements OnInit, OnDestroy {
     return Array.from(discoveredServices).map((service) => ({
       service,
       label: metricsServiceLabel(service),
-    }));
+    })).sort((left, right) => left.label.localeCompare(right.label));
   });
 
   protected readonly metricGroupsByService$$ = computed<Map<string, MetricGroupData[]>>(() => {
@@ -132,13 +152,13 @@ export class MetricsDashboard implements OnInit, OnDestroy {
               ? buildSparseBarSeriesFromPoints(metricPoints)
               : buildSparseLineSeriesFromPoints(metricPoints);
           const rawValue = metricPoints[metricPoints.length - 1]?.value ?? 0;
-          const value = MONEY_METRIC_NAMES.has(name) ? Math.round(rawValue * 100) / 100 : rawValue;
           const color = definition.metricColors[name] ?? '#578f92';
           return {
             key,
             label: metricLabel(option.service, name),
             technicalName: name,
-            value,
+            value: rawValue,
+            displayValue: this.formatMetricValue(name, rawValue),
             color,
             series,
             chartMode,
@@ -206,5 +226,55 @@ export class MetricsDashboard implements OnInit, OnDestroy {
 
   private loadExpandedServices(): Set<string> {
     return new Set(this.localStorageService.getUserScoped<string[]>(EXPANDED_SERVICES_STORAGE_KEY) ?? []);
+  }
+
+  private formatMetricValue(name: string, value: number): string {
+    if (!Number.isFinite(value)) {
+      return '0';
+    }
+    if (RATIO_METRIC_NAMES.has(name)) {
+      return `${(value * 100).toFixed(1)}%`;
+    }
+    if (BYTE_METRIC_NAMES.has(name)) {
+      return this.formatBytes(value);
+    }
+    if (name === 'uptime_seconds') {
+      return this.formatUptime(value);
+    }
+    if (LOAD_METRIC_NAMES.has(name)) {
+      return value.toFixed(2);
+    }
+    if (MONEY_METRIC_NAMES.has(name)) {
+      return (Math.round(value * 100) / 100).toString();
+    }
+    if (Math.abs(value) >= 1000 || Number.isInteger(value)) {
+      return value.toString();
+    }
+    return value.toFixed(2);
+  }
+
+  private formatBytes(value: number): string {
+    const units = ['B', 'KiB', 'MiB', 'GiB', 'TiB'];
+    let current = value;
+    let unitIndex = 0;
+    while (Math.abs(current) >= 1024 && unitIndex < units.length - 1) {
+      current /= 1024;
+      unitIndex++;
+    }
+    return `${current.toFixed(current >= 10 || unitIndex === 0 ? 0 : 1)} ${units[unitIndex]}`;
+  }
+
+  private formatUptime(value: number): string {
+    const totalSeconds = Math.max(0, Math.floor(value));
+    const days = Math.floor(totalSeconds / 86400);
+    const hours = Math.floor((totalSeconds % 86400) / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    if (days > 0) {
+      return `${days}d ${hours}h`;
+    }
+    if (hours > 0) {
+      return `${hours}h ${minutes}m`;
+    }
+    return `${minutes}m`;
   }
 }

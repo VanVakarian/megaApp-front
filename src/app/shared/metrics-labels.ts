@@ -15,6 +15,65 @@ const METRICS_SERVICE_VARIANTS: Record<string, { baseService: string; label: str
   'megaapp-test': { baseService: 'megaapp', label: 'MegaApp Test' },
 };
 
+const HARDWARE_SERVICE_PREFIX = 'hardware:';
+
+const HARDWARE_SERVICE_DEFINITION: MetricsServiceDefinition = {
+  service: HARDWARE_SERVICE_PREFIX,
+  label: 'Hardware Server',
+  groups: [
+    {
+      id: 'cpu',
+      label: 'CPU and Load',
+      metrics: [
+        'cpu_busy_ratio_avg',
+        'cpu_busy_ratio_max',
+        'cpu_iowait_ratio_avg',
+        'cpu_iowait_ratio_max',
+        'cpu_steal_ratio_avg',
+        'cpu_steal_ratio_max',
+        'load1',
+        'load5',
+        'load15',
+      ],
+    },
+    {
+      id: 'memory',
+      label: 'Memory',
+      metrics: ['memory_used_ratio', 'memory_available_bytes', 'memory_total_bytes', 'process_rss_bytes'],
+    },
+    {
+      id: 'disk',
+      label: 'Disk',
+      metrics: ['disk_used_ratio', 'disk_free_bytes', 'uptime_seconds'],
+    },
+    {
+      id: 'process',
+      label: 'Flatline Process',
+      metrics: ['process_cpu_ratio_avg', 'process_cpu_ratio_max'],
+    },
+  ],
+  metricColors: {
+    cpu_busy_ratio_avg: '#dc2626',
+    cpu_busy_ratio_max: '#ef4444',
+    cpu_iowait_ratio_avg: '#2563eb',
+    cpu_iowait_ratio_max: '#60a5fa',
+    cpu_steal_ratio_avg: '#7c3aed',
+    cpu_steal_ratio_max: '#a78bfa',
+    load1: '#0891b2',
+    load5: '#0f766e',
+    load15: '#14b8a6',
+    memory_used_ratio: '#ea580c',
+    memory_available_bytes: '#16a34a',
+    memory_total_bytes: '#65a30d',
+    process_rss_bytes: '#84cc16',
+    disk_used_ratio: '#d97706',
+    disk_free_bytes: '#f59e0b',
+    uptime_seconds: '#64748b',
+    process_cpu_ratio_avg: '#db2777',
+    process_cpu_ratio_max: '#ec4899',
+  },
+};
+
 const METRICS_SERVICE_DEFINITIONS: MetricsServiceDefinition[] = [
   {
     service: 'spread-capture-bot-v3',
@@ -176,7 +235,7 @@ const METRICS_SERVICE_DEFINITIONS: MetricsServiceDefinition[] = [
           'food_catalogue_entry_created',
           'food_catalogue_entry_updated',
           'food_catalogue_entry_deleted',
-          'food_coefficients_job_ran',
+          'food_personal_kcal_job_ran',
           'backup_job_ran',
         ],
       },
@@ -191,13 +250,33 @@ const METRICS_SERVICE_DEFINITIONS: MetricsServiceDefinition[] = [
       food_catalogue_entry_created: '#0891b2',
       food_catalogue_entry_updated: '#0891b2',
       food_catalogue_entry_deleted: '#0891b2',
-      food_coefficients_job_ran: '#64748b',
+      food_personal_kcal_job_ran: '#64748b',
       backup_job_ran: '#64748b',
     },
   },
 ];
 
 const METRIC_LABELS: Record<string, Record<string, string>> = {
+  hardware: {
+    cpu_busy_ratio_avg: 'CPU Busy Avg',
+    cpu_busy_ratio_max: 'CPU Busy Peak',
+    cpu_iowait_ratio_avg: 'CPU IOwait Avg',
+    cpu_iowait_ratio_max: 'CPU IOwait Peak',
+    cpu_steal_ratio_avg: 'CPU Steal Avg',
+    cpu_steal_ratio_max: 'CPU Steal Peak',
+    load1: 'Load 1m',
+    load5: 'Load 5m',
+    load15: 'Load 15m',
+    memory_used_ratio: 'Memory Used Ratio',
+    memory_available_bytes: 'Memory Available',
+    memory_total_bytes: 'Memory Total',
+    disk_used_ratio: 'Disk Used Ratio',
+    disk_free_bytes: 'Disk Free',
+    uptime_seconds: 'Uptime',
+    process_rss_bytes: 'Flatline RSS',
+    process_cpu_ratio_avg: 'Flatline CPU Avg',
+    process_cpu_ratio_max: 'Flatline CPU Peak',
+  },
   megaapp: {
     food_diary_entry_created: 'Food Entries Created',
     food_diary_entry_updated: 'Food Entries Updated',
@@ -208,7 +287,7 @@ const METRIC_LABELS: Record<string, Record<string, string>> = {
     food_catalogue_entry_created: 'Products Created',
     food_catalogue_entry_updated: 'Products Updated',
     food_catalogue_entry_deleted: 'Products Deleted',
-    food_coefficients_job_ran: 'Coefficients Job Runs',
+    food_personal_kcal_job_ran: 'Personal Kcal Job Runs',
     backup_job_ran: 'Backup Job Runs',
   },
   'spread-capture-bot-v3': {
@@ -270,12 +349,27 @@ const METRIC_LABELS: Record<string, Record<string, string>> = {
   },
 };
 
+function isHardwareService(service: string): boolean {
+  return service.startsWith(HARDWARE_SERVICE_PREFIX);
+}
+
+function hardwareServiceLabel(service: string): string {
+  const suffix = service.slice(HARDWARE_SERVICE_PREFIX.length).trim();
+  if (!suffix) {
+    return HARDWARE_SERVICE_DEFINITION.label;
+  }
+  return `Hardware: ${suffix}`;
+}
+
 export function metricsServiceDefinition(service: string | null | undefined): MetricsServiceDefinition | null {
   if (!service) return null;
 
   const definition = METRICS_SERVICE_DEFINITIONS.find((item) => item.service === service);
   if (definition) {
     return definition;
+  }
+  if (isHardwareService(service)) {
+    return { ...HARDWARE_SERVICE_DEFINITION, service, label: hardwareServiceLabel(service) };
   }
 
   const variant = METRICS_SERVICE_VARIANTS[service];
@@ -296,10 +390,15 @@ export function metricsServiceDefinitions(): MetricsServiceDefinition[] {
 }
 
 export function metricsServiceLabel(service: string): string {
+  if (isHardwareService(service)) {
+    return hardwareServiceLabel(service);
+  }
   return METRICS_SERVICE_VARIANTS[service]?.label ?? metricsServiceDefinition(service)?.label ?? service;
 }
 
 export function metricLabel(service: string, name: string): string {
-  const catalogService = METRICS_SERVICE_VARIANTS[service]?.baseService ?? service;
+  const catalogService = isHardwareService(service)
+    ? 'hardware'
+    : (METRICS_SERVICE_VARIANTS[service]?.baseService ?? service);
   return METRIC_LABELS[catalogService]?.[name] ?? name;
 }

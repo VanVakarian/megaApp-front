@@ -67,6 +67,7 @@ export interface DiaryEntryCreatedWsMessage {
 export interface DiaryEntryToUpdate {
   id: number;
   newFoodWeight: number;
+  newKcals: number;
   newHistoryEntry: HistoryEntry;
 }
 
@@ -252,6 +253,7 @@ export interface ServerResponseWithMessage extends ServerResponseBasic {
 
 export interface ServerResponseWithDiaryId extends ServerResponseBasic {
   diaryId: number;
+  kcals: number;
 }
 
 export interface ServerResponseWithDiaryEntries extends ServerResponseBasic {
@@ -332,6 +334,7 @@ export interface DiaryEntry {
   dateISO: string;
   foodCatalogueId: number;
   foodWeight: number;
+  kcals: number;
   history: HistoryEntry[];
 }
 
@@ -418,7 +421,7 @@ export interface Catalogue {
   [id: number]: CatalogueEntry;
 }
 
-export interface Coefficients {
+export interface PersonalKcals {
   [id: number]: number;
 }
 
