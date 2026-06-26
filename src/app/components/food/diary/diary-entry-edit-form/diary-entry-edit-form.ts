@@ -10,8 +10,8 @@ import {
 } from '@angular/forms';
 import { DeviceInfoService } from '@app/services/device-info.service';
 import { FoodCatalogueService } from '@app/services/food/food-catalogue.service';
-import { FoodCoefficientsService } from '@app/services/food/food-coefficients.service';
 import { FoodDiaryService } from '@app/services/food/food-diary.service';
+import { FoodPersonalKcalsService } from '@app/services/food/food-personal-kcals.service';
 import { DiaryEntry, HistoryEntry, HistoryEntryAction } from '@app/shared/types';
 import { VButton } from '@ui-kit/components/v-button/v-button';
 import { VExpand } from '@ui-kit/components/v-expand/v-expand';
@@ -65,8 +65,7 @@ export class DiaryEntryEditForm implements OnChanges {
 
   private selectedDaysTargerKcals = 0;
   private selectedDaysConsumedPercent = 0;
-  private selectedFoodKcals = 0;
-  private diaryEntriesCoefficient = 0;
+  private selectedFoodPersonalKcalsPer100g = 0;
   protected projectedSelectedDaysConsumedPercentNum = 0;
   protected projectedSelectedDaysConsumedPercentPadded = '0';
 
@@ -139,9 +138,10 @@ export class DiaryEntryEditForm implements OnChanges {
     const totals = this.foodDiaryService.selectedDayTotals$$();
     this.selectedDaysConsumedPercent = totals.kcalsPercent;
     this.selectedDaysTargerKcals = totals.targetKcals;
-    this.selectedFoodKcals = this.foodCatalogueService.catalogue$$()?.[this.diaryEntry.foodCatalogueId]?.kcals ?? 0;
-    this.diaryEntriesCoefficient =
-      this.foodCoefficientsService.coefficients$$()?.[this.diaryEntry.foodCatalogueId] ?? 1;
+    this.selectedFoodPersonalKcalsPer100g =
+      this.foodPersonalKcalsService.personalKcals$$()?.[this.diaryEntry.foodCatalogueId] ??
+      this.foodCatalogueService.catalogue$$()?.[this.diaryEntry.foodCatalogueId]?.kcals ??
+      0;
     this.updateProjectedDaysConsumedPercent();
   });
 
@@ -152,7 +152,7 @@ export class DiaryEntryEditForm implements OnChanges {
   protected readonly deviceInfoService = inject(DeviceInfoService);
   private readonly foodDiaryService = inject(FoodDiaryService);
   private readonly foodCatalogueService = inject(FoodCatalogueService);
-  private readonly foodCoefficientsService = inject(FoodCoefficientsService);
+  private readonly foodPersonalKcalsService = inject(FoodPersonalKcalsService);
 
   public ngOnChanges(): void {
     if (this.diaryEntry) {
@@ -281,10 +281,9 @@ export class DiaryEntryEditForm implements OnChanges {
       dateISO: this.foodDiaryService.selectedDayIso$$(),
       foodCatalogueId: this.diaryEntry.foodCatalogueId,
       foodWeight: this.foodWeightFinal,
+      kcals: 0,
       history: [history],
     };
-
-    const kcalsDelta = this.calculateKcalsDelta(foodWeight);
 
     await this.foodDiaryService.editDiaryEntry(preppedFormValues);
     this.diaryEntryForm.enable();
@@ -372,24 +371,13 @@ export class DiaryEntryEditForm implements OnChanges {
     this.onServerSuccessfullEditResponse.emit();
   }
 
-  private calculateKcalsDelta(weightValue: number): number {
-    const tempEntry: DiaryEntry = {
-      ...this.diaryEntry,
-      foodWeight: weightValue,
-    };
-    return this.foodDiaryService.calculateEntryKcals(tempEntry);
-  }
-
   private updateProjectedDaysConsumedPercent(): void {
     const weightDelta = this.foodWeightFinal - this.foodWeightInitial;
 
-    if (this.selectedFoodKcals && this.diaryEntriesCoefficient && this.selectedDaysTargerKcals) {
-      const weightKcalsPerHundredGrams = this.selectedFoodKcals;
-      const weightKcalsTotal = (weightDelta / 100) * weightKcalsPerHundredGrams;
+    if (this.selectedFoodPersonalKcalsPer100g && this.selectedDaysTargerKcals) {
+      const weightKcalsTotal = (weightDelta / 100) * this.selectedFoodPersonalKcalsPer100g;
 
-      const weightKcalsWithCoefficient = weightKcalsTotal * this.diaryEntriesCoefficient;
-
-      const deltaInPercent = (weightKcalsWithCoefficient / this.selectedDaysTargerKcals) * 100;
+      const deltaInPercent = (weightKcalsTotal / this.selectedDaysTargerKcals) * 100;
       const totalPercent = this.selectedDaysConsumedPercent + deltaInPercent;
 
       this.projectedSelectedDaysConsumedPercentNum = totalPercent;

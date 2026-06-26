@@ -2,27 +2,25 @@ import { HttpClient } from '@angular/common/http';
 import { effect, inject, Injectable, signal, WritableSignal } from '@angular/core';
 import { AuthService, AuthSessionState } from '@app/services/auth.service';
 import { exhaustRequest } from '@app/shared/decorators/exhaust-request.decorator';
-import { Coefficients, ServerResponseWithData } from '@app/shared/types';
+import { PersonalKcals, ServerResponseWithData } from '@app/shared/types';
 import { firstValueFrom } from 'rxjs';
 import { LocalStorageService } from '../local-storage.service';
 import { NetworkService } from '../network.service';
-import { SettingsService } from '../settings.service';
 import { SyncQueueService } from '../sync-queue.service';
 import { BaseFoodService } from './food-base.service';
 
 @Injectable({
   providedIn: 'root',
 })
-export class FoodCoefficientsService extends BaseFoodService {
-  private readonly COEFFICIENTS_STORAGE_KEY = 'food_coefficients';
+export class FoodPersonalKcalsService extends BaseFoodService {
+  private readonly PERSONAL_KCALS_STORAGE_KEY = 'food_personal_kcals';
 
-  public readonly coefficients$$: WritableSignal<Coefficients> = signal({});
+  public readonly personalKcals$$: WritableSignal<PersonalKcals> = signal({});
 
   protected getStorageKey(): string {
-    return this.COEFFICIENTS_STORAGE_KEY;
+    return this.PERSONAL_KCALS_STORAGE_KEY;
   }
 
-  private readonly settingsService = inject(SettingsService);
   private readonly authService = inject(AuthService);
 
   private readonly resetOnAuthLossEffect$$ = effect(() => {
@@ -38,33 +36,33 @@ export class FoodCoefficientsService extends BaseFoodService {
     syncQueueService: SyncQueueService,
   ) {
     super(http, localStorageService, networkService, syncQueueService);
-    this.loadCoefficientsFromLocalStorage();
+    this.loadPersonalKcalsFromLocalStorage();
   }
 
   public reset(): void {
-    this.coefficients$$.set({});
+    this.personalKcals$$.set({});
   }
 
   @exhaustRequest()
-  public async getCoefficients(): Promise<Coefficients> {
+  public async getPersonalKcals(): Promise<PersonalKcals> {
     try {
       const response = await firstValueFrom(
-        this.http.get<ServerResponseWithData<Coefficients>>('/api/food/coefficients'),
+        this.http.get<ServerResponseWithData<PersonalKcals>>('/api/food/personal-kcals'),
       );
 
-      this.coefficients$$.set(response.data);
+      this.personalKcals$$.set(response.data);
       this.saveToLocalStorage(response.data);
       return response.data;
     } catch (error) {
-      console.error('Failed fetching coefficients:', error);
+      console.error('Failed fetching personal kcals:', error);
       return {};
     }
   }
 
-  private loadCoefficientsFromLocalStorage(): void {
-    const savedCoefficients = this.loadFromLocalStorage<Coefficients>();
-    if (savedCoefficients) {
-      this.coefficients$$.set(savedCoefficients);
+  private loadPersonalKcalsFromLocalStorage(): void {
+    const savedPersonalKcals = this.loadFromLocalStorage<PersonalKcals>();
+    if (savedPersonalKcals) {
+      this.personalKcals$$.set(savedPersonalKcals);
     }
   }
 }

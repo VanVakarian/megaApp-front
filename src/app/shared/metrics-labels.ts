@@ -235,7 +235,7 @@ const METRICS_SERVICE_DEFINITIONS: MetricsServiceDefinition[] = [
           'food_catalogue_entry_created',
           'food_catalogue_entry_updated',
           'food_catalogue_entry_deleted',
-          'food_coefficients_job_ran',
+          'food_personal_kcal_job_ran',
           'backup_job_ran',
         ],
       },
@@ -250,7 +250,7 @@ const METRICS_SERVICE_DEFINITIONS: MetricsServiceDefinition[] = [
       food_catalogue_entry_created: '#0891b2',
       food_catalogue_entry_updated: '#0891b2',
       food_catalogue_entry_deleted: '#0891b2',
-      food_coefficients_job_ran: '#64748b',
+      food_personal_kcal_job_ran: '#64748b',
       backup_job_ran: '#64748b',
     },
   },
@@ -287,7 +287,7 @@ const METRIC_LABELS: Record<string, Record<string, string>> = {
     food_catalogue_entry_created: 'Products Created',
     food_catalogue_entry_updated: 'Products Updated',
     food_catalogue_entry_deleted: 'Products Deleted',
-    food_coefficients_job_ran: 'Coefficients Job Runs',
+    food_personal_kcal_job_ran: 'Personal Kcal Job Runs',
     backup_job_ran: 'Backup Job Runs',
   },
   'spread-capture-bot-v3': {
@@ -397,6 +397,8 @@ export function metricsServiceLabel(service: string): string {
 }
 
 export function metricLabel(service: string, name: string): string {
-  const catalogService = isHardwareService(service) ? 'hardware' : METRICS_SERVICE_VARIANTS[service]?.baseService ?? service;
+  const catalogService = isHardwareService(service)
+    ? 'hardware'
+    : (METRICS_SERVICE_VARIANTS[service]?.baseService ?? service);
   return METRIC_LABELS[catalogService]?.[name] ?? name;
 }

@@ -57,7 +57,7 @@ export const BACKGROUND_SYNC_RETRIES_MAX: number = 3;
 
 export const BACKGROUND_SYNC_TIMEOUT_MS: number = 8000;
 
-export const CACHE_SCHEMA_VERSION: number = 1;
+export const CACHE_SCHEMA_VERSION: number = 2;
 
 export const USER_SCOPED_CACHE_BASE_KEYS: string[] = [
   'settings',
@@ -65,7 +65,7 @@ export const USER_SCOPED_CACHE_BASE_KEYS: string[] = [
   'food_stats_slider',
   'food_catalogue',
   'food_search_cache',
-  'food_coefficients',
+  'food_personal_kcals',
   'food_diary',
   'food_diary_deleted_day_snapshot',
   'money_settings',

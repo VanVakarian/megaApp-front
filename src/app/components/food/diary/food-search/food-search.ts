@@ -186,6 +186,7 @@ export class FoodSearch {
       dateISO: this.foodDiaryService.selectedDayIso$$(),
       foodCatalogueId: product.id,
       foodWeight: weight,
+      kcals: 0,
       history: [{ action: HistoryEntryAction.INIT, value: weight }],
     };
 

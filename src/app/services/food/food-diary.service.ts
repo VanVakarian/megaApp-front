@@ -33,7 +33,7 @@ import { NotificationService } from '../notification.service';
 import { SyncOperationType, SyncQueueService } from '../sync-queue.service';
 import { BaseFoodService } from './food-base.service';
 import { FoodCatalogueService } from './food-catalogue.service';
-import { FoodCoefficientsService } from './food-coefficients.service';
+import { FoodPersonalKcalsService } from './food-personal-kcals.service';
 import { FoodStatsService } from './food-stats.service';
 
 const DEFAULT_NUTRIENTS = {
@@ -88,7 +88,7 @@ export class FoodDiaryService extends BaseFoodService {
   }
 
   private readonly catalogueService = inject(FoodCatalogueService);
-  private readonly coefficientsService = inject(FoodCoefficientsService);
+  private readonly personalKcalsService = inject(FoodPersonalKcalsService);
   private readonly foodStatsService = inject(FoodStatsService);
   private readonly authService = inject(AuthService);
   private readonly notificationService = inject(NotificationService);
@@ -126,11 +126,15 @@ export class FoodDiaryService extends BaseFoodService {
     this.lastSyncTs = 0;
   }
 
-  public calculateEntryKcals(entry: DiaryEntry): number {
+  // Used only for the unsaved/unconfirmed window where the server hasn't computed entry.kcals
+  // yet: optimistic create before the response arrives, and the live edit-form preview value.
+  private estimateEntryKcalsNow(entry: DiaryEntry): number {
     const entryWeight = entry.foodWeight / 100;
-    const catalogueKcals = this.catalogueService.catalogue$$()[entry.foodCatalogueId]?.kcals ?? 0;
-    const coefficient = this.coefficientsService.coefficients$$()[entry.foodCatalogueId] || 1;
-    return Math.round(entryWeight * catalogueKcals * coefficient);
+    const personalKcalsPer100g =
+      this.personalKcalsService.personalKcals$$()[entry.foodCatalogueId] ??
+      this.catalogueService.catalogue$$()[entry.foodCatalogueId]?.kcals ??
+      0;
+    return Math.round(entryWeight * personalKcalsPer100g);
   }
 
   public focusDiaryEntry(diaryEntryId: number): void {
@@ -171,13 +175,13 @@ export class FoodDiaryService extends BaseFoodService {
     const tempId = Date.now();
     const originalDiary = { ...this.diaryRaw$$() };
 
-    const kcalsDelta = this.calculateEntryKcals(diaryEntry);
+    const kcalsDelta = this.estimateEntryKcalsNow(diaryEntry);
     const selectedDay = this.selectedDayIso$$();
     const nutrientsDelta = this.calculateEntryNutrients(diaryEntry);
 
     const statsRollback = this.foodStatsService.createStatsRollback(selectedDay);
 
-    const entryWithTempId = { ...diaryEntry, id: tempId };
+    const entryWithTempId = { ...diaryEntry, id: tempId, kcals: kcalsDelta };
 
     this.updateDiaryEntryWithNewValues(entryWithTempId);
     this.updateNutrientsOptimistically(selectedDay, nutrientsDelta, kcalsDelta);
@@ -187,7 +191,7 @@ export class FoodDiaryService extends BaseFoodService {
 
     const successCallback = (response: ServerResponseWithDiaryId) => {
       if (response.result && response.diaryId) {
-        this.updateDiaryEntryId(tempId, response.diaryId);
+        this.reconcileCreatedDiaryEntry(tempId, response.diaryId, response.kcals);
       }
     };
 
@@ -230,8 +234,8 @@ export class FoodDiaryService extends BaseFoodService {
       return false;
     }
 
-    const originalKcals = this.calculateEntryKcals(originalEntry);
-    const newKcals = this.calculateEntryKcals(diaryEntry);
+    const originalKcals = originalEntry.kcals;
+    const newKcals = this.estimateEntryKcalsNow(diaryEntry);
     const kcalsDelta = newKcals - originalKcals;
 
     const originalNutrients = this.calculateEntryNutrients(originalEntry);
@@ -245,7 +249,7 @@ export class FoodDiaryService extends BaseFoodService {
 
     const statsRollback = this.foodStatsService.createStatsRollback(selectedDay);
 
-    this.updateDiaryEntryWithNewValues(diaryEntry);
+    this.updateDiaryEntryWithNewValues({ ...diaryEntry, kcals: newKcals });
     this.updateNutrientsOptimistically(selectedDay, nutrientsDelta, kcalsDelta);
     this.saveToLocalStorage(this.diaryRaw$$());
 
@@ -261,10 +265,17 @@ export class FoodDiaryService extends BaseFoodService {
       }
     };
 
+    const successCallback = (response: ServerResponseWithDiaryId) => {
+      if (response.result) {
+        this.reconcileEditedDiaryEntry(diaryEntry.id, response.kcals);
+      }
+    };
+
     this.addSyncOperation({
       type: SyncOperationType.UPDATE,
       endpoint: '/api/food/diary',
       data: diaryEntry,
+      successCallback: successCallback,
       rollbackCallback: rollbackFunction,
       feedback: {
         successMessage: 'Изменения сохранены',
@@ -293,7 +304,7 @@ export class FoodDiaryService extends BaseFoodService {
       return false;
     }
 
-    const kcalsDelta = -this.calculateEntryKcals(deletedEntry);
+    const kcalsDelta = -deletedEntry.kcals;
 
     const deletedNutrients = this.calculateEntryNutrients(deletedEntry);
     const nutrientsDelta: NutrientDelta = {
@@ -527,7 +538,7 @@ export class FoodDiaryService extends BaseFoodService {
       const kcalsPercent = this.calculatePercentage(consumedKcals, targetKcals);
 
       for (const [id, entry] of Object.entries(day.food)) {
-        const kcals = this.calculateEntryKcals(entry);
+        const kcals = entry.kcals;
         const percentage = this.calculatePercentage(kcals, targetKcals);
 
         const formattedEntry: DiaryEntryWithFullData = {
@@ -622,7 +633,7 @@ export class FoodDiaryService extends BaseFoodService {
       (acc, entry) => {
         const entryNutrients = this.calculateEntryNutrients(entry);
 
-        acc.kcalsDelta -= this.calculateEntryKcals(entry);
+        acc.kcalsDelta -= entry.kcals;
         acc.nutrientsDelta.protein -= entryNutrients.protein;
         acc.nutrientsDelta.fat -= entryNutrients.fat;
         acc.nutrientsDelta.carbs -= entryNutrients.carbs;
@@ -647,7 +658,7 @@ export class FoodDiaryService extends BaseFoodService {
       (acc, entry) => {
         const entryNutrients = this.calculateEntryNutrients(entry);
 
-        acc.kcalsDelta += this.calculateEntryKcals(entry);
+        acc.kcalsDelta += entry.kcals;
         acc.nutrientsDelta.protein += entryNutrients.protein;
         acc.nutrientsDelta.fat += entryNutrients.fat;
         acc.nutrientsDelta.carbs += entryNutrients.carbs;
@@ -680,6 +691,7 @@ export class FoodDiaryService extends BaseFoodService {
           dateISO: selectedDay,
           foodCatalogueId: updatedDiaryEntry.foodCatalogueId,
           foodWeight: updatedDiaryEntry.foodWeight,
+          kcals: updatedDiaryEntry.kcals,
           history: [],
         };
       }
@@ -687,6 +699,7 @@ export class FoodDiaryService extends BaseFoodService {
       updatedFood[updatedDiaryEntry.id] = {
         ...updatedFood[updatedDiaryEntry.id],
         foodWeight: updatedDiaryEntry.foodWeight,
+        kcals: updatedDiaryEntry.kcals,
         history: [...updatedFood[updatedDiaryEntry.id].history, ...updatedDiaryEntry.history],
       };
 
@@ -785,7 +798,7 @@ export class FoodDiaryService extends BaseFoodService {
     });
   }
 
-  private updateDiaryEntryId(tempId: number, realId: number): void {
+  private reconcileCreatedDiaryEntry(tempId: number, realId: number, kcals: number): void {
     this.diaryRaw$$.update((oldDiary) => {
       const selectedDay = this.selectedDayIso$$();
       const updatedDiary = { ...oldDiary };
@@ -793,9 +806,27 @@ export class FoodDiaryService extends BaseFoodService {
       const updatedFood = { ...updatedDay.food };
 
       if (updatedFood[tempId]) {
-        const entry = { ...updatedFood[tempId], id: realId };
+        const entry = { ...updatedFood[tempId], id: realId, kcals };
         updatedFood[realId] = entry;
         delete updatedFood[tempId];
+      }
+
+      updatedDay.food = updatedFood;
+      updatedDiary[selectedDay] = updatedDay;
+      return updatedDiary;
+    });
+    this.saveToLocalStorage(this.diaryRaw$$());
+  }
+
+  private reconcileEditedDiaryEntry(diaryEntryId: number, kcals: number): void {
+    this.diaryRaw$$.update((oldDiary) => {
+      const selectedDay = this.selectedDayIso$$();
+      const updatedDiary = { ...oldDiary };
+      const updatedDay = { ...updatedDiary[selectedDay] };
+      const updatedFood = { ...updatedDay.food };
+
+      if (updatedFood[diaryEntryId]) {
+        updatedFood[diaryEntryId] = { ...updatedFood[diaryEntryId], kcals };
       }
 
       updatedDay.food = updatedFood;
@@ -990,7 +1021,7 @@ export class FoodDiaryService extends BaseFoodService {
     await Promise.all([
       this.getFoodDiaryFullUpdateRange(),
       this.catalogueService.getCatalogueEntries(),
-      this.coefficientsService.getCoefficients(),
+      this.personalKcalsService.getPersonalKcals(),
       this.foodStatsService.getStats(),
     ]);
   }
@@ -1002,6 +1033,7 @@ export class FoodDiaryService extends BaseFoodService {
       typeof payload.dateISO === 'string' &&
       typeof payload.foodCatalogueId === 'number' &&
       typeof payload.foodWeight === 'number' &&
+      typeof payload.kcals === 'number' &&
       Array.isArray(payload.history)
     );
   }
@@ -1030,7 +1062,7 @@ export class FoodDiaryService extends BaseFoodService {
 
     this.saveToLocalStorage(this.diaryRaw$$());
 
-    const kcalsDelta = this.calculateEntryKcals(diaryEntry);
+    const kcalsDelta = diaryEntry.kcals;
     const nutrientsDelta = this.calculateEntryNutrients(diaryEntry);
 
     this.updateNutrientsOptimistically(dateISO, nutrientsDelta, kcalsDelta);
@@ -1045,6 +1077,7 @@ export class FoodDiaryService extends BaseFoodService {
       payload &&
       typeof payload.id === 'number' &&
       typeof payload.newFoodWeight === 'number' &&
+      typeof payload.newKcals === 'number' &&
       this.isValidHistoryEntry(payload.newHistoryEntry)
     );
   }
@@ -1071,11 +1104,12 @@ export class FoodDiaryService extends BaseFoodService {
       return;
     }
 
-    const originalKcals = this.calculateEntryKcals(originalEntry);
+    const originalKcals = originalEntry.kcals;
 
     const updatedEntry: DiaryEntry = {
       ...originalEntry,
       foodWeight: updatedDiaryEntry.newFoodWeight,
+      kcals: updatedDiaryEntry.newKcals,
       history: [...originalEntry.history, updatedDiaryEntry.newHistoryEntry],
     };
 
@@ -1098,7 +1132,7 @@ export class FoodDiaryService extends BaseFoodService {
 
     this.saveToLocalStorage(this.diaryRaw$$());
 
-    const newKcals = this.calculateEntryKcals(updatedEntry);
+    const newKcals = updatedDiaryEntry.newKcals;
     const kcalsDelta = newKcals - originalKcals;
     const originalNutrients = this.calculateEntryNutrients(originalEntry);
     const updatedNutrients = this.calculateEntryNutrients(updatedEntry);
