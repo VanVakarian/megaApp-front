@@ -1,5 +1,14 @@
 <div class="flex flex-col p-4">
   <div class="flex flex-wrap gap-2 mb-4">
+    @for (granularity of granularityOptions; track granularity) {
+      <v-button [class]="selectedGranularity$$() === granularity ? 'v-primary v-raised' : 'v-primary v-flat'"
+                (onClick)="selectGranularity(granularity)">
+        {{ granularityLabel(granularity) }}
+      </v-button>
+    }
+  </div>
+
+  <div class="flex flex-wrap gap-2 mb-4">
     @for (service of serviceOptions$$(); track service.service) {
       <v-button [class]="isServiceExpanded(service.service) ? 'v-primary v-raised' : 'v-primary v-flat'"
                 [config]="{
@@ -66,6 +75,7 @@
                                    [displayValueInput]="card.displayValue"
                                    [colorInput]="card.color"
                                    [unitInput]="card.unit"
+                                   [granularityInput]="card.granularity"
                                    [seriesInput]="card.series"
                                    [chartModeInput]="card.chartMode"
                                    [windowStartInput]="card.windowStartBucket"

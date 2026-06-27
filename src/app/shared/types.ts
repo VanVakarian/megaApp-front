@@ -193,9 +193,12 @@ export interface MetricsLatestWsMessage {
   payload: MetricsLatestSnapshot;
 }
 
+export type MetricGranularity = 'minute' | 'hour' | 'day';
+
 export interface MetricPoint {
   service: string;
   name: string;
+  granularity: MetricGranularity;
   bucket: number;
   value: number;
 }

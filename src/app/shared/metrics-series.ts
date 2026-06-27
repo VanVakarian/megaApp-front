@@ -1,19 +1,19 @@
-import { MetricPoint } from '@app/shared/types';
+import { MetricGranularity, MetricPoint } from '@app/shared/types';
 
 export interface MetricSeriesPoint {
   bucket: number;
   value: number | null;
 }
 
-export function previousMinuteBucket(epochMs: number): number {
-  const flooredSeconds = Math.floor(epochMs / 1000 / 60) * 60;
-  return flooredSeconds - 60;
+export function previousCompletedBucket(epochMs: number, stepSeconds: number): number {
+  const flooredSeconds = Math.floor(epochMs / 1000 / stepSeconds) * stepSeconds;
+  return flooredSeconds - stepSeconds;
 }
 
-export function buildMetricsWindowBuckets(latestBucket: number, windowMinutes: number): number[] {
+export function buildMetricsWindowBuckets(latestBucket: number, windowPeriods: number, stepSeconds: number): number[] {
   const buckets: number[] = [];
-  for (let i = windowMinutes - 1; i >= 0; i--) {
-    buckets.push(latestBucket - i * 60);
+  for (let i = windowPeriods - 1; i >= 0; i--) {
+    buckets.push(latestBucket - i * stepSeconds);
   }
   return buckets;
 }
@@ -94,15 +94,17 @@ export function buildSparseBarSeries(
   );
 }
 
-const LINE_GAP_THRESHOLD_SECONDS = 60;
-
-export function buildSparseLineSeriesFromPoints(sorted: MetricPoint[]): MetricSeriesPoint[] {
+// A gap is "real" (worth visually breaking the line for) once more than one
+// normal step has passed without a point — threshold must match whatever
+// granularity's step the series is actually sampled at, never a flat 60s,
+// or hour/day series (step 3600/86400) would show a gap after every point.
+export function buildSparseLineSeriesFromPoints(sorted: MetricPoint[], gapThresholdSeconds: number): MetricSeriesPoint[] {
   const series: MetricSeriesPoint[] = [];
   sorted.forEach((point, index) => {
     series.push({ bucket: point.bucket, value: point.value });
     const next = sorted[index + 1];
-    if (next && next.bucket - point.bucket > LINE_GAP_THRESHOLD_SECONDS) {
-      series.push({ bucket: point.bucket + LINE_GAP_THRESHOLD_SECONDS, value: null });
+    if (next && next.bucket - point.bucket > gapThresholdSeconds) {
+      series.push({ bucket: point.bucket + gapThresholdSeconds, value: null });
     }
   });
   return series;
@@ -114,19 +116,27 @@ export function buildSparseLineSeries(
   name: string,
   windowStartBucket: number,
   windowEndBucket: number,
+  gapThresholdSeconds: number,
 ): MetricSeriesPoint[] {
   return buildSparseLineSeriesFromPoints(
     filterSortedMetricPoints(points, service, name, windowStartBucket, windowEndBucket),
+    gapThresholdSeconds,
   );
 }
 
-export function formatMetricBucketLabel(bucketSeconds: number): string {
-  const date = new Date(bucketSeconds * 1000);
-  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+function pad2(value: number): string {
+  return String(value).padStart(2, '0');
 }
 
-export function buildRoundTickIndices(buckets: number[], intervalMinutes: number): number[] {
-  const intervalSeconds = intervalMinutes * 60;
+export function formatMetricBucketLabel(bucketSeconds: number, granularity: MetricGranularity = 'minute'): string {
+  const date = new Date(bucketSeconds * 1000);
+  const datePart = `${pad2(date.getDate())}.${pad2(date.getMonth() + 1)}`;
+  if (granularity === 'day') return datePart;
+  const timePart = `${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
+  return granularity === 'hour' ? `${datePart} ${timePart}` : timePart;
+}
+
+export function buildRoundTickIndices(buckets: number[], intervalSeconds: number): number[] {
   const indices: number[] = [];
   buckets.forEach((bucket, index) => {
     if (bucket % intervalSeconds === 0) {
@@ -139,9 +149,8 @@ export function buildRoundTickIndices(buckets: number[], intervalMinutes: number
 export function buildRoundTickBuckets(
   windowStartBucket: number,
   windowEndBucket: number,
-  intervalMinutes: number,
+  intervalSeconds: number,
 ): number[] {
-  const intervalSeconds = intervalMinutes * 60;
   const buckets: number[] = [];
   for (
     let bucket = Math.ceil(windowStartBucket / intervalSeconds) * intervalSeconds;

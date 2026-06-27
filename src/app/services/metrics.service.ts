@@ -28,7 +28,9 @@ export class MetricsService {
     void idbGet<MetricPoint[]>(buildCacheKey(STORAGE_KEY)).then((cached) => {
       if (cached) {
         this.points$$.set(
-          cached.filter((point) => !!point?.service && !!point?.name && Number.isFinite(point?.bucket)),
+          cached.filter(
+            (point) => !!point?.service && !!point?.name && !!point?.granularity && Number.isFinite(point?.bucket),
+          ),
         );
       }
     });
@@ -51,9 +53,13 @@ export class MetricsService {
   }
 
   private sendSubscribe(): void {
-    const latestBucket = this.points$$().reduce((max, point) => Math.max(max, point.bucket), 0);
+    // The cursor only ever bounds the minute stream — the backend relays
+    // hour/day history within its own fixed windows regardless of cursor.
+    const latestMinuteBucket = this.points$$()
+      .filter((point) => point.granularity === 'minute')
+      .reduce((max, point) => Math.max(max, point.bucket), 0);
     const nowBucket = Math.floor(Date.now() / 1000);
-    const fallbackBucket = latestBucket > 0 ? latestBucket : nowBucket;
+    const fallbackBucket = latestMinuteBucket > 0 ? latestMinuteBucket : nowBucket;
     const cursor = Math.max(0, fallbackBucket - METRICS_WINDOW_SECONDS);
     this.networkService.sendMessage({ type: WebSocketMessageType.METRICS_SUBSCRIBE, cursor });
   }
@@ -75,15 +81,19 @@ export class MetricsService {
       return a.name.localeCompare(b.name);
     });
 
-    const latestBucket = merged.reduce((max, point) => Math.max(max, point.bucket), 0);
-    const minBucket = latestBucket > 0 ? latestBucket - METRICS_WINDOW_SECONDS : 0;
-    const pruned = merged.filter((point) => point.bucket >= minBucket);
+    // Only the minute stream is bounded client-side — hour/day volume is
+    // tiny and already bounded by the backend's own relay window.
+    const latestMinuteBucket = merged
+      .filter((point) => point.granularity === 'minute')
+      .reduce((max, point) => Math.max(max, point.bucket), 0);
+    const minMinuteBucket = latestMinuteBucket > 0 ? latestMinuteBucket - METRICS_WINDOW_SECONDS : 0;
+    const pruned = merged.filter((point) => point.granularity !== 'minute' || point.bucket >= minMinuteBucket);
 
     this.points$$.set(pruned);
     void idbSet(buildCacheKey(STORAGE_KEY), pruned);
   }
 
   private pointKey(point: MetricPoint): string {
-    return `${point.service}:${point.name}:${point.bucket}`;
+    return `${point.granularity}:${point.service}:${point.name}:${point.bucket}`;
   }
 }

@@ -3,7 +3,7 @@ import {
   createMetricBarConfig,
   createMetricSparklineConfig,
   createMetricSparseLineConfig,
-  METRICS_TICK_INTERVAL_MINUTES,
+  METRICS_GRANULARITY_TICK_INTERVAL_SECONDS,
 } from '@app/shared/chart-config';
 import { MetricChartMode } from '@app/shared/metrics-chart-mode';
 import { MetricUnit } from '@app/shared/metric-units';
@@ -13,6 +13,7 @@ import {
   formatMetricBucketLabel,
   MetricSeriesPoint,
 } from '@app/shared/metrics-series';
+import { MetricGranularity } from '@app/shared/types';
 import { VCard } from '@ui-kit/components/v-card/v-card';
 import { IconName, VIcon } from '@ui-kit/components/v-icon/v-icon';
 import { VTooltip } from '@ui-kit/components/v-tooltip/v-tooltip';
@@ -56,6 +57,7 @@ export class MetricChartCard implements OnDestroy {
   public readonly displayValueInput = input<string>('');
   public readonly colorInput = input.required<string>();
   public readonly unitInput = input<MetricUnit>('count');
+  public readonly granularityInput = input<MetricGranularity>('minute');
   public readonly seriesInput = input.required<MetricSeriesPoint[]>();
   public readonly chartModeInput = input<MetricChartMode>('filled');
   public readonly windowStartInput = input<number>(0);
@@ -75,11 +77,12 @@ export class MetricChartCard implements OnDestroy {
     const chartMode = this.chartModeInput();
     const color = this.colorInput();
     const unit = this.unitInput();
+    const granularity = this.granularityInput();
     const series = this.seriesInput();
     this.windowStartInput();
     this.windowEndInput();
     if (!canvasElem) return;
-    this.ensureChart(canvasElem.nativeElement, chartMode, color, unit);
+    this.ensureChart(canvasElem.nativeElement, chartMode, color, unit, granularity);
     this.updateChart(series);
   });
 
@@ -89,19 +92,30 @@ export class MetricChartCard implements OnDestroy {
     this.chartSignature = '';
   }
 
-  private createChartConfig(chartMode: MetricChartMode, color: string, unit: MetricUnit): ChartConfiguration {
+  private createChartConfig(
+    chartMode: MetricChartMode,
+    color: string,
+    unit: MetricUnit,
+    granularity: MetricGranularity,
+  ): ChartConfiguration {
     switch (chartMode) {
       case 'bar':
-        return createMetricBarConfig(color, unit);
+        return createMetricBarConfig(color, unit, granularity);
       case 'sparse-line':
-        return createMetricSparseLineConfig(color, unit);
+        return createMetricSparseLineConfig(color, unit, granularity);
       default:
         return createMetricSparklineConfig(color);
     }
   }
 
-  private ensureChart(canvas: HTMLCanvasElement, chartMode: MetricChartMode, color: string, unit: MetricUnit): void {
-    const signature = `${chartMode}:${color}:${unit}`;
+  private ensureChart(
+    canvas: HTMLCanvasElement,
+    chartMode: MetricChartMode,
+    color: string,
+    unit: MetricUnit,
+    granularity: MetricGranularity,
+  ): void {
+    const signature = `${chartMode}:${color}:${unit}:${granularity}`;
     if (this.chart && this.chartSignature === signature) {
       return;
     }
@@ -115,7 +129,7 @@ export class MetricChartCard implements OnDestroy {
       return;
     }
 
-    this.chart = new Chart(ctx, this.createChartConfig(chartMode, color, unit));
+    this.chart = new Chart(ctx, this.createChartConfig(chartMode, color, unit, granularity));
     this.chartSignature = signature;
   }
 
@@ -130,10 +144,11 @@ export class MetricChartCard implements OnDestroy {
   }
 
   private updateFilledChart(series: MetricSeriesPoint[]): void {
+    const granularity = this.granularityInput();
     const buckets = series.map((point) => point.bucket);
-    const tickIndices = buildRoundTickIndices(buckets, METRICS_TICK_INTERVAL_MINUTES);
+    const tickIndices = buildRoundTickIndices(buckets, METRICS_GRANULARITY_TICK_INTERVAL_SECONDS[granularity]);
 
-    this.chart!.data.labels = buckets.map((bucket) => formatMetricBucketLabel(bucket));
+    this.chart!.data.labels = buckets.map((bucket) => formatMetricBucketLabel(bucket, granularity));
     this.chart!.data.datasets[0].data = series.map((point) => point.value);
     this.chart!.options.scales!['x']!.afterBuildTicks = (axis) => {
       axis.ticks = tickIndices.map((index) => ({ value: index }));
@@ -143,7 +158,11 @@ export class MetricChartCard implements OnDestroy {
   private updateSparseChart(series: MetricSeriesPoint[]): void {
     const windowStart = this.windowStartInput();
     const windowEnd = this.windowEndInput();
-    const tickBuckets = buildRoundTickBuckets(windowStart, windowEnd, METRICS_TICK_INTERVAL_MINUTES);
+    const tickBuckets = buildRoundTickBuckets(
+      windowStart,
+      windowEnd,
+      METRICS_GRANULARITY_TICK_INTERVAL_SECONDS[this.granularityInput()],
+    );
 
     this.chart!.data.datasets[0].data = series.map((point) => ({
       x: point.bucket,

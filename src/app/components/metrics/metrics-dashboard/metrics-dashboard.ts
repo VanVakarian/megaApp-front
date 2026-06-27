@@ -2,7 +2,10 @@ import { ChangeDetectionStrategy, Component, computed, inject, OnDestroy, OnInit
 import { LocalStorageService } from '@app/services/local-storage.service';
 import { MetricsHealthService } from '@app/services/metrics-health.service';
 import { MetricsService } from '@app/services/metrics.service';
-import { METRICS_WINDOW_MINUTES } from '@app/shared/chart-config';
+import {
+  METRICS_GRANULARITY_STEP_SECONDS,
+  METRICS_GRANULARITY_WINDOW_PERIODS,
+} from '@app/shared/chart-config';
 import { formatMetricUnitValue, metricUnit, MetricUnit } from '@app/shared/metric-units';
 import { MetricChartMode, pickDynamicMetricChartMode } from '@app/shared/metrics-chart-mode';
 import { metricDescription } from '@app/shared/metrics-descriptions';
@@ -19,9 +22,10 @@ import {
   buildSparseLineSeriesFromPoints,
   metricPointsIndexKey,
   MetricSeriesPoint,
-  previousMinuteBucket,
+  previousCompletedBucket,
 } from '@app/shared/metrics-series';
 import { severityColor } from '@app/shared/metrics-severity';
+import { MetricGranularity } from '@app/shared/types';
 import { VButton } from '@ui-kit/components/v-button/v-button';
 import { VExpand } from '@ui-kit/components/v-expand/v-expand';
 import { IconName, VIcon } from '@ui-kit/components/v-icon/v-icon';
@@ -36,7 +40,9 @@ const NOW_TICK_INTERVAL_MS = 30_000;
 const EXPANDED_SERVICES_STORAGE_KEY = 'metrics_expanded_services';
 const CARD_WIDTH_STORAGE_KEY = 'metrics_card_width_px';
 const CARD_HEIGHT_STORAGE_KEY = 'metrics_card_height_px';
+const GRANULARITY_STORAGE_KEY = 'metrics_granularity';
 const SETTINGS_PANEL_KEY = '__settings__';
+const GRANULARITY_OPTIONS: MetricGranularity[] = ['minute', 'hour', 'day'];
 
 interface MetricChartCardData {
   key: string;
@@ -45,6 +51,7 @@ interface MetricChartCardData {
   value: number;
   displayValue: string;
   unit: MetricUnit;
+  granularity: MetricGranularity;
   color: string;
   series: MetricSeriesPoint[];
   chartMode: MetricChartMode;
@@ -86,6 +93,10 @@ export class MetricsDashboard implements OnInit, OnDestroy {
   protected readonly cardHeightPx$$ = signal<number>(
     this.localStorageService.getUserScoped<number>(CARD_HEIGHT_STORAGE_KEY) ?? DEFAULT_CHART_HEIGHT_PX,
   );
+  protected readonly granularityOptions = GRANULARITY_OPTIONS;
+  protected readonly selectedGranularity$$ = signal<MetricGranularity>(
+    this.loadGranularity(),
+  );
   private nowTickIntervalId: ReturnType<typeof setInterval> | null = null;
 
   protected readonly serviceOptions$$ = computed<MetricsServiceOption[]>(() => {
@@ -109,10 +120,12 @@ export class MetricsDashboard implements OnInit, OnDestroy {
   });
 
   protected readonly metricGroupsByService$$ = computed<Map<string, MetricGroupData[]>>(() => {
-    const latestBucket = previousMinuteBucket(this.now$$());
-    const buckets = buildMetricsWindowBuckets(latestBucket, METRICS_WINDOW_MINUTES);
+    const granularity = this.selectedGranularity$$();
+    const stepSeconds = METRICS_GRANULARITY_STEP_SECONDS[granularity];
+    const latestBucket = previousCompletedBucket(this.now$$(), stepSeconds);
+    const buckets = buildMetricsWindowBuckets(latestBucket, METRICS_GRANULARITY_WINDOW_PERIODS[granularity], stepSeconds);
     const windowStartBucket = buckets[0];
-    const points = this.metricsService.points$$();
+    const points = this.metricsService.points$$().filter((point) => point.granularity === granularity);
     const pointsIndex = buildMetricPointsIndex(points, windowStartBucket, latestBucket);
     const windowBucketCount = buckets.length;
 
@@ -134,7 +147,7 @@ export class MetricsDashboard implements OnInit, OnDestroy {
           const series =
             chartMode === 'bar'
               ? buildSparseBarSeriesFromPoints(metricPoints)
-              : buildSparseLineSeriesFromPoints(metricPoints);
+              : buildSparseLineSeriesFromPoints(metricPoints, stepSeconds);
           const rawValue = metricPoints[metricPoints.length - 1]?.value ?? 0;
           const color = definition.metricColors[name] ?? '#578f92';
           const unit = metricUnit(name);
@@ -145,6 +158,7 @@ export class MetricsDashboard implements OnInit, OnDestroy {
             value: rawValue,
             displayValue: formatMetricUnitValue(unit, rawValue),
             unit,
+            granularity,
             color,
             series,
             chartMode,
@@ -181,6 +195,22 @@ export class MetricsDashboard implements OnInit, OnDestroy {
     return severityColor(severity);
   }
 
+  protected granularityLabel(granularity: MetricGranularity): string {
+    switch (granularity) {
+      case 'hour':
+        return 'Часы';
+      case 'day':
+        return 'Дни';
+      default:
+        return 'Минуты';
+    }
+  }
+
+  protected selectGranularity(granularity: MetricGranularity): void {
+    this.selectedGranularity$$.set(granularity);
+    this.localStorageService.setUserScoped(GRANULARITY_STORAGE_KEY, granularity);
+  }
+
   protected isServiceExpanded(service: string): boolean {
     return this.expandedServices$$().has(service);
   }
@@ -212,5 +242,10 @@ export class MetricsDashboard implements OnInit, OnDestroy {
 
   private loadExpandedServices(): Set<string> {
     return new Set(this.localStorageService.getUserScoped<string[]>(EXPANDED_SERVICES_STORAGE_KEY) ?? []);
+  }
+
+  private loadGranularity(): MetricGranularity {
+    const stored = this.localStorageService.getUserScoped<MetricGranularity>(GRANULARITY_STORAGE_KEY);
+    return stored && GRANULARITY_OPTIONS.includes(stored) ? stored : 'minute';
   }
 }

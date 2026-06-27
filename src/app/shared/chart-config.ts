@@ -1,5 +1,6 @@
 import { formatMetricUnitValue, MetricUnit } from '@app/shared/metric-units';
 import { formatMetricBucketLabel } from '@app/shared/metrics-series';
+import { MetricGranularity } from '@app/shared/types';
 import { ChartConfiguration } from 'chart.js';
 
 interface ChartColors {
@@ -364,8 +365,26 @@ export const EXPENSE_CHART_CONFIG: ChartConfiguration<'bar'> = {
   },
 };
 
-export const METRICS_WINDOW_MINUTES = 24 * 60;
-export const METRICS_TICK_INTERVAL_MINUTES = 6 * 60;
+export const METRICS_GRANULARITY_STEP_SECONDS: Record<MetricGranularity, number> = {
+  minute: 60,
+  hour: 3600,
+  day: 86400,
+};
+
+// How many periods the display window covers per granularity — minute stays
+// a 24h window, hour covers a month, day is generously large since real
+// history won't approach it for years.
+export const METRICS_GRANULARITY_WINDOW_PERIODS: Record<MetricGranularity, number> = {
+  minute: 24 * 60,
+  hour: 30 * 24,
+  day: 365 * 10,
+};
+
+export const METRICS_GRANULARITY_TICK_INTERVAL_SECONDS: Record<MetricGranularity, number> = {
+  minute: 6 * 3600,
+  hour: 7 * 24 * 3600,
+  day: 30 * 24 * 3600,
+};
 
 export function createMetricSparklineConfig(color: string): ChartConfiguration<'line'> {
   return {
@@ -407,15 +426,21 @@ export function createMetricSparklineConfig(color: string): ChartConfiguration<'
   };
 }
 
-const metricSparseTooltipOptions = {
-  mode: 'nearest' as const,
-  intersect: false,
-  callbacks: {
-    title: (items: { parsed: { x: number } }[]) => formatMetricBucketLabel(items[0].parsed.x),
-  },
-};
+function metricSparseTooltipOptions(granularity: MetricGranularity) {
+  return {
+    mode: 'nearest' as const,
+    intersect: false,
+    callbacks: {
+      title: (items: { parsed: { x: number } }[]) => formatMetricBucketLabel(items[0].parsed.x, granularity),
+    },
+  };
+}
 
-export function createMetricSparseLineConfig(color: string, unit: MetricUnit): ChartConfiguration<'line'> {
+export function createMetricSparseLineConfig(
+  color: string,
+  unit: MetricUnit,
+  granularity: MetricGranularity,
+): ChartConfiguration<'line'> {
   return {
     type: 'line',
     data: {
@@ -439,13 +464,17 @@ export function createMetricSparseLineConfig(color: string, unit: MetricUnit): C
       elements: { line: { tension: 0.3 } },
       plugins: {
         legend: { display: false },
-        tooltip: metricSparseTooltipOptions,
+        tooltip: metricSparseTooltipOptions(granularity),
       },
       scales: {
         x: {
           type: 'linear',
           grid: { color: 'rgba(0, 0, 0, 0.06)' },
-          ticks: { maxRotation: 0, autoSkip: false, callback: (value) => formatMetricBucketLabel(value as number) },
+          ticks: {
+            maxRotation: 0,
+            autoSkip: false,
+            callback: (value) => formatMetricBucketLabel(value as number, granularity),
+          },
         },
         y: {
           display: true,
@@ -456,7 +485,11 @@ export function createMetricSparseLineConfig(color: string, unit: MetricUnit): C
   };
 }
 
-export function createMetricBarConfig(color: string, unit: MetricUnit): ChartConfiguration<'bar'> {
+export function createMetricBarConfig(
+  color: string,
+  unit: MetricUnit,
+  granularity: MetricGranularity,
+): ChartConfiguration<'bar'> {
   return {
     type: 'bar',
     data: {
@@ -475,13 +508,17 @@ export function createMetricBarConfig(color: string, unit: MetricUnit): ChartCon
       maintainAspectRatio: false,
       plugins: {
         legend: { display: false },
-        tooltip: metricSparseTooltipOptions,
+        tooltip: metricSparseTooltipOptions(granularity),
       },
       scales: {
         x: {
           type: 'linear',
           grid: { color: 'rgba(0, 0, 0, 0.06)' },
-          ticks: { maxRotation: 0, autoSkip: false, callback: (value) => formatMetricBucketLabel(value as number) },
+          ticks: {
+            maxRotation: 0,
+            autoSkip: false,
+            callback: (value) => formatMetricBucketLabel(value as number, granularity),
+          },
         },
         y: {
           min: 0,
