@@ -6,6 +6,7 @@ import {
   METRICS_TICK_INTERVAL_MINUTES,
 } from '@app/shared/chart-config';
 import { MetricChartMode } from '@app/shared/metrics-chart-mode';
+import { MetricUnit } from '@app/shared/metric-units';
 import {
   buildRoundTickBuckets,
   buildRoundTickIndices,
@@ -54,6 +55,7 @@ export class MetricChartCard implements OnDestroy {
   public readonly valueInput = input<number>(0);
   public readonly displayValueInput = input<string>('');
   public readonly colorInput = input.required<string>();
+  public readonly unitInput = input<MetricUnit>('count');
   public readonly seriesInput = input.required<MetricSeriesPoint[]>();
   public readonly chartModeInput = input<MetricChartMode>('filled');
   public readonly windowStartInput = input<number>(0);
@@ -72,11 +74,12 @@ export class MetricChartCard implements OnDestroy {
     const canvasElem = this.chartCanvasElem();
     const chartMode = this.chartModeInput();
     const color = this.colorInput();
+    const unit = this.unitInput();
     const series = this.seriesInput();
     this.windowStartInput();
     this.windowEndInput();
     if (!canvasElem) return;
-    this.ensureChart(canvasElem.nativeElement, chartMode, color);
+    this.ensureChart(canvasElem.nativeElement, chartMode, color, unit);
     this.updateChart(series);
   });
 
@@ -86,19 +89,19 @@ export class MetricChartCard implements OnDestroy {
     this.chartSignature = '';
   }
 
-  private createChartConfig(chartMode: MetricChartMode, color: string): ChartConfiguration {
+  private createChartConfig(chartMode: MetricChartMode, color: string, unit: MetricUnit): ChartConfiguration {
     switch (chartMode) {
       case 'bar':
-        return createMetricBarConfig(color);
+        return createMetricBarConfig(color, unit);
       case 'sparse-line':
-        return createMetricSparseLineConfig(color);
+        return createMetricSparseLineConfig(color, unit);
       default:
         return createMetricSparklineConfig(color);
     }
   }
 
-  private ensureChart(canvas: HTMLCanvasElement, chartMode: MetricChartMode, color: string): void {
-    const signature = `${chartMode}:${color}`;
+  private ensureChart(canvas: HTMLCanvasElement, chartMode: MetricChartMode, color: string, unit: MetricUnit): void {
+    const signature = `${chartMode}:${color}:${unit}`;
     if (this.chart && this.chartSignature === signature) {
       return;
     }
@@ -112,7 +115,7 @@ export class MetricChartCard implements OnDestroy {
       return;
     }
 
-    this.chart = new Chart(ctx, this.createChartConfig(chartMode, color));
+    this.chart = new Chart(ctx, this.createChartConfig(chartMode, color, unit));
     this.chartSignature = signature;
   }
 

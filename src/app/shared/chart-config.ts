@@ -1,3 +1,4 @@
+import { formatMetricUnitValue, MetricUnit } from '@app/shared/metric-units';
 import { formatMetricBucketLabel } from '@app/shared/metrics-series';
 import { ChartConfiguration } from 'chart.js';
 
@@ -414,11 +415,7 @@ const metricSparseTooltipOptions = {
   },
 };
 
-export function formatMetricAxisValue(value: number): string {
-  return new Intl.NumberFormat('ru-RU', { notation: 'compact', maximumFractionDigits: 1 }).format(value);
-}
-
-export function createMetricSparseLineConfig(color: string): ChartConfiguration<'line'> {
+export function createMetricSparseLineConfig(color: string, unit: MetricUnit): ChartConfiguration<'line'> {
   return {
     type: 'line',
     data: {
@@ -452,14 +449,14 @@ export function createMetricSparseLineConfig(color: string): ChartConfiguration<
         },
         y: {
           display: true,
-          ticks: { callback: (value) => formatMetricAxisValue(value as number) },
+          ticks: { callback: (value) => formatMetricUnitValue(unit, value as number) },
         },
       },
     },
   };
 }
 
-export function createMetricBarConfig(color: string): ChartConfiguration<'bar'> {
+export function createMetricBarConfig(color: string, unit: MetricUnit): ChartConfiguration<'bar'> {
   return {
     type: 'bar',
     data: {
@@ -489,7 +486,7 @@ export function createMetricBarConfig(color: string): ChartConfiguration<'bar'> 
         y: {
           min: 0,
           display: true,
-          ticks: { callback: (value) => formatMetricAxisValue(value as number) },
+          ticks: { callback: (value) => formatMetricUnitValue(unit, value as number) },
         },
       },
     },
