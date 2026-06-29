@@ -3,7 +3,8 @@ import {
   createMetricBarConfig,
   createMetricSparklineConfig,
   createMetricSparseLineConfig,
-  METRICS_GRANULARITY_TICK_INTERVAL_SECONDS,
+  METRICS_GRANULARITY_STEP_SECONDS,
+  pickMetricTickIntervalSeconds,
 } from '@app/shared/chart-config';
 import { MetricChartMode } from '@app/shared/metrics-chart-mode';
 import { MetricUnit } from '@app/shared/metric-units';
@@ -146,7 +147,10 @@ export class MetricChartCard implements OnDestroy {
   private updateFilledChart(series: MetricSeriesPoint[]): void {
     const granularity = this.granularityInput();
     const buckets = series.map((point) => point.bucket);
-    const tickIndices = buildRoundTickIndices(buckets, METRICS_GRANULARITY_TICK_INTERVAL_SECONDS[granularity]);
+    const tickIndices = buildRoundTickIndices(
+      buckets,
+      pickMetricTickIntervalSeconds(granularity, Math.max(1, buckets.length)),
+    );
 
     this.chart!.data.labels = buckets.map((bucket) => formatMetricBucketLabel(bucket, granularity));
     this.chart!.data.datasets[0].data = series.map((point) => point.value);
@@ -158,10 +162,13 @@ export class MetricChartCard implements OnDestroy {
   private updateSparseChart(series: MetricSeriesPoint[]): void {
     const windowStart = this.windowStartInput();
     const windowEnd = this.windowEndInput();
+    const granularity = this.granularityInput();
+    const stepSeconds = METRICS_GRANULARITY_STEP_SECONDS[granularity];
+    const windowBucketCount = Math.max(1, Math.floor((windowEnd - windowStart) / stepSeconds) + 1);
     const tickBuckets = buildRoundTickBuckets(
       windowStart,
       windowEnd,
-      METRICS_GRANULARITY_TICK_INTERVAL_SECONDS[this.granularityInput()],
+      pickMetricTickIntervalSeconds(granularity, windowBucketCount),
     );
 
     this.chart!.data.datasets[0].data = series.map((point) => ({

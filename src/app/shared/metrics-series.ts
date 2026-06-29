@@ -5,17 +5,50 @@ export interface MetricSeriesPoint {
   value: number | null;
 }
 
+export interface MetricWindow {
+  startBucket: number;
+  endBucket: number;
+  bucketCount: number;
+}
+
 export function previousCompletedBucket(epochMs: number, stepSeconds: number): number {
   const flooredSeconds = Math.floor(epochMs / 1000 / stepSeconds) * stepSeconds;
   return flooredSeconds - stepSeconds;
 }
 
-export function buildMetricsWindowBuckets(latestBucket: number, windowPeriods: number, stepSeconds: number): number[] {
-  const buckets: number[] = [];
-  for (let i = windowPeriods - 1; i >= 0; i--) {
-    buckets.push(latestBucket - i * stepSeconds);
+export function buildMetricWindow(endBucket: number, windowPeriods: number, stepSeconds: number): MetricWindow {
+  const bucketCount = Math.max(1, windowPeriods);
+  return {
+    startBucket: endBucket - (bucketCount - 1) * stepSeconds,
+    endBucket,
+    bucketCount,
+  };
+}
+
+export function buildServiceMetricWindow(
+  points: MetricPoint[],
+  fallbackEndBucket: number,
+  windowPeriods: number,
+  stepSeconds: number,
+): MetricWindow {
+  if (points.length === 0) {
+    return buildMetricWindow(fallbackEndBucket, windowPeriods, stepSeconds);
   }
-  return buckets;
+
+  const latestBucket = points.reduce((max, point) => Math.max(max, point.bucket), points[0].bucket);
+  const earliestAllowedBucket = latestBucket - (Math.max(1, windowPeriods) - 1) * stepSeconds;
+  const startBucket = points.reduce((min, point) => {
+    if (point.bucket < earliestAllowedBucket) {
+      return min;
+    }
+    return Math.min(min, point.bucket);
+  }, latestBucket);
+
+  return {
+    startBucket,
+    endBucket: latestBucket,
+    bucketCount: Math.floor((latestBucket - startBucket) / stepSeconds) + 1,
+  };
 }
 
 export function zeroFillMetricSeries(

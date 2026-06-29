@@ -7,6 +7,7 @@ const METRIC_UNIT_OVERRIDES: ReadonlyMap<string, MetricUnit> = new Map([
   ['free_cash', 'money'],
   ['estimated_account_value', 'money'],
   ['uptime_seconds', 'humanDuration'],
+  ['recognition_cost_usd', 'money'],
 ]);
 
 const METRIC_UNIT_SUFFIXES: ReadonlyArray<readonly [RegExp, MetricUnit]> = [
@@ -72,7 +73,7 @@ export function formatMetricUnitValue(unit: MetricUnit, value: number): string {
     case 'humanDuration':
       return formatHumanDurationValue(value);
     case 'money':
-      return (Math.round(value * 100) / 100).toString();
+      return `$${(Math.round(value * 100) / 100).toFixed(2)}`;
     case 'count':
     default:
       return formatCountValue(value);

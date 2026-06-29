@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, OnDestroy, OnInit, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, OnDestroy, OnInit, signal } from '@angular/core';
 import { LocalStorageService } from '@app/services/local-storage.service';
 import { MetricsHealthService } from '@app/services/metrics-health.service';
 import { MetricsService } from '@app/services/metrics.service';
@@ -17,7 +17,8 @@ import {
 } from '@app/shared/metrics-labels';
 import {
   buildMetricPointsIndex,
-  buildMetricsWindowBuckets,
+  buildMetricWindow,
+  buildServiceMetricWindow,
   buildSparseBarSeriesFromPoints,
   buildSparseLineSeriesFromPoints,
   metricPointsIndexKey,
@@ -25,7 +26,7 @@ import {
   previousCompletedBucket,
 } from '@app/shared/metrics-series';
 import { severityColor } from '@app/shared/metrics-severity';
-import { MetricGranularity } from '@app/shared/types';
+import { MetricGranularity, MetricPoint } from '@app/shared/types';
 import { VButton } from '@ui-kit/components/v-button/v-button';
 import { VExpand } from '@ui-kit/components/v-expand/v-expand';
 import { IconName, VIcon } from '@ui-kit/components/v-icon/v-icon';
@@ -37,7 +38,9 @@ import {
 } from '../metric-chart-card/metric-chart-card';
 
 const NOW_TICK_INTERVAL_MS = 30_000;
-const EXPANDED_SERVICES_STORAGE_KEY = 'metrics_expanded_services';
+const LEGACY_EXPANDED_SERVICES_STORAGE_KEY = 'metrics_expanded_services';
+const SELECTED_SERVICE_STORAGE_KEY = 'metrics_selected_service';
+const SETTINGS_EXPANDED_STORAGE_KEY = 'metrics_settings_expanded';
 const CARD_WIDTH_STORAGE_KEY = 'metrics_card_width_px';
 const CARD_HEIGHT_STORAGE_KEY = 'metrics_card_height_px';
 const GRANULARITY_STORAGE_KEY = 'metrics_granularity';
@@ -98,6 +101,9 @@ export class MetricsDashboard implements OnInit, OnDestroy {
     this.loadGranularity(),
   );
   private nowTickIntervalId: ReturnType<typeof setInterval> | null = null;
+  private readonly persistExpandedServicesEffect = effect(() => {
+    this.persistExpandedServices();
+  });
 
   protected readonly serviceOptions$$ = computed<MetricsServiceOption[]>(() => {
     const discoveredServices = new Set<string>();
@@ -122,12 +128,21 @@ export class MetricsDashboard implements OnInit, OnDestroy {
   protected readonly metricGroupsByService$$ = computed<Map<string, MetricGroupData[]>>(() => {
     const granularity = this.selectedGranularity$$();
     const stepSeconds = METRICS_GRANULARITY_STEP_SECONDS[granularity];
-    const latestBucket = previousCompletedBucket(this.now$$(), stepSeconds);
-    const buckets = buildMetricsWindowBuckets(latestBucket, METRICS_GRANULARITY_WINDOW_PERIODS[granularity], stepSeconds);
-    const windowStartBucket = buckets[0];
+    const fallbackWindow = buildMetricWindow(
+      previousCompletedBucket(this.now$$(), stepSeconds),
+      METRICS_GRANULARITY_WINDOW_PERIODS[granularity],
+      stepSeconds,
+    );
     const points = this.metricsService.points$$().filter((point) => point.granularity === granularity);
-    const pointsIndex = buildMetricPointsIndex(points, windowStartBucket, latestBucket);
-    const windowBucketCount = buckets.length;
+    const pointsByService = new Map<string, MetricPoint[]>();
+    for (const point of points) {
+      const servicePoints = pointsByService.get(point.service);
+      if (servicePoints) {
+        servicePoints.push(point);
+        continue;
+      }
+      pointsByService.set(point.service, [point]);
+    }
 
     const result = new Map<string, MetricGroupData[]>();
     for (const option of this.serviceOptions$$()) {
@@ -137,13 +152,25 @@ export class MetricsDashboard implements OnInit, OnDestroy {
         continue;
       }
 
+      const serviceWindow = buildServiceMetricWindow(
+        pointsByService.get(option.service) ?? [],
+        fallbackWindow.endBucket,
+        METRICS_GRANULARITY_WINDOW_PERIODS[granularity],
+        stepSeconds,
+      );
+      const pointsIndex = buildMetricPointsIndex(
+        pointsByService.get(option.service) ?? [],
+        serviceWindow.startBucket,
+        serviceWindow.endBucket,
+      );
+
       const groups = definition.groups.map((group) => ({
         id: group.id,
         label: group.label,
         cards: group.metrics.map((name) => {
           const key = metricPointsIndexKey(option.service, name);
           const metricPoints = pointsIndex.get(key) ?? [];
-          const chartMode = pickDynamicMetricChartMode(metricPoints.length, windowBucketCount);
+          const chartMode = pickDynamicMetricChartMode(metricPoints.length, serviceWindow.bucketCount);
           const series =
             chartMode === 'bar'
               ? buildSparseBarSeriesFromPoints(metricPoints)
@@ -162,8 +189,8 @@ export class MetricsDashboard implements OnInit, OnDestroy {
             color,
             series,
             chartMode,
-            windowStartBucket,
-            windowEndBucket: latestBucket,
+            windowStartBucket: serviceWindow.startBucket,
+            windowEndBucket: serviceWindow.endBucket,
             description: metricDescription(option.service, name),
           };
         }),
@@ -198,11 +225,11 @@ export class MetricsDashboard implements OnInit, OnDestroy {
   protected granularityLabel(granularity: MetricGranularity): string {
     switch (granularity) {
       case 'hour':
-        return 'Часы';
+        return 'H';
       case 'day':
-        return 'Дни';
+        return 'D';
       default:
-        return 'Минуты';
+        return 'M';
     }
   }
 
@@ -212,18 +239,36 @@ export class MetricsDashboard implements OnInit, OnDestroy {
   }
 
   protected isServiceExpanded(service: string): boolean {
+    if (service !== SETTINGS_PANEL_KEY) {
+      return service === this.selectedService();
+    }
     return this.expandedServices$$().has(service);
   }
 
   protected toggleServiceExpanded(service: string): void {
     const expanded = new Set(this.expandedServices$$());
-    if (expanded.has(service)) {
-      expanded.delete(service);
-    } else {
-      expanded.add(service);
+    const currentSelectedService = Array.from(expanded).find((key) => key !== SETTINGS_PANEL_KEY) ?? null;
+    if (service === SETTINGS_PANEL_KEY) {
+      if (expanded.has(service)) {
+        expanded.delete(service);
+      } else {
+        expanded.add(service);
+      }
+      this.expandedServices$$.set(expanded);
+      return;
     }
+
+    if (service === this.selectedService() && currentSelectedService === service) {
+      return;
+    }
+
+    for (const key of expanded) {
+      if (key !== SETTINGS_PANEL_KEY) {
+        expanded.delete(key);
+      }
+    }
+    expanded.add(service);
     this.expandedServices$$.set(expanded);
-    this.localStorageService.setUserScoped(EXPANDED_SERVICES_STORAGE_KEY, Array.from(expanded));
   }
 
   protected onCardWidthChange(value: string): void {
@@ -241,11 +286,64 @@ export class MetricsDashboard implements OnInit, OnDestroy {
   }
 
   private loadExpandedServices(): Set<string> {
-    return new Set(this.localStorageService.getUserScoped<string[]>(EXPANDED_SERVICES_STORAGE_KEY) ?? []);
+    const expanded = new Set<string>();
+    const selectedService = this.localStorageService.getUserScoped<string>(SELECTED_SERVICE_STORAGE_KEY);
+    if (typeof selectedService === 'string' && selectedService) {
+      expanded.add(selectedService);
+    }
+
+    if (this.localStorageService.getUserScoped<boolean>(SETTINGS_EXPANDED_STORAGE_KEY)) {
+      expanded.add(SETTINGS_PANEL_KEY);
+    }
+
+    const legacyExpanded = this.localStorageService.getUserScoped<string[] | string>(
+      LEGACY_EXPANDED_SERVICES_STORAGE_KEY,
+    );
+    if (expanded.size > 0) {
+      return expanded;
+    }
+
+    if (Array.isArray(legacyExpanded)) {
+      const legacySelectedService = legacyExpanded.find((service) => service !== SETTINGS_PANEL_KEY);
+      if (legacySelectedService) {
+        expanded.add(legacySelectedService);
+      }
+      if (legacyExpanded.includes(SETTINGS_PANEL_KEY)) {
+        expanded.add(SETTINGS_PANEL_KEY);
+      }
+      return expanded;
+    }
+
+    if (typeof legacyExpanded === 'string' && legacyExpanded) {
+      expanded.add(legacyExpanded);
+    }
+
+    return expanded;
   }
 
   private loadGranularity(): MetricGranularity {
     const stored = this.localStorageService.getUserScoped<MetricGranularity>(GRANULARITY_STORAGE_KEY);
     return stored && GRANULARITY_OPTIONS.includes(stored) ? stored : 'minute';
+  }
+
+  private selectedService(): string | null {
+    const selectedService = Array.from(this.expandedServices$$()).find((service) => service !== SETTINGS_PANEL_KEY);
+    if (selectedService && this.serviceOptions$$().some((option) => option.service === selectedService)) {
+      return selectedService;
+    }
+    return this.serviceOptions$$()[0]?.service ?? null;
+  }
+
+  private persistExpandedServices(): void {
+    const selectedService = this.selectedService();
+    if (selectedService) {
+      this.localStorageService.setUserScoped(SELECTED_SERVICE_STORAGE_KEY, selectedService);
+    } else {
+      this.localStorageService.removeUserScoped(SELECTED_SERVICE_STORAGE_KEY);
+    }
+    this.localStorageService.setUserScoped(
+      SETTINGS_EXPANDED_STORAGE_KEY,
+      this.expandedServices$$().has(SETTINGS_PANEL_KEY),
+    );
   }
 }

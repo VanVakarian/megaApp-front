@@ -1,39 +1,44 @@
 <div class="flex flex-col p-4">
-  <div class="flex flex-wrap gap-2 mb-4">
-    @for (granularity of granularityOptions; track granularity) {
-      <v-button [class]="selectedGranularity$$() === granularity ? 'v-primary v-raised' : 'v-primary v-flat'"
-                (onClick)="selectGranularity(granularity)">
-        {{ granularityLabel(granularity) }}
-      </v-button>
-    }
-  </div>
+  <div class="flex flex-wrap items-start gap-2 mb-4">
+    <div class="flex min-w-0 flex-1 flex-wrap gap-2">
+      @for (service of serviceOptions$$(); track service.service) {
+        <v-button [class]="isServiceExpanded(service.service) ? 'v-primary v-raised' : 'v-primary v-flat'"
+                  [config]="{
+                    color: serviceColor(service.service),
+                  }"
+                  (onClick)="toggleServiceExpanded(service.service)">
+          {{ service.label }}
+          <v-icon v-postfix
+                  [name]="isServiceExpanded(service.service) ? Icon.CheckBox : Icon.CheckBoxOutlineBlank"
+                  [size]="5" />
+        </v-button>
+      } @empty {
+        <div class="opacity-60 text-sm">Нет сервисов</div>
+      }
 
-  <div class="flex flex-wrap gap-2 mb-4">
-    @for (service of serviceOptions$$(); track service.service) {
-      <v-button [class]="isServiceExpanded(service.service) ? 'v-primary v-raised' : 'v-primary v-flat'"
+      <v-button [class]="isServiceExpanded(settingsPanelKey) ? 'v-raised' : 'v-flat'"
                 [config]="{
-                  color: serviceColor(service.service),
+                  isLabelHidden: true,
+                  padding: 2,
                 }"
-                (onClick)="toggleServiceExpanded(service.service)">
-        {{ service.label }}
-        <v-icon v-postfix
-                [name]="isServiceExpanded(service.service) ? Icon.CheckBox : Icon.CheckBoxOutlineBlank"
-                [size]="5" />
+                (onClick)="toggleServiceExpanded(settingsPanelKey)">
+        <v-icon v-prefix
+                [name]="Icon.Settings"
+                [size]="6" />
       </v-button>
-    } @empty {
-      <div class="opacity-60 text-sm">Нет сервисов</div>
-    }
+    </div>
 
-    <v-button [class]="isServiceExpanded(settingsPanelKey) ? 'v-raised' : 'v-flat'"
-              [config]="{
-                isLabelHidden: true,
-                padding: 2,
-              }"
-              (onClick)="toggleServiceExpanded(settingsPanelKey)">
-      <v-icon v-prefix
-              [name]="Icon.Settings"
-              [size]="6" />
-    </v-button>
+    <div class="flex shrink-0 flex-nowrap gap-2 ml-auto">
+      @for (granularity of granularityOptions; track granularity) {
+        <v-button [class]="selectedGranularity$$() === granularity ? 'v-primary v-raised' : 'v-flat'"
+                  [config]="{
+                    paddingX: 3,
+                  }"
+                  (onClick)="selectGranularity(granularity)">
+          {{ granularityLabel(granularity) }}
+        </v-button>
+      }
+    </div>
   </div>
 
   <v-expand class="mb-4"

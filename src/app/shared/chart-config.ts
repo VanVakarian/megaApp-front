@@ -371,20 +371,38 @@ export const METRICS_GRANULARITY_STEP_SECONDS: Record<MetricGranularity, number>
   day: 86400,
 };
 
-// How many periods the display window covers per granularity — minute stays
-// a 24h window, hour covers a month, day is generously large since real
-// history won't approach it for years.
+// How many periods the display window covers per granularity.
 export const METRICS_GRANULARITY_WINDOW_PERIODS: Record<MetricGranularity, number> = {
   minute: 24 * 60,
   hour: 30 * 24,
-  day: 365 * 10,
+  day: 365,
 };
 
-export const METRICS_GRANULARITY_TICK_INTERVAL_SECONDS: Record<MetricGranularity, number> = {
-  minute: 6 * 3600,
-  hour: 7 * 24 * 3600,
-  day: 30 * 24 * 3600,
+const METRICS_GRANULARITY_TICK_INTERVAL_CANDIDATES: Record<MetricGranularity, number[]> = {
+  minute: [60, 5 * 60, 15 * 60, 30 * 60, 60 * 60, 2 * 3600, 4 * 3600, 6 * 3600, 12 * 3600, 24 * 3600],
+  hour: [3600, 3 * 3600, 6 * 3600, 12 * 3600, 24 * 3600, 2 * 24 * 3600, 3 * 24 * 3600, 7 * 24 * 3600, 14 * 24 * 3600, 30 * 24 * 3600],
+  day: [24 * 3600, 2 * 24 * 3600, 7 * 24 * 3600, 14 * 24 * 3600, 30 * 24 * 3600, 60 * 24 * 3600, 90 * 24 * 3600],
 };
+
+const METRICS_GRANULARITY_MAX_TICK_COUNT: Record<MetricGranularity, number> = {
+  minute: 4,
+  hour: 4,
+  day: 6,
+};
+
+export function pickMetricTickIntervalSeconds(granularity: MetricGranularity, bucketCount: number): number {
+  const stepSeconds = METRICS_GRANULARITY_STEP_SECONDS[granularity];
+  const maxTickCount = METRICS_GRANULARITY_MAX_TICK_COUNT[granularity];
+
+  for (const intervalSeconds of METRICS_GRANULARITY_TICK_INTERVAL_CANDIDATES[granularity]) {
+    const periodsPerTick = Math.max(1, Math.floor(intervalSeconds / stepSeconds));
+    if (Math.ceil(bucketCount / periodsPerTick) <= maxTickCount) {
+      return intervalSeconds;
+    }
+  }
+
+  return METRICS_GRANULARITY_TICK_INTERVAL_CANDIDATES[granularity].at(-1) ?? stepSeconds;
+}
 
 export function createMetricSparklineConfig(color: string): ChartConfiguration<'line'> {
   return {

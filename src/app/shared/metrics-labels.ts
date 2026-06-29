@@ -254,6 +254,35 @@ const METRICS_SERVICE_DEFINITIONS: MetricsServiceDefinition[] = [
       backup_job_ran: '#64748b',
     },
   },
+  {
+    service: 'sozvon-konspekt',
+    label: 'Sozvon Konspekt',
+    groups: [
+      {
+        id: 'recognition',
+        label: 'Recognition',
+        metrics: ['recognition_success', 'recognition_failed', 'recognition_cost_usd'],
+      },
+      {
+        id: 'performance',
+        label: 'Performance',
+        metrics: ['convert_time_ratio', 'recognition_time_ratio'],
+      },
+      {
+        id: 'reliability',
+        label: 'Reliability',
+        metrics: ['application_errors'],
+      },
+    ],
+    metricColors: {
+      recognition_success: '#16a34a',
+      recognition_failed: '#dc2626',
+      recognition_cost_usd: '#2563eb',
+      convert_time_ratio: '#7c3aed',
+      recognition_time_ratio: '#a78bfa',
+      application_errors: '#ea580c',
+    },
+  },
 ];
 
 const METRIC_LABELS: Record<string, Record<string, string>> = {
@@ -346,6 +375,14 @@ const METRIC_LABELS: Record<string, Record<string, string>> = {
     discovery_dropped_days_to_end: 'Discovery Dropped: Days to End',
     discovery_dropped_market_age: 'Discovery Dropped: Market Age',
     discovery_duration_ms: 'Discovery Duration (ms)',
+  },
+  'sozvon-konspekt': {
+    recognition_success: 'Successful Recognitions',
+    recognition_failed: 'Failed Recognitions',
+    recognition_cost_usd: 'Recognition Cost',
+    convert_time_ratio: 'Conversion Time Ratio',
+    recognition_time_ratio: 'Recognition Time Ratio',
+    application_errors: 'Application Errors',
   },
 };
 
