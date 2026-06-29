@@ -1,12 +1,9 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, OnDestroy, OnInit, signal } from '@angular/core';
-import { LocalStorageService } from '@app/services/local-storage.service';
+import { ChangeDetectionStrategy, Component, computed, inject, OnDestroy, OnInit, signal } from '@angular/core';
 import { MetricsHealthService } from '@app/services/metrics-health.service';
+import { MetricsSettingsService } from '@app/services/metrics-settings.service';
 import { MetricsService } from '@app/services/metrics.service';
 import { metricAggregation } from '@app/shared/metrics-aggregation';
-import {
-  METRICS_GRANULARITY_STEP_SECONDS,
-  METRICS_GRANULARITY_WINDOW_PERIODS,
-} from '@app/shared/chart-config';
+import { METRICS_GRANULARITY_STEP_SECONDS, METRICS_GRANULARITY_WINDOW_PERIODS } from '@app/shared/chart-config';
 import { formatMetricUnitValue, metricUnit, MetricUnit } from '@app/shared/metric-units';
 import { MetricChartMode } from '@app/shared/metrics-chart-mode';
 import { metricDescription } from '@app/shared/metrics-descriptions';
@@ -38,21 +35,11 @@ import { VCheckbox } from '@ui-kit/components/v-checkbox/v-checkbox';
 import { VExpand } from '@ui-kit/components/v-expand/v-expand';
 import { IconName, VIcon } from '@ui-kit/components/v-icon/v-icon';
 import { VInput } from '@ui-kit/components/v-input/v-input';
-import {
-  DEFAULT_CARD_WIDTH_PX,
-  DEFAULT_CHART_HEIGHT_PX,
-  MetricChartCard,
-} from '../metric-chart-card/metric-chart-card';
+import { MetricChartCard } from '../metric-chart-card/metric-chart-card';
 
 const NOW_TICK_INTERVAL_MS = 30_000;
-const LEGACY_EXPANDED_SERVICES_STORAGE_KEY = 'metrics_expanded_services';
-const SELECTED_SERVICE_STORAGE_KEY = 'metrics_selected_service';
-const SETTINGS_EXPANDED_STORAGE_KEY = 'metrics_settings_expanded';
-const CARD_WIDTH_STORAGE_KEY = 'metrics_card_width_px';
-const CARD_HEIGHT_STORAGE_KEY = 'metrics_card_height_px';
-const GRANULARITY_STORAGE_KEY = 'metrics_granularity';
-const SYNC_CROSSHAIR_ENABLED_STORAGE_KEY = 'metrics_sync_crosshair_enabled';
 const SETTINGS_PANEL_KEY = '__settings__';
+const DASHBOARD_PANEL_KEY = '__dashboard__';
 const GRANULARITY_OPTIONS: MetricGranularity[] = ['minute', 'hour', 'day'];
 const MINUTE_COLLAPSE_CARD_WIDTH_THRESHOLD_PX = 600;
 const COLLAPSED_MINUTE_STEP_SECONDS = 5 * 60;
@@ -80,6 +67,16 @@ interface MetricGroupData {
   cards: MetricChartCardData[];
 }
 
+interface ServiceMetricsData {
+  groups: MetricGroupData[];
+  dashboardCards: MetricChartCardData[];
+}
+
+interface DashboardMetricOption {
+  name: string;
+  label: string;
+}
+
 interface MetricsServiceOption {
   service: string;
   label: string;
@@ -96,27 +93,22 @@ export class MetricsDashboard implements OnInit, OnDestroy {
   protected readonly metricsHealthService = inject(MetricsHealthService);
   protected readonly Icon = IconName;
   protected readonly settingsPanelKey = SETTINGS_PANEL_KEY;
+  protected readonly dashboardPanelKey = DASHBOARD_PANEL_KEY;
 
-  private readonly localStorageService = inject(LocalStorageService);
+  private readonly metricsSettingsService = inject(MetricsSettingsService);
 
   private readonly now$$ = signal(Date.now());
-  private readonly expandedServices$$ = signal<Set<string>>(this.loadExpandedServices());
-  protected readonly cardWidthPx$$ = signal<number>(
-    this.localStorageService.getUserScoped<number>(CARD_WIDTH_STORAGE_KEY) ?? DEFAULT_CARD_WIDTH_PX,
-  );
-  protected readonly cardHeightPx$$ = signal<number>(
-    this.localStorageService.getUserScoped<number>(CARD_HEIGHT_STORAGE_KEY) ?? DEFAULT_CHART_HEIGHT_PX,
-  );
+  protected readonly cardWidthPx$$ = this.metricsSettingsService.cardWidthPx$$;
+  protected readonly cardHeightPx$$ = this.metricsSettingsService.cardHeightPx$$;
   protected readonly granularityOptions = GRANULARITY_OPTIONS;
-  protected readonly selectedGranularity$$ = signal<MetricGranularity>(
-    this.loadGranularity(),
+  protected readonly selectedGranularity$$ = this.metricsSettingsService.granularity$$;
+  protected readonly syncCrosshairEnabled$$ = this.metricsSettingsService.syncCrosshairEnabled$$;
+  protected readonly useCollapsedMinutes$$ = computed(
+    () => this.cardWidthPx$$() < MINUTE_COLLAPSE_CARD_WIDTH_THRESHOLD_PX,
   );
-  protected readonly syncCrosshairEnabled$$ = signal<boolean>(this.loadSyncCrosshairEnabled());
-  protected readonly useCollapsedMinutes$$ = computed(() => this.cardWidthPx$$() < MINUTE_COLLAPSE_CARD_WIDTH_THRESHOLD_PX);
+  protected readonly dashboardSelection$$ = this.metricsSettingsService.dashboardSelection$$;
+  protected readonly dashboardServiceSelection$$ = this.metricsSettingsService.dashboardServiceSelection$$;
   private nowTickIntervalId: ReturnType<typeof setInterval> | null = null;
-  private readonly persistExpandedServicesEffect = effect(() => {
-    this.persistExpandedServices();
-  });
   private readonly minuteMetricCollapseCache = new MinuteMetricCollapseCache();
 
   protected readonly serviceOptions$$ = computed<MetricsServiceOption[]>(() => {
@@ -139,10 +131,11 @@ export class MetricsDashboard implements OnInit, OnDestroy {
       .sort((left, right) => left.label.localeCompare(right.label));
   });
 
-  protected readonly metricGroupsByService$$ = computed<Map<string, MetricGroupData[]>>(() => {
+  protected readonly serviceMetricsData$$ = computed<Map<string, ServiceMetricsData>>(() => {
     const granularity = this.selectedGranularity$$();
     const stepSeconds = METRICS_GRANULARITY_STEP_SECONDS[granularity];
     const useCollapsedMinutes = granularity === 'minute' && this.useCollapsedMinutes$$();
+    const dashboardSelection = this.dashboardSelection$$();
     const fallbackWindow = buildMetricWindow(
       previousCompletedBucket(this.now$$(), stepSeconds),
       METRICS_GRANULARITY_WINDOW_PERIODS[granularity],
@@ -159,16 +152,12 @@ export class MetricsDashboard implements OnInit, OnDestroy {
       pointsByService.set(point.service, [point]);
     }
 
-    const result = new Map<string, MetricGroupData[]>();
+    const result = new Map<string, ServiceMetricsData>();
     for (const option of this.serviceOptions$$()) {
       const definition = metricsServiceDefinition(option.service);
-      if (!definition) {
-        result.set(option.service, []);
-        continue;
-      }
-
+      const servicePoints = pointsByService.get(option.service) ?? [];
       const serviceWindow = buildServiceMetricWindow(
-        pointsByService.get(option.service) ?? [],
+        servicePoints,
         fallbackWindow.endBucket,
         METRICS_GRANULARITY_WINDOW_PERIODS[granularity],
         stepSeconds,
@@ -177,57 +166,102 @@ export class MetricsDashboard implements OnInit, OnDestroy {
         ? buildCollapsedMetricWindow(serviceWindow, COLLAPSED_MINUTE_STEP_SECONDS)
         : serviceWindow;
       const displayStepSeconds = useCollapsedMinutes ? COLLAPSED_MINUTE_STEP_SECONDS : stepSeconds;
-      const pointsIndex = buildMetricPointsIndex(
-        pointsByService.get(option.service) ?? [],
-        serviceWindow.startBucket,
-        serviceWindow.endBucket,
-      );
+      const pointsIndex = buildMetricPointsIndex(servicePoints, serviceWindow.startBucket, serviceWindow.endBucket);
 
-      const groups = definition.groups.map((group) => ({
+      const buildCard = (name: string): MetricChartCardData => {
+        const key = metricPointsIndexKey(option.service, name);
+        const metricPoints = pointsIndex.get(key) ?? [];
+        const displayPoints = useCollapsedMinutes
+          ? filterMetricPointsByWindow(
+              this.minuteMetricCollapseCache.collapse(
+                key,
+                metricPoints,
+                metricAggregation(name),
+                COLLAPSED_MINUTE_STEP_SECONDS,
+              ),
+              displayWindow.startBucket,
+              displayWindow.endBucket,
+            )
+          : metricPoints;
+        const chartMode = metricChartMode(option.service, name);
+        const series =
+          chartMode === 'bar'
+            ? buildSparseBarSeriesFromPoints(displayPoints)
+            : buildSparseLineSeriesFromPoints(displayPoints, displayStepSeconds);
+        const rawValue = metricPoints[metricPoints.length - 1]?.value ?? 0;
+        const color = definition?.metricColors[name] ?? '#578f92';
+        const unit = metricUnit(name);
+        return {
+          key,
+          label: metricLabel(option.service, name),
+          technicalName: name,
+          value: rawValue,
+          displayValue: formatMetricUnitValue(unit, rawValue),
+          unit,
+          granularity,
+          color,
+          series,
+          chartMode,
+          windowStartBucket: displayWindow.startBucket,
+          windowEndBucket: displayWindow.endBucket,
+          displayStepSeconds,
+          description: metricDescription(option.service, name),
+        };
+      };
+
+      const groups = (definition?.groups ?? []).map((group) => ({
         id: group.id,
         label: group.label,
-        cards: group.metrics.map((name) => {
-          const key = metricPointsIndexKey(option.service, name);
-          const metricPoints = pointsIndex.get(key) ?? [];
-          const displayPoints = useCollapsedMinutes
-            ? filterMetricPointsByWindow(
-                this.minuteMetricCollapseCache.collapse(
-                  key,
-                  metricPoints,
-                  metricAggregation(name),
-                  COLLAPSED_MINUTE_STEP_SECONDS,
-                ),
-                displayWindow.startBucket,
-                displayWindow.endBucket,
-              )
-            : metricPoints;
-          const chartMode = metricChartMode(option.service, name);
-          const series =
-            chartMode === 'bar'
-              ? buildSparseBarSeriesFromPoints(displayPoints)
-              : buildSparseLineSeriesFromPoints(displayPoints, displayStepSeconds);
-          const rawValue = metricPoints[metricPoints.length - 1]?.value ?? 0;
-          const color = definition.metricColors[name] ?? '#578f92';
-          const unit = metricUnit(name);
-          return {
-            key,
-            label: metricLabel(option.service, name),
-            technicalName: name,
-            value: rawValue,
-            displayValue: formatMetricUnitValue(unit, rawValue),
-            unit,
-            granularity,
-            color,
-            series,
-            chartMode,
-            windowStartBucket: displayWindow.startBucket,
-            windowEndBucket: displayWindow.endBucket,
-            displayStepSeconds,
-            description: metricDescription(option.service, name),
-          };
-        }),
+        cards: group.metrics.map(buildCard),
       }));
-      result.set(option.service, groups);
+
+      const selectedMetrics = Object.entries(dashboardSelection[option.service] ?? {});
+      selectedMetrics.sort(
+        ([leftName, leftOrder], [rightName, rightOrder]) => leftOrder - rightOrder || leftName.localeCompare(rightName),
+      );
+      const dashboardCards = selectedMetrics.map(([name]) => buildCard(name));
+
+      result.set(option.service, { groups, dashboardCards });
+    }
+    return result;
+  });
+
+  protected readonly dashboardRows$$ = computed<MetricGroupData[]>(() => {
+    const data = this.serviceMetricsData$$();
+    const serviceSelection = this.dashboardServiceSelection$$();
+    const rows: { id: string; label: string; order: number; cards: MetricChartCardData[] }[] = [];
+    for (const option of this.serviceOptions$$()) {
+      const order = serviceSelection[option.service];
+      if (order === undefined) continue;
+      const cards = data.get(option.service)?.dashboardCards ?? [];
+      if (cards.length === 0) continue;
+      rows.push({ id: option.service, label: option.label, order, cards });
+    }
+    rows.sort((left, right) => left.order - right.order || left.label.localeCompare(right.label));
+    return rows.map(({ id, label, cards }) => ({ id, label, cards }));
+  });
+
+  protected readonly dashboardMetricOptionsByService$$ = computed<Map<string, DashboardMetricOption[]>>(() => {
+    const observedNamesByService = new Map<string, Set<string>>();
+    for (const point of this.metricsService.points$$()) {
+      const observedNames = observedNamesByService.get(point.service);
+      if (observedNames) {
+        observedNames.add(point.name);
+        continue;
+      }
+      observedNamesByService.set(point.service, new Set([point.name]));
+    }
+
+    const result = new Map<string, DashboardMetricOption[]>();
+    for (const option of this.serviceOptions$$()) {
+      const definition = metricsServiceDefinition(option.service);
+      const names = definition
+        ? definition.groups.flatMap((group) => group.metrics)
+        : Array.from(observedNamesByService.get(option.service) ?? []).sort();
+      result.set(
+        option.service,
+        names.map((name) => ({ name, label: metricLabel(option.service, name) })),
+      );
     }
     return result;
   });
@@ -267,129 +301,170 @@ export class MetricsDashboard implements OnInit, OnDestroy {
 
   protected selectGranularity(granularity: MetricGranularity): void {
     clearMetricSyncCrosshair();
-    this.selectedGranularity$$.set(granularity);
-    this.localStorageService.setUserScoped(GRANULARITY_STORAGE_KEY, granularity);
+    this.metricsSettingsService.setGranularity(granularity);
   }
 
   protected isServiceExpanded(service: string): boolean {
-    if (service !== SETTINGS_PANEL_KEY) {
-      return service === this.selectedService();
+    if (service === SETTINGS_PANEL_KEY) {
+      return this.metricsSettingsService.settingsExpanded$$();
     }
-    return this.expandedServices$$().has(service);
+    return service === this.selectedService();
   }
 
   protected toggleServiceExpanded(service: string): void {
-    const expanded = new Set(this.expandedServices$$());
-    const currentSelectedService = Array.from(expanded).find((key) => key !== SETTINGS_PANEL_KEY) ?? null;
     if (service === SETTINGS_PANEL_KEY) {
-      if (expanded.has(service)) {
-        expanded.delete(service);
-      } else {
-        expanded.add(service);
-      }
-      this.expandedServices$$.set(expanded);
+      this.metricsSettingsService.setSettingsExpanded(!this.metricsSettingsService.settingsExpanded$$());
       return;
     }
 
-    if (service === this.selectedService() && currentSelectedService === service) {
+    if (service === this.selectedService()) {
       return;
     }
 
     clearMetricSyncCrosshair();
-    for (const key of expanded) {
-      if (key !== SETTINGS_PANEL_KEY) {
-        expanded.delete(key);
-      }
-    }
-    expanded.add(service);
-    this.expandedServices$$.set(expanded);
+    this.metricsSettingsService.setSelectedService(service);
   }
 
   protected onCardWidthChange(value: string): void {
     const widthPx = Number(value);
     if (!Number.isFinite(widthPx) || widthPx <= 0) return;
-    this.cardWidthPx$$.set(widthPx);
-    this.localStorageService.setUserScoped(CARD_WIDTH_STORAGE_KEY, widthPx);
+    this.metricsSettingsService.setCardWidthPx(widthPx);
   }
 
   protected onCardHeightChange(value: string): void {
     const heightPx = Number(value);
     if (!Number.isFinite(heightPx) || heightPx <= 0) return;
-    this.cardHeightPx$$.set(heightPx);
-    this.localStorageService.setUserScoped(CARD_HEIGHT_STORAGE_KEY, heightPx);
+    this.metricsSettingsService.setCardHeightPx(heightPx);
   }
 
   protected onSyncCrosshairEnabledChange(value: boolean): void {
-    this.syncCrosshairEnabled$$.set(value);
-    this.localStorageService.setUserScoped(SYNC_CROSSHAIR_ENABLED_STORAGE_KEY, value);
+    this.metricsSettingsService.setSyncCrosshairEnabled(value);
     if (!value) {
       clearMetricSyncCrosshair();
     }
   }
 
-  private loadExpandedServices(): Set<string> {
-    const expanded = new Set<string>();
-    const selectedService = this.localStorageService.getUserScoped<string>(SELECTED_SERVICE_STORAGE_KEY);
-    if (typeof selectedService === 'string' && selectedService) {
-      expanded.add(selectedService);
-    }
-
-    if (this.localStorageService.getUserScoped<boolean>(SETTINGS_EXPANDED_STORAGE_KEY)) {
-      expanded.add(SETTINGS_PANEL_KEY);
-    }
-
-    const legacyExpanded = this.localStorageService.getUserScoped<string[] | string>(
-      LEGACY_EXPANDED_SERVICES_STORAGE_KEY,
-    );
-    if (expanded.size > 0) {
-      return expanded;
-    }
-
-    if (Array.isArray(legacyExpanded)) {
-      const legacySelectedService = legacyExpanded.find((service) => service !== SETTINGS_PANEL_KEY);
-      if (legacySelectedService) {
-        expanded.add(legacySelectedService);
-      }
-      if (legacyExpanded.includes(SETTINGS_PANEL_KEY)) {
-        expanded.add(SETTINGS_PANEL_KEY);
-      }
-      return expanded;
-    }
-
-    if (typeof legacyExpanded === 'string' && legacyExpanded) {
-      expanded.add(legacyExpanded);
-    }
-
-    return expanded;
+  protected warnAfterSeconds(service: string): number {
+    return this.metricsHealthService.severityThresholds(service).warnAfterSeconds;
   }
 
-  private loadGranularity(): MetricGranularity {
-    const stored = this.localStorageService.getUserScoped<MetricGranularity>(GRANULARITY_STORAGE_KEY);
-    return stored && GRANULARITY_OPTIONS.includes(stored) ? stored : 'minute';
+  protected errorAfterSeconds(service: string): number {
+    return this.metricsHealthService.severityThresholds(service).errorAfterSeconds;
   }
 
-  private loadSyncCrosshairEnabled(): boolean {
-    return this.localStorageService.getUserScoped<boolean>(SYNC_CROSSHAIR_ENABLED_STORAGE_KEY) ?? false;
+  protected setWarnAfterSeconds(service: string, rawValue: string): void {
+    const value = Number(rawValue);
+    if (!Number.isFinite(value) || value < 0) return;
+    const current = this.metricsHealthService.severityThresholds(service);
+    this.metricsHealthService.setSeverityThresholds(service, { ...current, warnAfterSeconds: value });
+  }
+
+  protected setErrorAfterSeconds(service: string, rawValue: string): void {
+    const value = Number(rawValue);
+    if (!Number.isFinite(value) || value < 0) return;
+    const current = this.metricsHealthService.severityThresholds(service);
+    this.metricsHealthService.setSeverityThresholds(service, { ...current, errorAfterSeconds: value });
+  }
+
+  protected isDashboardMetricEnabled(service: string, name: string): boolean {
+    return this.dashboardSelection$$()[service]?.[name] !== undefined;
+  }
+
+  protected dashboardMetricOrder(service: string, name: string): number {
+    return this.dashboardSelection$$()[service]?.[name] ?? 0;
+  }
+
+  protected toggleDashboardMetric(service: string, name: string, enabled: boolean): void {
+    const current = this.dashboardSelection$$();
+    const serviceSelection = { ...current[service] };
+    if (enabled) {
+      serviceSelection[name] = this.nextDashboardOrder(service);
+    } else {
+      delete serviceSelection[name];
+    }
+
+    const next = { ...current };
+    if (Object.keys(serviceSelection).length > 0) {
+      next[service] = serviceSelection;
+    } else {
+      delete next[service];
+    }
+    this.metricsSettingsService.setDashboardSelection(next);
+
+    if (enabled) {
+      this.ensureDashboardServiceEnabled(service);
+    }
+  }
+
+  protected setDashboardMetricOrder(service: string, name: string, rawValue: string): void {
+    const order = Number(rawValue);
+    if (!Number.isFinite(order)) return;
+
+    const current = this.dashboardSelection$$();
+    if (current[service]?.[name] === undefined) return;
+
+    this.metricsSettingsService.setDashboardSelection({
+      ...current,
+      [service]: { ...current[service], [name]: order },
+    });
+  }
+
+  protected isDashboardServiceEnabled(service: string): boolean {
+    return this.dashboardServiceSelection$$()[service] !== undefined;
+  }
+
+  protected dashboardServiceOrder(service: string): number {
+    return this.dashboardServiceSelection$$()[service] ?? 0;
+  }
+
+  protected toggleDashboardService(service: string, enabled: boolean): void {
+    if (enabled) {
+      this.ensureDashboardServiceEnabled(service);
+      return;
+    }
+
+    const next = { ...this.dashboardServiceSelection$$() };
+    delete next[service];
+    this.metricsSettingsService.setDashboardServiceSelection(next);
+  }
+
+  protected setDashboardServiceOrder(service: string, rawValue: string): void {
+    const order = Number(rawValue);
+    if (!Number.isFinite(order)) return;
+
+    const current = this.dashboardServiceSelection$$();
+    if (current[service] === undefined) return;
+
+    this.metricsSettingsService.setDashboardServiceSelection({ ...current, [service]: order });
+  }
+
+  private nextDashboardOrder(service: string): number {
+    const orders = Object.values(this.dashboardSelection$$()[service] ?? {});
+    return orders.length > 0 ? Math.max(...orders) + 1 : 1;
+  }
+
+  private nextDashboardServiceOrder(): number {
+    const orders = Object.values(this.dashboardServiceSelection$$());
+    return orders.length > 0 ? Math.max(...orders) + 1 : 1;
+  }
+
+  private ensureDashboardServiceEnabled(service: string): void {
+    const current = this.dashboardServiceSelection$$();
+    if (current[service] !== undefined) return;
+    this.metricsSettingsService.setDashboardServiceSelection({
+      ...current,
+      [service]: this.nextDashboardServiceOrder(),
+    });
   }
 
   private selectedService(): string | null {
-    const selectedService = Array.from(this.expandedServices$$()).find((service) => service !== SETTINGS_PANEL_KEY);
-    if (selectedService && this.serviceOptions$$().some((option) => option.service === selectedService)) {
-      return selectedService;
+    const stored = this.metricsSettingsService.selectedService$$();
+    if (stored === DASHBOARD_PANEL_KEY) {
+      return DASHBOARD_PANEL_KEY;
+    }
+    if (stored && this.serviceOptions$$().some((option) => option.service === stored)) {
+      return stored;
     }
     return this.serviceOptions$$()[0]?.service ?? null;
-  }
-
-  private persistExpandedServices(): void {
-    const selectedService = this.selectedService();
-    if (selectedService) {
-      this.localStorageService.setUserScoped(SELECTED_SERVICE_STORAGE_KEY, selectedService);
-    } else {
-      this.localStorageService.removeUserScoped(SELECTED_SERVICE_STORAGE_KEY);
-    }
-    this.localStorageService.setUserScoped(
-      SETTINGS_EXPANDED_STORAGE_KEY,
-      this.expandedServices$$().has(SETTINGS_PANEL_KEY),
-    );
   }
 }

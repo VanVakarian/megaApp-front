@@ -1,6 +1,14 @@
 <div class="flex flex-col p-4">
   <div class="flex flex-wrap items-start gap-2 mb-4">
-    <div class="flex min-w-0 flex-1 flex-wrap gap-2">
+    <div class="flex flex-wrap flex-1 min-w-0 gap-2">
+      <v-button [class]="isServiceExpanded(dashboardPanelKey) ? 'v-primary v-raised' : 'v-primary v-flat'"
+                (onClick)="toggleServiceExpanded(dashboardPanelKey)">
+        Dashboard
+        <v-icon v-postfix
+                [name]="isServiceExpanded(dashboardPanelKey) ? Icon.CheckBox : Icon.CheckBoxOutlineBlank"
+                [size]="5" />
+      </v-button>
+
       @for (service of serviceOptions$$(); track service.service) {
         <v-button [class]="isServiceExpanded(service.service) ? 'v-primary v-raised' : 'v-primary v-flat'"
                   [config]="{
@@ -28,7 +36,7 @@
       </v-button>
     </div>
 
-    <div class="flex shrink-0 flex-nowrap gap-2 ml-auto">
+    <div class="shrink-0 flex-nowrap flex gap-2 ml-auto">
       @for (granularity of granularityOptions; track granularity) {
         <v-button [class]="selectedGranularity$$() === granularity ? 'v-primary v-raised' : 'v-flat'"
                   [config]="{
@@ -44,31 +52,156 @@
   <v-expand class="mb-4"
             [isExpanded]="isServiceExpanded(settingsPanelKey)">
     <div v-body
-         class="flex flex-wrap gap-3 p-4">
-      <v-input [value]="cardWidthPx$$().toString()"
-               (valueChange)="onCardWidthChange($event)"
-               [config]="{
-                 type: 'number',
-                 inputmode: 'numeric',
-                 label: 'Ширина карточки, px',
-                 textAlign: 'right',
-               }" />
-      <v-input [value]="cardHeightPx$$().toString()"
-               (valueChange)="onCardHeightChange($event)"
-               [config]="{
-                 type: 'number',
-                 inputmode: 'numeric',
-                 label: 'Высота графика, px',
-                 textAlign: 'right',
-               }" />
-      <label class="flex items-center gap-2 text-sm">
-        <v-checkbox [value]="syncCrosshairEnabled$$()"
-                    (onChanged)="onSyncCrosshairEnabledChange($event)"
-                    [config]="{
-                      mode: 'switch',
-                    }" />
-        <span>Синхролиния наведения</span>
-      </label>
+         class="gap-14 flex flex-col p-4">
+      <div class="flex flex-wrap gap-3">
+        <v-input [value]="cardWidthPx$$().toString()"
+                 (valueChange)="onCardWidthChange($event)"
+                 [config]="{
+                   type: 'number',
+                   inputmode: 'numeric',
+                   label: 'Ширина карточки, px',
+                   textAlign: 'right',
+                 }" />
+        <v-input [value]="cardHeightPx$$().toString()"
+                 (valueChange)="onCardHeightChange($event)"
+                 [config]="{
+                   type: 'number',
+                   inputmode: 'numeric',
+                   label: 'Высота графика, px',
+                   textAlign: 'right',
+                 }" />
+        <label class="flex items-center gap-2 text-sm">
+          <v-checkbox [value]="syncCrosshairEnabled$$()"
+                      (onChanged)="onSyncCrosshairEnabledChange($event)"
+                      [config]="{
+                        mode: 'switch',
+                      }" />
+          <span>Синхролиния наведения</span>
+        </label>
+      </div>
+
+      <div class="flex flex-col gap-3">
+        <div class="opacity-70 text-sm font-semibold">Метрики дэшборда</div>
+        @for (service of serviceOptions$$(); track service.service) {
+          <div class="flex flex-col gap-1">
+            <label class="flex items-center gap-2 text-sm font-medium cursor-pointer">
+              <v-checkbox [value]="isDashboardServiceEnabled(service.service)"
+                          (onChanged)="toggleDashboardService(service.service, $event)"
+                          [config]="{
+                            size: 4,
+                            checkIconSize: 3,
+                            gap: 1,
+                          }" />
+              <span class="flex-1 min-w-0 truncate">{{ service.label }}</span>
+              @if (isDashboardServiceEnabled(service.service)) {
+                <v-input class="shrink-0 w-12"
+                         [value]="dashboardServiceOrder(service.service).toString()"
+                         (valueChange)="setDashboardServiceOrder(service.service, $event)"
+                         [config]="{
+                           type: 'number',
+                           inputmode: 'numeric',
+                           inputSize: 2,
+                           textAlign: 'right',
+                         }" />
+              }
+            </label>
+            <div class="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-x-4 gap-y-1 pl-2">
+              @for (metric of dashboardMetricOptionsByService$$().get(service.service) ?? []; track metric.name) {
+                <label class="flex items-center gap-2 text-sm cursor-pointer">
+                  <v-checkbox [value]="isDashboardMetricEnabled(service.service, metric.name)"
+                              (onChanged)="toggleDashboardMetric(service.service, metric.name, $event)"
+                              [config]="{
+                                size: 4,
+                                checkIconSize: 3,
+                                gap: 1,
+                              }" />
+                  <span class="flex-1 min-w-0 truncate">{{ metric.label }}</span>
+                  @if (isDashboardMetricEnabled(service.service, metric.name)) {
+                    <v-input class="shrink-0 w-12"
+                             [value]="dashboardMetricOrder(service.service, metric.name).toString()"
+                             (valueChange)="setDashboardMetricOrder(service.service, metric.name, $event)"
+                             [config]="{
+                               type: 'number',
+                               inputmode: 'numeric',
+                               inputSize: 2,
+                               textAlign: 'right',
+                             }" />
+                  }
+                </label>
+              } @empty {
+                <div class="opacity-60 text-xs">Нет метрик</div>
+              }
+            </div>
+          </div>
+        }
+      </div>
+
+      <div class="flex flex-col gap-3">
+        <div class="opacity-70 text-sm font-semibold">Пороги Severity, сек без новых данных</div>
+        <div class="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-x-4 gap-y-2 pl-2">
+          @for (service of serviceOptions$$(); track service.service) {
+            <div class="flex flex-col gap-1">
+              <div class="text-sm truncate">{{ service.label }}</div>
+              <div class="flex items-center gap-2">
+                <v-input class="w-20"
+                         [value]="warnAfterSeconds(service.service).toString()"
+                         (valueChange)="setWarnAfterSeconds(service.service, $event)"
+                         [config]="{
+                           type: 'number',
+                           inputmode: 'numeric',
+                           inputSize: 4,
+                           textAlign: 'right',
+                           label: 'Warn',
+                         }" />
+                <v-input class="w-20"
+                         [value]="errorAfterSeconds(service.service).toString()"
+                         (valueChange)="setErrorAfterSeconds(service.service, $event)"
+                         [config]="{
+                           type: 'number',
+                           inputmode: 'numeric',
+                           inputSize: 4,
+                           textAlign: 'right',
+                           label: 'Error',
+                         }" />
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+  </v-expand>
+
+  <v-expand class="mb-4"
+            [isExpanded]="isServiceExpanded(dashboardPanelKey)">
+    <div v-body
+         class="flex flex-col gap-4 p-4">
+      @for (row of dashboardRows$$(); track row.id) {
+        <div>
+          <div class="opacity-70 mb-2 text-sm font-semibold">{{ row.label }}</div>
+          <div class="flex flex-wrap gap-3">
+            @for (card of row.cards; track card.key) {
+              <metric-chart-card [labelInput]="card.label"
+                                 [technicalNameInput]="card.technicalName"
+                                 [valueInput]="card.value"
+                                 [displayValueInput]="card.displayValue"
+                                 [colorInput]="card.color"
+                                 [unitInput]="card.unit"
+                                 [granularityInput]="card.granularity"
+                                 [seriesInput]="card.series"
+                                 [chartModeInput]="card.chartMode"
+                                 [windowStartInput]="card.windowStartBucket"
+                                 [windowEndInput]="card.windowEndBucket"
+                                 [displayStepSecondsInput]="card.displayStepSeconds"
+                                 [syncCrosshairEnabledInput]="syncCrosshairEnabled$$()"
+                                 [descriptionInput]="card.description"
+                                 [widthPxInput]="cardWidthPx$$()"
+                                 [heightPxInput]="cardHeightPx$$()" />
+            }
+          </div>
+        </div>
+      } @empty {
+        <div class="opacity-60 text-sm">Нет выбранных метрик. Настройте в Settings.</div>
+      }
     </div>
   </v-expand>
 
@@ -77,7 +210,7 @@
               [isExpanded]="isServiceExpanded(service.service)">
       <div v-body
            class="flex flex-col gap-4 p-4">
-        @for (group of metricGroupsByService$$().get(service.service) ?? []; track group.id) {
+        @for (group of serviceMetricsData$$().get(service.service)?.groups ?? []; track group.id) {
           <div>
             <div class="opacity-70 mb-2 text-sm font-semibold">{{ group.label }}</div>
             <div class="flex flex-wrap gap-3">

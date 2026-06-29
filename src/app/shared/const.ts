@@ -71,6 +71,7 @@ export const USER_SCOPED_CACHE_BASE_KEYS: string[] = [
   'money_settings',
   'money_snapshot',
   'metrics_detail',
+  'metrics_settings',
 ];
 
 export const SESSION_BOOTSTRAP_TIMEOUT_MS: number = 9000;
