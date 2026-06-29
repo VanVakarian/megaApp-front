@@ -390,8 +390,12 @@ const METRICS_GRANULARITY_MAX_TICK_COUNT: Record<MetricGranularity, number> = {
   day: 6,
 };
 
-export function pickMetricTickIntervalSeconds(granularity: MetricGranularity, bucketCount: number): number {
-  const stepSeconds = METRICS_GRANULARITY_STEP_SECONDS[granularity];
+export function pickMetricTickIntervalSeconds(
+  granularity: MetricGranularity,
+  bucketCount: number,
+  stepSecondsOverride?: number,
+): number {
+  const stepSeconds = stepSecondsOverride ?? METRICS_GRANULARITY_STEP_SECONDS[granularity];
   const maxTickCount = METRICS_GRANULARITY_MAX_TICK_COUNT[granularity];
 
   for (const intervalSeconds of METRICS_GRANULARITY_TICK_INTERVAL_CANDIDATES[granularity]) {

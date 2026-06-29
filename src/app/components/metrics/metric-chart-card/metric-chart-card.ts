@@ -1,19 +1,16 @@
 import { ChangeDetectionStrategy, Component, effect, ElementRef, input, OnDestroy, viewChild } from '@angular/core';
 import {
   createMetricBarConfig,
-  createMetricSparklineConfig,
   createMetricSparseLineConfig,
-  METRICS_GRANULARITY_STEP_SECONDS,
   pickMetricTickIntervalSeconds,
 } from '@app/shared/chart-config';
 import { MetricChartMode } from '@app/shared/metrics-chart-mode';
 import { MetricUnit } from '@app/shared/metric-units';
 import {
   buildRoundTickBuckets,
-  buildRoundTickIndices,
-  formatMetricBucketLabel,
   MetricSeriesPoint,
 } from '@app/shared/metrics-series';
+import { MetricSyncCrosshairOptions, metricSyncCrosshairPlugin } from '@app/shared/metrics-sync-crosshair';
 import { MetricGranularity } from '@app/shared/types';
 import { VCard } from '@ui-kit/components/v-card/v-card';
 import { IconName, VIcon } from '@ui-kit/components/v-icon/v-icon';
@@ -40,6 +37,7 @@ Chart.register(
   BarElement,
   BarController,
   Tooltip,
+  metricSyncCrosshairPlugin,
 );
 
 export const DEFAULT_CARD_WIDTH_PX = 304;
@@ -60,9 +58,11 @@ export class MetricChartCard implements OnDestroy {
   public readonly unitInput = input<MetricUnit>('count');
   public readonly granularityInput = input<MetricGranularity>('minute');
   public readonly seriesInput = input.required<MetricSeriesPoint[]>();
-  public readonly chartModeInput = input<MetricChartMode>('filled');
+  public readonly chartModeInput = input<MetricChartMode>('sparse-line');
   public readonly windowStartInput = input<number>(0);
   public readonly windowEndInput = input<number>(0);
+  public readonly displayStepSecondsInput = input<number>(60);
+  public readonly syncCrosshairEnabledInput = input<boolean>(false);
   public readonly descriptionInput = input<string>('');
   public readonly widthPxInput = input<number>(DEFAULT_CARD_WIDTH_PX);
   public readonly heightPxInput = input<number>(DEFAULT_CHART_HEIGHT_PX);
@@ -82,6 +82,8 @@ export class MetricChartCard implements OnDestroy {
     const series = this.seriesInput();
     this.windowStartInput();
     this.windowEndInput();
+    this.displayStepSecondsInput();
+    this.syncCrosshairEnabledInput();
     if (!canvasElem) return;
     this.ensureChart(canvasElem.nativeElement, chartMode, color, unit, granularity);
     this.updateChart(series);
@@ -99,14 +101,10 @@ export class MetricChartCard implements OnDestroy {
     unit: MetricUnit,
     granularity: MetricGranularity,
   ): ChartConfiguration {
-    switch (chartMode) {
-      case 'bar':
-        return createMetricBarConfig(color, unit, granularity);
-      case 'sparse-line':
-        return createMetricSparseLineConfig(color, unit, granularity);
-      default:
-        return createMetricSparklineConfig(color);
+    if (chartMode === 'bar') {
+      return createMetricBarConfig(color, unit, granularity);
     }
+    return createMetricSparseLineConfig(color, unit, granularity);
   }
 
   private ensureChart(
@@ -136,39 +134,20 @@ export class MetricChartCard implements OnDestroy {
 
   private updateChart(series: MetricSeriesPoint[]): void {
     if (!this.chart) return;
-    if (this.chartModeInput() === 'filled') {
-      this.updateFilledChart(series);
-    } else {
-      this.updateSparseChart(series);
-    }
+    this.updateSparseChart(series);
     this.chart.update('none');
-  }
-
-  private updateFilledChart(series: MetricSeriesPoint[]): void {
-    const granularity = this.granularityInput();
-    const buckets = series.map((point) => point.bucket);
-    const tickIndices = buildRoundTickIndices(
-      buckets,
-      pickMetricTickIntervalSeconds(granularity, Math.max(1, buckets.length)),
-    );
-
-    this.chart!.data.labels = buckets.map((bucket) => formatMetricBucketLabel(bucket, granularity));
-    this.chart!.data.datasets[0].data = series.map((point) => point.value);
-    this.chart!.options.scales!['x']!.afterBuildTicks = (axis) => {
-      axis.ticks = tickIndices.map((index) => ({ value: index }));
-    };
   }
 
   private updateSparseChart(series: MetricSeriesPoint[]): void {
     const windowStart = this.windowStartInput();
     const windowEnd = this.windowEndInput();
     const granularity = this.granularityInput();
-    const stepSeconds = METRICS_GRANULARITY_STEP_SECONDS[granularity];
+    const stepSeconds = this.displayStepSecondsInput();
     const windowBucketCount = Math.max(1, Math.floor((windowEnd - windowStart) / stepSeconds) + 1);
     const tickBuckets = buildRoundTickBuckets(
       windowStart,
       windowEnd,
-      pickMetricTickIntervalSeconds(granularity, windowBucketCount),
+      pickMetricTickIntervalSeconds(granularity, windowBucketCount, stepSeconds),
     );
 
     this.chart!.data.datasets[0].data = series.map((point) => ({
@@ -180,10 +159,13 @@ export class MetricChartCard implements OnDestroy {
     this.chart!.options.scales!['x']!.afterBuildTicks = (axis) => {
       axis.ticks = tickBuckets.map((value) => ({ value }));
     };
+    this.chart!.options.plugins = {
+      ...this.chart!.options.plugins,
+      metricSyncCrosshair: this.syncCrosshairOptions(),
+    };
 
-    const isLine = this.chartModeInput() === 'sparse-line';
     const values = series.map((point) => point.value).filter((value): value is number => value !== null);
-    let min = isLine && values.length > 0 ? Math.min(...values) : 0;
+    let min = this.chartModeInput() === 'bar' ? 0 : values.length > 0 ? Math.min(...values) : 0;
     let max = values.length > 0 ? Math.max(...values) : 1;
     if (min === max) {
       min -= 1;
@@ -193,6 +175,15 @@ export class MetricChartCard implements OnDestroy {
     this.chart!.options.scales!['y']!.max = max;
     this.chart!.options.scales!['y']!.afterBuildTicks = (axis) => {
       axis.ticks = [{ value: min }, { value: max }];
+    };
+  }
+
+  private syncCrosshairOptions(): MetricSyncCrosshairOptions {
+    return {
+      enabled: this.syncCrosshairEnabledInput(),
+      windowStartBucket: this.windowStartInput(),
+      windowEndBucket: this.windowEndInput(),
+      displayStepSeconds: this.displayStepSecondsInput(),
     };
   }
 }

@@ -1,3 +1,5 @@
+import { MetricChartMode } from '@app/shared/metrics-chart-mode';
+
 export interface MetricsGroupDefinition {
   id: string;
   label: string;
@@ -9,6 +11,11 @@ export interface MetricsServiceDefinition {
   label: string;
   groups: MetricsGroupDefinition[];
   metricColors: Record<string, string>;
+  metricChartModes?: Partial<Record<string, MetricChartMode>>;
+}
+
+function barMetricModes(metrics: string[]): Partial<Record<string, MetricChartMode>> {
+  return Object.fromEntries(metrics.map((metric) => [metric, 'bar']));
 }
 
 const METRICS_SERVICE_VARIANTS: Record<string, { baseService: string; label: string }> = {
@@ -73,6 +80,33 @@ const HARDWARE_SERVICE_DEFINITION: MetricsServiceDefinition = {
     process_cpu_ratio_max: '#ec4899',
   },
 };
+
+const SPREAD_CAPTURE_BOT_BAR_METRICS = [
+  'cycle_errors',
+  'reconcile_failures',
+  'discovery_errors',
+] as const;
+
+const MEGAAPP_BAR_METRICS = [
+  'food_diary_entry_created',
+  'food_diary_entry_updated',
+  'food_diary_entry_deleted',
+  'food_diary_day_deleted',
+  'food_diary_day_restored',
+  'food_body_weight_updated',
+  'food_catalogue_entry_created',
+  'food_catalogue_entry_updated',
+  'food_catalogue_entry_deleted',
+  'food_personal_kcal_job_ran',
+  'backup_job_ran',
+] as const;
+
+const SOZVON_KONSPEKT_BAR_METRICS = [
+  'recognition_success',
+  'recognition_failed',
+  'recognition_cost_usd',
+  'application_errors',
+] as const;
 
 const METRICS_SERVICE_DEFINITIONS: MetricsServiceDefinition[] = [
   {
@@ -217,6 +251,7 @@ const METRICS_SERVICE_DEFINITIONS: MetricsServiceDefinition[] = [
       discovery_dropped_days_to_end: '#64748b',
       discovery_dropped_market_age: '#64748b',
     },
+    metricChartModes: barMetricModes([...SPREAD_CAPTURE_BOT_BAR_METRICS]),
   },
   {
     service: 'megaapp',
@@ -253,6 +288,7 @@ const METRICS_SERVICE_DEFINITIONS: MetricsServiceDefinition[] = [
       food_personal_kcal_job_ran: '#64748b',
       backup_job_ran: '#64748b',
     },
+    metricChartModes: barMetricModes([...MEGAAPP_BAR_METRICS]),
   },
   {
     service: 'sozvon-konspekt',
@@ -282,6 +318,7 @@ const METRICS_SERVICE_DEFINITIONS: MetricsServiceDefinition[] = [
       recognition_time_ratio: '#a78bfa',
       application_errors: '#ea580c',
     },
+    metricChartModes: barMetricModes([...SOZVON_KONSPEKT_BAR_METRICS]),
   },
 ];
 
@@ -438,4 +475,9 @@ export function metricLabel(service: string, name: string): string {
     ? 'hardware'
     : (METRICS_SERVICE_VARIANTS[service]?.baseService ?? service);
   return METRIC_LABELS[catalogService]?.[name] ?? name;
+}
+
+export function metricChartMode(service: string, name: string): MetricChartMode {
+  const definition = metricsServiceDefinition(service);
+  return definition?.metricChartModes?.[name] ?? 'sparse-line';
 }

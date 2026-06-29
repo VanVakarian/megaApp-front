@@ -61,6 +61,14 @@
                  label: 'Высота графика, px',
                  textAlign: 'right',
                }" />
+      <label class="flex items-center gap-2 text-sm">
+        <v-checkbox [value]="syncCrosshairEnabled$$()"
+                    (onChanged)="onSyncCrosshairEnabledChange($event)"
+                    [config]="{
+                      mode: 'switch',
+                    }" />
+        <span>Синхролиния наведения</span>
+      </label>
     </div>
   </v-expand>
 
@@ -85,6 +93,8 @@
                                    [chartModeInput]="card.chartMode"
                                    [windowStartInput]="card.windowStartBucket"
                                    [windowEndInput]="card.windowEndBucket"
+                                   [displayStepSecondsInput]="card.displayStepSeconds"
+                                   [syncCrosshairEnabledInput]="syncCrosshairEnabled$$()"
                                    [descriptionInput]="card.description"
                                    [widthPxInput]="cardWidthPx$$()"
                                    [heightPxInput]="cardHeightPx$$()" />

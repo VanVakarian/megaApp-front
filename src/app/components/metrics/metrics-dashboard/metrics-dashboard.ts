@@ -2,14 +2,16 @@ import { ChangeDetectionStrategy, Component, computed, effect, inject, OnDestroy
 import { LocalStorageService } from '@app/services/local-storage.service';
 import { MetricsHealthService } from '@app/services/metrics-health.service';
 import { MetricsService } from '@app/services/metrics.service';
+import { metricAggregation } from '@app/shared/metrics-aggregation';
 import {
   METRICS_GRANULARITY_STEP_SECONDS,
   METRICS_GRANULARITY_WINDOW_PERIODS,
 } from '@app/shared/chart-config';
 import { formatMetricUnitValue, metricUnit, MetricUnit } from '@app/shared/metric-units';
-import { MetricChartMode, pickDynamicMetricChartMode } from '@app/shared/metrics-chart-mode';
+import { MetricChartMode } from '@app/shared/metrics-chart-mode';
 import { metricDescription } from '@app/shared/metrics-descriptions';
 import {
+  metricChartMode,
   metricLabel,
   metricsServiceDefinition,
   metricsServiceDefinitions,
@@ -18,6 +20,9 @@ import {
 import {
   buildMetricPointsIndex,
   buildMetricWindow,
+  buildCollapsedMetricWindow,
+  filterMetricPointsByWindow,
+  MinuteMetricCollapseCache,
   buildServiceMetricWindow,
   buildSparseBarSeriesFromPoints,
   buildSparseLineSeriesFromPoints,
@@ -25,9 +30,11 @@ import {
   MetricSeriesPoint,
   previousCompletedBucket,
 } from '@app/shared/metrics-series';
+import { clearMetricSyncCrosshair } from '@app/shared/metrics-sync-crosshair';
 import { severityColor } from '@app/shared/metrics-severity';
 import { MetricGranularity, MetricPoint } from '@app/shared/types';
 import { VButton } from '@ui-kit/components/v-button/v-button';
+import { VCheckbox } from '@ui-kit/components/v-checkbox/v-checkbox';
 import { VExpand } from '@ui-kit/components/v-expand/v-expand';
 import { IconName, VIcon } from '@ui-kit/components/v-icon/v-icon';
 import { VInput } from '@ui-kit/components/v-input/v-input';
@@ -44,8 +51,11 @@ const SETTINGS_EXPANDED_STORAGE_KEY = 'metrics_settings_expanded';
 const CARD_WIDTH_STORAGE_KEY = 'metrics_card_width_px';
 const CARD_HEIGHT_STORAGE_KEY = 'metrics_card_height_px';
 const GRANULARITY_STORAGE_KEY = 'metrics_granularity';
+const SYNC_CROSSHAIR_ENABLED_STORAGE_KEY = 'metrics_sync_crosshair_enabled';
 const SETTINGS_PANEL_KEY = '__settings__';
 const GRANULARITY_OPTIONS: MetricGranularity[] = ['minute', 'hour', 'day'];
+const MINUTE_COLLAPSE_CARD_WIDTH_THRESHOLD_PX = 600;
+const COLLAPSED_MINUTE_STEP_SECONDS = 5 * 60;
 
 interface MetricChartCardData {
   key: string;
@@ -60,6 +70,7 @@ interface MetricChartCardData {
   chartMode: MetricChartMode;
   windowStartBucket: number;
   windowEndBucket: number;
+  displayStepSeconds: number;
   description: string;
 }
 
@@ -77,7 +88,7 @@ interface MetricsServiceOption {
 @Component({
   selector: 'metrics-dashboard',
   templateUrl: './metrics-dashboard.html',
-  imports: [VButton, VExpand, VInput, VIcon, MetricChartCard],
+  imports: [VButton, VCheckbox, VExpand, VInput, VIcon, MetricChartCard],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class MetricsDashboard implements OnInit, OnDestroy {
@@ -100,10 +111,13 @@ export class MetricsDashboard implements OnInit, OnDestroy {
   protected readonly selectedGranularity$$ = signal<MetricGranularity>(
     this.loadGranularity(),
   );
+  protected readonly syncCrosshairEnabled$$ = signal<boolean>(this.loadSyncCrosshairEnabled());
+  protected readonly useCollapsedMinutes$$ = computed(() => this.cardWidthPx$$() < MINUTE_COLLAPSE_CARD_WIDTH_THRESHOLD_PX);
   private nowTickIntervalId: ReturnType<typeof setInterval> | null = null;
   private readonly persistExpandedServicesEffect = effect(() => {
     this.persistExpandedServices();
   });
+  private readonly minuteMetricCollapseCache = new MinuteMetricCollapseCache();
 
   protected readonly serviceOptions$$ = computed<MetricsServiceOption[]>(() => {
     const discoveredServices = new Set<string>();
@@ -128,6 +142,7 @@ export class MetricsDashboard implements OnInit, OnDestroy {
   protected readonly metricGroupsByService$$ = computed<Map<string, MetricGroupData[]>>(() => {
     const granularity = this.selectedGranularity$$();
     const stepSeconds = METRICS_GRANULARITY_STEP_SECONDS[granularity];
+    const useCollapsedMinutes = granularity === 'minute' && this.useCollapsedMinutes$$();
     const fallbackWindow = buildMetricWindow(
       previousCompletedBucket(this.now$$(), stepSeconds),
       METRICS_GRANULARITY_WINDOW_PERIODS[granularity],
@@ -158,6 +173,10 @@ export class MetricsDashboard implements OnInit, OnDestroy {
         METRICS_GRANULARITY_WINDOW_PERIODS[granularity],
         stepSeconds,
       );
+      const displayWindow = useCollapsedMinutes
+        ? buildCollapsedMetricWindow(serviceWindow, COLLAPSED_MINUTE_STEP_SECONDS)
+        : serviceWindow;
+      const displayStepSeconds = useCollapsedMinutes ? COLLAPSED_MINUTE_STEP_SECONDS : stepSeconds;
       const pointsIndex = buildMetricPointsIndex(
         pointsByService.get(option.service) ?? [],
         serviceWindow.startBucket,
@@ -170,11 +189,23 @@ export class MetricsDashboard implements OnInit, OnDestroy {
         cards: group.metrics.map((name) => {
           const key = metricPointsIndexKey(option.service, name);
           const metricPoints = pointsIndex.get(key) ?? [];
-          const chartMode = pickDynamicMetricChartMode(metricPoints.length, serviceWindow.bucketCount);
+          const displayPoints = useCollapsedMinutes
+            ? filterMetricPointsByWindow(
+                this.minuteMetricCollapseCache.collapse(
+                  key,
+                  metricPoints,
+                  metricAggregation(name),
+                  COLLAPSED_MINUTE_STEP_SECONDS,
+                ),
+                displayWindow.startBucket,
+                displayWindow.endBucket,
+              )
+            : metricPoints;
+          const chartMode = metricChartMode(option.service, name);
           const series =
             chartMode === 'bar'
-              ? buildSparseBarSeriesFromPoints(metricPoints)
-              : buildSparseLineSeriesFromPoints(metricPoints, stepSeconds);
+              ? buildSparseBarSeriesFromPoints(displayPoints)
+              : buildSparseLineSeriesFromPoints(displayPoints, displayStepSeconds);
           const rawValue = metricPoints[metricPoints.length - 1]?.value ?? 0;
           const color = definition.metricColors[name] ?? '#578f92';
           const unit = metricUnit(name);
@@ -189,8 +220,9 @@ export class MetricsDashboard implements OnInit, OnDestroy {
             color,
             series,
             chartMode,
-            windowStartBucket: serviceWindow.startBucket,
-            windowEndBucket: serviceWindow.endBucket,
+            windowStartBucket: displayWindow.startBucket,
+            windowEndBucket: displayWindow.endBucket,
+            displayStepSeconds,
             description: metricDescription(option.service, name),
           };
         }),
@@ -234,6 +266,7 @@ export class MetricsDashboard implements OnInit, OnDestroy {
   }
 
   protected selectGranularity(granularity: MetricGranularity): void {
+    clearMetricSyncCrosshair();
     this.selectedGranularity$$.set(granularity);
     this.localStorageService.setUserScoped(GRANULARITY_STORAGE_KEY, granularity);
   }
@@ -262,6 +295,7 @@ export class MetricsDashboard implements OnInit, OnDestroy {
       return;
     }
 
+    clearMetricSyncCrosshair();
     for (const key of expanded) {
       if (key !== SETTINGS_PANEL_KEY) {
         expanded.delete(key);
@@ -283,6 +317,14 @@ export class MetricsDashboard implements OnInit, OnDestroy {
     if (!Number.isFinite(heightPx) || heightPx <= 0) return;
     this.cardHeightPx$$.set(heightPx);
     this.localStorageService.setUserScoped(CARD_HEIGHT_STORAGE_KEY, heightPx);
+  }
+
+  protected onSyncCrosshairEnabledChange(value: boolean): void {
+    this.syncCrosshairEnabled$$.set(value);
+    this.localStorageService.setUserScoped(SYNC_CROSSHAIR_ENABLED_STORAGE_KEY, value);
+    if (!value) {
+      clearMetricSyncCrosshair();
+    }
   }
 
   private loadExpandedServices(): Set<string> {
@@ -324,6 +366,10 @@ export class MetricsDashboard implements OnInit, OnDestroy {
   private loadGranularity(): MetricGranularity {
     const stored = this.localStorageService.getUserScoped<MetricGranularity>(GRANULARITY_STORAGE_KEY);
     return stored && GRANULARITY_OPTIONS.includes(stored) ? stored : 'minute';
+  }
+
+  private loadSyncCrosshairEnabled(): boolean {
+    return this.localStorageService.getUserScoped<boolean>(SYNC_CROSSHAIR_ENABLED_STORAGE_KEY) ?? false;
   }
 
   private selectedService(): string | null {
