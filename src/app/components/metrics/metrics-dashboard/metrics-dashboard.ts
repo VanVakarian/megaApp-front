@@ -108,6 +108,7 @@ export class MetricsDashboard implements OnInit, OnDestroy {
   );
   protected readonly dashboardSelection$$ = this.metricsSettingsService.dashboardSelection$$;
   protected readonly dashboardServiceSelection$$ = this.metricsSettingsService.dashboardServiceSelection$$;
+  protected readonly isSavingSettings$$ = this.metricsSettingsService.isSaving$$;
   private nowTickIntervalId: ReturnType<typeof setInterval> | null = null;
   private readonly minuteMetricCollapseCache = new MinuteMetricCollapseCache();
 

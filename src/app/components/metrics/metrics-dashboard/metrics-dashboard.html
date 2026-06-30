@@ -61,6 +61,7 @@
                    inputmode: 'numeric',
                    label: 'Ширина карточки, px',
                    textAlign: 'right',
+                   isDisabled: isSavingSettings$$(),
                  }" />
         <v-input [value]="cardHeightPx$$().toString()"
                  (valueChange)="onCardHeightChange($event)"
@@ -69,12 +70,14 @@
                    inputmode: 'numeric',
                    label: 'Высота графика, px',
                    textAlign: 'right',
+                   isDisabled: isSavingSettings$$(),
                  }" />
         <label class="flex items-center gap-2 text-sm">
           <v-checkbox [value]="syncCrosshairEnabled$$()"
                       (onChanged)="onSyncCrosshairEnabledChange($event)"
                       [config]="{
                         mode: 'switch',
+                        isDisabled: isSavingSettings$$(),
                       }" />
           <span>Синхролиния наведения</span>
         </label>
@@ -102,6 +105,7 @@
                             size: 4,
                             checkIconSize: 3,
                             gap: 1,
+                            isDisabled: isSavingSettings$$(),
                           }" />
               <span class="flex-1 min-w-0 truncate">{{ service.label }}</span>
               @if (isDashboardServiceEnabled(service.service)) {
@@ -113,6 +117,7 @@
                            inputmode: 'numeric',
                            inputSize: 2,
                            textAlign: 'right',
+                           isDisabled: isSavingSettings$$(),
                          }" />
               }
             </label>
@@ -125,6 +130,7 @@
                                 size: 4,
                                 checkIconSize: 3,
                                 gap: 1,
+                                isDisabled: isSavingSettings$$(),
                               }" />
                   <span class="flex-1 min-w-0 truncate">{{ metric.label }}</span>
                   @if (isDashboardMetricEnabled(service.service, metric.name)) {
@@ -136,6 +142,7 @@
                                inputmode: 'numeric',
                                inputSize: 2,
                                textAlign: 'right',
+                               isDisabled: isSavingSettings$$(),
                              }" />
                   }
                 </label>
@@ -163,6 +170,7 @@
                            inputSize: 4,
                            textAlign: 'right',
                            label: 'Warn',
+                           isDisabled: isSavingSettings$$(),
                          }" />
                 <v-input class="w-20"
                          [value]="errorAfterSeconds(service.service).toString()"
@@ -173,6 +181,7 @@
                            inputSize: 4,
                            textAlign: 'right',
                            label: 'Error',
+                           isDisabled: isSavingSettings$$(),
                          }" />
               </div>
             </div>
