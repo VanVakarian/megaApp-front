@@ -78,6 +78,17 @@
                       }" />
           <span>Синхролиния наведения</span>
         </label>
+
+        <v-button class="v-primary"
+                  [config]="{
+                    paddingX: 3,
+                  }"
+                  (onClick)="clearMetricsCache()">
+          <v-icon v-prefix
+                  [name]="Icon.Delete"
+                  [size]="5" />
+          Очистить кэш метрик
+        </v-button>
       </div>
 
       <div class="flex flex-col gap-3">

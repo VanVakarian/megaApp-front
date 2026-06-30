@@ -2,9 +2,9 @@ import { ChangeDetectionStrategy, Component, computed, inject, OnDestroy, OnInit
 import { MetricsHealthService } from '@app/services/metrics-health.service';
 import { MetricsSettingsService } from '@app/services/metrics-settings.service';
 import { MetricsService } from '@app/services/metrics.service';
-import { metricAggregation } from '@app/shared/metrics-aggregation';
 import { METRICS_GRANULARITY_STEP_SECONDS, METRICS_GRANULARITY_WINDOW_PERIODS } from '@app/shared/chart-config';
 import { formatMetricUnitValue, metricUnit, MetricUnit } from '@app/shared/metric-units';
+import { metricAggregation } from '@app/shared/metrics-aggregation';
 import { MetricChartMode } from '@app/shared/metrics-chart-mode';
 import { metricDescription } from '@app/shared/metrics-descriptions';
 import {
@@ -15,20 +15,20 @@ import {
   metricsServiceLabel,
 } from '@app/shared/metrics-labels';
 import {
+  buildCollapsedMetricWindow,
   buildMetricPointsIndex,
   buildMetricWindow,
-  buildCollapsedMetricWindow,
-  filterMetricPointsByWindow,
-  MinuteMetricCollapseCache,
   buildServiceMetricWindow,
   buildSparseBarSeriesFromPoints,
   buildSparseLineSeriesFromPoints,
+  filterMetricPointsByWindow,
   metricPointsIndexKey,
   MetricSeriesPoint,
+  MinuteMetricCollapseCache,
   previousCompletedBucket,
 } from '@app/shared/metrics-series';
-import { clearMetricSyncCrosshair } from '@app/shared/metrics-sync-crosshair';
 import { severityColor } from '@app/shared/metrics-severity';
+import { clearMetricSyncCrosshair } from '@app/shared/metrics-sync-crosshair';
 import { MetricGranularity, MetricPoint } from '@app/shared/types';
 import { VButton } from '@ui-kit/components/v-button/v-button';
 import { VCheckbox } from '@ui-kit/components/v-checkbox/v-checkbox';
@@ -342,6 +342,10 @@ export class MetricsDashboard implements OnInit, OnDestroy {
     if (!value) {
       clearMetricSyncCrosshair();
     }
+  }
+
+  protected clearMetricsCache(): void {
+    this.metricsService.clearCache();
   }
 
   protected warnAfterSeconds(service: string): number {

@@ -1,7 +1,7 @@
 import { Injectable, effect, inject, signal, untracked } from '@angular/core';
 import { NetworkService } from '@app/services/network.service';
 import { buildCacheKey } from '@app/shared/cache';
-import { idbGet, idbSet } from '@app/shared/idb-cache';
+import { idbGet, idbRemove, idbSet } from '@app/shared/idb-cache';
 import { MetricPoint, WebSocketMessageType } from '@app/shared/types';
 
 const STORAGE_KEY = 'metrics_detail';
@@ -50,6 +50,14 @@ export class MetricsService {
   public unsubscribe(): void {
     this.isSubscribed = false;
     this.networkService.sendMessage({ type: WebSocketMessageType.METRICS_UNSUBSCRIBE });
+  }
+
+  public clearCache(): void {
+    this.points$$.set([]);
+    void idbRemove(buildCacheKey(STORAGE_KEY));
+    if (this.isSubscribed) {
+      this.sendSubscribe();
+    }
   }
 
   private sendSubscribe(): void {
