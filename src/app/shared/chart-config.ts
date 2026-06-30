@@ -473,7 +473,7 @@ export function createMetricSparseLineConfig(
           borderColor: color,
           backgroundColor: rgbToRgba(color, 0.15),
           borderWidth: 1.5,
-          fill: true,
+          fill: false,
           spanGaps: false,
           pointRadius: 0,
           pointHitRadius: 12,

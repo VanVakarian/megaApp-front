@@ -210,7 +210,6 @@ export interface MetricsUpdateWsMessage {
 
 export interface MetricsSubscribeWsMessage {
   type: WebSocketMessageType.METRICS_SUBSCRIBE;
-  cursor: number;
 }
 
 export interface MetricsUnsubscribeWsMessage {

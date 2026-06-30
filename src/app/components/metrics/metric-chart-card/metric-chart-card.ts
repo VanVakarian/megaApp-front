@@ -159,10 +159,13 @@ export class MetricChartCard implements OnDestroy {
     this.chart!.options.scales!['x']!.afterBuildTicks = (axis) => {
       axis.ticks = tickBuckets.map((value) => ({ value }));
     };
-    this.chart!.options.plugins = {
-      ...this.chart!.options.plugins,
-      metricSyncCrosshair: this.syncCrosshairOptions(),
-    };
+    // Chart.js resolves `options.plugins` through a scriptable-options Proxy
+    // once the chart has rendered — spreading it (`{...chart.options.plugins}`)
+    // enumerates its internal symbol keys too, which crashes Chart.js's own
+    // `_scriptable(name)` check (expects a string). Setting a single known
+    // key in place avoids the enumeration entirely.
+    this.chart!.options.plugins ??= {};
+    this.chart!.options.plugins.metricSyncCrosshair = this.syncCrosshairOptions();
 
     const values = series.map((point) => point.value).filter((value): value is number => value !== null);
     let min = this.chartModeInput() === 'bar' ? 0 : values.length > 0 ? Math.min(...values) : 0;

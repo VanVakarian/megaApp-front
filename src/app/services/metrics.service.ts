@@ -53,15 +53,10 @@ export class MetricsService {
   }
 
   private sendSubscribe(): void {
-    // The cursor only ever bounds the minute stream — the backend relays
-    // hour/day history within its own fixed windows regardless of cursor.
-    const latestMinuteBucket = this.points$$()
-      .filter((point) => point.granularity === 'minute')
-      .reduce((max, point) => Math.max(max, point.bucket), 0);
-    const nowBucket = Math.floor(Date.now() / 1000);
-    const fallbackBucket = latestMinuteBucket > 0 ? latestMinuteBucket : nowBucket;
-    const cursor = Math.max(0, fallbackBucket - METRICS_WINDOW_SECONDS);
-    this.networkService.sendMessage({ type: WebSocketMessageType.METRICS_SUBSCRIBE, cursor });
+    // No client-sent cursor: every (re)subscribe backfills the backend's
+    // fixed relay window per granularity, regardless of what's already
+    // cached locally — see megaapp-back/internal/metrics/ws_handlers.go.
+    this.networkService.sendMessage({ type: WebSocketMessageType.METRICS_SUBSCRIBE });
   }
 
   private mergePoints(newPoints: MetricPoint[] | null): void {
