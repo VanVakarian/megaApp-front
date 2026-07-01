@@ -17,6 +17,7 @@ interface StoredMetricsSettings {
   cardHeightPx: number;
   granularity: MetricGranularity;
   syncCrosshairEnabled: boolean;
+  forceZeroBaselineEnabled: boolean;
   dashboardSelection: DashboardMetricSelection;
   dashboardServiceSelection: DashboardServiceSelection;
   severityThresholds: SeverityThresholdsOverrides;
@@ -35,6 +36,7 @@ const DEFAULTS: StoredMetricsSettings = {
   cardHeightPx: DEFAULT_CHART_HEIGHT_PX,
   granularity: 'minute',
   syncCrosshairEnabled: false,
+  forceZeroBaselineEnabled: false,
   dashboardSelection: {},
   dashboardServiceSelection: {},
   severityThresholds: {},
@@ -72,6 +74,7 @@ export class MetricsSettingsService {
   public readonly cardHeightPx$$: WritableSignal<number>;
   public readonly granularity$$: WritableSignal<MetricGranularity>;
   public readonly syncCrosshairEnabled$$: WritableSignal<boolean>;
+  public readonly forceZeroBaselineEnabled$$: WritableSignal<boolean>;
   public readonly dashboardSelection$$: WritableSignal<DashboardMetricSelection>;
   public readonly dashboardServiceSelection$$: WritableSignal<DashboardServiceSelection>;
   public readonly severityThresholdOverrides$$: WritableSignal<SeverityThresholdsOverrides>;
@@ -99,6 +102,7 @@ export class MetricsSettingsService {
     this.cardHeightPx$$ = signal(initial.cardHeightPx);
     this.granularity$$ = signal(initial.granularity);
     this.syncCrosshairEnabled$$ = signal(initial.syncCrosshairEnabled);
+    this.forceZeroBaselineEnabled$$ = signal(initial.forceZeroBaselineEnabled);
     this.dashboardSelection$$ = signal(initial.dashboardSelection);
     this.dashboardServiceSelection$$ = signal(initial.dashboardServiceSelection);
     this.severityThresholdOverrides$$ = signal(initial.severityThresholds);
@@ -138,6 +142,11 @@ export class MetricsSettingsService {
     this.persist();
   }
 
+  public setForceZeroBaselineEnabled(value: boolean): void {
+    this.forceZeroBaselineEnabled$$.set(value);
+    this.persist();
+  }
+
   public setDashboardSelection(value: DashboardMetricSelection): void {
     this.dashboardSelection$$.set(value);
     this.persist();
@@ -170,6 +179,7 @@ export class MetricsSettingsService {
       cardHeightPx: this.cardHeightPx$$(),
       granularity: this.granularity$$(),
       syncCrosshairEnabled: this.syncCrosshairEnabled$$(),
+      forceZeroBaselineEnabled: this.forceZeroBaselineEnabled$$(),
       dashboardSelection: this.dashboardSelection$$(),
       dashboardServiceSelection: this.dashboardServiceSelection$$(),
       severityThresholds: this.severityThresholdOverrides$$(),
@@ -183,6 +193,7 @@ export class MetricsSettingsService {
     this.cardHeightPx$$.set(value.cardHeightPx);
     this.granularity$$.set(value.granularity);
     this.syncCrosshairEnabled$$.set(value.syncCrosshairEnabled);
+    this.forceZeroBaselineEnabled$$.set(value.forceZeroBaselineEnabled);
     this.dashboardSelection$$.set(value.dashboardSelection);
     this.dashboardServiceSelection$$.set(value.dashboardServiceSelection);
     this.severityThresholdOverrides$$.set(value.severityThresholds);

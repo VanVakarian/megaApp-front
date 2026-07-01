@@ -4,12 +4,9 @@ import {
   createMetricSparseLineConfig,
   pickMetricTickIntervalSeconds,
 } from '@app/shared/chart-config';
-import { MetricChartMode } from '@app/shared/metrics-chart-mode';
 import { MetricUnit } from '@app/shared/metric-units';
-import {
-  buildRoundTickBuckets,
-  MetricSeriesPoint,
-} from '@app/shared/metrics-series';
+import { MetricChartMode } from '@app/shared/metrics-chart-mode';
+import { buildRoundTickBuckets, MetricSeriesPoint } from '@app/shared/metrics-series';
 import { MetricSyncCrosshairOptions, metricSyncCrosshairPlugin } from '@app/shared/metrics-sync-crosshair';
 import { MetricGranularity } from '@app/shared/types';
 import { VCard } from '@ui-kit/components/v-card/v-card';
@@ -63,6 +60,7 @@ export class MetricChartCard implements OnDestroy {
   public readonly windowEndInput = input<number>(0);
   public readonly displayStepSecondsInput = input<number>(60);
   public readonly syncCrosshairEnabledInput = input<boolean>(false);
+  public readonly forceZeroBaselineInput = input<boolean>(false);
   public readonly descriptionInput = input<string>('');
   public readonly widthPxInput = input<number>(DEFAULT_CARD_WIDTH_PX);
   public readonly heightPxInput = input<number>(DEFAULT_CHART_HEIGHT_PX);
@@ -84,6 +82,7 @@ export class MetricChartCard implements OnDestroy {
     this.windowEndInput();
     this.displayStepSecondsInput();
     this.syncCrosshairEnabledInput();
+    this.forceZeroBaselineInput();
     if (!canvasElem) return;
     this.ensureChart(canvasElem.nativeElement, chartMode, color, unit, granularity);
     this.updateChart(series);
@@ -168,7 +167,8 @@ export class MetricChartCard implements OnDestroy {
     this.chart!.options.plugins.metricSyncCrosshair = this.syncCrosshairOptions();
 
     const values = series.map((point) => point.value).filter((value): value is number => value !== null);
-    let min = this.chartModeInput() === 'bar' ? 0 : values.length > 0 ? Math.min(...values) : 0;
+    const forceZeroBaseline = this.chartModeInput() === 'bar' || this.forceZeroBaselineInput();
+    let min = forceZeroBaseline ? 0 : values.length > 0 ? Math.min(...values) : 0;
     let max = values.length > 0 ? Math.max(...values) : 1;
     if (min === max) {
       min -= 1;

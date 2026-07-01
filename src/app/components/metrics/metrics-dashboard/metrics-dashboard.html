@@ -1,24 +1,22 @@
-<div class="flex flex-col p-4">
+<div class="flex flex-col p-4"
+     style="--v-color-primary-muted: color-mix(in oklab, var(--v-color-primary) 45%, var(--v-color-text-muted) 55%)">
   <div class="flex flex-wrap items-start gap-2 mb-4">
     <div class="flex flex-wrap flex-1 min-w-0 gap-2">
       <v-button [class]="isServiceExpanded(dashboardPanelKey) ? 'v-primary v-raised' : 'v-primary v-flat'"
+                [config]="{
+                  color: dashboardButtonColor(),
+                }"
                 (onClick)="toggleServiceExpanded(dashboardPanelKey)">
         Dashboard
-        <v-icon v-postfix
-                [name]="isServiceExpanded(dashboardPanelKey) ? Icon.CheckBox : Icon.CheckBoxOutlineBlank"
-                [size]="5" />
       </v-button>
 
       @for (service of serviceOptions$$(); track service.service) {
         <v-button [class]="isServiceExpanded(service.service) ? 'v-primary v-raised' : 'v-primary v-flat'"
                   [config]="{
-                    color: serviceColor(service.service),
+                    color: sectionButtonColor(service.service),
                   }"
                   (onClick)="toggleServiceExpanded(service.service)">
           {{ service.label }}
-          <v-icon v-postfix
-                  [name]="isServiceExpanded(service.service) ? Icon.CheckBox : Icon.CheckBoxOutlineBlank"
-                  [size]="5" />
         </v-button>
       } @empty {
         <div class="opacity-60 text-sm">Нет сервисов</div>
@@ -36,16 +34,21 @@
       </v-button>
     </div>
 
-    <div class="shrink-0 flex-nowrap flex gap-2 ml-auto">
-      @for (granularity of granularityOptions; track granularity) {
-        <v-button [class]="selectedGranularity$$() === granularity ? 'v-primary v-raised' : 'v-flat'"
-                  [config]="{
-                    paddingX: 3,
-                  }"
-                  (onClick)="selectGranularity(granularity)">
-          {{ granularityLabel(granularity) }}
-        </v-button>
-      }
+    <div class="shrink-0 flex-nowrap flex items-center gap-2 ml-auto">
+      <v-button [class]="forceZeroBaselineEnabled$$() ? 'v-primary v-raised' : 'v-flat'"
+                [config]="{
+                  isLabelHidden: true,
+                  padding: 2,
+                }"
+                (onClick)="toggleForceZeroBaseline()">
+        <v-icon v-prefix
+                [name]="Icon.Scale"
+                [size]="6" />
+      </v-button>
+
+      <v-toggle [items]="granularityToggleItems"
+                [value]="granularityToggleValue()"
+                (valueChange)="onGranularityToggleChange($event)" />
     </div>
   </div>
 
@@ -53,7 +56,7 @@
             [isExpanded]="isServiceExpanded(settingsPanelKey)">
     <div v-body
          class="gap-14 flex flex-col p-4">
-      <div class="flex flex-wrap gap-3">
+      <div class="flex flex-wrap items-end gap-3">
         <v-input [value]="cardWidthPx$$().toString()"
                  (valueChange)="onCardWidthChange($event)"
                  [config]="{
@@ -107,7 +110,7 @@
                             gap: 1,
                             isDisabled: isSavingSettings$$(),
                           }" />
-              <span class="flex-1 min-w-0 truncate">{{ service.label }}</span>
+              <span class="min-w-0 truncate">{{ service.label }}</span>
               @if (isDashboardServiceEnabled(service.service)) {
                 <v-input class="shrink-0 w-12"
                          [value]="dashboardServiceOrder(service.service).toString()"
@@ -191,50 +194,15 @@
     </div>
   </v-expand>
 
-  <v-expand class="mb-4"
-            [isExpanded]="isServiceExpanded(dashboardPanelKey)">
-    <div v-body
-         class="flex flex-col gap-4 p-4">
-      @for (row of dashboardRows$$(); track row.id) {
-        <div>
-          <div class="opacity-70 mb-2 text-sm font-semibold">{{ row.label }}</div>
-          <div class="flex flex-wrap gap-3">
-            @for (card of row.cards; track card.key) {
-              <metric-chart-card [labelInput]="card.label"
-                                 [technicalNameInput]="card.technicalName"
-                                 [valueInput]="card.value"
-                                 [displayValueInput]="card.displayValue"
-                                 [colorInput]="card.color"
-                                 [unitInput]="card.unit"
-                                 [granularityInput]="card.granularity"
-                                 [seriesInput]="card.series"
-                                 [chartModeInput]="card.chartMode"
-                                 [windowStartInput]="card.windowStartBucket"
-                                 [windowEndInput]="card.windowEndBucket"
-                                 [displayStepSecondsInput]="card.displayStepSeconds"
-                                 [syncCrosshairEnabledInput]="syncCrosshairEnabled$$()"
-                                 [descriptionInput]="card.description"
-                                 [widthPxInput]="cardWidthPx$$()"
-                                 [heightPxInput]="cardHeightPx$$()" />
-            }
-          </div>
-        </div>
-      } @empty {
-        <div class="opacity-60 text-sm">Нет выбранных метрик. Настройте в Settings.</div>
-      }
-    </div>
-  </v-expand>
-
-  @for (service of serviceOptions$$(); track service.service) {
-    <v-expand class="mb-4"
-              [isExpanded]="isServiceExpanded(service.service)">
-      <div v-body
-           class="flex flex-col gap-4 p-4">
-        @for (group of serviceMetricsData$$().get(service.service)?.groups ?? []; track group.id) {
+  @if (isServiceExpanded(dashboardPanelKey)) {
+    <v-card class="mb-4"
+            [config]="{ padding: 0 }">
+      <div class="flex flex-col gap-4 p-4">
+        @for (row of dashboardRows$$(); track row.id) {
           <div>
-            <div class="opacity-70 mb-2 text-sm font-semibold">{{ group.label }}</div>
+            <div class="opacity-70 mb-2 text-sm font-semibold">{{ row.label }}</div>
             <div class="flex flex-wrap gap-3">
-              @for (card of group.cards; track card.key) {
+              @for (card of row.cards; track card.key) {
                 <metric-chart-card [labelInput]="card.label"
                                    [technicalNameInput]="card.technicalName"
                                    [valueInput]="card.value"
@@ -248,6 +216,7 @@
                                    [windowEndInput]="card.windowEndBucket"
                                    [displayStepSecondsInput]="card.displayStepSeconds"
                                    [syncCrosshairEnabledInput]="syncCrosshairEnabled$$()"
+                                   [forceZeroBaselineInput]="forceZeroBaselineEnabled$$()"
                                    [descriptionInput]="card.description"
                                    [widthPxInput]="cardWidthPx$$()"
                                    [heightPxInput]="cardHeightPx$$()" />
@@ -255,9 +224,47 @@
             </div>
           </div>
         } @empty {
-          <div class="opacity-60 text-sm">Нет метрик</div>
+          <div class="opacity-60 text-sm">Нет выбранных метрик. Настройте в Settings.</div>
         }
       </div>
-    </v-expand>
+    </v-card>
+  }
+
+  @for (service of serviceOptions$$(); track service.service) {
+    @if (isServiceExpanded(service.service)) {
+      <v-card class="mb-4"
+              [config]="{ padding: 0 }">
+        <div class="flex flex-col gap-4 p-4">
+          @for (group of serviceMetricsData$$().get(service.service)?.groups ?? []; track group.id) {
+            <div>
+              <div class="opacity-70 mb-2 text-sm font-semibold">{{ group.label }}</div>
+              <div class="flex flex-wrap gap-3">
+                @for (card of group.cards; track card.key) {
+                  <metric-chart-card [labelInput]="card.label"
+                                     [technicalNameInput]="card.technicalName"
+                                     [valueInput]="card.value"
+                                     [displayValueInput]="card.displayValue"
+                                     [colorInput]="card.color"
+                                     [unitInput]="card.unit"
+                                     [granularityInput]="card.granularity"
+                                     [seriesInput]="card.series"
+                                     [chartModeInput]="card.chartMode"
+                                     [windowStartInput]="card.windowStartBucket"
+                                     [windowEndInput]="card.windowEndBucket"
+                                     [displayStepSecondsInput]="card.displayStepSeconds"
+                                     [syncCrosshairEnabledInput]="syncCrosshairEnabled$$()"
+                                     [forceZeroBaselineInput]="forceZeroBaselineEnabled$$()"
+                                     [descriptionInput]="card.description"
+                                     [widthPxInput]="cardWidthPx$$()"
+                                     [heightPxInput]="cardHeightPx$$()" />
+                }
+              </div>
+            </div>
+          } @empty {
+            <div class="opacity-60 text-sm">Нет метрик</div>
+          }
+        </div>
+      </v-card>
+    }
   }
 </div>

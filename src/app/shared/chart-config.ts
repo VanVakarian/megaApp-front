@@ -1,5 +1,5 @@
 import { formatMetricUnitValue, MetricUnit } from '@app/shared/metric-units';
-import { formatMetricBucketLabel } from '@app/shared/metrics-series';
+import { formatMetricBucketLabel, formatMetricTickLabel } from '@app/shared/metrics-series';
 import { MetricGranularity } from '@app/shared/types';
 import { ChartConfiguration } from 'chart.js';
 
@@ -380,7 +380,18 @@ export const METRICS_GRANULARITY_WINDOW_PERIODS: Record<MetricGranularity, numbe
 
 const METRICS_GRANULARITY_TICK_INTERVAL_CANDIDATES: Record<MetricGranularity, number[]> = {
   minute: [60, 5 * 60, 15 * 60, 30 * 60, 60 * 60, 2 * 3600, 4 * 3600, 6 * 3600, 12 * 3600, 24 * 3600],
-  hour: [3600, 3 * 3600, 6 * 3600, 12 * 3600, 24 * 3600, 2 * 24 * 3600, 3 * 24 * 3600, 7 * 24 * 3600, 14 * 24 * 3600, 30 * 24 * 3600],
+  hour: [
+    3600,
+    3 * 3600,
+    6 * 3600,
+    12 * 3600,
+    24 * 3600,
+    2 * 24 * 3600,
+    3 * 24 * 3600,
+    7 * 24 * 3600,
+    14 * 24 * 3600,
+    30 * 24 * 3600,
+  ],
   day: [24 * 3600, 2 * 24 * 3600, 7 * 24 * 3600, 14 * 24 * 3600, 30 * 24 * 3600, 60 * 24 * 3600, 90 * 24 * 3600],
 };
 
@@ -495,7 +506,7 @@ export function createMetricSparseLineConfig(
           ticks: {
             maxRotation: 0,
             autoSkip: false,
-            callback: (value) => formatMetricBucketLabel(value as number, granularity),
+            callback: (value) => formatMetricTickLabel(value as number, granularity),
           },
         },
         y: {
@@ -535,11 +546,16 @@ export function createMetricBarConfig(
       scales: {
         x: {
           type: 'linear',
-          grid: { color: 'rgba(0, 0, 0, 0.06)' },
+          // BarController defaults offset/grid.offset to true (for category axes),
+          // which on a linear scale pads _startValue/_endValue by half a tick
+          // spacing — shifting the whole plot away from the sparse-line chart's
+          // edge-to-edge range. Disable both so the two share the same canvas.
+          offset: false,
+          grid: { color: 'rgba(0, 0, 0, 0.06)', offset: false },
           ticks: {
             maxRotation: 0,
             autoSkip: false,
-            callback: (value) => formatMetricBucketLabel(value as number, granularity),
+            callback: (value) => formatMetricTickLabel(value as number, granularity),
           },
         },
         y: {

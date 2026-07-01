@@ -27,14 +27,16 @@ import {
   MinuteMetricCollapseCache,
   previousCompletedBucket,
 } from '@app/shared/metrics-series';
-import { severityColor } from '@app/shared/metrics-severity';
+import { mutedSectionColor, severityColor } from '@app/shared/metrics-severity';
 import { clearMetricSyncCrosshair } from '@app/shared/metrics-sync-crosshair';
 import { MetricGranularity, MetricPoint } from '@app/shared/types';
 import { VButton } from '@ui-kit/components/v-button/v-button';
+import { VCard } from '@ui-kit/components/v-card/v-card';
 import { VCheckbox } from '@ui-kit/components/v-checkbox/v-checkbox';
 import { VExpand } from '@ui-kit/components/v-expand/v-expand';
 import { IconName, VIcon } from '@ui-kit/components/v-icon/v-icon';
 import { VInput } from '@ui-kit/components/v-input/v-input';
+import { VToggle, VToggleItem } from '@ui-kit/components/v-toggle/v-toggle';
 import { MetricChartCard } from '../metric-chart-card/metric-chart-card';
 
 const NOW_TICK_INTERVAL_MS = 30_000;
@@ -85,7 +87,7 @@ interface MetricsServiceOption {
 @Component({
   selector: 'metrics-dashboard',
   templateUrl: './metrics-dashboard.html',
-  imports: [VButton, VCheckbox, VExpand, VInput, VIcon, MetricChartCard],
+  imports: [VButton, VCard, VCheckbox, VExpand, VInput, VIcon, VToggle, MetricChartCard],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class MetricsDashboard implements OnInit, OnDestroy {
@@ -101,8 +103,13 @@ export class MetricsDashboard implements OnInit, OnDestroy {
   protected readonly cardWidthPx$$ = this.metricsSettingsService.cardWidthPx$$;
   protected readonly cardHeightPx$$ = this.metricsSettingsService.cardHeightPx$$;
   protected readonly granularityOptions = GRANULARITY_OPTIONS;
+  protected readonly granularityToggleItems: VToggleItem[] = this.granularityOptions.map((granularity) => ({
+    id: granularity,
+    label: this.granularityLabel(granularity),
+  }));
   protected readonly selectedGranularity$$ = this.metricsSettingsService.granularity$$;
   protected readonly syncCrosshairEnabled$$ = this.metricsSettingsService.syncCrosshairEnabled$$;
+  protected readonly forceZeroBaselineEnabled$$ = this.metricsSettingsService.forceZeroBaselineEnabled$$;
   protected readonly useCollapsedMinutes$$ = computed(
     () => this.cardWidthPx$$() < MINUTE_COLLAPSE_CARD_WIDTH_THRESHOLD_PX,
   );
@@ -289,6 +296,22 @@ export class MetricsDashboard implements OnInit, OnDestroy {
     return severityColor(severity);
   }
 
+  // Only the selected section button keeps its full severity/primary color —
+  // the rest get muted toward the theme's muted-text gray so the active tab stands out.
+  protected sectionButtonColor(service: string): string {
+    const color = this.serviceColor(service);
+    return this.isServiceExpanded(service) ? color : mutedSectionColor(color);
+  }
+
+  // Can't feed `var(--v-color-primary)` into mutedSectionColor() here: the muted
+  // result is assigned back onto that very same custom property on the button's
+  // host, and a custom property that references itself is invalid per spec.
+  // `--v-color-primary-muted` (set once, further up the tree in the template)
+  // is a separate variable name, so no cycle.
+  protected dashboardButtonColor(): string | undefined {
+    return this.isServiceExpanded(this.dashboardPanelKey) ? undefined : 'var(--v-color-primary-muted)';
+  }
+
   protected granularityLabel(granularity: MetricGranularity): string {
     switch (granularity) {
       case 'hour':
@@ -303,6 +326,18 @@ export class MetricsDashboard implements OnInit, OnDestroy {
   protected selectGranularity(granularity: MetricGranularity): void {
     clearMetricSyncCrosshair();
     this.metricsSettingsService.setGranularity(granularity);
+  }
+
+  protected granularityToggleValue(): string[] {
+    return [this.selectedGranularity$$()];
+  }
+
+  // v-toggle deselects to [] when the already-active item is clicked again — ignore
+  // that instead of clearing the granularity, since exactly one must stay selected.
+  protected onGranularityToggleChange(value: string[]): void {
+    const next = value[0] as MetricGranularity | undefined;
+    if (!next) return;
+    this.selectGranularity(next);
   }
 
   protected isServiceExpanded(service: string): boolean {
@@ -343,6 +378,10 @@ export class MetricsDashboard implements OnInit, OnDestroy {
     if (!value) {
       clearMetricSyncCrosshair();
     }
+  }
+
+  protected toggleForceZeroBaseline(): void {
+    this.metricsSettingsService.setForceZeroBaselineEnabled(!this.forceZeroBaselineEnabled$$());
   }
 
   protected clearMetricsCache(): void {

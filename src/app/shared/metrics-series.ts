@@ -144,7 +144,10 @@ export function buildSparseBarSeries(
 // normal step has passed without a point — threshold must match whatever
 // granularity's step the series is actually sampled at, never a flat 60s,
 // or hour/day series (step 3600/86400) would show a gap after every point.
-export function buildSparseLineSeriesFromPoints(sorted: MetricPoint[], gapThresholdSeconds: number): MetricSeriesPoint[] {
+export function buildSparseLineSeriesFromPoints(
+  sorted: MetricPoint[],
+  gapThresholdSeconds: number,
+): MetricSeriesPoint[] {
   const series: MetricSeriesPoint[] = [];
   sorted.forEach((point, index) => {
     series.push({ bucket: point.bucket, value: point.value });
@@ -182,6 +185,16 @@ export function formatMetricBucketLabel(bucketSeconds: number, granularity: Metr
   return granularity === 'hour' ? `${datePart} ${timePart}` : timePart;
 }
 
+// A tick landing exactly on local midnight already tells you the time (00:00),
+// so the axis only needs the date — dropping the time avoids doubled-up labels.
+export function formatMetricTickLabel(bucketSeconds: number, granularity: MetricGranularity = 'minute'): string {
+  const date = new Date(bucketSeconds * 1000);
+  if (date.getHours() === 0 && date.getMinutes() === 0) {
+    return `${pad2(date.getDate())}.${pad2(date.getMonth() + 1)}`;
+  }
+  return formatMetricBucketLabel(bucketSeconds, granularity);
+}
+
 export function buildRoundTickIndices(buckets: number[], intervalSeconds: number): number[] {
   const indices: number[] = [];
   buckets.forEach((bucket, index) => {
@@ -192,18 +205,26 @@ export function buildRoundTickIndices(buckets: number[], intervalSeconds: number
   return indices;
 }
 
+// Ticks are anchored to local midnight (not UTC epoch zero) so that day-scale
+// intervals land on the actual local day boundary instead of a timezone-shifted
+// hour, and sub-day intervals land on round local clock times (00:00, 06:00, ...).
+function localMidnightBucket(bucketSeconds: number): number {
+  const date = new Date(bucketSeconds * 1000);
+  date.setHours(0, 0, 0, 0);
+  return Math.floor(date.getTime() / 1000);
+}
+
 export function buildRoundTickBuckets(
   windowStartBucket: number,
   windowEndBucket: number,
   intervalSeconds: number,
 ): number[] {
   const buckets: number[] = [];
-  for (
-    let bucket = Math.ceil(windowStartBucket / intervalSeconds) * intervalSeconds;
-    bucket <= windowEndBucket;
-    bucket += intervalSeconds
-  ) {
-    buckets.push(bucket);
+  const anchor = localMidnightBucket(windowStartBucket);
+  for (let bucket = anchor; bucket <= windowEndBucket; bucket += intervalSeconds) {
+    if (bucket >= windowStartBucket) {
+      buckets.push(bucket);
+    }
   }
   return buckets;
 }
@@ -222,7 +243,11 @@ export function buildCollapsedMetricWindow(window: MetricWindow, stepSeconds: nu
   };
 }
 
-export function filterMetricPointsByWindow(points: MetricPoint[], windowStartBucket: number, windowEndBucket: number): MetricPoint[] {
+export function filterMetricPointsByWindow(
+  points: MetricPoint[],
+  windowStartBucket: number,
+  windowEndBucket: number,
+): MetricPoint[] {
   return points.filter((point) => point.bucket >= windowStartBucket && point.bucket <= windowEndBucket);
 }
 
@@ -290,9 +315,16 @@ export class MinuteMetricCollapseCache {
 
   private canIncrementallyUpdate(previous: MetricPoint[], current: MetricPoint[]): boolean {
     if (previous.length === 0 || current.length === 0) {
-      return previous.length === 0 || current.length === 0 || current[current.length - 1].bucket >= previous[previous.length - 1].bucket;
+      return (
+        previous.length === 0 ||
+        current.length === 0 ||
+        current[current.length - 1].bucket >= previous[previous.length - 1].bucket
+      );
     }
-    if (current[0].bucket < previous[0].bucket || current[current.length - 1].bucket < previous[previous.length - 1].bucket) {
+    if (
+      current[0].bucket < previous[0].bucket ||
+      current[current.length - 1].bucket < previous[previous.length - 1].bucket
+    ) {
       return false;
     }
 
@@ -302,7 +334,10 @@ export class MinuteMetricCollapseCache {
     }
 
     let currentOverlapLength = 0;
-    while (currentOverlapLength < current.length && current[currentOverlapLength].bucket <= previous[previous.length - 1].bucket) {
+    while (
+      currentOverlapLength < current.length &&
+      current[currentOverlapLength].bucket <= previous[previous.length - 1].bucket
+    ) {
       currentOverlapLength++;
     }
 
