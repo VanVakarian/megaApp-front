@@ -1,3 +1,4 @@
+import { signal } from '@angular/core';
 import { Chart, ChartType, Plugin } from 'chart.js';
 
 export interface MetricSyncCrosshairOptions {
@@ -13,13 +14,16 @@ declare module 'chart.js' {
   }
 }
 
-const CROSSHAIR_LINE_COLOR = 'rgba(59, 130, 246, 0.65)';
+const CROSSHAIR_LINE_COLOR = 'rgba(239, 68, 68, 0.9)';
 const CROSSHAIR_LINE_DASH = [4, 4];
-const CROSSHAIR_LINE_WIDTH = 1;
+const CROSSHAIR_LINE_WIDTH = 2;
 
 const registeredCharts = new Set<Chart>();
 
-let hoverBucket: number | null = null;
+// Writable only within this module — cards elsewhere consume the readonly view below.
+const hoverBucketState$$ = signal<number | null>(null);
+export const hoverBucket$$ = hoverBucketState$$.asReadonly();
+
 let redrawScheduled = false;
 
 function requestCrosshairRedraw(): void {
@@ -85,11 +89,11 @@ function resolveHoverBucket(chart: Chart, options: MetricSyncCrosshairOptions, e
 }
 
 export function clearMetricSyncCrosshair(): void {
-  if (hoverBucket === null) {
+  if (hoverBucketState$$() === null) {
     return;
   }
 
-  hoverBucket = null;
+  hoverBucketState$$.set(null);
   requestCrosshairRedraw();
 }
 
@@ -101,7 +105,7 @@ export const metricSyncCrosshairPlugin: Plugin<'line' | 'bar'> = {
   afterDestroy(chart) {
     registeredCharts.delete(chart);
     if (registeredCharts.size === 0) {
-      hoverBucket = null;
+      hoverBucketState$$.set(null);
     }
   },
   afterEvent(chart, args, pluginOptions) {
@@ -124,20 +128,19 @@ export const metricSyncCrosshairPlugin: Plugin<'line' | 'bar'> = {
     }
 
     const nextHoverBucket = resolveHoverBucket(chart, options, args.event.x);
-    if (nextHoverBucket === null || nextHoverBucket === hoverBucket) {
+    if (nextHoverBucket === null || nextHoverBucket === hoverBucketState$$()) {
       return;
     }
 
-    hoverBucket = nextHoverBucket;
+    hoverBucketState$$.set(nextHoverBucket);
     requestCrosshairRedraw();
   },
   afterDraw(chart, _args, pluginOptions) {
     const options = readMetricSyncCrosshairOptions(pluginOptions);
-    if (!options?.enabled || hoverBucket === null) {
+    const currentHoverBucket = hoverBucketState$$();
+    if (!options?.enabled || currentHoverBucket === null) {
       return;
     }
-
-    const currentHoverBucket = hoverBucket;
 
     if (currentHoverBucket < options.windowStartBucket || currentHoverBucket > options.windowEndBucket) {
       return;

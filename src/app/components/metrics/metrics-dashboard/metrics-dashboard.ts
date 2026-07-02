@@ -139,6 +139,14 @@ export class MetricsDashboard implements OnInit, OnDestroy {
       .sort((left, right) => left.label.localeCompare(right.label));
   });
 
+  // Separate from serviceOptions$$ on purpose: settings panels (dashboard metric
+  // picker, severity thresholds) must keep listing every known service so a
+  // header-hidden service can still be reconfigured or re-shown. Only the header
+  // tab bar and its expanded body use this filtered list.
+  protected readonly visibleServiceOptions$$ = computed<MetricsServiceOption[]>(() =>
+    this.serviceOptions$$().filter((option) => this.isServiceVisibleInHeader(option.service)),
+  );
+
   protected readonly serviceMetricsData$$ = computed<Map<string, ServiceMetricsData>>(() => {
     const granularity = this.selectedGranularity$$();
     const stepSeconds = METRICS_GRANULARITY_STEP_SECONDS[granularity];
@@ -484,6 +492,23 @@ export class MetricsDashboard implements OnInit, OnDestroy {
     this.metricsSettingsService.setDashboardServiceSelection({ ...current, [service]: order });
   }
 
+  // Sparse map: only explicit false (hidden) is stored, so a service is visible
+  // by default the moment it's discovered, with nothing to migrate for old settings.
+  protected isServiceVisibleInHeader(service: string): boolean {
+    return this.metricsSettingsService.serviceHeaderVisibility$$()[service] !== false;
+  }
+
+  protected toggleServiceVisibleInHeader(service: string, visible: boolean): void {
+    const current = this.metricsSettingsService.serviceHeaderVisibility$$();
+    const next = { ...current };
+    if (visible) {
+      delete next[service];
+    } else {
+      next[service] = false;
+    }
+    this.metricsSettingsService.setServiceHeaderVisibility(next);
+  }
+
   private nextDashboardOrder(service: string): number {
     const orders = Object.values(this.dashboardSelection$$()[service] ?? {});
     return orders.length > 0 ? Math.max(...orders) + 1 : 1;
@@ -508,9 +533,9 @@ export class MetricsDashboard implements OnInit, OnDestroy {
     if (stored === DASHBOARD_PANEL_KEY) {
       return DASHBOARD_PANEL_KEY;
     }
-    if (stored && this.serviceOptions$$().some((option) => option.service === stored)) {
+    if (stored && this.visibleServiceOptions$$().some((option) => option.service === stored)) {
       return stored;
     }
-    return this.serviceOptions$$()[0]?.service ?? null;
+    return this.visibleServiceOptions$$()[0]?.service ?? null;
   }
 }

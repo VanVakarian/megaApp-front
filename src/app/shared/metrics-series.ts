@@ -229,6 +229,31 @@ export function buildRoundTickBuckets(
   return buckets;
 }
 
+// Binary search: series is always bucket-sorted ascending (builders above guarantee it).
+export function findNearestSeriesPoint(series: MetricSeriesPoint[], targetBucket: number): MetricSeriesPoint | null {
+  if (series.length === 0) {
+    return null;
+  }
+
+  let low = 0;
+  let high = series.length - 1;
+  while (low < high) {
+    const mid = (low + high) >> 1;
+    if (series[mid].bucket < targetBucket) {
+      low = mid + 1;
+    } else {
+      high = mid;
+    }
+  }
+
+  const candidate = series[low];
+  const previous = series[low - 1];
+  if (!previous) {
+    return candidate;
+  }
+  return Math.abs(previous.bucket - targetBucket) <= Math.abs(candidate.bucket - targetBucket) ? previous : candidate;
+}
+
 export function alignBucketDown(bucketSeconds: number, stepSeconds: number): number {
   return Math.floor(bucketSeconds / stepSeconds) * stepSeconds;
 }

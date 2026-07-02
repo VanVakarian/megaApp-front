@@ -10,7 +10,7 @@
         Dashboard
       </v-button>
 
-      @for (service of serviceOptions$$(); track service.service) {
+      @for (service of visibleServiceOptions$$(); track service.service) {
         <v-button [class]="isServiceExpanded(service.service) ? 'v-primary v-raised' : 'v-primary v-flat'"
                   [config]="{
                     color: sectionButtonColor(service.service),
@@ -55,7 +55,7 @@
   <v-expand class="mb-4"
             [isExpanded]="isServiceExpanded(settingsPanelKey)">
     <div v-body
-         class="gap-14 flex flex-col p-4">
+         class="flex flex-col gap-8 p-4">
       <div class="flex flex-wrap items-end gap-3">
         <v-input [value]="cardWidthPx$$().toString()"
                  (valueChange)="onCardWidthChange($event)"
@@ -98,19 +98,22 @@
       </div>
 
       <div class="flex flex-col gap-3">
-        <div class="opacity-70 text-sm font-semibold">Метрики дэшборда</div>
+        <div class="opacity-70 font-semibold">Метрики дэшборда</div>
         @for (service of serviceOptions$$(); track service.service) {
           <div class="flex flex-col gap-1">
-            <label class="flex items-center gap-2 text-sm font-medium cursor-pointer">
-              <v-checkbox [value]="isDashboardServiceEnabled(service.service)"
-                          (onChanged)="toggleDashboardService(service.service, $event)"
-                          [config]="{
-                            size: 4,
-                            checkIconSize: 3,
-                            gap: 1,
-                            isDisabled: isSavingSettings$$(),
-                          }" />
-              <span class="min-w-0 truncate">{{ service.label }}</span>
+            <div class="text-l flex items-center gap-3 font-medium">
+              <span class="flex-1 min-w-0 font-semibold truncate">{{ service.label }}</span>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <v-checkbox [value]="isDashboardServiceEnabled(service.service)"
+                            (onChanged)="toggleDashboardService(service.service, $event)"
+                            [config]="{
+                              size: 4,
+                              checkIconSize: 3,
+                              gap: 1,
+                              isDisabled: isSavingSettings$$(),
+                            }" />
+                <span>Show in dashboard</span>
+              </label>
               @if (isDashboardServiceEnabled(service.service)) {
                 <v-input class="shrink-0 w-12"
                          [value]="dashboardServiceOrder(service.service).toString()"
@@ -123,7 +126,18 @@
                            isDisabled: isSavingSettings$$(),
                          }" />
               }
-            </label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <v-checkbox [value]="isServiceVisibleInHeader(service.service)"
+                            (onChanged)="toggleServiceVisibleInHeader(service.service, $event)"
+                            [config]="{
+                              size: 4,
+                              checkIconSize: 3,
+                              gap: 1,
+                              isDisabled: isSavingSettings$$(),
+                            }" />
+                <span>Show in header</span>
+              </label>
+            </div>
             <div class="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-x-4 gap-y-1 pl-2">
               @for (metric of dashboardMetricOptionsByService$$().get(service.service) ?? []; track metric.name) {
                 <label class="flex items-center gap-2 text-sm cursor-pointer">
@@ -158,8 +172,8 @@
       </div>
 
       <div class="flex flex-col gap-3">
-        <div class="opacity-70 text-sm font-semibold">Пороги Severity, сек без новых данных</div>
-        <div class="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-x-4 gap-y-2 pl-2">
+        <div class="opacity-70 font-semibold">Пороги Severity, сек без новых данных</div>
+        <div class="flex flex-wrap gap-8 pl-2">
           @for (service of serviceOptions$$(); track service.service) {
             <div class="flex flex-col gap-1">
               <div class="text-sm truncate">{{ service.label }}</div>
@@ -195,12 +209,12 @@
   </v-expand>
 
   @if (isServiceExpanded(dashboardPanelKey)) {
-    <v-card class="mb-4"
-            [config]="{ padding: 0 }">
-      <div class="flex flex-col gap-4 p-4">
-        @for (row of dashboardRows$$(); track row.id) {
+    @for (row of dashboardRows$$(); track row.id) {
+      <v-card class="mb-4"
+              [config]="{ padding: 0, borderRadius: 2 }">
+        <div class="flex flex-col gap-4 p-4">
           <div>
-            <div class="opacity-70 mb-2 text-sm font-semibold">{{ row.label }}</div>
+            <div class="opacity-70 mb-2 font-semibold">{{ row.label }}</div>
             <div class="flex flex-wrap gap-3">
               @for (card of row.cards; track card.key) {
                 <metric-chart-card [labelInput]="card.label"
@@ -223,21 +237,21 @@
               }
             </div>
           </div>
-        } @empty {
-          <div class="opacity-60 text-sm">Нет выбранных метрик. Настройте в Settings.</div>
-        }
-      </div>
-    </v-card>
+        </div>
+      </v-card>
+    } @empty {
+      <div class="opacity-60 mb-4 text-sm">Нет выбранных метрик. Настройте в Settings.</div>
+    }
   }
 
-  @for (service of serviceOptions$$(); track service.service) {
+  @for (service of visibleServiceOptions$$(); track service.service) {
     @if (isServiceExpanded(service.service)) {
       <v-card class="mb-4"
-              [config]="{ padding: 0 }">
+              [config]="{ padding: 0, borderRadius: 2 }">
         <div class="flex flex-col gap-4 p-4">
           @for (group of serviceMetricsData$$().get(service.service)?.groups ?? []; track group.id) {
             <div>
-              <div class="opacity-70 mb-2 text-sm font-semibold">{{ group.label }}</div>
+              <div class="opacity-70 mb-2 font-semibold">{{ group.label }}</div>
               <div class="flex flex-wrap gap-3">
                 @for (card of group.cards; track card.key) {
                   <metric-chart-card [labelInput]="card.label"

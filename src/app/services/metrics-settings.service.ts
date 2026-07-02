@@ -1,5 +1,5 @@
 import { HttpClient } from '@angular/common/http';
-import { Injectable, inject, signal, WritableSignal } from '@angular/core';
+import { inject, Injectable, signal, WritableSignal } from '@angular/core';
 import { LocalStorageService } from '@app/services/local-storage.service';
 import { NotificationService } from '@app/services/notification.service';
 import { SeverityThresholds } from '@app/shared/metrics-severity';
@@ -9,6 +9,7 @@ import { firstValueFrom } from 'rxjs';
 export type DashboardMetricSelection = Record<string, Record<string, number>>;
 export type DashboardServiceSelection = Record<string, number>;
 export type SeverityThresholdsOverrides = Record<string, SeverityThresholds>;
+export type ServiceHeaderVisibility = Record<string, boolean>;
 
 interface StoredMetricsSettings {
   selectedService: string | null;
@@ -21,6 +22,7 @@ interface StoredMetricsSettings {
   dashboardSelection: DashboardMetricSelection;
   dashboardServiceSelection: DashboardServiceSelection;
   severityThresholds: SeverityThresholdsOverrides;
+  serviceHeaderVisibility: ServiceHeaderVisibility;
 }
 
 const STORAGE_KEY = 'metrics_settings';
@@ -40,6 +42,7 @@ const DEFAULTS: StoredMetricsSettings = {
   dashboardSelection: {},
   dashboardServiceSelection: {},
   severityThresholds: {},
+  serviceHeaderVisibility: {},
 };
 
 // Old per-field keys from before settings were combined into STORAGE_KEY — deleted once, never read.
@@ -78,6 +81,7 @@ export class MetricsSettingsService {
   public readonly dashboardSelection$$: WritableSignal<DashboardMetricSelection>;
   public readonly dashboardServiceSelection$$: WritableSignal<DashboardServiceSelection>;
   public readonly severityThresholdOverrides$$: WritableSignal<SeverityThresholdsOverrides>;
+  public readonly serviceHeaderVisibility$$: WritableSignal<ServiceHeaderVisibility>;
   public readonly isSaving$$: WritableSignal<boolean> = signal(false);
 
   private readonly http = inject(HttpClient);
@@ -106,6 +110,7 @@ export class MetricsSettingsService {
     this.dashboardSelection$$ = signal(initial.dashboardSelection);
     this.dashboardServiceSelection$$ = signal(initial.dashboardServiceSelection);
     this.severityThresholdOverrides$$ = signal(initial.severityThresholds);
+    this.serviceHeaderVisibility$$ = signal(initial.serviceHeaderVisibility);
 
     this.loadFromServer();
   }
@@ -162,6 +167,11 @@ export class MetricsSettingsService {
     this.persist();
   }
 
+  public setServiceHeaderVisibility(value: ServiceHeaderVisibility): void {
+    this.serviceHeaderVisibility$$.set(value);
+    this.persist();
+  }
+
   private persist(): void {
     this.persistLocalOnly();
     this.scheduleSave();
@@ -183,6 +193,7 @@ export class MetricsSettingsService {
       dashboardSelection: this.dashboardSelection$$(),
       dashboardServiceSelection: this.dashboardServiceSelection$$(),
       severityThresholds: this.severityThresholdOverrides$$(),
+      serviceHeaderVisibility: this.serviceHeaderVisibility$$(),
     };
   }
 
@@ -197,6 +208,7 @@ export class MetricsSettingsService {
     this.dashboardSelection$$.set(value.dashboardSelection);
     this.dashboardServiceSelection$$.set(value.dashboardServiceSelection);
     this.severityThresholdOverrides$$.set(value.severityThresholds);
+    this.serviceHeaderVisibility$$.set(value.serviceHeaderVisibility);
     this.localStorageService.setUserScoped(STORAGE_KEY, value);
   }
 
@@ -226,9 +238,7 @@ export class MetricsSettingsService {
 
   private async loadFromServer(): Promise<void> {
     try {
-      const response = await firstValueFrom(
-        this.http.get<Partial<StoredMetricsSettings>>(SETTINGS_ENDPOINT),
-      );
+      const response = await firstValueFrom(this.http.get<Partial<StoredMetricsSettings>>(SETTINGS_ENDPOINT));
       const merged: StoredMetricsSettings = { ...DEFAULTS, ...response };
       this.lastConfirmed = merged;
       this.applySnapshot(merged);

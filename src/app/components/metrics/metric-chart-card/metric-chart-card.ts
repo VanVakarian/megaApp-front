@@ -1,13 +1,26 @@
-import { ChangeDetectionStrategy, Component, effect, ElementRef, input, OnDestroy, viewChild } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  ElementRef,
+  input,
+  OnDestroy,
+  viewChild,
+} from '@angular/core';
 import {
   createMetricBarConfig,
   createMetricSparseLineConfig,
   pickMetricTickIntervalSeconds,
 } from '@app/shared/chart-config';
-import { MetricUnit } from '@app/shared/metric-units';
+import { formatMetricUnitValue, MetricUnit } from '@app/shared/metric-units';
 import { MetricChartMode } from '@app/shared/metrics-chart-mode';
-import { buildRoundTickBuckets, MetricSeriesPoint } from '@app/shared/metrics-series';
-import { MetricSyncCrosshairOptions, metricSyncCrosshairPlugin } from '@app/shared/metrics-sync-crosshair';
+import { buildRoundTickBuckets, findNearestSeriesPoint, MetricSeriesPoint } from '@app/shared/metrics-series';
+import {
+  hoverBucket$$,
+  MetricSyncCrosshairOptions,
+  metricSyncCrosshairPlugin,
+} from '@app/shared/metrics-sync-crosshair';
 import { MetricGranularity } from '@app/shared/types';
 import { VCard } from '@ui-kit/components/v-card/v-card';
 import { IconName, VIcon } from '@ui-kit/components/v-icon/v-icon';
@@ -40,6 +53,15 @@ Chart.register(
 export const DEFAULT_CARD_WIDTH_PX = 304;
 export const DEFAULT_CHART_HEIGHT_PX = 112;
 
+// How many display steps away from the hovered time a real point may still be
+// and get shown as "the value at this time" — e.g. 3 on a 5-minute-step chart
+// captures a point up to 15 minutes to either side. Hardcoded on purpose, not a
+// user setting.
+const CROSSHAIR_CAPTURE_STEP_MULTIPLIER = 3;
+
+// Shown while hovering when no point falls within the capture window above.
+const HOVER_NO_VALUE_PLACEHOLDER = '—';
+
 @Component({
   selector: 'metric-chart-card',
   templateUrl: './metric-chart-card.html',
@@ -66,6 +88,25 @@ export class MetricChartCard implements OnDestroy {
   public readonly heightPxInput = input<number>(DEFAULT_CHART_HEIGHT_PX);
 
   protected readonly Icon = IconName;
+
+  // While the synced crosshair is active, the header number tracks the highlighted
+  // time instead of the series' last value — a dash when nothing falls within the
+  // capture window, back to the static value the instant the crosshair clears
+  // (hoverBucket$$ going null), for every card at once, since it's one shared signal.
+  protected readonly headerDisplayValue$$ = computed(() => {
+    const hoverBucket = hoverBucket$$();
+    if (hoverBucket === null || !this.syncCrosshairEnabledInput()) {
+      return this.displayValueInput() || String(this.valueInput());
+    }
+
+    const nearest = findNearestSeriesPoint(this.seriesInput(), hoverBucket);
+    const captureWindowSeconds = CROSSHAIR_CAPTURE_STEP_MULTIPLIER * this.displayStepSecondsInput();
+    if (!nearest || nearest.value === null || Math.abs(nearest.bucket - hoverBucket) > captureWindowSeconds) {
+      return HOVER_NO_VALUE_PLACEHOLDER;
+    }
+
+    return formatMetricUnitValue(this.unitInput(), nearest.value);
+  });
 
   private readonly chartCanvasElem = viewChild<ElementRef<HTMLCanvasElement>>('chartCanvas');
   private chart: Chart | null = null;
