@@ -12,8 +12,6 @@ export type SeverityThresholdsOverrides = Record<string, SeverityThresholds>;
 export type ServiceHeaderVisibility = Record<string, boolean>;
 
 interface StoredMetricsSettings {
-  selectedService: string | null;
-  settingsExpanded: boolean;
   cardWidthPx: number;
   cardHeightPx: number;
   granularity: MetricGranularity;
@@ -32,8 +30,6 @@ const DEFAULT_CARD_WIDTH_PX = 304;
 const DEFAULT_CHART_HEIGHT_PX = 112;
 
 const DEFAULTS: StoredMetricsSettings = {
-  selectedService: null,
-  settingsExpanded: false,
   cardWidthPx: DEFAULT_CARD_WIDTH_PX,
   cardHeightPx: DEFAULT_CHART_HEIGHT_PX,
   granularity: 'minute',
@@ -46,6 +42,8 @@ const DEFAULTS: StoredMetricsSettings = {
 };
 
 // Old per-field keys from before settings were combined into STORAGE_KEY — deleted once, never read.
+// metrics_selected_service/metrics_settings_expanded are here too: which panel was expanded is no
+// longer persisted anywhere — every page load opens on the Dashboard panel, collapsed Settings.
 const OBSOLETE_KEYS = [
   'metrics_expanded_services',
   'metrics_selected_service',
@@ -71,8 +69,6 @@ const OBSOLETE_KEYS = [
   providedIn: 'root',
 })
 export class MetricsSettingsService {
-  public readonly selectedService$$: WritableSignal<string | null>;
-  public readonly settingsExpanded$$: WritableSignal<boolean>;
   public readonly cardWidthPx$$: WritableSignal<number>;
   public readonly cardHeightPx$$: WritableSignal<number>;
   public readonly granularity$$: WritableSignal<MetricGranularity>;
@@ -100,8 +96,6 @@ export class MetricsSettingsService {
     const initial: StoredMetricsSettings = { ...DEFAULTS, ...stored };
     this.lastConfirmed = initial;
 
-    this.selectedService$$ = signal(initial.selectedService);
-    this.settingsExpanded$$ = signal(initial.settingsExpanded);
     this.cardWidthPx$$ = signal(initial.cardWidthPx);
     this.cardHeightPx$$ = signal(initial.cardHeightPx);
     this.granularity$$ = signal(initial.granularity);
@@ -113,18 +107,6 @@ export class MetricsSettingsService {
     this.serviceHeaderVisibility$$ = signal(initial.serviceHeaderVisibility);
 
     this.loadFromServer();
-  }
-
-  // Selected tab / expanded-panel are UI navigation, not data the user is editing —
-  // changing them must not by itself schedule a server save (only localStorage).
-  public setSelectedService(value: string | null): void {
-    this.selectedService$$.set(value);
-    this.persistLocalOnly();
-  }
-
-  public setSettingsExpanded(value: boolean): void {
-    this.settingsExpanded$$.set(value);
-    this.persistLocalOnly();
   }
 
   public setCardWidthPx(value: number): void {
@@ -183,8 +165,6 @@ export class MetricsSettingsService {
 
   private snapshot(): StoredMetricsSettings {
     return {
-      selectedService: this.selectedService$$(),
-      settingsExpanded: this.settingsExpanded$$(),
       cardWidthPx: this.cardWidthPx$$(),
       cardHeightPx: this.cardHeightPx$$(),
       granularity: this.granularity$$(),
@@ -198,8 +178,6 @@ export class MetricsSettingsService {
   }
 
   private applySnapshot(value: StoredMetricsSettings): void {
-    this.selectedService$$.set(value.selectedService);
-    this.settingsExpanded$$.set(value.settingsExpanded);
     this.cardWidthPx$$.set(value.cardWidthPx);
     this.cardHeightPx$$.set(value.cardHeightPx);
     this.granularity$$.set(value.granularity);

@@ -119,6 +119,11 @@ export class MetricsDashboard implements OnInit, OnDestroy {
   private nowTickIntervalId: ReturnType<typeof setInterval> | null = null;
   private readonly minuteMetricCollapseCache = new MinuteMetricCollapseCache();
 
+  // Which panel is expanded is transient UI state, not persisted anywhere (see
+  // metrics-settings.service.ts) — every page load opens on the Dashboard panel.
+  private readonly expandedPanel$$ = signal<string>(DASHBOARD_PANEL_KEY);
+  private readonly isSettingsPanelExpanded$$ = signal(false);
+
   protected readonly serviceOptions$$ = computed<MetricsServiceOption[]>(() => {
     const discoveredServices = new Set<string>();
     for (const definition of metricsServiceDefinitions()) {
@@ -352,23 +357,23 @@ export class MetricsDashboard implements OnInit, OnDestroy {
 
   protected isServiceExpanded(service: string): boolean {
     if (service === SETTINGS_PANEL_KEY) {
-      return this.metricsSettingsService.settingsExpanded$$();
+      return this.isSettingsPanelExpanded$$();
     }
-    return service === this.selectedService();
+    return service === this.resolvedExpandedPanel();
   }
 
   protected toggleServiceExpanded(service: string): void {
     if (service === SETTINGS_PANEL_KEY) {
-      this.metricsSettingsService.setSettingsExpanded(!this.metricsSettingsService.settingsExpanded$$());
+      this.isSettingsPanelExpanded$$.update((value) => !value);
       return;
     }
 
-    if (service === this.selectedService()) {
+    if (service === this.resolvedExpandedPanel()) {
       return;
     }
 
     clearMetricSyncCrosshair();
-    this.metricsSettingsService.setSelectedService(service);
+    this.expandedPanel$$.set(service);
   }
 
   protected onCardWidthChange(value: string): void {
@@ -528,14 +533,16 @@ export class MetricsDashboard implements OnInit, OnDestroy {
     });
   }
 
-  private selectedService(): string | null {
-    const stored = this.metricsSettingsService.selectedService$$();
-    if (stored === DASHBOARD_PANEL_KEY) {
-      return DASHBOARD_PANEL_KEY;
+  // Falls back to the Dashboard panel (not "first visible service") the moment the
+  // expanded service is hidden from the header — Dashboard is the primary view now.
+  private resolvedExpandedPanel(): string {
+    const current = this.expandedPanel$$();
+    if (current === DASHBOARD_PANEL_KEY) {
+      return current;
     }
-    if (stored && this.visibleServiceOptions$$().some((option) => option.service === stored)) {
-      return stored;
+    if (this.visibleServiceOptions$$().some((option) => option.service === current)) {
+      return current;
     }
-    return this.visibleServiceOptions$$()[0]?.service ?? null;
+    return DASHBOARD_PANEL_KEY;
   }
 }
