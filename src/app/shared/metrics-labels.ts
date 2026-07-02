@@ -118,6 +118,7 @@ const METRICS_SERVICE_DEFINITIONS: MetricsServiceDefinition[] = [
         label: 'Pulse',
         metrics: [
           'free_cash',
+          'estimated_open_positions_value',
           'estimated_account_value',
           'cycle_errors',
           'reconcile_failures',
@@ -196,6 +197,7 @@ const METRICS_SERVICE_DEFINITIONS: MetricsServiceDefinition[] = [
     ],
     metricColors: {
       free_cash: '#16a34a',
+      estimated_open_positions_value: '#16a34a',
       estimated_account_value: '#16a34a',
       cycle_errors: '#dc2626',
       reconcile_failures: '#dc2626',
@@ -358,6 +360,7 @@ const METRIC_LABELS: Record<string, Record<string, string>> = {
   },
   'spread-capture-bot-v3': {
     free_cash: 'Free Cash',
+    estimated_open_positions_value: 'Estimated Open Positions Value',
     estimated_account_value: 'Estimated Account Value',
     catalog_candidates: 'Catalog Candidates',
     catalog_markets_total: 'Catalog Markets Total',

@@ -5,6 +5,7 @@ const METRIC_UNIT_OVERRIDES: ReadonlyMap<string, MetricUnit> = new Map([
   ['load5', 'count'],
   ['load15', 'count'],
   ['free_cash', 'money'],
+  ['estimated_open_positions_value', 'money'],
   ['estimated_account_value', 'money'],
   ['uptime_seconds', 'humanDuration'],
   ['recognition_cost_usd', 'money'],

@@ -56,6 +56,7 @@ const SUM_METRICS = new Set<string>([
 
 const LAST_METRICS = new Set<string>([
   'free_cash',
+  'estimated_open_positions_value',
   'estimated_account_value',
   'uptime_seconds',
   'heartbeat',
