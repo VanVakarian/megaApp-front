@@ -143,6 +143,10 @@ export class MetricsDashboard implements OnInit, OnDestroy {
     const granularity = this.selectedGranularity$$();
     const stepSeconds = METRICS_GRANULARITY_STEP_SECONDS[granularity];
     const useCollapsedMinutes = granularity === 'minute' && this.useCollapsedMinutes$$();
+    // The current 5-minute bucket keeps growing as new minute points arrive, so a
+    // sum metric looks like it dips right before it — only fully elapsed buckets
+    // are safe to compare against each other.
+    const lastClosedCollapsedBucket = previousCompletedBucket(this.now$$(), COLLAPSED_MINUTE_STEP_SECONDS);
     const dashboardSelection = this.dashboardSelection$$();
     const fallbackWindow = buildMetricWindow(
       previousCompletedBucket(this.now$$(), stepSeconds),
@@ -179,16 +183,14 @@ export class MetricsDashboard implements OnInit, OnDestroy {
       const buildCard = (name: string): MetricChartCardData => {
         const key = metricPointsIndexKey(option.service, name);
         const metricPoints = pointsIndex.get(key) ?? [];
+        const aggregation = metricAggregation(name);
         const displayPoints = useCollapsedMinutes
           ? filterMetricPointsByWindow(
-              this.minuteMetricCollapseCache.collapse(
-                key,
-                metricPoints,
-                metricAggregation(name),
-                COLLAPSED_MINUTE_STEP_SECONDS,
-              ),
+              this.minuteMetricCollapseCache.collapse(key, metricPoints, aggregation, COLLAPSED_MINUTE_STEP_SECONDS),
               displayWindow.startBucket,
-              displayWindow.endBucket,
+              aggregation === 'sum'
+                ? Math.min(displayWindow.endBucket, lastClosedCollapsedBucket)
+                : displayWindow.endBucket,
             )
           : metricPoints;
         const chartMode = metricChartMode(option.service, name);
