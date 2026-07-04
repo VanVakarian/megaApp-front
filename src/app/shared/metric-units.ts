@@ -1,31 +1,5 @@
 export type MetricUnit = 'ratio' | 'bytes' | 'durationMs' | 'humanDuration' | 'money' | 'count';
 
-const METRIC_UNIT_OVERRIDES: ReadonlyMap<string, MetricUnit> = new Map([
-  ['load1', 'count'],
-  ['load5', 'count'],
-  ['load15', 'count'],
-  ['free_cash', 'money'],
-  ['estimated_open_positions_value', 'money'],
-  ['estimated_account_value', 'money'],
-  ['uptime_seconds', 'humanDuration'],
-  ['recognition_cost_usd', 'money'],
-]);
-
-const METRIC_UNIT_SUFFIXES: ReadonlyArray<readonly [RegExp, MetricUnit]> = [
-  [/_ratio(_avg|_max)?$/, 'ratio'], // *_ratio[_avg|_max] -> доля 0..1
-  [/_bytes$/, 'bytes'], // *_bytes -> байты
-  [/_ms$/, 'durationMs'], // *_ms -> миллисекунды
-];
-
-export function metricUnit(name: string): MetricUnit {
-  const override = METRIC_UNIT_OVERRIDES.get(name);
-  if (override) return override;
-  for (const [pattern, unit] of METRIC_UNIT_SUFFIXES) {
-    if (pattern.test(name)) return unit;
-  }
-  return 'count';
-}
-
 const BYTE_UNIT_SUFFIXES = ['B', 'KiB', 'MiB', 'GiB', 'TiB'];
 
 function formatBytesValue(value: number): string {

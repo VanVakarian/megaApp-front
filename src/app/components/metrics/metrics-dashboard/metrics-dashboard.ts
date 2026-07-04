@@ -3,17 +3,20 @@ import { MetricsHealthService } from '@app/services/metrics-health.service';
 import { MetricsSettingsService } from '@app/services/metrics-settings.service';
 import { MetricsService } from '@app/services/metrics.service';
 import { METRICS_GRANULARITY_STEP_SECONDS, METRICS_GRANULARITY_WINDOW_PERIODS } from '@app/shared/chart-config';
-import { formatMetricUnitValue, metricUnit, MetricUnit } from '@app/shared/metric-units';
-import { metricAggregation } from '@app/shared/metrics-aggregation';
+import { formatMetricUnitValue, MetricUnit } from '@app/shared/metric-units';
 import { MetricChartMode } from '@app/shared/metrics-chart-mode';
-import { metricDescription } from '@app/shared/metrics-descriptions';
 import {
+  metricAggregation,
   metricChartMode,
+  metricColor,
+  metricDescription,
   metricLabel,
+  metricsCatalogKnownNames,
   metricsServiceDefinition,
   metricsServiceDefinitions,
   metricsServiceLabel,
-} from '@app/shared/metrics-labels';
+  metricUnit,
+} from '@app/shared/metrics-catalog';
 import {
   buildCollapsedMetricWindow,
   buildMetricPointsIndex,
@@ -196,7 +199,7 @@ export class MetricsDashboard implements OnInit, OnDestroy {
       const buildCard = (name: string): MetricChartCardData => {
         const key = metricPointsIndexKey(option.service, name);
         const metricPoints = pointsIndex.get(key) ?? [];
-        const aggregation = metricAggregation(name);
+        const aggregation = metricAggregation(option.service, name);
         const displayPoints = useCollapsedMinutes
           ? filterMetricPointsByWindow(
               this.minuteMetricCollapseCache.collapse(key, metricPoints, aggregation, COLLAPSED_MINUTE_STEP_SECONDS),
@@ -212,8 +215,8 @@ export class MetricsDashboard implements OnInit, OnDestroy {
             ? buildSparseBarSeriesFromPoints(displayPoints)
             : buildSparseLineSeriesFromPoints(displayPoints, displayStepSeconds);
         const rawValue = metricPoints[metricPoints.length - 1]?.value ?? 0;
-        const color = definition?.metricColors[name] ?? '#578f92';
-        const unit = metricUnit(name);
+        const color = metricColor(option.service, name);
+        const unit = metricUnit(option.service, name);
         return {
           key,
           label: metricLabel(option.service, name),
@@ -235,8 +238,24 @@ export class MetricsDashboard implements OnInit, OnDestroy {
       const groups = (definition?.groups ?? []).map((group) => ({
         id: group.id,
         label: group.label,
-        cards: group.metrics.map(buildCard),
+        cards: group.metrics.map((config) => buildCard(config.name)),
       }));
+
+      // Метрики, реально приходящие с бэка для этого сервиса, но ещё не описанные
+      // ни в одной группе каталога — отдельный явно подписанный блок вместо того,
+      // чтобы молча не показывать их вообще, пока кто-то не вспомнит завести вручную.
+      const knownNames = metricsCatalogKnownNames(option.service);
+      const observedNames = new Set(servicePoints.map((point) => point.name));
+      const discoveredNames = Array.from(observedNames)
+        .filter((name) => !knownNames.has(name))
+        .sort();
+      if (discoveredNames.length > 0) {
+        groups.push({
+          id: 'uncatalogued',
+          label: 'Не в каталоге',
+          cards: discoveredNames.map(buildCard),
+        });
+      }
 
       const selectedMetrics = Object.entries(dashboardSelection[option.service] ?? {});
       selectedMetrics.sort(
@@ -277,10 +296,12 @@ export class MetricsDashboard implements OnInit, OnDestroy {
 
     const result = new Map<string, DashboardMetricOption[]>();
     for (const option of this.serviceOptions$$()) {
-      const definition = metricsServiceDefinition(option.service);
-      const names = definition
-        ? definition.groups.flatMap((group) => group.metrics)
-        : Array.from(observedNamesByService.get(option.service) ?? []).sort();
+      const knownNames = metricsCatalogKnownNames(option.service);
+      const observedNames = observedNamesByService.get(option.service) ?? new Set<string>();
+      const discoveredNames = Array.from(observedNames)
+        .filter((name) => !knownNames.has(name))
+        .sort();
+      const names = [...knownNames, ...discoveredNames];
       result.set(
         option.service,
         names.map((name) => ({ name, label: metricLabel(option.service, name) })),
