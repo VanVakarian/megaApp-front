@@ -51,6 +51,29 @@ export class BalancesChart implements AfterViewInit, OnDestroy {
 
   private yearBoundaries: { year: string; startIdx: number; endIdx: number }[] = [];
 
+  private readonly crosshairPlugin: Plugin = {
+    id: 'balanceCrosshair',
+    afterDraw: (chart) => {
+      const active = chart.tooltip?.getActiveElements();
+      if (!active?.length) return;
+
+      const { top, bottom, left, right } = chart.chartArea;
+      const x = active[0].element.x;
+      if (x < left || x > right) return;
+
+      const ctx = chart.ctx;
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(x, top);
+      ctx.lineTo(x, bottom);
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.25)';
+      ctx.setLineDash([4, 4]);
+      ctx.stroke();
+      ctx.restore();
+    },
+  };
+
   private readonly yearSeparatorPlugin: Plugin = {
     id: 'balanceYearSeparator',
     afterDraw: (chart) => {
@@ -122,12 +145,24 @@ export class BalancesChart implements AfterViewInit, OnDestroy {
   public ngAfterViewInit(): void {
     const ctx = this.chartCanvas().nativeElement.getContext('2d');
     if (!ctx) return;
-    const chart = new Chart(ctx, { ...BALANCE_CHART_CONFIG, plugins: [this.yearSeparatorPlugin] });
+    const chart = new Chart(ctx, {
+      ...BALANCE_CHART_CONFIG,
+      plugins: [this.yearSeparatorPlugin, this.crosshairPlugin],
+    });
     if (chart.options.plugins?.tooltip?.callbacks) {
       chart.options.plugins.tooltip.callbacks.label = (ctx) => {
         const raw = (ctx.dataset as any)['_rawValues'];
         const value = raw ? raw[ctx.dataIndex] : ctx.parsed.y;
         return ` ${ctx.dataset.label}: ${new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(value)} ${this.currencySymbolInput()}`;
+      };
+      chart.options.plugins.tooltip.callbacks.footer = (items) => {
+        if (items.length < 2) return [];
+        const sum = items.reduce((acc, item) => {
+          const raw = (item.dataset as any)['_rawValues'];
+          const value = raw ? raw[item.dataIndex] : item.parsed.y;
+          return acc + value;
+        }, 0);
+        return `${new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(sum)} ${this.currencySymbolInput()}`;
       };
     }
     this.chart$$.set(chart);

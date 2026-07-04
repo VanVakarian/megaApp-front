@@ -1,12 +1,12 @@
 <div class="flex items-center justify-center gap-4 mb-4">
-  <div class="w-2/3 text-lg font-semibold">
+  <div class="w-full text-lg font-semibold">
     {{ isEditing$$() ? 'Edit Transaction' : 'Add Transaction' }}
     <v-icon class="hidden"
             [name]="Icon.CalendarMonth"
             [size]="0"></v-icon>
   </div>
 
-  <div class="w-1/3">
+  <div class="w-[202px]">
     <v-input [config]="{
                  placeholder: 'YYYY-MM-DD',
                  type: 'text',
@@ -14,6 +14,32 @@
                }"
              [ngModel]="dateISO$$()"
              (ngModelChange)="dateISO$$.set($event)">
+      <span v-prefix
+            class="flex items-center">
+        <v-button class="date-nav-v-button v-link v-link-static"
+                  tabindex="-1"
+                  [config]="{
+                      padding: 1,
+                    }"
+                  (mousedown)="$event.preventDefault()"
+                  (onClick)="shiftDate(-1)">
+          <v-icon v-prefix
+                  [name]="Icon.KeyboardArrowLeft"
+                  [size]="6"></v-icon>
+        </v-button>
+        <v-button class="date-nav-v-button v-link v-link-static"
+                  tabindex="-1"
+                  [config]="{
+                      padding: 1,
+                    }"
+                  (mousedown)="$event.preventDefault()"
+                  (onClick)="shiftDate(1)">
+          <v-icon v-prefix
+                  [name]="Icon.KeyboardArrowRight"
+                  [size]="6"></v-icon>
+        </v-button>
+      </span>
+
       <v-button class="calendar-v-button v-link v-link-static mr-2"
                 v-postfix
                 tabindex="-1"

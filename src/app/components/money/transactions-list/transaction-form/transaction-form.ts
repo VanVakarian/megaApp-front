@@ -24,6 +24,7 @@ import {
   Transaction,
   TransactionKind,
 } from '@app/shared/types';
+import { dateToIsoNoTimeNoTZ } from '@app/shared/utils';
 import { VButton } from '@ui-kit/components/v-button/v-button';
 import { VCheckbox } from '@ui-kit/components/v-checkbox/v-checkbox';
 import { DropdownItem, VDropdown } from '@ui-kit/components/v-dropdown/v-dropdown';
@@ -483,6 +484,15 @@ export class TransactionForm {
 
   protected focusAmountTo(): void {
     this.amountToElem()?.focus();
+  }
+
+  protected shiftDate(days: number): void {
+    const [year, month, day] = this.dateISO$$().split('-').map(Number);
+    if (!year || !month || !day) return;
+
+    const date = new Date(year, month - 1, day);
+    date.setDate(date.getDate() + days);
+    this.dateISO$$.set(dateToIsoNoTimeNoTZ(date));
   }
 
   protected onDateControlClick(): void {
