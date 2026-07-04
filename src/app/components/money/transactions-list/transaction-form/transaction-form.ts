@@ -27,6 +27,7 @@ import {
 import { dateToIsoNoTimeNoTZ } from '@app/shared/utils';
 import { VButton } from '@ui-kit/components/v-button/v-button';
 import { VCheckbox } from '@ui-kit/components/v-checkbox/v-checkbox';
+import { VDateWheelInput } from '@ui-kit/components/v-date-wheel-input/v-date-wheel-input';
 import { DropdownItem, VDropdown } from '@ui-kit/components/v-dropdown/v-dropdown';
 import { IconName, VIcon } from '@ui-kit/components/v-icon/v-icon';
 import { VInput } from '@ui-kit/components/v-input/v-input';
@@ -36,7 +37,7 @@ import { VToggle } from '@ui-kit/components/v-toggle/v-toggle';
   selector: 'transaction-form',
   templateUrl: './transaction-form.html',
   styleUrl: './transaction-form.scss',
-  imports: [FormsModule, VButton, VCheckbox, VDropdown, VIcon, VInput, VToggle],
+  imports: [FormsModule, VButton, VCheckbox, VDateWheelInput, VDropdown, VIcon, VInput, VToggle],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class TransactionForm {

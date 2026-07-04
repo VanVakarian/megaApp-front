@@ -6,14 +6,10 @@
             [size]="0"></v-icon>
   </div>
 
-  <div class="w-[202px]">
-    <v-input [config]="{
-                 placeholder: 'YYYY-MM-DD',
-                 type: 'text',
-                 inputmode: 'numeric',
-               }"
-             [ngModel]="dateISO$$()"
-             (ngModelChange)="dateISO$$.set($event)">
+  <div class="">
+    <v-date-wheel-input [yearRange]="15"
+                        [ngModel]="dateISO$$()"
+                        (ngModelChange)="dateISO$$.set($event)">
       <span v-prefix
             class="flex items-center">
         <v-button class="date-nav-v-button v-link v-link-static"
@@ -60,7 +56,7 @@
                  (change)="onDatePicked($event)" />
         </span>
       </v-button>
-    </v-input>
+    </v-date-wheel-input>
   </div>
 </div>
 
