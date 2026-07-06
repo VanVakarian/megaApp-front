@@ -128,3 +128,15 @@ export function transliterateEnToRu(text: string): string {
     .map((char) => enToRuTransliterationRules[char.toLowerCase()] || char)
     .join('');
 }
+
+let textMeasureContext: CanvasRenderingContext2D | null | undefined;
+
+export function measureTextWidth(text: string, font: string): number {
+  if (textMeasureContext === undefined) {
+    textMeasureContext = document.createElement('canvas').getContext('2d');
+  }
+  if (!textMeasureContext) return 0;
+
+  textMeasureContext.font = font;
+  return textMeasureContext.measureText(text).width;
+}

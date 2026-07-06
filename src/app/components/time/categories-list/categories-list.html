@@ -1,0 +1,70 @@
+<v-card [config]="{
+          padding: 4,
+          borderRadius: 2,
+        }">
+  <div class="flex items-center justify-between mb-4">
+    <div class="text-lg font-semibold">Categories</div>
+    <v-button class="v-flat"
+              [config]="{ paddingY: 1 }"
+              (onClick)="showCreateForm()">
+      <v-icon v-prefix
+              [name]="Icon.Add"
+              [size]="6"></v-icon>
+      New
+    </v-button>
+  </div>
+
+  @if (categories$$().length === 0) {
+    <div class="opacity-70 py-4 text-sm text-center">
+      No categories yet.
+    </div>
+  }
+
+  @for (category of categories$$(); track category.id) {
+    <div class="last:border-b-0 py-2 border-b border-[color:var(--v-outline-color)]">
+      <div class="flex items-center justify-between gap-4">
+        <div class="flex items-center flex-1 gap-2">
+          @if (category.color) {
+            <span class="flex-shrink-0 inline-block w-3 h-3 rounded-sm"
+                  [style.background]="category.color"></span>
+          }
+          <span>{{ categoryLabel(category) }}</span>
+        </div>
+
+        <div class="flex gap-2">
+          <v-button class="v-flat"
+                    [config]="{ isLabelHidden: true, padding: iconButton.padding }"
+                    (onClick)="editCategory(category)">
+            <v-icon v-prefix
+                    [name]="Icon.Edit"
+                    [size]="iconButton.size"></v-icon>
+          </v-button>
+
+          <v-button class="v-danger"
+                    [config]="{ isLabelHidden: true, padding: iconButton.padding }"
+                    (onClick)="deleteCategory(category.id)">
+            <v-icon v-prefix
+                    [name]="Icon.Delete"
+                    [size]="iconButton.size"></v-icon>
+          </v-button>
+        </div>
+      </div>
+    </div>
+  }
+</v-card>
+
+<form-modal [isModalOpen]="showForm$$()"
+            (closeOutput)="onCancelled()">
+  <category-form [categoryInput]="editingCategory$$()"
+                 (savedOutput)="onSaved()"
+                 (cancelledOutput)="onCancelled()">
+  </category-form>
+</form-modal>
+
+<default-modal [isModalOpen]="isDeleteConfirmOpen$$()"
+               [modalTitle]="'Delete category?'"
+               [confirmButtonLabel]="'Yes'"
+               [cancelButtonLabel]="'No'"
+               (confirmOutput)="onDeleteConfirmed()"
+               (cancelOutput)="closeConfirmationModal()"
+               (closeOutput)="closeConfirmationModal()" />

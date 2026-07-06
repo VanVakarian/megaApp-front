@@ -1,0 +1,46 @@
+<div class="mb-4 text-lg font-semibold">{{ isEditing() ? 'Edit activity' : 'New activity' }}</div>
+
+<div class="flex flex-col gap-4">
+  <v-input [config]="{
+               label: 'Name',
+               placeholder: 'Youtube',
+               type: 'text',
+             }"
+           [ngModel]="name$$()"
+           (ngModelChange)="name$$.set($event)" />
+
+  <v-checkbox [config]="{ mode: 'switch', labelPosition: 'right' }"
+              [value]="isArchived$$()"
+              (valueChange)="isArchived$$.set($event)">
+    Archived (hide from autocomplete)
+  </v-checkbox>
+
+  @if (categories$$().length > 0) {
+    <div class="flex flex-col gap-2">
+      <span class="opacity-70 text-sm">Categories</span>
+      @for (category of categories$$(); track category.id) {
+        <v-checkbox [value]="isCategorySelected(category.id)"
+                    (valueChange)="toggleCategory(category.id, $event)">
+          @if (category.color) {
+            <span class="inline-block w-2.5 h-2.5 rounded-sm mr-1"
+                  [style.background]="category.color"></span>
+          }
+          {{ category.name }}
+        </v-checkbox>
+      }
+    </div>
+  }
+
+  <div class="flex justify-end gap-2">
+    <v-button class="v-primary"
+              [config]="{ isDisabled: !name$$() }"
+              (onClick)="save()">
+      {{ isEditing() ? 'Save' : 'Create' }}
+    </v-button>
+
+    <v-button class="v-flat"
+              (onClick)="cancel()">
+      Cancel
+    </v-button>
+  </div>
+</div>

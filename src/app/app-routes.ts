@@ -28,6 +28,11 @@ export const routes: Routes = [
     canActivate: [authGuard, settingsReadyGuard, isChapterSelected],
   },
   {
+    path: 'time',
+    loadComponent: () => import('@app/components/time/time-screen').then((m) => m.TimeScreen),
+    canActivate: [authGuard, settingsReadyGuard, isChapterSelected],
+  },
+  {
     path: 'settings',
     loadComponent: () => import('@app/components/settings/settings').then((m) => m.Settings),
     canActivate: [authGuard, settingsReadyGuard],

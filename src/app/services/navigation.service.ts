@@ -77,6 +77,15 @@ export class NavigationService {
       bgClass: 'money-bg',
     },
     {
+      label: 'Time Log',
+      place: MenuPlace.Both,
+      link: '/time',
+      selected: false,
+      chapterSettingName: 'selectedChapterTime',
+      iconName: IconName.History,
+      bgClass: 'time-bg',
+    },
+    {
       label: 'Метрики',
       place: MenuPlace.Both,
       link: '/metrics',

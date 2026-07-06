@@ -1,0 +1,49 @@
+<v-card [config]="{
+          padding: 4,
+          borderRadius: 2,
+        }">
+  <div class="flex items-center justify-between mb-4">
+    <div class="text-lg font-semibold">Activities</div>
+    <v-button class="v-flat"
+              [config]="{ paddingY: 1 }"
+              (onClick)="showCreateForm()">
+      <v-icon v-prefix
+              [name]="Icon.Add"
+              [size]="6"></v-icon>
+      New
+    </v-button>
+  </div>
+
+  @if (activities$$().length === 0) {
+    <div class="opacity-70 py-4 text-sm text-center">
+      No activities yet.
+    </div>
+  }
+
+  @for (activity of activities$$(); track activity.id) {
+    <div class="last:border-b-0 py-2 border-b border-[color:var(--v-outline-color)]">
+      <div class="flex items-center justify-between gap-4">
+        <div class="flex-1"
+             [class.opacity-50]="activity.isArchived">
+          {{ activity.name }}
+        </div>
+
+        <v-button class="v-flat"
+                  [config]="{ isLabelHidden: true, padding: iconButton.padding }"
+                  (onClick)="editActivity(activity)">
+          <v-icon v-prefix
+                  [name]="Icon.Edit"
+                  [size]="iconButton.size"></v-icon>
+        </v-button>
+      </div>
+    </div>
+  }
+</v-card>
+
+<form-modal [isModalOpen]="showForm$$()"
+            (closeOutput)="onCancelled()">
+  <activity-form [activityInput]="editingActivity$$()"
+                 (savedOutput)="onSaved()"
+                 (cancelledOutput)="onCancelled()">
+  </activity-form>
+</form-modal>

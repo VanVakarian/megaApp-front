@@ -29,6 +29,16 @@
                       (valueChange)="onSelectedChapterCheckboxChange(KeyOfSettings.selectedChapterMoney, $event)">
             Дневник финансов
           </v-checkbox>
+
+          <v-checkbox [config]="{
+                        size: 7,
+                        checkIconSize: 7,
+                        isDisabled: settingsForm.controls.selectedChapterTime.disabled,
+                      }"
+                      [value]="settingsForm.controls.selectedChapterTime.value"
+                      (valueChange)="onSelectedChapterCheckboxChange(KeyOfSettings.selectedChapterTime, $event)">
+            Time Log
+          </v-checkbox>
         </div>
 
         <v-checkbox [config]="{

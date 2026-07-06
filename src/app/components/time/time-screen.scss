@@ -1,0 +1,42 @@
+:host {
+  display: block;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+.time-screen-shell {
+  box-sizing: border-box;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.time-settings-column {
+  max-height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.time-content-column {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+v-card.time-entry-card {
+  flex: 1 1 auto;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+v-card.time-entry-card timeline-board {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.time-stats-placeholder {
+  flex: 1 1 auto;
+  min-height: 0;
+}

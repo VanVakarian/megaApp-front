@@ -1,0 +1,12 @@
+<span class="seg-left">
+  <span class="seg-name">{{ nameText$$() }}</span>
+  @if (disclosureLevel$$() >= 1) {
+    <span class="seg-duration">{{ durationChunkText$$() }}</span>
+  }
+  @if (disclosureLevel$$() >= 3) {
+    <span class="seg-start">{{ startChunkText$$() }}</span>
+  }
+</span>
+@if (disclosureLevel$$() >= 2) {
+  <span class="seg-end">{{ endText$$() }}</span>
+}

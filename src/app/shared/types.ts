@@ -306,6 +306,7 @@ export interface ServerResponseProductSave extends ServerResponseBasic {
 export interface UserSettings {
   selectedChapterFood: boolean;
   selectedChapterMoney: boolean;
+  selectedChapterTime: boolean;
   darkTheme: boolean;
   liteVersion: boolean;
   height: number | null;
@@ -316,6 +317,7 @@ export interface UserSettings {
 export enum KeyOfUserSettings {
   selectedChapterFood = 'selectedChapterFood',
   selectedChapterMoney = 'selectedChapterMoney',
+  selectedChapterTime = 'selectedChapterTime',
   darkTheme = 'darkTheme',
   liteVersion = 'liteVersion',
   height = 'height',
@@ -323,7 +325,7 @@ export enum KeyOfUserSettings {
   isUserAdmin = 'isUserAdmin',
 }
 
-export type SettingsChapterNames = 'selectedChapterFood' | 'selectedChapterMoney' | '';
+export type SettingsChapterNames = 'selectedChapterFood' | 'selectedChapterMoney' | 'selectedChapterTime' | '';
 
 export type LocalStorageSettings = UserSettings | null;
 

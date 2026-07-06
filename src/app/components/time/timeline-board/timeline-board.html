@@ -1,0 +1,124 @@
+@if (!isLoaded$$()) {
+  <div class="loading">
+    <div class="spinner"></div>
+  </div>
+} @else {
+  <div class="timeline-board"
+       [class.compact]="timeDisplayPrefsService.compactMode$$()"
+       [class.with-year]="shouldShowYearColumn$$()"
+       [class.initial-scroll-ready]="isInitialScrollReady$$()"
+       [style.--primary-h]="timeDisplayPrefsService.primaryHeightPx$$() + 'px'"
+       [style.--secondary-h]="timeDisplayPrefsService.secondaryHeightPx$$() + 'px'">
+    <div class="timeline-header">
+      <div></div>
+      <div class="time-ruler">
+        @for (hour of hourTicks; track hour) {
+          <span class="time-tick"
+                [style.left.%]="hourLeftPct(hour)">{{ hour }}</span>
+        }
+      </div>
+    </div>
+
+    <div #timelineScrollElem
+         class="timeline-scroll"
+         (scroll)="onTimelineScroll($event)">
+      @for (dayIso of days$$(); track dayIso) {
+        <div class="day-row">
+          @if (dayLabel(dayIso); as label) {
+            <div class="day-label">
+              <span>{{ label.weekday }}</span>
+              <span>{{ label.month }}</span>
+              <span>{{ label.day }}</span>
+              @if (shouldShowYearColumn$$()) {
+                <span>{{ label.year }}</span>
+              }
+            </div>
+          }
+
+          <div class="day-lanes">
+            <div class="lane lane-primary"
+                 [attr.data-day-iso]="dayIso"
+                 [attr.data-track]="Track.Primary"
+                 (mousemove)="onLaneMouseMove($event, dayIso, Track.Primary)"
+                 (mouseleave)="onLaneMouseLeave()"
+                 (click)="onLaneClick($event, dayIso, Track.Primary)">
+              @for (segment of segmentsFor(dayIso, Track.Primary); track segment.entry.id) {
+                <ng-container *ngTemplateOutlet="segTpl; context: { $implicit: segment, secondary: false }" />
+              }
+              @if (previewSlot$$(); as preview) {
+                @if (preview.dayIso === dayIso && preview.track === Track.Primary) {
+                  <div class="seg-preview"
+                       [style.left.%]="preview.leftPct"
+                       [style.width.%]="preview.widthPct"></div>
+                }
+              }
+            </div>
+
+            <div class="lane lane-secondary"
+                 [attr.data-day-iso]="dayIso"
+                 [attr.data-track]="Track.Secondary"
+                 (mousemove)="onLaneMouseMove($event, dayIso, Track.Secondary)"
+                 (mouseleave)="onLaneMouseLeave()"
+                 (click)="onLaneClick($event, dayIso, Track.Secondary)">
+              @for (segment of segmentsFor(dayIso, Track.Secondary); track segment.entry.id) {
+                <ng-container *ngTemplateOutlet="segTpl; context: { $implicit: segment, secondary: true }" />
+              }
+              @if (previewSlot$$(); as preview) {
+                @if (preview.dayIso === dayIso && preview.track === Track.Secondary) {
+                  <div class="seg-preview"
+                       [style.left.%]="preview.leftPct"
+                       [style.width.%]="preview.widthPct"></div>
+                }
+              }
+            </div>
+
+            @for (hour of hourTicks; track hour) {
+              <span class="time-grid-line"
+                    [style.left.%]="hourLeftPct(hour)"></span>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  </div>
+}
+
+<ng-template #segTpl
+             let-segment
+             let-secondary="secondary">
+  <div class="seg"
+       [class.seg-secondary]="secondary"
+       [style]="segmentStyle(segment)"
+       [style.background]="activityColor(segment.entry.activityId)"
+       [class.dragging]="activeAdjustment$$()?.entryId === segment.entry.id"
+       (pointerdown)="onSegmentPointerDown($event, segment.entry)">
+    <segment-label [name]="activityName(segment.entry.activityId)"
+                   [durationLabel]="segment.durationLabel"
+                   [startClock]="segment.startClock"
+                   [endClock]="segment.endClock"
+                   [isTrueStart]="segment.isTrueStart"
+                   [isTrueEnd]="segment.isTrueEnd" />
+    <button type="button"
+            class="seg-delete"
+            (pointerdown)="$event.stopPropagation()"
+            (click)="deleteEntry(segment.entry)">×</button>
+    <span class="handle handle-l"
+          (pointerdown)="onHandlePointerDown($event, segment.entry, 'left')"></span>
+    <span class="handle handle-r"
+          (pointerdown)="onHandlePointerDown($event, segment.entry, 'right')"></span>
+  </div>
+</ng-template>
+
+@if (pickerState$$(); as picker) {
+  <div class="picker-overlay"
+       (click)="closePicker()">
+    <div class="picker-panel"
+         [style.left.px]="picker.x"
+         [style.top.px]="picker.y"
+         (click)="$event.stopPropagation()">
+      <v-dropdown [placeholder]="'Activity...'"
+                  [items]="activityItems$$()"
+                  (onSelectionChanged)="onActivityPicked($event)"></v-dropdown>
+    </div>
+  </div>
+}

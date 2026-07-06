@@ -31,6 +31,12 @@ interface SyncOperation {
   feedback?: SyncOperationFeedback;
   pendingTimeoutId?: ReturnType<typeof setTimeout> | null;
   pendingNotificationId?: string | null;
+  // When true, skips the single-flight queue and runs immediately alongside
+  // any other in-flight operation — for features where several edits can be
+  // in the air at once (e.g. TIME drag/resize) and must not wait on each
+  // other's retries. Defaults to false: unaffected callers keep the existing
+  // serial behavior.
+  concurrent?: boolean;
 }
 
 const DEFAULT_PENDING_MESSAGE = 'Сохраняю...';
@@ -70,6 +76,11 @@ export class SyncQueueService {
           { persistent: true },
         );
       }, NOTIFICATION_PENDING_DELAY_MS);
+    }
+
+    if (fullOperation.concurrent) {
+      void this.runOperation(fullOperation);
+      return;
     }
 
     this.queue.push(fullOperation);

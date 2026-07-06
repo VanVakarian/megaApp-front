@@ -1,0 +1,33 @@
+:host {
+  display: flex;
+  align-items: center;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.seg-left {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.seg-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.seg-duration,
+.seg-start {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.seg-end {
+  white-space: nowrap;
+  flex-shrink: 0;
+  margin-left: auto;
+  padding-left: var(--unit-1);
+}

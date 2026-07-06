@@ -19,5 +19,9 @@ export const isChapterSelected: CanActivateFn = (route, state) => {
     return router.createUrlTree(['/settings']);
   }
 
+  if (url.startsWith('/time') && !settings.selectedChapterTime) {
+    return router.createUrlTree(['/settings']);
+  }
+
   return true;
 };

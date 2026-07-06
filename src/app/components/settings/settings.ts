@@ -12,6 +12,7 @@ import { VInput, VInputAutoSubmitResult } from '@ui-kit/components/v-input/v-inp
 interface SettingsForm {
   selectedChapterFood: FormControl<boolean>;
   selectedChapterMoney: FormControl<boolean>;
+  selectedChapterTime: FormControl<boolean>;
   darkTheme: FormControl<boolean>;
   height: FormControl<string>;
 }
@@ -33,6 +34,7 @@ export class Settings {
   protected readonly settingsForm = new FormGroup<SettingsForm>({
     selectedChapterFood: new FormControl(false, { nonNullable: true }),
     selectedChapterMoney: new FormControl(false, { nonNullable: true }),
+    selectedChapterTime: new FormControl(false, { nonNullable: true }),
     darkTheme: new FormControl(false, { nonNullable: true }),
     height: new FormControl('', {
       validators: [Validators.required, Validators.pattern(/^\d{3}$/)],
@@ -134,11 +136,13 @@ export class Settings {
     const nextValues: Partial<{
       selectedChapterFood: boolean;
       selectedChapterMoney: boolean;
+      selectedChapterTime: boolean;
       darkTheme: boolean;
       height: string;
     }> = {
       selectedChapterFood: settings.selectedChapterFood,
       selectedChapterMoney: settings.selectedChapterMoney,
+      selectedChapterTime: settings.selectedChapterTime,
       darkTheme: settings.darkTheme,
     };
 
