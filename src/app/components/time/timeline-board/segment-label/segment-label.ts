@@ -12,6 +12,7 @@ import {
 import { measureTextWidth } from '@app/shared/utils';
 
 const MIN_GAP_PX = 4;
+const NBSP = ' ';
 
 type DisclosureLevel = 0 | 1 | 2 | 3;
 
@@ -30,8 +31,12 @@ export class SegmentLabel {
   public readonly isTrueEnd = input.required<boolean>();
 
   protected readonly nameText$$ = computed(() => (this.isTrueStart() ? '' : '◂ ') + this.name());
-  protected readonly durationChunkText$$ = computed(() => ` · ${this.durationLabel()}`);
-  protected readonly startChunkText$$ = computed(() => ` · ${this.startClock()}`);
+  // Leading char is NBSP, not a regular space — each chunk is its own flex
+  // item, and a plain leading space there gets trimmed by CSS whitespace
+  // collapsing at the box edge, making the dot look glued to the previous
+  // chunk. NBSP isn't collapsible, so it survives.
+  protected readonly durationChunkText$$ = computed(() => `${NBSP}· ${this.durationLabel()}`);
+  protected readonly startChunkText$$ = computed(() => `${NBSP}· ${this.startClock()}`);
   protected readonly endText$$ = computed(() => this.endClock() + (this.isTrueEnd() ? '' : ' ▸'));
 
   protected readonly disclosureLevel$$ = computed<DisclosureLevel>(() => {

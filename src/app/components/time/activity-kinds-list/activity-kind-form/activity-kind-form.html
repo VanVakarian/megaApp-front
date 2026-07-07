@@ -1,0 +1,51 @@
+<div class="mb-4 text-lg font-semibold">{{ isEditing() ? 'Edit activity kind' : 'New activity kind' }}</div>
+
+<div class="flex flex-col gap-4">
+  <v-input [config]="{
+               label: 'Name',
+               placeholder: 'Game',
+               type: 'text',
+             }"
+           [ngModel]="name$$()"
+           (ngModelChange)="name$$.set($event)" />
+
+  <v-checkbox [config]="{ mode: 'switch', labelPosition: 'right' }"
+              [value]="isArchived$$()"
+              (valueChange)="isArchived$$.set($event)">
+    Archived (hide from picker)
+  </v-checkbox>
+
+  @if (groups$$().length > 0) {
+    <div class="flex flex-col gap-2">
+      <span class="opacity-70 text-sm">Applicable groups</span>
+      @for (group of groups$$(); track group.id) {
+        <div class="flex items-center justify-between gap-2">
+          <v-checkbox [value]="isBound(group.id)"
+                      (valueChange)="toggleBound(group.id, $event)">
+            {{ group.name }}
+          </v-checkbox>
+          @if (isBound(group.id)) {
+            <v-checkbox [config]="{ mode: 'switch', labelPosition: 'left' }"
+                        [value]="isRequired(group.id)"
+                        (valueChange)="toggleRequired(group.id, $event)">
+              Required
+            </v-checkbox>
+          }
+        </div>
+      }
+    </div>
+  }
+
+  <div class="flex justify-end gap-2">
+    <v-button class="v-primary"
+              [config]="{ isDisabled: !name$$() }"
+              (onClick)="save()">
+      {{ isEditing() ? 'Save' : 'Create' }}
+    </v-button>
+
+    <v-button class="v-flat"
+              (onClick)="cancel()">
+      Cancel
+    </v-button>
+  </div>
+</div>

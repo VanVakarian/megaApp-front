@@ -1,0 +1,56 @@
+<div class="picker-overlay"
+     (click)="close()">
+  <div #panelElem
+       class="picker-panel"
+       [class.visible]="isPositioned$$()"
+       [style.left.px]="fixedLeft$$()"
+       [style.top.px]="fixedTop$$()"
+       [style.height.px]="timeDisplayPrefsService.pickerHeightPx$$()"
+       (click)="$event.stopPropagation()">
+    <div class="picker-kinds">
+      @if (kindsByFrequency$$().length === 0) {
+        <div class="opacity-70 text-sm p-2">No activity kinds yet — add one on the left.</div>
+      }
+      @for (kind of kindsByFrequency$$(); track kind.id) {
+        <v-button [class]="kindButtonClass(kind.id)"
+                  [config]="{ width: '100%', textAlign: 'left', paddingY: 1, paddingX: 2 }"
+                  (onClick)="selectKind(kind.id)">
+          {{ kind.name }}
+        </v-button>
+      }
+    </div>
+
+    <div class="picker-details">
+      @if (selectedKindId$$() !== null) {
+        <div class="picker-details-header flex items-center justify-between mb-3">
+          <span class="font-semibold">{{ selectedKindName$$() }}</span>
+          <v-button class="v-primary"
+                    [config]="{ isDisabled: !canSubmit$$(), paddingY: 1 }"
+                    (onClick)="confirm()">
+            OK
+          </v-button>
+        </div>
+
+        <div class="picker-groups">
+          @for (groupId of applicableGroupIds$$(); track groupId) {
+            <div class="mb-3">
+              <div class="mb-1 text-sm opacity-70">
+                {{ groupName(groupId) }}
+                @if (isRequired(groupId)) {
+                  <span class="text-red-400">*</span>
+                }
+              </div>
+              <time-option-chips [options]="optionsForGroup(groupId)"
+                                  [value]="selectedOptions$$().get(groupId) ?? null"
+                                  (valueChange)="setOption(groupId, $event)" />
+            </div>
+          }
+        </div>
+      } @else {
+        <div class="flex items-center justify-center h-full text-sm opacity-70">
+          Pick an activity kind
+        </div>
+      }
+    </div>
+  </div>
+</div>

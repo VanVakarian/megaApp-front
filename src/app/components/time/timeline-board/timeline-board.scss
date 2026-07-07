@@ -29,9 +29,10 @@
 }
 
 .timeline-board {
-  --date-col-w: 82px;
+  --date-col-w: 72px;
   --row-gap: var(--unit-2);
   --scrollbar-w: 8px;
+  position: relative;
   display: flex;
   flex-direction: column;
   width: 100%;
@@ -50,7 +51,7 @@
 }
 
 .timeline-board.with-year {
-  --date-col-w: 126px;
+  --date-col-w: 105px;
 }
 
 .timeline-header {
@@ -99,6 +100,34 @@
   --row-gap: 0;
 }
 
+.timeline-grid {
+  position: absolute;
+  top: 34px;
+  right: var(--scrollbar-w);
+  bottom: 0;
+  left: calc(var(--date-col-w) + var(--unit-3));
+  pointer-events: none;
+  z-index: 1;
+}
+
+.timeline-grid-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  pointer-events: none;
+  background-attachment: fixed;
+  background-image: repeating-linear-gradient(to bottom,
+      color-mix(in oklab, var(--v-color-text-muted) 20%, transparent) 0 4px,
+      transparent 4px 8px);
+}
+
+.timeline-grid-line.major {
+  background-image: repeating-linear-gradient(to bottom,
+      color-mix(in oklab, var(--v-color-text-muted) 58%, transparent) 0 4px,
+      transparent 4px 8px);
+}
+
 .day-row {
   display: grid;
   grid-template-columns: var(--date-col-w) minmax(0, 1fr);
@@ -108,9 +137,13 @@
   flex: 0 0 auto;
 }
 
+.day-row:not(:last-child) {
+  border-bottom: 1px solid var(--v-color-border-subtle);
+}
+
 .day-label {
   display: grid;
-  grid-template-columns: 2rem 2rem 1.25rem;
+  grid-template-columns: 25px 24px 15px;
   column-gap: var(--unit-1);
   align-items: center;
   min-width: 0;
@@ -121,11 +154,16 @@
 }
 
 .timeline-board.with-year .day-label {
-  grid-template-columns: 2rem 2rem 1.25rem 2.4rem;
+  grid-template-columns: 25px 24px 15px 30px;
 }
 
 .day-label span {
   min-width: 0;
+}
+
+.day-label.weekend {
+  color: var(--v-color-primary);
+  font-weight: 700;
 }
 
 .day-lanes {
@@ -136,31 +174,12 @@
   min-height: 0;
 }
 
-.time-grid-line {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  z-index: 4;
-  width: 1px;
-  pointer-events: none;
-  background-image: repeating-linear-gradient(to bottom,
-      color-mix(in oklab, var(--v-color-text-muted) 42%, transparent) 0 4px,
-      transparent 4px 8px);
-}
-
-.time-grid-line:first-of-type {
-  transform: translateX(0);
-}
-
-.time-grid-line:last-of-type {
-  transform: translateX(-1px);
-}
-
 .lane {
   position: relative;
   border-radius: var(--unit-2);
   background: var(--v-color-surface-accent);
   overflow: visible;
+  cursor: pointer;
 }
 
 .lane-primary {
@@ -184,15 +203,44 @@
   font-size: 11.5px;
   display: flex;
   align-items: center;
-  padding: 0 var(--unit-2);
+  --v-tooltip-fill-padding: 0 var(--unit-2);
   cursor: grab;
   user-select: none;
   touch-action: none;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+  z-index: 2;
 }
 
 .seg:active {
   cursor: grabbing;
+}
+
+.seg-grid-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  pointer-events: none;
+  z-index: 1;
+  background-attachment: fixed;
+  background-image: repeating-linear-gradient(to bottom,
+      rgba(255, 255, 255, 0.4) 0 4px,
+      transparent 4px 8px);
+}
+
+.seg-grid-line.major {
+  background-image: repeating-linear-gradient(to bottom,
+      white 0 4px,
+      transparent 4px 8px);
+}
+
+.seg>v-tooltip {
+  // No position here on purpose — v-tooltip's own [fill] mode already sets
+  // position:absolute;inset:0 to stretch over the whole segment; overriding
+  // it to relative here collapses it back to its shrink-to-fit content size
+  // (only the left portion covered — resize handle-r, hover-anywhere, etc.
+  // all stop working past the text).
+  z-index: 2;
 }
 
 .seg.dragging {
@@ -209,8 +257,11 @@
   top: 1px;
   bottom: 1px;
   font-size: 10px;
-  padding: 0 var(--unit-1);
-  opacity: 0.75;
+  --v-tooltip-fill-padding: 0 var(--unit-1);
+}
+
+.seg.seg-short {
+  --v-tooltip-fill-padding: 0 2px;
 }
 
 .timeline-board.compact .seg-secondary {
@@ -281,6 +332,7 @@
   border-radius: var(--unit-1);
   background: rgba(0, 0, 0, 0.03);
   pointer-events: none;
+  z-index: 2;
 }
 
 .lane-secondary .seg-preview {
@@ -291,19 +343,4 @@
 .timeline-board.compact .seg-preview {
   top: 0;
   bottom: 0;
-}
-
-.picker-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 50;
-}
-
-.picker-panel {
-  position: fixed;
-  min-width: 260px;
-  background: var(--v-color-surface);
-  border-radius: var(--unit-2);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
-  padding: var(--unit-2);
 }

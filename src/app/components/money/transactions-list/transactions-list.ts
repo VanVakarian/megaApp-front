@@ -187,7 +187,7 @@ export class TransactionsList {
 
   protected getAccountKindIcon(accountId: number): IconName {
     const account = this.accounts$$().find((a) => a.id === accountId);
-    if (!account) return IconName.AccontBalanceWallet;
+    if (!account) return IconName.AccountBalanceWallet;
 
     switch (account.kind) {
       case AccountKind.CASH:
@@ -195,7 +195,7 @@ export class TransactionsList {
       case AccountKind.CARD:
         return IconName.CreditCard;
       case AccountKind.CHECKING:
-        return IconName.AccontBalance;
+        return IconName.AccountBalance;
       case AccountKind.DEPOSIT:
         return IconName.Savings;
       case AccountKind.BROKERAGE:
@@ -203,7 +203,7 @@ export class TransactionsList {
       case AccountKind.CRYPTO:
         return IconName.CurrencyBitcoin;
       default:
-        return IconName.AccontBalanceWallet;
+        return IconName.AccountBalanceWallet;
     }
   }
 
@@ -225,7 +225,7 @@ export class TransactionsList {
 
   protected getTransferAccountKindIcon(transaction: Transaction): IconName {
     const twin = this.getTwinTransaction(transaction);
-    if (!twin) return IconName.AccontBalanceWallet;
+    if (!twin) return IconName.AccountBalanceWallet;
     return this.getAccountKindIcon(twin.accountId);
   }
 

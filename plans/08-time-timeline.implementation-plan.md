@@ -114,3 +114,411 @@
 - Статистика (день/месяц/год/диапазон, группировки area/category/activity) — экран «Статистика» на этот раз только заглушка-плейсхолдер за переключателем; полноценная реализация (данные, графики на `chart-config.ts`) — отдельная будущая задача/план.
 - Сворачиваемая левая колонка настроек.
 - CSS `content-visibility: auto`-виртуализация строк дней — только если реальный профилинг покажет необходимость.
+
+## Новый этап: frontend для entry-level выбора деятельности
+
+План выше описывает **закрытый этап v1**:
+- доска;
+- интервалы;
+- параллельные треки;
+- CRUD Activity/Category;
+- flat autocomplete по Activity.
+
+Он остаётся как завершённый исторический этап и не переписывается.
+
+Следующий этап меняет не board-механику, а **способ выбора и описания активности при создании/редактировании записи**.
+
+### Что сохраняется
+
+- доска с интервалами
+- drag / resize / delete
+- `primary` / `secondary`
+- локальный full-cache entries
+- optimistic sync
+- вся механика скролла, хвоста, day-index и board-render
+
+То есть новый этап фронта — это не новый TIME screen с нуля, а **новый picker / editor поверх уже готовой доски**.
+
+### Что меняется по смыслу
+
+Текущее создание записи:
+- клик по слоту;
+- всплывающий попап под слотом;
+- узкий вертикальный список activity-kind, отсортированный по частоте;
+- выбор activity-kind;
+- после выбора попап расширяется в ширину и показывает применимые группы со значениями.
+
+Целевая форма второго этапа:
+- клик по слоту;
+- тот же попап со списком activity-kind слева;
+- выбор **вида активности**;
+- справа выбор значений применимых групп;
+- предвыбор самых частых исторических значений внутри уже доступных групп;
+- подтверждение записи кнопкой `OK`.
+
+### Целевой UX следующей итерации
+
+Базовый сценарий:
+- пользователь кликает по свободному слоту;
+- снизу/под слотом открывается попап;
+- в левой части попапа показывается вертикальный список activity-kind, отсортированный по частоте использования;
+- если activity-kind больше чем помещается в разумную высоту, список просто скроллится внутри;
+- при выборе activity-kind левый список остаётся на месте, а справа открывается и обновляется панель значений для текущего выбора;
+- переключение на другой activity-kind просто перерисовывает правую панель, не закрывая попап;
+- сверху правой панели: кнопка свернуть/назад, название activity-kind, кнопка `OK`;
+- ниже показываются применимые группы значений;
+- для каждой уже привязанной к этой активности группы фронт пытается предвыбрать самое частое историческое значение;
+- если для группы чаще всего встречается пустое состояние, группа остаётся без выбора;
+- в типовом случае достаточно выбрать 1 недостающее значение или просто нажать `OK`;
+- после `OK` попап закрывается, на доске создаётся новый entry длиной 1 час;
+- дальше длина правится только drag/resize, без ручного ввода времени цифрами.
+- `Escape` закрывает попап целиком из любого состояния.
+
+Примеры:
+- `Игра` → обязательная группа `Игра` → `ATS`, плюс любые другие группы, которые вручную привязаны к `Игра`
+- `Видео` → группа `Источник видео`, плюс любые другие группы, которые вручную привязаны к `Видео`
+- `Код` → группы, которые вручную привязаны к `Код`
+
+### Что это значит для компонентов
+
+- нужен новый picker-компонент для structured selection
+- picker должен поддерживать:
+  - список activity-kind слева;
+  - постоянный левый список и правую панель деталей;
+  - иерархию "вид активности → группы → значения";
+  - автопредвыбор самого частого исторического значения в каждой уже привязанной группе;
+  - переключение между activity-kind без закрытия попапа;
+  - закрытие по `Escape`.
+
+Текущие `activities-list` / `categories-list` тоже перестанут быть финальной формой настроек:
+- `activities-list` вероятно эволюционирует в список крупных видов активности
+- `categories-list` вероятно эволюционирует в менеджер групп и значений
+- потребуется экран/форма применимости:
+  - какая группа доступна для какого вида активности
+  - какая required
+  - привязка каждой группы к каждой активности делается только вручную
+
+### Выбор значений внутри группы
+
+Нужен отдельный UI-примитив выбора значений:
+- не `v-dropdown`;
+- не input-driven select;
+- а набор selectable chips / chips-group.
+
+Желаемый вид:
+- у группы 3-4 значения → просто ряд/сетка чипов;
+- выбранный чип визуально активен;
+- у выбранного чипа можно снять выбор через явный `x` или перевыбрать другой;
+- если значений много, над чипами появляется filter input;
+- порог включения filter input настраивается в компоненте;
+- если значений очень много, компонент может показывать только ограниченное число строк чипов до фильтрации;
+- это тоже настраивается в компоненте, а не хранится в reference-данных.
+
+### Что важно для UX-слоя
+
+- не заставлять все activity family проходить одинаково глубокий wizard
+- редкие и простые активности должны создаваться дешево
+- никакие статические defaults не хранить
+- любой предвыбор строить только из самого частого исторического значения внутри пары `activity + group`
+- если исторически чаще всего пусто, не подставлять ничего
+- никакая группа не должна появляться у активности автоматически только потому, что она используется где-то ещё
+- никаких fallback-слоёв ради совместимости с текущим picker'ом: если новая модель требует выкинуть старую форму ввода записи целиком, это и есть правильное решение
+- качество итогового UX и простота кода важнее сохранения текущей реализации
+
+### Грубый frontend scope следующей итерации
+
+- новый structured activity picker для create/update entry
+- новый state/model для selected groups/options внутри entry editor
+- новые справочники и сервисы под activity kinds / groups / options
+- переработка левой колонки настроек под новый reference-data management
+- адаптация optimistic create/update entry payload к новому structured input
+- новый UI-компонент выбора значений групп на базе chips, а не dropdown
+- попап-flow "список activity-kind слева + панель групп справа + confirm"
+- создание нового entry сразу длиной 1 час по `OK`
+- поддержка `Escape` для мгновенного закрытия попапа
+
+### Что пока не зафиксировано
+
+- будет ли фильтр значений отдельным мини-input или встроенной строкой поиска над chips
+
+## Новая архитектура второго этапа: frontend
+
+Этот блок описывает только целевую frontend-модель. Как перейти к ней из текущего v1-кода — в следующем блоке.
+
+### Главный принцип
+
+Board остаётся экраном интервалов. Semantic picker становится отдельным слоем выбора `activityKind + group options`.
+
+Board не знает правил привязки групп:
+- получает готовый structured entry input;
+- добавляет `track`, `startAt`, `endAt`;
+- вызывает entries service.
+
+### Данные
+
+Reference catalog:
+- `activityKinds`;
+- `categoryGroups`;
+- `categoryOptions`.
+
+`activityKinds` содержат `groupBindings`: список вручную привязанных групп + `required`.
+
+`categoryGroups` содержат nullable `kind`; сейчас поддерживается только `area` для основной аналитики и цвета.
+
+Entry DTO:
+- `id`;
+- `track`;
+- `startAt`;
+- `endAt`;
+- `activityKindId`;
+- `options: { groupId, optionId }[]`;
+- `createdAt`;
+- `updatedAt`.
+
+Внутри одной group у одной entry может быть только один option. Multi-select не поддерживается.
+
+В localStorage сохраняются server DTO, не UI view-model.
+
+### Derived indexes
+
+Frontend строит computed-индексы:
+- `activityKindById`;
+- `groupById`;
+- `areaGroupId`;
+- `optionsByGroupId`;
+- `applicableGroupsByKindId` из `activityKind.groupBindings`;
+- `requiredGroupIdsByKindId` из `activityKind.groupBindings`;
+- `entriesByDay`;
+- `usageStatsByKindAndGroup`.
+
+### Services
+
+`TimeCatalogueService`:
+- грузит `/api/time/catalog`;
+- хранит reference data в signals;
+- делает CRUD/архивацию kinds, groups, options;
+- обновляет group bindings вместе с kind;
+- строит индексы для picker/settings.
+- не архивирует group локально, если backend отклонил архивацию из-за активных bindings.
+
+`TimeEntriesService`:
+- хранит full-cache entries;
+- делает load all / refresh tail;
+- делает optimistic create;
+- делает optimistic update time;
+- делает optimistic update selection;
+- делает delete;
+- сохраняет localStorage после каждой локальной мутации.
+
+`TimeEntriesService` не хранит справочники.
+
+### Entry write flow
+
+Create:
+- picker отдаёт `activityKindId + options`;
+- board добавляет `track + startAt + endAt`;
+- entries service создаёт optimistic entry с temp id;
+- success заменяет temp id на server id;
+- rollback удаляет только temp entry.
+
+Update time:
+- drag/resize/move отправляет только `track + startAt + endAt`;
+- rollback возвращает только старые time-поля;
+- semantic selection не трогается.
+
+Update selection:
+- editor отправляет только `activityKindId + options`;
+- rollback возвращает только прежний semantic selection;
+- time-поля не трогаются.
+
+### Picker
+
+`structured-activity-picker` — отдельный компонент, не расширение старого `v-dropdown`.
+
+State:
+- open/closed;
+- create/edit mode;
+- anchor slot/entry id;
+- selected `activityKindId`;
+- selected options as `Map<groupId, optionId>`;
+- touched groups;
+- validation errors.
+
+Computed:
+- activity kinds by usage frequency;
+- applicable groups for selected kind;
+- options by group;
+- required state;
+- canSubmit.
+
+Kind switch:
+- правая панель пересобирается;
+- selected options сбрасываются;
+- для каждой applicable group запускается runtime preselect;
+- popup остаётся открытым.
+
+### Runtime preselect
+
+Preselect — локальный UI-hint, не catalog default.
+
+Алгоритм:
+- взять историю entries для выбранного `activityKindId`;
+- для каждой applicable group посчитать частоты `optionId`;
+- отдельно посчитать пустое состояние;
+- если пустое состояние чаще или равно лучшему option, ничего не выбирать;
+- иначе выбрать самый частый option;
+- archived options не предвыбирать.
+
+### Components
+
+- `structured-activity-picker` — kind list + groups/options panel + `OK` + `Escape`.
+- `time-option-chips` — строго single-select chips, clear, optional filter after threshold.
+- `activity-kinds-list` — CRUD/архивация kinds + group bindings в форме kind.
+- `category-groups-list` — CRUD/архивация groups.
+- `category-options-list` — CRUD/архивация options выбранной group.
+
+`time-option-chips` остаётся внутри TIME. В UI-kit переносить только после второго реального места использования.
+
+### Settings UI
+
+Левая колонка:
+- Activity kinds;
+- Groups;
+- Options выбранной group.
+
+Форма group:
+- name;
+- kind (`area` или пусто);
+- archive.
+
+Привязки групп редактируются прямо в форме activity kind:
+- отметить группы;
+- отметить `required`;
+- сохранить kind.
+
+Никаких global groups, inherited groups, templates.
+
+### Rendering entries
+
+Segment label:
+- основа — `activityKind.name`;
+- детали — короткий список selected option labels;
+- если места мало, показывать только kind;
+- tooltip/title показывает full semantic summary.
+
+Segment color:
+- selected option из group с `kind='area'`;
+- иначе первый selected option с color;
+- иначе нейтральный fallback.
+
+Color — display logic, не поле entry.
+
+### API contract
+
+Read:
+- `GET /api/time/catalog`;
+- `GET /api/time/entries`;
+- `GET /api/time/entries?start=...`.
+
+Write:
+- catalog CRUD;
+- create entry with structured selection;
+- patch entry time;
+- patch entry selection;
+- delete entry.
+
+Backend остаётся финальным validator. Frontend validation нужна только для UX.
+
+## Переход текущей frontend-реализации к новой архитектуре
+
+Этот блок — карта переделки v1-кода. Он не описывает новую архитектуру заново.
+
+### Types
+
+- Заменить flat `Activity` на `ActivityKind`.
+- Заменить `Category` на `CategoryGroup` + `CategoryOption`.
+- В `ActivityKind` добавить `groupBindings`.
+- В `CategoryGroup` добавить nullable `kind`; сейчас только `area`.
+- В `TimeEntry` заменить `activityId` на `activityKindId`.
+- В `TimeEntry` добавить `options`.
+- Зафиксировать single-select: максимум один `{ groupId, optionId }` на group.
+- Убрать `categoryIds` у activity.
+- Оставить `TimeTrack` и board time fields без смысловых изменений.
+
+### TimeCatalogueService
+
+- Перевести загрузку справочников на `GET /api/time/catalog`.
+- Хранить `activityKinds$$`, `categoryGroups$$`, `categoryOptions$$`.
+- Построить computed indexes из целевой архитектуры.
+- CRUD Activity заменить на CRUD ActivityKind.
+- CRUD Category разделить на group CRUD и option CRUD.
+- Group bindings сохранять вместе с ActivityKind.
+- Group archive показывать как обычную операцию, но backend может отклонить её при активных bindings.
+- Убрать старую логику activity categories/categoryIds.
+
+### TimeEntriesService
+
+- Перевести create payload на `activityKindId + options + track + startAt + endAt`.
+- Разделить optimistic update на:
+  - update time;
+  - update selection.
+- Update-time rollback должен менять только `track/startAt/endAt`.
+- Update-selection rollback должен менять только `activityKindId/options`.
+- Full-cache, tail refresh, entriesByDay оставить.
+- LocalStorage schema надо считать новой, старый cache несовместим.
+
+### Board
+
+- Оставить day rows, tracks, drag, resize, delete.
+- Убрать old flat activity autocomplete.
+- На create открыть `structured-activity-picker`.
+- На edit selection открыть тот же picker в edit mode.
+- На drag/resize вызывать update-time.
+- Segment label/color брать из `activityKind + options`.
+- Segment color брать через `categoryGroup.kind === 'area'`, без проверки имени group.
+
+### Picker/components
+
+- Создать `structured-activity-picker`.
+- Создать `time-option-chips`.
+- Не использовать `v-dropdown` для выбора options.
+- Не делать multi-select внутри group.
+- Activity kind list остаётся слева, details panel справа.
+- `Escape` закрывает весь picker.
+- `OK` создаёт/обновляет entry.
+
+### Left settings
+
+- `activities-list` превратить в `activity-kinds-list`.
+- `categories-list` разделить по смыслу на groups/options.
+- Форму activity kind расширить group bindings.
+- Форму group расширить kind-полем.
+- Убрать отдельную activity-category настройку.
+- Не делать отдельный экран applicability.
+
+### Frontend to-do второго этапа
+
+- ✅ Обновить TIME types: `ActivityKind`, `CategoryGroup`, `CategoryOption`, `GroupBinding`, `EntryOption`.
+- ✅ Добавить `CategoryGroup.kind` и константу `area`.
+- ✅ Перевести `TimeEntry` на `activityKindId + options`.
+- ✅ Переписать `TimeCatalogueService` на `/api/time/catalog`.
+- ✅ Разделить old activity/category CRUD на kinds/groups/options.
+- ✅ Добавить group bindings в форму ActivityKind.
+- ✅ Добавить kind-поле в форму CategoryGroup.
+- ✅ Разделить entry mutations на create, update time, update selection, delete.
+- ✅ Заменить old picker/autocomplete на `structured-activity-picker`.
+- ✅ Добавить strictly single-select `time-option-chips`.
+- ✅ Перевести board create/edit на structured picker.
+- ✅ Обновить segment label/color под structured entry и `kind='area'`.
+- ✅ Обновить optimistic rollback отдельно для time и selection.
+- ✅ Сбросить/обновить localStorage cache schema для TIME.
+
+### Отклонения от плана при реализации
+
+- `SyncQueueService`/`SyncOperationType` дополнен вариантом `PATCH` (`http.patch`) — план фиксировал только `CREATE/UPDATE/DELETE` (POST/PUT/DELETE), но бэк v2 отдаёт `PATCH .../time` и `.../selection` вместо `PUT`. Аддитивное расширение по тому же прецеденту, что и более ранний `concurrent`-флаг; money/food не затронуты.
+- Жест «открыть picker в edit mode» не был явно зафиксирован в плане (только «на edit selection открыть тот же picker»). Решение: клик по сегменту без движения (в `startMove`, флаг `moved === false` в `onUp`) открывает picker в edit-режиме — драг остаётся на pointerdown+move, resize-хендлы не участвуют.
+- `structured-activity-picker`: `Map<groupId, optionId>` пересобирается императивно в обработчике выбора kind (`selectKind`), а не через `computed`/`effect`, реагирующий на `entries$$`. Абстрактное состояние «touched groups» из плана не введено — при выбранном императивном сценарии (preselect запускается ровно один раз на клик по kind, не реактивно) оно не нужно для корректности; повторный клик на уже выбранный kind не сбрасывает текущий выбор.
+- `time-option-chips` расположен под `components/time/structured-activity-picker/time-option-chips/` (не плоско под `components/time/`) — используется только пикером, вложенность отражает реальную область применения; план прямо не фиксировал путь.
+- `category-options-list` не отдельный самостоятельный пункт левой колонки, а рендерится условно под `category-groups-list` при выборе строки группы (клик по названию) — прямая реализация «Options выбранной group» из плана.
+- Цвет/лейбл сегмента берутся из нового computed `optionById$$` в `TimeCatalogueService` (план не называл его явно, но того требовала логика цвета из раздела «Rendering entries»).
+- Полный текст лейбла (`kind · option1, option2`) используется одновременно как видимый текст в `segment-label` и как `[title]` для hover-tooltip — «tooltip показывает full semantic summary» решено переиспользованием одной и той же строки, без отдельного вычисления summary.

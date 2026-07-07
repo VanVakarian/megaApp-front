@@ -1,66 +1,124 @@
 <div class="time-screen-shell flex items-stretch justify-center w-full min-w-0 gap-2 p-2">
 
-  <div class="time-settings-column w-96 flex flex-col flex-shrink-0 gap-2">
-    <v-card [config]="{
-              padding: 2,
-              borderRadius: 2,
-            }">
-      <v-toggle [items]="viewToggleItems"
-                [value]="viewToggleValue$$()"
-                (valueChange)="onViewChange($event)"></v-toggle>
-    </v-card>
-
-    <v-card [config]="{
-              padding: 2,
-              borderRadius: 2,
-            }">
-      <div class="flex items-center justify-between">
-        <span class="text-sm text-gray-400">Snap</span>
-        <v-toggle [items]="snapToggleItems"
-                  [value]="snapToggleValue$$()"
-                  (valueChange)="onSnapChange($event)"></v-toggle>
-      </div>
-    </v-card>
-
-    <v-card [config]="{
-              padding: 2,
-              borderRadius: 2,
-            }">
-      <div class="flex flex-col gap-3">
-        <div class="flex items-center justify-between">
-          <span class="text-sm">Compact mode</span>
-          <v-checkbox [config]="{
-                        mode: 'switch',
-                      }"
-                      [value]="timeDisplayPrefsService.compactMode$$()"
-                      (valueChange)="onCompactModeChange($event)"></v-checkbox>
-        </div>
-
+  @if (timeDisplayPrefsService.settingsCollapsed$$()) {
+    <div class="time-settings-collapsed flex flex-col flex-shrink-0 gap-2">
+      <v-card [config]="{
+                padding: 2,
+                borderRadius: 2,
+              }">
         <div class="flex flex-col gap-1">
-          <div class="flex items-center justify-between text-sm">
-            <span>Primary height</span>
-            <span>{{ timeDisplayPrefsService.primaryHeightPx$$() }}px</span>
-          </div>
-          <v-slider [value]="timeDisplayPrefsService.primaryHeightPx$$()"
-                    [config]="laneHeightSliderConfig"
-                    (valueChange)="onPrimaryHeightChange($event)" />
-        </div>
+          <v-button class="v-flat"
+                    [config]="{ isLabelHidden: true, padding: 2 }"
+                    (onClick)="toggleSettingsCollapsed()">
+            <v-icon v-prefix
+                    [name]="IconName.KeyboardDoubleArrowRight"
+                    [size]="7" />
+          </v-button>
 
-        <div class="flex flex-col gap-1">
-          <div class="flex items-center justify-between text-sm">
-            <span>Secondary height</span>
-            <span>{{ timeDisplayPrefsService.secondaryHeightPx$$() }}px</span>
-          </div>
-          <v-slider [value]="timeDisplayPrefsService.secondaryHeightPx$$()"
-                    [config]="laneHeightSliderConfig"
-                    (valueChange)="onSecondaryHeightChange($event)" />
-        </div>
-      </div>
-    </v-card>
+          <v-button [class]="viewButtonClass(TimeScreenView.Entry)"
+                    [config]="{ isLabelHidden: true, padding: 2 }"
+                    (onClick)="setView(TimeScreenView.Entry)">
+            <v-icon v-prefix
+                    [name]="IconName.Edit"
+                    [size]="7" />
+          </v-button>
 
-    <activities-list />
-    <categories-list />
-  </div>
+          <v-button [class]="viewButtonClass(TimeScreenView.Stats)"
+                    [config]="{ isLabelHidden: true, padding: 2 }"
+                    (onClick)="setView(TimeScreenView.Stats)">
+            <v-icon v-prefix
+                    [name]="IconName.Analytics"
+                    [size]="7" />
+          </v-button>
+        </div>
+      </v-card>
+    </div>
+  } @else {
+    <div class="time-settings-column w-96 flex flex-col flex-shrink-0 gap-2">
+      <v-card [config]="{
+                padding: 2,
+                borderRadius: 2,
+              }">
+        <div class="flex items-center gap-1">
+          <v-button class="v-flat flex-shrink-0"
+                    [config]="{ isLabelHidden: true, padding: 2 }"
+                    (onClick)="toggleSettingsCollapsed()">
+            <v-icon v-prefix
+                    [name]="IconName.KeyboardDoubleArrowLeft"
+                    [size]="7" />
+          </v-button>
+
+          <v-button [class]="'flex-1 ' + viewButtonClass(TimeScreenView.Entry)"
+                    [config]="{ width: '100%' }"
+                    (onClick)="setView(TimeScreenView.Entry)">
+            Input
+          </v-button>
+
+          <v-button [class]="'flex-1 ' + viewButtonClass(TimeScreenView.Stats)"
+                    [config]="{ width: '100%' }"
+                    (onClick)="setView(TimeScreenView.Stats)">
+            Statistics
+          </v-button>
+        </div>
+      </v-card>
+
+      <v-card [config]="{
+                padding: 2,
+                borderRadius: 2,
+              }">
+        <div class="flex flex-col gap-3">
+          <div class="flex items-center justify-between">
+            <span class="text-sm">Snap</span>
+            <v-toggle [items]="snapToggleItems"
+                      [value]="snapToggleValue$$()"
+                      (valueChange)="onSnapChange($event)"></v-toggle>
+          </div>
+
+          <div class="flex items-center justify-between">
+            <span class="text-sm">Compact mode</span>
+            <v-checkbox [config]="{
+                          mode: 'switch',
+                        }"
+                        [value]="timeDisplayPrefsService.compactMode$$()"
+                        (valueChange)="onCompactModeChange($event)"></v-checkbox>
+          </div>
+
+          <div class="flex flex-col gap-1">
+            <div class="flex items-center justify-between text-sm">
+              <span>Primary height</span>
+              <span>{{ timeDisplayPrefsService.primaryHeightPx$$() }}px</span>
+            </div>
+            <v-slider [value]="timeDisplayPrefsService.primaryHeightPx$$()"
+                      [config]="laneHeightSliderConfig"
+                      (valueChange)="onPrimaryHeightChange($event)" />
+          </div>
+
+          <div class="flex flex-col gap-1">
+            <div class="flex items-center justify-between text-sm">
+              <span>Secondary height</span>
+              <span>{{ timeDisplayPrefsService.secondaryHeightPx$$() }}px</span>
+            </div>
+            <v-slider [value]="timeDisplayPrefsService.secondaryHeightPx$$()"
+                      [config]="laneHeightSliderConfig"
+                      (valueChange)="onSecondaryHeightChange($event)" />
+          </div>
+
+          <div class="flex flex-col gap-1">
+            <div class="flex items-center justify-between text-sm">
+              <span>Picker height</span>
+              <span>{{ timeDisplayPrefsService.pickerHeightPx$$() }}px</span>
+            </div>
+            <v-slider [value]="timeDisplayPrefsService.pickerHeightPx$$()"
+                      [config]="pickerHeightSliderConfig"
+                      (valueChange)="onPickerHeightChange($event)" />
+          </div>
+        </div>
+      </v-card>
+
+      <activity-kinds-list />
+      <category-groups-list />
+    </div>
+  }
 
   <div class="time-content-column flex flex-col flex-1 max-w-full min-w-0 gap-2">
     <v-card class="time-entry-card w-full max-w-full min-w-0"
@@ -69,9 +127,9 @@
               borderRadius: 2,
             }">
       @if (activeView$$() === TimeScreenView.Entry) {
-        <timeline-board [snapMinutesInput]="snapMinutes$$()" />
+        <timeline-board [snapMinutesInput]="timeDisplayPrefsService.snapMinutes$$()" />
       } @else {
-        <div class="time-stats-placeholder flex items-center justify-center opacity-70 text-center">
+        <div class="time-stats-placeholder opacity-70 flex items-center justify-center text-center">
           Statistics — coming soon
         </div>
       }

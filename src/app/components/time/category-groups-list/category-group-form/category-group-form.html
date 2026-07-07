@@ -1,0 +1,54 @@
+<div class="mb-4 text-lg font-semibold">{{ isEditing() ? 'Edit group' : 'New group' }}</div>
+
+<div class="flex flex-col gap-4">
+  <v-input [config]="{
+               label: 'Name',
+               placeholder: 'Source',
+               type: 'text',
+             }"
+           [ngModel]="name$$()"
+           (ngModelChange)="name$$.set($event)" />
+
+  <div class="flex items-center gap-2">
+    <v-checkbox [config]="{ mode: 'switch', labelPosition: 'right', isDisabled: isAreaToggleDisabled$$() }"
+                [value]="isArea$$()"
+                (valueChange)="isArea$$.set($event)">
+      Area group (for main stats and color) — only one allowed at a time
+    </v-checkbox>
+
+    @if (isAreaToggleDisabled$$()) {
+      <v-tooltip [text]="areaBlockedTooltip$$()">
+        <v-icon [name]="Icon.Info"
+                [size]="4" />
+      </v-tooltip>
+    }
+  </div>
+
+  <div class="flex items-center gap-2">
+    <v-checkbox [config]="{ mode: 'switch', labelPosition: 'right', isDisabled: isArchiveToggleDisabled$$() }"
+                [value]="isArchived$$()"
+                (valueChange)="isArchived$$.set($event)">
+      Archived
+    </v-checkbox>
+
+    @if (isArchiveToggleDisabled$$()) {
+      <v-tooltip [text]="archiveBlockedTooltip$$()">
+        <v-icon [name]="Icon.Info"
+                [size]="4" />
+      </v-tooltip>
+    }
+  </div>
+
+  <div class="flex justify-end gap-2">
+    <v-button class="v-primary"
+              [config]="{ isDisabled: !name$$() }"
+              (onClick)="save()">
+      {{ isEditing() ? 'Save' : 'Create' }}
+    </v-button>
+
+    <v-button class="v-flat"
+              (onClick)="cancel()">
+      Cancel
+    </v-button>
+  </div>
+</div>

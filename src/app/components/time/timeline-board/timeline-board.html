@@ -19,13 +19,22 @@
       </div>
     </div>
 
+    <div class="timeline-grid">
+      @for (hour of gridLineHours; track hour) {
+        <span class="timeline-grid-line"
+              [class.major]="isMajorGridHour(hour)"
+              [style.left.%]="hourLeftPct(hour)"></span>
+      }
+    </div>
+
     <div #timelineScrollElem
          class="timeline-scroll"
          (scroll)="onTimelineScroll($event)">
       @for (dayIso of days$$(); track dayIso) {
         <div class="day-row">
           @if (dayLabel(dayIso); as label) {
-            <div class="day-label">
+            <div class="day-label"
+                 [class.weekend]="isWeekend(dayIso)">
               <span>{{ label.weekday }}</span>
               <span>{{ label.month }}</span>
               <span>{{ label.day }}</span>
@@ -71,11 +80,6 @@
                 }
               }
             </div>
-
-            @for (hour of hourTicks; track hour) {
-              <span class="time-grid-line"
-                    [style.left.%]="hourLeftPct(hour)"></span>
-            }
           </div>
         </div>
       }
@@ -88,37 +92,42 @@
              let-secondary="secondary">
   <div class="seg"
        [class.seg-secondary]="secondary"
+       [class.seg-short]="isShortSegment(segment)"
        [style]="segmentStyle(segment)"
-       [style.background]="activityColor(segment.entry.activityId)"
+       [style.background]="segmentBackground(segment.entry, secondary)"
        [class.dragging]="activeAdjustment$$()?.entryId === segment.entry.id"
        (pointerdown)="onSegmentPointerDown($event, segment.entry)">
-    <segment-label [name]="activityName(segment.entry.activityId)"
-                   [durationLabel]="segment.durationLabel"
-                   [startClock]="segment.startClock"
-                   [endClock]="segment.endClock"
-                   [isTrueStart]="segment.isTrueStart"
-                   [isTrueEnd]="segment.isTrueEnd" />
-    <button type="button"
-            class="seg-delete"
-            (pointerdown)="$event.stopPropagation()"
-            (click)="deleteEntry(segment.entry)">×</button>
-    <span class="handle handle-l"
-          (pointerdown)="onHandlePointerDown($event, segment.entry, 'left')"></span>
-    <span class="handle handle-r"
-          (pointerdown)="onHandlePointerDown($event, segment.entry, 'right')"></span>
+    @for (line of segmentGridLines(segment); track line.hour) {
+      <span class="seg-grid-line"
+            [class.major]="line.major"
+            [style.left.%]="line.leftPct"></span>
+    }
+    <v-tooltip [fill]="true"
+               [noWrap]="true"
+               [text]="segmentTooltipText(segment)">
+      <segment-label [name]="segmentLabel(segment.entry)"
+                     [durationLabel]="segment.durationLabel"
+                     [startClock]="segment.startClock"
+                     [endClock]="segment.endClock"
+                     [isTrueStart]="segment.isTrueStart"
+                     [isTrueEnd]="segment.isTrueEnd" />
+      <button type="button"
+              class="seg-delete"
+              (pointerdown)="$event.stopPropagation()"
+              (click)="deleteEntry(segment.entry)">×</button>
+      <span class="handle handle-l"
+            (pointerdown)="onHandlePointerDown($event, segment.entry, 'left')"></span>
+      <span class="handle handle-r"
+            (pointerdown)="onHandlePointerDown($event, segment.entry, 'right')"></span>
+    </v-tooltip>
   </div>
 </ng-template>
 
 @if (pickerState$$(); as picker) {
-  <div class="picker-overlay"
-       (click)="closePicker()">
-    <div class="picker-panel"
-         [style.left.px]="picker.x"
-         [style.top.px]="picker.y"
-         (click)="$event.stopPropagation()">
-      <v-dropdown [placeholder]="'Activity...'"
-                  [items]="activityItems$$()"
-                  (onSelectionChanged)="onActivityPicked($event)"></v-dropdown>
-    </div>
-  </div>
+  <structured-activity-picker [x]="picker.x"
+                              [y]="picker.y"
+                              [initialActivityKindId]="picker.mode === 'edit' ? (editingEntry(picker.entryId)?.activityKindId ?? null) : null"
+                              [initialOptions]="picker.mode === 'edit' ? (editingEntry(picker.entryId)?.options ?? []) : []"
+                              (confirmOutput)="onPickerConfirm($event)"
+                              (closeOutput)="closePicker()" />
 }

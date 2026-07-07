@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { computed, effect, inject, Injectable, Signal, signal, WritableSignal } from '@angular/core';
 import { AuthService, AuthSessionState } from '@app/services/auth.service';
-import { TimeEntry, TimeEntryInput } from '@app/shared/time-types';
+import { TimeEntry, TimeEntryCreateInput, TimeEntrySelectionInput, TimeEntryTimeInput } from '@app/shared/time-types';
 import { firstValueFrom } from 'rxjs';
 import { LocalStorageService } from '../local-storage.service';
 import { NetworkService } from '../network.service';
@@ -120,7 +120,7 @@ export class TimeEntriesService extends BaseTimeService {
     return index;
   }
 
-  public createEntry(input: TimeEntryInput): void {
+  public createEntry(input: TimeEntryCreateInput): void {
     if (!this.checkNetworkAvailability()) {
       this.notificationService.addNotification('error', 'No connection — entry not saved');
       return;
@@ -159,7 +159,10 @@ export class TimeEntriesService extends BaseTimeService {
     });
   }
 
-  public updateEntry(entryId: number, input: TimeEntryInput): void {
+  // Drag/resize/move — touches only track/startAt/endAt. Rollback restores
+  // just those fields on this one entry by id, so a concurrent selection
+  // update on the same entry (see updateEntrySelection) is never clobbered.
+  public updateEntryTime(entryId: number, input: TimeEntryTimeInput): void {
     if (!this.checkNetworkAvailability()) {
       this.notificationService.addNotification('error', 'No connection — changes not saved');
       return;
@@ -167,21 +170,66 @@ export class TimeEntriesService extends BaseTimeService {
 
     const previous = this.entries$$().find((entry) => entry.id === entryId);
     if (!previous) return;
+    const previousTime: TimeEntryTimeInput = {
+      track: previous.track,
+      startAt: previous.startAt,
+      endAt: previous.endAt,
+    };
 
     this.entries$$.update((entries) =>
-      entries.map((entry) =>
-        entry.id === entryId ? { ...entry, ...input, updatedAt: new Date().toISOString() } : entry,
-      ),
+      entries.map((entry) => (entry.id === entryId ? { ...entry, ...input, updatedAt: new Date().toISOString() } : entry)),
     );
     this.saveToLocalStorage(this.entries$$());
 
     this.addSyncOperation({
-      type: SyncOperationType.UPDATE,
-      endpoint: `/api/time/entries/${entryId}`,
+      type: SyncOperationType.PATCH,
+      endpoint: `/api/time/entries/${entryId}/time`,
       data: input,
       concurrent: true,
       rollbackCallback: () => {
-        this.entries$$.update((entries) => entries.map((entry) => (entry.id === entryId ? previous : entry)));
+        this.entries$$.update((entries) =>
+          entries.map((entry) => (entry.id === entryId ? { ...entry, ...previousTime } : entry)),
+        );
+        this.saveToLocalStorage(this.entries$$());
+      },
+      feedback: {
+        successMessage: 'Changes saved',
+        errorMessage: 'Failed to save changes',
+        pendingMessage: 'Saving changes...',
+      },
+    });
+  }
+
+  // Picker create/edit — touches only activityKindId/options. Rollback
+  // restores just those fields, leaving track/startAt/endAt (possibly since
+  // moved by a concurrent drag) untouched.
+  public updateEntrySelection(entryId: number, input: TimeEntrySelectionInput): void {
+    if (!this.checkNetworkAvailability()) {
+      this.notificationService.addNotification('error', 'No connection — changes not saved');
+      return;
+    }
+
+    const previous = this.entries$$().find((entry) => entry.id === entryId);
+    if (!previous) return;
+    const previousSelection: TimeEntrySelectionInput = {
+      activityKindId: previous.activityKindId,
+      options: previous.options,
+    };
+
+    this.entries$$.update((entries) =>
+      entries.map((entry) => (entry.id === entryId ? { ...entry, ...input, updatedAt: new Date().toISOString() } : entry)),
+    );
+    this.saveToLocalStorage(this.entries$$());
+
+    this.addSyncOperation({
+      type: SyncOperationType.PATCH,
+      endpoint: `/api/time/entries/${entryId}/selection`,
+      data: input,
+      concurrent: true,
+      rollbackCallback: () => {
+        this.entries$$.update((entries) =>
+          entries.map((entry) => (entry.id === entryId ? { ...entry, ...previousSelection } : entry)),
+        );
         this.saveToLocalStorage(this.entries$$());
       },
       feedback: {

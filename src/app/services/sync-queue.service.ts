@@ -1,4 +1,4 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import {
   BACKGROUND_SYNC_RETRIES_MAX,
@@ -12,6 +12,7 @@ import { NotificationService } from './notification.service';
 export enum SyncOperationType {
   CREATE = 'create', // POST
   UPDATE = 'update', // PUT
+  PATCH = 'patch', // PATCH
   DELETE = 'delete', // DELETE
 }
 
@@ -114,16 +115,21 @@ export class SyncQueueService {
 
         return;
       } catch (error) {
+        // 4xx means the server deterministically rejected this exact payload
+        // (validation, conflict, not found) — retrying sends the same bytes
+        // and gets the same rejection, it only delays the user seeing why.
+        const isClientError = error instanceof HttpErrorResponse && error.status >= 400 && error.status < 500;
+
         operation.retryCount++;
 
-        if (operation.retryCount >= BACKGROUND_SYNC_RETRIES_MAX) {
-          console.error(`Operation failed after ${BACKGROUND_SYNC_RETRIES_MAX} retries:`, error);
+        if (isClientError || operation.retryCount >= BACKGROUND_SYNC_RETRIES_MAX) {
+          console.error(isClientError ? 'Operation rejected by server:' : `Operation failed after ${BACKGROUND_SYNC_RETRIES_MAX} retries:`, error);
 
           this.resolvePendingFeedback(operation);
           operation.rollbackCallback?.();
 
           if (operation.feedback) {
-            this.notificationService.addNotification('error', operation.feedback.errorMessage);
+            this.notificationService.addNotification('error', extractServerErrorMessage(error) ?? operation.feedback.errorMessage);
           }
 
           return;
@@ -147,6 +153,8 @@ export class SyncQueueService {
           return this.http.post(operation.endpoint, operation.data);
         case SyncOperationType.UPDATE:
           return this.http.put(operation.endpoint, operation.data);
+        case SyncOperationType.PATCH:
+          return this.http.patch(operation.endpoint, operation.data);
         case SyncOperationType.DELETE:
           return this.http.delete(operation.endpoint);
       }
@@ -154,4 +162,16 @@ export class SyncQueueService {
 
     return request$;
   }
+}
+
+// Backend errors come back as `{ success: false, error: "<message>" }`
+// (see legacy.WriteJSON on the Go side) — surface that specific message
+// instead of the operation's static fallback whenever it's present.
+function extractServerErrorMessage(error: unknown): string | null {
+  if (!(error instanceof HttpErrorResponse)) return null;
+  const body: unknown = error.error;
+  if (body && typeof body === 'object' && typeof (body as { error?: unknown }).error === 'string') {
+    return (body as { error: string }).error;
+  }
+  return null;
 }

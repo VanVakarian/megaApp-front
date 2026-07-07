@@ -10,27 +10,27 @@
       <v-icon v-prefix
               [name]="Icon.Add"
               [size]="6"></v-icon>
-      New
+      New activity
     </v-button>
   </div>
 
-  @if (activities$$().length === 0) {
+  @if (activityKinds$$().length === 0) {
     <div class="opacity-70 py-4 text-sm text-center">
-      No activities yet.
+      No activity kinds yet.
     </div>
   }
 
-  @for (activity of activities$$(); track activity.id) {
+  @for (kind of activityKinds$$(); track kind.id) {
     <div class="last:border-b-0 py-2 border-b border-[color:var(--v-outline-color)]">
       <div class="flex items-center justify-between gap-4">
         <div class="flex-1"
-             [class.opacity-50]="activity.isArchived">
-          {{ activity.name }}
+             [class.opacity-50]="kind.isArchived">
+          {{ kind.name }}
         </div>
 
         <v-button class="v-flat"
                   [config]="{ isLabelHidden: true, padding: iconButton.padding }"
-                  (onClick)="editActivity(activity)">
+                  (onClick)="editKind(kind)">
           <v-icon v-prefix
                   [name]="Icon.Edit"
                   [size]="iconButton.size"></v-icon>
@@ -42,8 +42,8 @@
 
 <form-modal [isModalOpen]="showForm$$()"
             (closeOutput)="onCancelled()">
-  <activity-form [activityInput]="editingActivity$$()"
-                 (savedOutput)="onSaved()"
-                 (cancelledOutput)="onCancelled()">
-  </activity-form>
+  <activity-kind-form [activityKindInput]="editingKind$$()"
+                      (savedOutput)="onSaved()"
+                      (cancelledOutput)="onCancelled()">
+  </activity-kind-form>
 </form-modal>

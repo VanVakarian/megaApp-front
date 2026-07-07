@@ -73,7 +73,7 @@ export class NavigationService {
       link: '/money',
       selected: false,
       chapterSettingName: 'selectedChapterMoney',
-      iconName: IconName.Paid,
+      iconName: IconName.MoneyBag,
       bgClass: 'money-bg',
     },
     {
@@ -82,7 +82,7 @@ export class NavigationService {
       link: '/time',
       selected: false,
       chapterSettingName: 'selectedChapterTime',
-      iconName: IconName.History,
+      iconName: IconName.WatchScreentime,
       bgClass: 'time-bg',
     },
     {
@@ -91,7 +91,7 @@ export class NavigationService {
       link: '/metrics',
       selected: false,
       adminOnly: true,
-      iconName: IconName.Analytics,
+      iconName: IconName.Monitoring,
       bgClass: 'settings-bg',
     },
     {

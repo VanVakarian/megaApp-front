@@ -16,7 +16,11 @@ import { TimeCatalogueService } from '@app/services/time/time-catalogue.service'
 import { TimeDisplayPrefsService } from '@app/services/time/time-display-prefs.service';
 import { TimeEntriesService } from '@app/services/time/time-entries.service';
 import { TimeEntry, TimeTrack } from '@app/shared/time-types';
-import { DropdownItem, VDropdown } from '@ui-kit/components/v-dropdown/v-dropdown';
+import { VTooltip } from '@ui-kit/components/v-tooltip/v-tooltip';
+import {
+  StructuredActivityPicker,
+  StructuredActivitySelection,
+} from '../structured-activity-picker/structured-activity-picker';
 import { SegmentLabel } from './segment-label/segment-label';
 
 const MINUTES_PER_DAY = 1440;
@@ -26,6 +30,8 @@ const INITIAL_VISIBLE_DAYS = 45;
 const OLDER_DAYS_BATCH = 30;
 const LOAD_OLDER_SCROLL_TOP_PX = 240;
 const HOUR_TICKS = [0, 3, 6, 9, 12, 15, 18, 21, 24] as const;
+const GRID_LINE_HOURS = Array.from({ length: 23 }, (_, i) => i + 1);
+const SHORT_SEGMENT_MINUTES = 120;
 
 interface Segment {
   entry: TimeEntry;
@@ -36,6 +42,12 @@ interface Segment {
   startClock: string;
   endClock: string;
   durationLabel: string;
+}
+
+interface SegmentGridLine {
+  hour: number;
+  leftPct: number;
+  major: boolean;
 }
 
 interface ActiveAdjustment {
@@ -52,14 +64,9 @@ interface PreviewSlot {
   widthPct: number;
 }
 
-interface PickerState {
-  dayIso: string;
-  track: TimeTrack;
-  startMinute: number;
-  endMinute: number;
-  x: number;
-  y: number;
-}
+type PickerState =
+  | { mode: 'create'; dayIso: string; track: TimeTrack; startMinute: number; endMinute: number; x: number; y: number }
+  | { mode: 'edit'; entryId: number; x: number; y: number };
 
 interface DayLabel {
   weekday: string;
@@ -72,7 +79,7 @@ interface DayLabel {
   selector: 'timeline-board',
   templateUrl: './timeline-board.html',
   styleUrl: './timeline-board.scss',
-  imports: [VDropdown, NgTemplateOutlet, SegmentLabel],
+  imports: [NgTemplateOutlet, SegmentLabel, StructuredActivityPicker, VTooltip],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class TimelineBoard {
@@ -80,6 +87,7 @@ export class TimelineBoard {
 
   protected readonly Track = TimeTrack;
   protected readonly hourTicks = HOUR_TICKS;
+  protected readonly gridLineHours = GRID_LINE_HOURS;
 
   private readonly timelineScrollElem = viewChild<ElementRef<HTMLDivElement>>('timelineScrollElem');
   private readonly injector = inject(Injector);
@@ -89,12 +97,15 @@ export class TimelineBoard {
 
   protected readonly isLoaded$$ = computed(() => this.timeEntriesService.isLoaded$$());
   private readonly todayDayNumber = this.dayIsoToDayNumber(this.todayIso());
+  // Renders one day beyond today so a late-evening entry (e.g. started 23:00) can be
+  // dragged/resized past midnight into a visible "tomorrow" lane.
+  private readonly lastVisibleDayNumber = this.todayDayNumber + 1;
   private readonly currentYear = new Date().getFullYear();
-  protected readonly visibleStartDayNumber$$ = signal(this.todayDayNumber - INITIAL_VISIBLE_DAYS + 1);
+  protected readonly visibleStartDayNumber$$ = signal(this.lastVisibleDayNumber - INITIAL_VISIBLE_DAYS + 1);
 
   protected readonly days$$ = computed<string[]>(() => {
     const days: string[] = [];
-    for (let dayNumber = this.visibleStartDayNumber$$(); dayNumber <= this.todayDayNumber; dayNumber++) {
+    for (let dayNumber = this.visibleStartDayNumber$$(); dayNumber <= this.lastVisibleDayNumber; dayNumber++) {
       days.push(this.dayNumberToDayIso(dayNumber));
     }
     return days;
@@ -117,20 +128,11 @@ export class TimelineBoard {
     this.scrollToBottomAfterRender();
   });
 
-  protected readonly activityItems$$ = computed<DropdownItem[]>(() => {
-    const recentIds = this.timeCatalogueService.recentActivityIds$$();
-    const activities = this.timeCatalogueService.activities$$().filter((activity) => !activity.isArchived);
-    const byId = new Map(activities.map((activity) => [activity.id, activity]));
-    const ordered = [...recentIds.map((id) => byId.get(id)).filter((activity) => !!activity), ...activities];
-    const seen = new Set<number>();
-    const result: DropdownItem[] = [];
-    for (const activity of ordered) {
-      if (!activity || seen.has(activity.id)) continue;
-      seen.add(activity.id);
-      result.push({ value: String(activity.id), label: activity.name });
-    }
-    return result;
-  });
+  protected isWeekend(dayIso: string): boolean {
+    const [year, month, day] = dayIso.split('-').map(Number);
+    const weekday = new Date(year, month - 1, day).getDay();
+    return weekday === 0 || weekday === 6;
+  }
 
   protected dayLabel(dayIso: string): DayLabel {
     const [year, month, day] = dayIso.split('-').map(Number);
@@ -145,6 +147,25 @@ export class TimelineBoard {
 
   protected hourLeftPct(hour: number): number {
     return (hour / 24) * 100;
+  }
+
+  protected isMajorGridHour(hour: number): boolean {
+    return hour % 3 === 0;
+  }
+
+  // Hour grid lines that fall strictly inside this segment's own span, in
+  // percentages local to the segment's box — lets the grid line render in
+  // white on top of the segment while the shared full-lane lines underneath
+  // stay their usual muted gray on the empty canvas.
+  protected segmentGridLines(segment: Segment): SegmentGridLine[] {
+    const duration = segment.endMinute - segment.startMinute;
+    return this.gridLineHours
+      .filter((hour) => hour * 60 > segment.startMinute && hour * 60 < segment.endMinute)
+      .map((hour) => ({
+        hour,
+        leftPct: ((hour * 60 - segment.startMinute) / duration) * 100,
+        major: this.isMajorGridHour(hour),
+      }));
   }
 
   protected segmentsFor(dayIso: string, track: TimeTrack): Segment[] {
@@ -215,18 +236,58 @@ export class TimelineBoard {
     };
   }
 
-  protected activityName(activityId: number): string {
-    return this.timeCatalogueService.activities$$().find((activity) => activity.id === activityId)?.name ?? '…';
+  protected isShortSegment(segment: Segment): boolean {
+    return segment.endMinute - segment.startMinute < SHORT_SEGMENT_MINUTES;
   }
 
-  protected activityColor(activityId: number): string {
-    const activity = this.timeCatalogueService.activities$$().find((item) => item.id === activityId);
-    if (!activity) return '#868E96';
-    const categories = this.timeCatalogueService.categories$$();
-    const activityCategories = activity.categoryIds.map((id) => categories.find((category) => category.id === id));
-    const areaCategory = activityCategories.find((category) => category?.kind === 'area' && category.color);
-    const anyCategory = activityCategories.find((category) => category?.color);
-    return areaCategory?.color ?? anyCategory?.color ?? '#868E96';
+  // Secondary segments look "lighter" via an alpha-blended background rather
+  // than element opacity — opacity would cascade to descendants (including
+  // the tooltip's fixed-position panel), making the tooltip translucent too.
+  protected segmentBackground(entry: TimeEntry, secondary: boolean): string {
+    const color = this.segmentColor(entry);
+    return secondary ? `color-mix(in oklab, ${color} 75%, transparent)` : color;
+  }
+
+  // Segment label: kind name, plus a short list of selected option names —
+  // `.seg-name` already has CSS text-overflow ellipsis, so when space is
+  // tight the tail (options) is clipped and only the kind stays visible,
+  // matching "если места мало, показывать только kind" without extra logic.
+  protected segmentLabel(entry: TimeEntry): string {
+    const kindName = this.timeCatalogueService.activityKindById$$().get(entry.activityKindId)?.name ?? '…';
+    const optionNames = entry.options
+      .map((option) => this.timeCatalogueService.optionById$$().get(option.optionId)?.name)
+      .filter((name): name is string => !!name);
+    return optionNames.length > 0 ? `${kindName} · ${optionNames.join(', ')}` : kindName;
+  }
+
+  // Tooltip text: same content the fully-expanded segment label shows
+  // (disclosure level 3) — kind, options, duration, start–end — regardless
+  // of how little of it actually fits inside the segment box itself.
+  protected segmentTooltipText(segment: Segment): string {
+    const arrowL = segment.isTrueStart ? '' : '◂ ';
+    const arrowR = segment.isTrueEnd ? '' : ' ▸';
+    return `${arrowL}${this.segmentLabel(segment.entry)} · ${segment.durationLabel} · ${segment.startClock}–${segment.endClock}${arrowR}`;
+  }
+
+  // Color priority: selected option of the kind='area' group, else the first
+  // selected option that has a color, else a neutral fallback.
+  protected segmentColor(entry: TimeEntry): string {
+    const optionById = this.timeCatalogueService.optionById$$();
+    const areaGroupId = this.timeCatalogueService.areaGroupId$$();
+    if (areaGroupId !== null) {
+      const areaSelection = entry.options.find((option) => option.groupId === areaGroupId);
+      const areaColor = areaSelection ? optionById.get(areaSelection.optionId)?.color : null;
+      if (areaColor) return areaColor;
+    }
+    for (const selected of entry.options) {
+      const color = optionById.get(selected.optionId)?.color;
+      if (color) return color;
+    }
+    return '#868E96';
+  }
+
+  protected editingEntry(entryId: number): TimeEntry | undefined {
+    return this.timeEntriesService.entries$$().find((entry) => entry.id === entryId);
   }
 
   protected onSegmentPointerDown(event: PointerEvent, entry: TimeEntry): void {
@@ -293,14 +354,21 @@ export class TimelineBoard {
       });
     };
 
-    const onUp = () => {
+    const onUp = (upEvent: PointerEvent) => {
       document.removeEventListener('pointermove', onMove);
       document.removeEventListener('pointerup', onUp);
       const adjustment = this.activeAdjustment$$();
       this.activeAdjustment$$.set(null);
-      if (!moved || !adjustment) return;
-      this.timeEntriesService.updateEntry(entry.id, {
-        activityId: entry.activityId,
+      if (!moved) {
+        // A plain click (no drag) on the segment body opens the picker in
+        // edit mode — matches the plan's "on edit selection open the same
+        // picker" without introducing a separate click handler that would
+        // race with the drag's pointerdown.
+        this.pickerState$$.set({ mode: 'edit', entryId: entry.id, x: upEvent.clientX, y: upEvent.clientY });
+        return;
+      }
+      if (!adjustment) return;
+      this.timeEntriesService.updateEntryTime(entry.id, {
         track: adjustment.track,
         startAt: this.fromAbsoluteMinutes(adjustment.startAbs),
         endAt: this.fromAbsoluteMinutes(adjustment.endAbs),
@@ -367,8 +435,7 @@ export class TimelineBoard {
       const adjustment = this.activeAdjustment$$();
       this.activeAdjustment$$.set(null);
       if (!moved || !adjustment) return;
-      this.timeEntriesService.updateEntry(entry.id, {
-        activityId: entry.activityId,
+      this.timeEntriesService.updateEntryTime(entry.id, {
         track: entry.track,
         startAt: this.fromAbsoluteMinutes(adjustment.startAbs),
         endAt: this.fromAbsoluteMinutes(adjustment.endAbs),
@@ -411,6 +478,7 @@ export class TimelineBoard {
     if (!slot) return;
 
     this.pickerState$$.set({
+      mode: 'create',
       dayIso,
       track,
       startMinute: slot.start,
@@ -420,17 +488,23 @@ export class TimelineBoard {
     });
   }
 
-  protected onActivityPicked(item: DropdownItem | null): void {
+  protected onPickerConfirm(selection: StructuredActivitySelection): void {
     const picker = this.pickerState$$();
     this.pickerState$$.set(null);
-    if (!picker || !item) return;
+    if (!picker) return;
+
+    if (picker.mode === 'edit') {
+      this.timeEntriesService.updateEntrySelection(picker.entryId, selection);
+      return;
+    }
 
     const dayAbsBase = this.dayIsoToDayNumber(picker.dayIso) * MINUTES_PER_DAY;
     this.timeEntriesService.createEntry({
-      activityId: Number(item.value),
+      activityKindId: selection.activityKindId,
       track: picker.track,
       startAt: this.fromAbsoluteMinutes(dayAbsBase + picker.startMinute),
       endAt: this.fromAbsoluteMinutes(dayAbsBase + picker.endMinute),
+      options: selection.options,
     });
   }
 
@@ -459,7 +533,7 @@ export class TimelineBoard {
     if (duration < MIN_DURATION_MINUTES) return null;
 
     const snappedCenter = this.snapValue(rawAbs);
-    const start = Math.max(gapStart, Math.min(snappedCenter, gapEnd - duration));
+    const start = Math.max(gapStart, Math.min(snappedCenter - duration / 2, gapEnd - duration));
     return { start: start - dayAbsBase, end: start - dayAbsBase + duration };
   }
 

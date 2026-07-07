@@ -4,17 +4,10 @@ export const TimeTrack = {
 } as const;
 export type TimeTrack = (typeof TimeTrack)[keyof typeof TimeTrack];
 
-export const TimeCategoryKind = {
+export const CategoryGroupKind = {
   Area: 'area',
 } as const;
-export type TimeCategoryKind = (typeof TimeCategoryKind)[keyof typeof TimeCategoryKind];
-
-export const TimeImpact = {
-  Useful: 'useful',
-  Neutral: 'neutral',
-  Wasteful: 'wasteful',
-} as const;
-export type TimeImpact = (typeof TimeImpact)[keyof typeof TimeImpact];
+export type CategoryGroupKind = (typeof CategoryGroupKind)[keyof typeof CategoryGroupKind];
 
 export const TimeScreenView = {
   Entry: 'entry',
@@ -22,49 +15,95 @@ export const TimeScreenView = {
 } as const;
 export type TimeScreenView = (typeof TimeScreenView)[keyof typeof TimeScreenView];
 
-export interface TimeActivity {
+export interface GroupBinding {
+  groupId: number;
+  required: boolean;
+}
+
+export interface ActivityKind {
   id: number;
   name: string;
+  groupBindings: GroupBinding[];
   isArchived: boolean;
-  categoryIds: number[];
-  createdAt: string;
-}
-
-export interface TimeCategory {
-  id: number;
-  name: string;
-  kind: TimeCategoryKind | string | null;
-  color: string | null;
-  impact: TimeImpact | null;
-  createdAt: string;
-}
-
-export interface TimeEntry {
-  id: number;
-  activityId: number;
-  track: TimeTrack;
-  startAt: string;
-  endAt: string;
   createdAt: string;
   updatedAt: string;
 }
 
-export interface TimeActivityInput {
+export interface CategoryGroup {
+  id: number;
   name: string;
+  kind: CategoryGroupKind | string | null;
   isArchived: boolean;
-  categoryIds: number[];
+  createdAt: string;
+  updatedAt: string;
 }
 
-export interface TimeCategoryInput {
+export interface CategoryOption {
+  id: number;
+  groupId: number;
   name: string;
-  kind: string | null;
   color: string | null;
-  impact: TimeImpact | null;
+  isArchived: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
-export interface TimeEntryInput {
-  activityId: number;
+export interface EntryOption {
+  groupId: number;
+  optionId: number;
+}
+
+export interface TimeEntry {
+  id: number;
+  activityKindId: number;
   track: TimeTrack;
   startAt: string;
   endAt: string;
+  options: EntryOption[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Catalog {
+  activityKinds: ActivityKind[];
+  categoryGroups: CategoryGroup[];
+  categoryOptions: CategoryOption[];
+}
+
+export interface ActivityKindInput {
+  name: string;
+  groupBindings: GroupBinding[];
+  isArchived: boolean;
+}
+
+export interface CategoryGroupInput {
+  name: string;
+  kind: string | null;
+  isArchived: boolean;
+}
+
+export interface CategoryOptionInput {
+  groupId: number;
+  name: string;
+  color: string | null;
+  isArchived: boolean;
+}
+
+export interface TimeEntryCreateInput {
+  activityKindId: number;
+  track: TimeTrack;
+  startAt: string;
+  endAt: string;
+  options: EntryOption[];
+}
+
+export interface TimeEntryTimeInput {
+  track: TimeTrack;
+  startAt: string;
+  endAt: string;
+}
+
+export interface TimeEntrySelectionInput {
+  activityKindId: number;
+  options: EntryOption[];
 }
