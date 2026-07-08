@@ -8,10 +8,10 @@ const SETTINGS_COLLAPSED_STORAGE_KEY = 'time_settings_collapsed';
 const SNAP_MINUTES_STORAGE_KEY = 'time_snap_minutes';
 const PICKER_HEIGHT_STORAGE_KEY = 'time_picker_height_px';
 
-const DEFAULT_PRIMARY_HEIGHT_PX = 36;
-const DEFAULT_SECONDARY_HEIGHT_PX = 22;
+const DEFAULT_PRIMARY_HEIGHT_PX = 24;
+const DEFAULT_SECONDARY_HEIGHT_PX = 18;
 const DEFAULT_SNAP_MINUTES = 15;
-const DEFAULT_PICKER_HEIGHT_PX = 480;
+const DEFAULT_PICKER_HEIGHT_PX = 329;
 
 export const MIN_LANE_HEIGHT_PX = 16;
 export const MAX_LANE_HEIGHT_PX = 36;
@@ -30,7 +30,9 @@ export class TimeDisplayPrefsService {
   );
 
   public readonly primaryHeightPx$$: WritableSignal<number> = signal(
-    this.clampHeight(this.localStorageService.getUserScoped<number>(PRIMARY_HEIGHT_STORAGE_KEY) ?? DEFAULT_PRIMARY_HEIGHT_PX),
+    this.clampHeight(
+      this.localStorageService.getUserScoped<number>(PRIMARY_HEIGHT_STORAGE_KEY) ?? DEFAULT_PRIMARY_HEIGHT_PX,
+    ),
   );
 
   public readonly secondaryHeightPx$$: WritableSignal<number> = signal(
@@ -48,7 +50,9 @@ export class TimeDisplayPrefsService {
   );
 
   public readonly pickerHeightPx$$: WritableSignal<number> = signal(
-    this.clampPickerHeight(this.localStorageService.getUserScoped<number>(PICKER_HEIGHT_STORAGE_KEY) ?? DEFAULT_PICKER_HEIGHT_PX),
+    this.clampPickerHeight(
+      this.localStorageService.getUserScoped<number>(PICKER_HEIGHT_STORAGE_KEY) ?? DEFAULT_PICKER_HEIGHT_PX,
+    ),
   );
 
   public setPickerHeightPx(value: number): void {

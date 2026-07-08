@@ -28,9 +28,10 @@
     </div>
 
     <div #timelineScrollElem
-         class="timeline-scroll"
-         (scroll)="onTimelineScroll($event)">
-      @for (dayIso of days$$(); track dayIso) {
+         class="timeline-scroll">
+      <div class="row-spacer"
+           [style.height.px]="paddingTopPx$$()"></div>
+      @for (dayIso of visibleDays$$(); track dayIso) {
         <div class="day-row">
           @if (dayLabel(dayIso); as label) {
             <div class="day-label"
@@ -83,6 +84,8 @@
           </div>
         </div>
       }
+      <div class="row-spacer"
+           [style.height.px]="paddingBottomPx$$()"></div>
     </div>
   </div>
 }
@@ -94,34 +97,42 @@
        [class.seg-secondary]="secondary"
        [class.seg-short]="isShortSegment(segment)"
        [style]="segmentStyle(segment)"
-       [style.background]="segmentBackground(segment.entry, secondary)"
+       [style.background]="segmentBackground(segment, secondary)"
        [class.dragging]="activeAdjustment$$()?.entryId === segment.entry.id"
-       (pointerdown)="onSegmentPointerDown($event, segment.entry)">
-    @for (line of segmentGridLines(segment); track line.hour) {
+       (pointerdown)="onSegmentPointerDown($event, segment.entry)"
+       (mouseenter)="onSegmentMouseEnter($event, segment)"
+       (mouseleave)="closeTooltip()">
+    @for (line of segment.gridLines; track line.hour) {
       <span class="seg-grid-line"
             [class.major]="line.major"
             [style.left.%]="line.leftPct"></span>
     }
-    <v-tooltip [fill]="true"
-               [noWrap]="true"
-               [text]="segmentTooltipText(segment)">
-      <segment-label [name]="segmentLabel(segment.entry)"
-                     [durationLabel]="segment.durationLabel"
-                     [startClock]="segment.startClock"
-                     [endClock]="segment.endClock"
-                     [isTrueStart]="segment.isTrueStart"
-                     [isTrueEnd]="segment.isTrueEnd" />
-      <button type="button"
-              class="seg-delete"
-              (pointerdown)="$event.stopPropagation()"
-              (click)="deleteEntry(segment.entry)">×</button>
-      <span class="handle handle-l"
-            (pointerdown)="onHandlePointerDown($event, segment.entry, 'left')"></span>
-      <span class="handle handle-r"
-            (pointerdown)="onHandlePointerDown($event, segment.entry, 'right')"></span>
-    </v-tooltip>
+    <segment-label [name]="segment.label"
+                   [durationLabel]="segment.durationLabel"
+                   [startClock]="segment.startClock"
+                   [endClock]="segment.endClock"
+                   [isTrueStart]="segment.isTrueStart"
+                   [isTrueEnd]="segment.isTrueEnd" />
+    <button type="button"
+            class="seg-delete"
+            (pointerdown)="$event.stopPropagation()"
+            (click)="deleteEntry(segment.entry)">×</button>
+    <span class="handle handle-l"
+          (pointerdown)="onHandlePointerDown($event, segment.entry, 'left')"></span>
+    <span class="handle handle-r"
+          (pointerdown)="onHandlePointerDown($event, segment.entry, 'right')"></span>
   </div>
 </ng-template>
+
+@if (hoveredSegment$$(); as hovered) {
+  <div #tooltipPanelElem
+       class="seg-tooltip-panel"
+       [class.below]="tooltipPlacement$$() === 'bottom'"
+       [class.visible]="isTooltipPositioned$$()"
+       [style.top.px]="tooltipTopPx$$()"
+       [style.left.px]="tooltipLeftPx$$()"
+       [style.--v-tooltip-z-index]="tooltipZIndex">{{ hovered.text }}</div>
+}
 
 @if (pickerState$$(); as picker) {
   <structured-activity-picker [x]="picker.x"

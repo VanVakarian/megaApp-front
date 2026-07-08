@@ -2,8 +2,10 @@ import { NgTemplateOutlet } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
+  DestroyRef,
   ElementRef,
   Injector,
+  NgZone,
   afterNextRender,
   computed,
   effect,
@@ -14,9 +16,10 @@ import {
 } from '@angular/core';
 import { TimeCatalogueService } from '@app/services/time/time-catalogue.service';
 import { TimeDisplayPrefsService } from '@app/services/time/time-display-prefs.service';
-import { TimeEntriesService } from '@app/services/time/time-entries.service';
-import { TimeEntry, TimeTrack } from '@app/shared/time-types';
-import { VTooltip } from '@ui-kit/components/v-tooltip/v-tooltip';
+import { TimeDayLanes, TimeEntriesService } from '@app/services/time/time-entries.service';
+import { ActivityKind, CategoryOption, TimeEntry, TimeTrack } from '@app/shared/time-types';
+import { computeTooltipPosition } from '@ui-kit/components/v-tooltip/tooltip-position';
+import { ZLayerService } from '@ui-kit/services/z-layer.service';
 import {
   StructuredActivityPicker,
   StructuredActivitySelection,
@@ -29,9 +32,19 @@ const DEFAULT_DURATION_MINUTES = 60;
 const INITIAL_VISIBLE_DAYS = 45;
 const OLDER_DAYS_BATCH = 30;
 const LOAD_OLDER_SCROLL_TOP_PX = 240;
+// Must match .day-row's border-bottom (1px) and --row-gap (--unit-2 = 8px, 0 in compact mode).
+const ROW_BORDER_PX = 1;
+const ROW_GAP_PX = 8;
+const VIRTUALIZATION_BUFFER_PX = 800;
 const HOUR_TICKS = [0, 3, 6, 9, 12, 15, 18, 21, 24] as const;
 const GRID_LINE_HOURS = Array.from({ length: 23 }, (_, i) => i + 1);
 const SHORT_SEGMENT_MINUTES = 120;
+
+interface SegmentGridLine {
+  hour: number;
+  leftPct: number;
+  major: boolean;
+}
 
 interface Segment {
   entry: TimeEntry;
@@ -42,16 +55,14 @@ interface Segment {
   startClock: string;
   endClock: string;
   durationLabel: string;
-}
-
-interface SegmentGridLine {
-  hour: number;
-  leftPct: number;
-  major: boolean;
+  label: string;
+  color: string;
+  gridLines: SegmentGridLine[];
 }
 
 interface ActiveAdjustment {
   entryId: number;
+  entry: TimeEntry;
   track: TimeTrack;
   startAbs: number;
   endAbs: number;
@@ -75,11 +86,16 @@ interface DayLabel {
   year: string;
 }
 
+interface HoveredSegment {
+  text: string;
+  triggerRect: DOMRect;
+}
+
 @Component({
   selector: 'timeline-board',
   templateUrl: './timeline-board.html',
   styleUrl: './timeline-board.scss',
-  imports: [NgTemplateOutlet, SegmentLabel, StructuredActivityPicker, VTooltip],
+  imports: [NgTemplateOutlet, SegmentLabel, StructuredActivityPicker],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class TimelineBoard {
@@ -90,10 +106,28 @@ export class TimelineBoard {
   protected readonly gridLineHours = GRID_LINE_HOURS;
 
   private readonly timelineScrollElem = viewChild<ElementRef<HTMLDivElement>>('timelineScrollElem');
+  private readonly tooltipPanelElem = viewChild<ElementRef<HTMLDivElement>>('tooltipPanelElem');
   private readonly injector = inject(Injector);
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly ngZone = inject(NgZone);
   private readonly timeEntriesService = inject(TimeEntriesService);
   private readonly timeCatalogueService = inject(TimeCatalogueService);
   protected readonly timeDisplayPrefsService = inject(TimeDisplayPrefsService);
+
+  // Single shared tooltip for the whole board instead of one v-tooltip component
+  // per segment — hundreds of segments used to mean hundreds of components, each
+  // with its own document:click listener and z-layer registration.
+  private readonly tooltipLayer = inject(ZLayerService).registerLayer('tooltip');
+  protected readonly tooltipZIndex = this.tooltipLayer.zIndex;
+  protected readonly hoveredSegment$$ = signal<HoveredSegment | null>(null);
+  protected readonly tooltipPlacement$$ = signal<'top' | 'bottom'>('top');
+  protected readonly isTooltipPositioned$$ = signal(false);
+  protected readonly tooltipTopPx$$ = signal(0);
+  protected readonly tooltipLeftPx$$ = signal(0);
+
+  constructor() {
+    this.destroyRef.onDestroy(() => this.tooltipLayer.destroy());
+  }
 
   protected readonly isLoaded$$ = computed(() => this.timeEntriesService.isLoaded$$());
   private readonly todayDayNumber = this.dayIsoToDayNumber(this.todayIso());
@@ -109,6 +143,91 @@ export class TimelineBoard {
       days.push(this.dayNumberToDayIso(dayNumber));
     }
     return days;
+  });
+
+  // Windowed rendering: only day-rows within the viewport (+ buffer) actually mount —
+  // days$$() can grow into the hundreds as older days load, but the DOM must not.
+  protected readonly scrollTop$$ = signal(0);
+  private readonly scrollContainerHeightPx$$ = signal(600);
+  private readonly setupContainerResizeObserver = afterNextRender(
+    () => {
+      const scrollEl = this.timelineScrollElem()?.nativeElement;
+      if (!scrollEl) return;
+      this.scrollContainerHeightPx$$.set(scrollEl.clientHeight);
+      const observer = new ResizeObserver((entries) => {
+        const entry = entries[0];
+        if (entry) this.scrollContainerHeightPx$$.set(entry.contentRect.height);
+      });
+      observer.observe(scrollEl);
+      this.destroyRef.onDestroy(() => observer.disconnect());
+    },
+    { injector: this.injector },
+  );
+
+  // Native passive listener registered outside the Angular zone instead of an
+  // Angular (scroll) template binding — a bare template binding would re-enter
+  // the zone (and trigger a full ApplicationRef.tick()) on every single scroll
+  // event. rAF-coalescing caps that to once per frame; the zone is re-entered
+  // only for the one signal write that actually needs to reach the view.
+  private readonly setupScrollListener = afterNextRender(
+    () => {
+      const scrollEl = this.timelineScrollElem()?.nativeElement;
+      if (!scrollEl) return;
+
+      let pendingScrollTop: number | null = null;
+      let rafScheduled = false;
+      const flushScroll = () => {
+        rafScheduled = false;
+        if (pendingScrollTop === null) return;
+        const scrollTop = pendingScrollTop;
+        pendingScrollTop = null;
+        this.ngZone.run(() => this.handleScrollTop(scrollEl, scrollTop));
+      };
+
+      const onScroll = () => {
+        pendingScrollTop = scrollEl.scrollTop;
+        if (!rafScheduled) {
+          rafScheduled = true;
+          requestAnimationFrame(flushScroll);
+        }
+      };
+
+      this.ngZone.runOutsideAngular(() => scrollEl.addEventListener('scroll', onScroll, { passive: true }));
+      this.destroyRef.onDestroy(() => scrollEl.removeEventListener('scroll', onScroll));
+    },
+    { injector: this.injector },
+  );
+
+  private readonly rowHeightPx$$ = computed(() => {
+    const gap = this.timeDisplayPrefsService.compactMode$$() ? 0 : ROW_GAP_PX;
+    return (
+      this.timeDisplayPrefsService.primaryHeightPx$$() +
+      this.timeDisplayPrefsService.secondaryHeightPx$$() +
+      ROW_BORDER_PX +
+      gap
+    );
+  });
+
+  private readonly visibleRowRange$$ = computed(() => {
+    const rowHeight = this.rowHeightPx$$();
+    const total = this.days$$().length;
+    const scrollTop = this.scrollTop$$();
+    const viewport = this.scrollContainerHeightPx$$();
+    const startIndex = Math.max(0, Math.floor((scrollTop - VIRTUALIZATION_BUFFER_PX) / rowHeight));
+    const endIndex = Math.min(total, Math.ceil((scrollTop + viewport + VIRTUALIZATION_BUFFER_PX) / rowHeight));
+    return { startIndex, endIndex };
+  });
+
+  protected readonly visibleDays$$ = computed(() => {
+    const { startIndex, endIndex } = this.visibleRowRange$$();
+    return this.days$$().slice(startIndex, endIndex);
+  });
+
+  protected readonly paddingTopPx$$ = computed(() => this.visibleRowRange$$().startIndex * this.rowHeightPx$$());
+
+  protected readonly paddingBottomPx$$ = computed(() => {
+    const { endIndex } = this.visibleRowRange$$();
+    return (this.days$$().length - endIndex) * this.rowHeightPx$$();
   });
 
   protected readonly shouldShowYearColumn$$ = computed(() => {
@@ -153,80 +272,157 @@ export class TimelineBoard {
     return hour % 3 === 0;
   }
 
-  // Hour grid lines that fall strictly inside this segment's own span, in
-  // percentages local to the segment's box — lets the grid line render in
-  // white on top of the segment while the shared full-lane lines underneath
-  // stay their usual muted gray on the empty canvas.
-  protected segmentGridLines(segment: Segment): SegmentGridLine[] {
-    const duration = segment.endMinute - segment.startMinute;
-    return this.gridLineHours
-      .filter((hour) => hour * 60 > segment.startMinute && hour * 60 < segment.endMinute)
-      .map((hour) => ({
-        hour,
-        leftPct: ((hour * 60 - segment.startMinute) / duration) * 100,
-        major: this.isMajorGridHour(hour),
-      }));
-  }
-
-  protected segmentsFor(dayIso: string, track: TimeTrack): Segment[] {
+  // Base segments (label/color/gridLines precomputed) keyed by "dayIso:track" —
+  // depends only on entries + catalogue, NOT on activeAdjustment$$/pickerState$$/
+  // hoveredSegment$$. Those change often (every drag pointermove, every picker
+  // open/close) and used to force a full label/color/gridline recompute across
+  // every visible segment on each such change — this decouples the two.
+  private readonly segmentsBaseByDayTrack$$ = computed<Map<string, Segment[]>>(() => {
     const index = this.timeEntriesService.entriesByDay$$();
-    const adjustment = this.activeAdjustment$$();
-    const dayNumber = this.dayIsoToDayNumber(dayIso);
-    const dayAbsBase = dayNumber * MINUTES_PER_DAY;
+    const activityKindById = this.timeCatalogueService.activityKindById$$();
+    const optionById = this.timeCatalogueService.optionById$$();
+    const areaGroupId = this.timeCatalogueService.areaGroupId$$();
+
+    // A day contributes segments to itself and, for entries crossing midnight,
+    // to the following day too — so the map must cover both for every loaded day.
+    const relevantDays = new Set<string>();
+    for (const dayIso of index.keys()) {
+      relevantDays.add(dayIso);
+      relevantDays.add(this.dayNumberToDayIso(this.dayIsoToDayNumber(dayIso) + 1));
+    }
+
+    const map = new Map<string, Segment[]>();
+    for (const dayIso of relevantDays) {
+      for (const track of [TimeTrack.Primary, TimeTrack.Secondary] as const) {
+        map.set(
+          this.dayTrackKey(dayIso, track),
+          this.buildDaySegmentsBase(dayIso, track, index, activityKindById, optionById, areaGroupId),
+        );
+      }
+    }
+    return map;
+  });
+
+  private buildDaySegmentsBase(
+    dayIso: string,
+    track: TimeTrack,
+    index: Map<string, TimeDayLanes>,
+    activityKindById: Map<number, ActivityKind>,
+    optionById: Map<number, CategoryOption>,
+    areaGroupId: number | null,
+  ): Segment[] {
     const segments: Segment[] = [];
 
     const ownLanes = index.get(dayIso);
     for (const entry of ownLanes?.[track] ?? []) {
-      if (adjustment?.entryId === entry.id) continue;
       const crossesMidnight = entry.endAt.slice(0, 10) !== dayIso;
+      const startMinute = this.minutesOfDay(entry.startAt);
+      const endMinute = crossesMidnight ? MINUTES_PER_DAY : this.minutesOfDay(entry.endAt);
       segments.push({
         entry,
-        startMinute: this.minutesOfDay(entry.startAt),
-        endMinute: crossesMidnight ? MINUTES_PER_DAY : this.minutesOfDay(entry.endAt),
+        startMinute,
+        endMinute,
         isTrueStart: true,
         isTrueEnd: !crossesMidnight,
         startClock: this.formatClock(entry.startAt),
         endClock: this.formatClock(entry.endAt),
         durationLabel: this.durationLabel(this.toAbsoluteMinutes(entry.startAt), this.toAbsoluteMinutes(entry.endAt)),
+        label: this.computeSegmentLabel(entry, activityKindById, optionById),
+        color: this.computeSegmentColor(entry, optionById, areaGroupId),
+        gridLines: this.buildGridLines(startMinute, endMinute),
       });
     }
 
-    const previousDayIso = this.dayNumberToDayIso(dayNumber - 1);
+    const previousDayIso = this.dayNumberToDayIso(this.dayIsoToDayNumber(dayIso) - 1);
     const previousLanes = index.get(previousDayIso);
     for (const entry of previousLanes?.[track] ?? []) {
-      if (adjustment?.entryId === entry.id) continue;
       if (entry.endAt.slice(0, 10) !== dayIso) continue;
+      const endMinute = this.minutesOfDay(entry.endAt);
       segments.push({
         entry,
         startMinute: 0,
-        endMinute: this.minutesOfDay(entry.endAt),
+        endMinute,
         isTrueStart: false,
         isTrueEnd: true,
         startClock: this.formatClock(entry.startAt),
         endClock: this.formatClock(entry.endAt),
         durationLabel: this.durationLabel(this.toAbsoluteMinutes(entry.startAt), this.toAbsoluteMinutes(entry.endAt)),
+        label: this.computeSegmentLabel(entry, activityKindById, optionById),
+        color: this.computeSegmentColor(entry, optionById, areaGroupId),
+        gridLines: this.buildGridLines(0, endMinute),
       });
     }
 
-    if (adjustment && adjustment.track === track) {
-      const entry = this.timeEntriesService.entries$$().find((candidate) => candidate.id === adjustment.entryId);
-      const segStart = Math.max(adjustment.startAbs, dayAbsBase);
-      const segEnd = Math.min(adjustment.endAbs, dayAbsBase + MINUTES_PER_DAY);
-      if (entry && segStart < segEnd) {
-        segments.push({
-          entry,
-          startMinute: segStart - dayAbsBase,
-          endMinute: segEnd - dayAbsBase,
-          isTrueStart: segStart === adjustment.startAbs,
-          isTrueEnd: segEnd === adjustment.endAbs,
-          startClock: this.clockFromAbsMinutes(adjustment.startAbs),
-          endClock: this.clockFromAbsMinutes(adjustment.endAbs),
-          durationLabel: this.durationLabel(adjustment.startAbs, adjustment.endAbs),
-        });
-      }
-    }
-
     return segments.sort((a, b) => a.startMinute - b.startMinute);
+  }
+
+  private dayTrackKey(dayIso: string, track: TimeTrack): string {
+    return `${dayIso}:${track}`;
+  }
+
+  // Hour grid lines that fall strictly inside a segment's own span, in
+  // percentages local to the segment's box — lets the grid line render in
+  // white on top of the segment while the shared full-lane lines underneath
+  // stay their usual muted gray on the empty canvas.
+  private buildGridLines(startMinute: number, endMinute: number): SegmentGridLine[] {
+    const duration = endMinute - startMinute;
+    return this.gridLineHours
+      .filter((hour) => hour * 60 > startMinute && hour * 60 < endMinute)
+      .map((hour) => ({
+        hour,
+        leftPct: ((hour * 60 - startMinute) / duration) * 100,
+        major: this.isMajorGridHour(hour),
+      }));
+  }
+
+  // Thin per-render assembly: base segments come straight out of the memoized
+  // map above (O(1) lookup); only the one actively-dragged segment (if any) is
+  // rebuilt fresh here, since its start/end genuinely change every pointermove.
+  protected segmentsFor(dayIso: string, track: TimeTrack): Segment[] {
+    const base = this.segmentsBaseByDayTrack$$().get(this.dayTrackKey(dayIso, track)) ?? [];
+    const adjustment = this.activeAdjustment$$();
+    if (!adjustment || adjustment.track !== track) return base;
+
+    const withoutDragged = base.filter((segment) => segment.entry.id !== adjustment.entryId);
+    const dayAbsBase = this.dayIsoToDayNumber(dayIso) * MINUTES_PER_DAY;
+    const segStart = Math.max(adjustment.startAbs, dayAbsBase);
+    const segEnd = Math.min(adjustment.endAbs, dayAbsBase + MINUTES_PER_DAY);
+    if (segStart >= segEnd) return withoutDragged;
+
+    const overlay = this.buildAdjustmentSegment(adjustment, dayAbsBase, segStart, segEnd);
+    return [...withoutDragged, overlay].sort((a, b) => a.startMinute - b.startMinute);
+  }
+
+  private buildAdjustmentSegment(
+    adjustment: ActiveAdjustment,
+    dayAbsBase: number,
+    segStart: number,
+    segEnd: number,
+  ): Segment {
+    const entry = adjustment.entry;
+    const startMinute = segStart - dayAbsBase;
+    const endMinute = segEnd - dayAbsBase;
+    return {
+      entry,
+      startMinute,
+      endMinute,
+      isTrueStart: segStart === adjustment.startAbs,
+      isTrueEnd: segEnd === adjustment.endAbs,
+      startClock: this.clockFromAbsMinutes(adjustment.startAbs),
+      endClock: this.clockFromAbsMinutes(adjustment.endAbs),
+      durationLabel: this.durationLabel(adjustment.startAbs, adjustment.endAbs),
+      label: this.computeSegmentLabel(
+        entry,
+        this.timeCatalogueService.activityKindById$$(),
+        this.timeCatalogueService.optionById$$(),
+      ),
+      color: this.computeSegmentColor(
+        entry,
+        this.timeCatalogueService.optionById$$(),
+        this.timeCatalogueService.areaGroupId$$(),
+      ),
+      gridLines: this.buildGridLines(startMinute, endMinute),
+    };
   }
 
   protected segmentStyle(segment: Segment): Record<string, string> {
@@ -243,19 +439,22 @@ export class TimelineBoard {
   // Secondary segments look "lighter" via an alpha-blended background rather
   // than element opacity — opacity would cascade to descendants (including
   // the tooltip's fixed-position panel), making the tooltip translucent too.
-  protected segmentBackground(entry: TimeEntry, secondary: boolean): string {
-    const color = this.segmentColor(entry);
-    return secondary ? `color-mix(in oklab, ${color} 75%, transparent)` : color;
+  protected segmentBackground(segment: Segment, secondary: boolean): string {
+    return secondary ? `color-mix(in oklab, ${segment.color} 75%, transparent)` : segment.color;
   }
 
   // Segment label: kind name, plus a short list of selected option names —
   // `.seg-name` already has CSS text-overflow ellipsis, so when space is
   // tight the tail (options) is clipped and only the kind stays visible,
   // matching "если места мало, показывать только kind" without extra logic.
-  protected segmentLabel(entry: TimeEntry): string {
-    const kindName = this.timeCatalogueService.activityKindById$$().get(entry.activityKindId)?.name ?? '…';
+  private computeSegmentLabel(
+    entry: TimeEntry,
+    activityKindById: Map<number, ActivityKind>,
+    optionById: Map<number, CategoryOption>,
+  ): string {
+    const kindName = activityKindById.get(entry.activityKindId)?.name ?? '…';
     const optionNames = entry.options
-      .map((option) => this.timeCatalogueService.optionById$$().get(option.optionId)?.name)
+      .map((option) => optionById.get(option.optionId)?.name)
       .filter((name): name is string => !!name);
     return optionNames.length > 0 ? `${kindName} · ${optionNames.join(', ')}` : kindName;
   }
@@ -266,14 +465,16 @@ export class TimelineBoard {
   protected segmentTooltipText(segment: Segment): string {
     const arrowL = segment.isTrueStart ? '' : '◂ ';
     const arrowR = segment.isTrueEnd ? '' : ' ▸';
-    return `${arrowL}${this.segmentLabel(segment.entry)} · ${segment.durationLabel} · ${segment.startClock}–${segment.endClock}${arrowR}`;
+    return `${arrowL}${segment.label} · ${segment.durationLabel} · ${segment.startClock}–${segment.endClock}${arrowR}`;
   }
 
   // Color priority: selected option of the kind='area' group, else the first
   // selected option that has a color, else a neutral fallback.
-  protected segmentColor(entry: TimeEntry): string {
-    const optionById = this.timeCatalogueService.optionById$$();
-    const areaGroupId = this.timeCatalogueService.areaGroupId$$();
+  private computeSegmentColor(
+    entry: TimeEntry,
+    optionById: Map<number, CategoryOption>,
+    areaGroupId: number | null,
+  ): string {
     if (areaGroupId !== null) {
       const areaSelection = entry.options.find((option) => option.groupId === areaGroupId);
       const areaColor = areaSelection ? optionById.get(areaSelection.optionId)?.color : null;
@@ -291,6 +492,7 @@ export class TimelineBoard {
   }
 
   protected onSegmentPointerDown(event: PointerEvent, entry: TimeEntry): void {
+    this.closeTooltip();
     const target = event.target as HTMLElement;
     if (target.closest('.handle') || target.closest('.seg-delete')) return;
     this.startMove(event, entry);
@@ -298,16 +500,44 @@ export class TimelineBoard {
 
   protected onHandlePointerDown(event: PointerEvent, entry: TimeEntry, side: 'left' | 'right'): void {
     event.stopPropagation();
+    this.closeTooltip();
     this.startResize(event, entry, side);
   }
 
   protected deleteEntry(entry: TimeEntry): void {
+    this.closeTooltip();
     this.timeEntriesService.deleteEntry(entry.id);
   }
 
-  protected onTimelineScroll(event: Event): void {
-    const scrollEl = event.currentTarget as HTMLDivElement;
-    if (scrollEl.scrollTop > LOAD_OLDER_SCROLL_TOP_PX || this.isPrependingDays) return;
+  protected onSegmentMouseEnter(event: MouseEvent, segment: Segment): void {
+    this.hoveredSegment$$.set({
+      text: this.segmentTooltipText(segment),
+      triggerRect: (event.currentTarget as HTMLElement).getBoundingClientRect(),
+    });
+    this.isTooltipPositioned$$.set(false);
+    setTimeout(() => this.updateTooltipPosition(), 0);
+  }
+
+  protected closeTooltip(): void {
+    this.hoveredSegment$$.set(null);
+    this.isTooltipPositioned$$.set(false);
+  }
+
+  private updateTooltipPosition(): void {
+    const hovered = this.hoveredSegment$$();
+    const panel = this.tooltipPanelElem()?.nativeElement;
+    if (!hovered || !panel) return;
+
+    const position = computeTooltipPosition(hovered.triggerRect, panel.getBoundingClientRect());
+    this.tooltipPlacement$$.set(position.placement);
+    this.tooltipTopPx$$.set(position.top);
+    this.tooltipLeftPx$$.set(position.left);
+    this.isTooltipPositioned$$.set(true);
+  }
+
+  private handleScrollTop(scrollEl: HTMLDivElement, scrollTop: number): void {
+    this.scrollTop$$.set(scrollTop);
+    if (scrollTop > LOAD_OLDER_SCROLL_TOP_PX || this.isPrependingDays) return;
     this.prependOlderDays(scrollEl);
   }
 
@@ -325,10 +555,24 @@ export class TimelineBoard {
 
     this.activeAdjustment$$.set({
       entryId: entry.id,
+      entry,
       track: entry.track,
       startAbs: originStartAbs,
       endAbs: originEndAbs,
     });
+
+    // pointermove fires far more often than a frame renders — coalescing to
+    // rAF and running the listener itself outside the Angular zone means a
+    // drag no longer triggers a full ApplicationRef.tick() on every pixel.
+    let pendingAdjustment: ActiveAdjustment | null = null;
+    let rafScheduled = false;
+    const flushAdjustment = () => {
+      rafScheduled = false;
+      if (!pendingAdjustment) return;
+      const next = pendingAdjustment;
+      pendingAdjustment = null;
+      this.ngZone.run(() => this.activeAdjustment$$.set(next));
+    };
 
     const onMove = (moveEvent: PointerEvent) => {
       moved = true;
@@ -346,37 +590,50 @@ export class TimelineBoard {
 
       const candidateStart = this.snapValue(originStartAbs + rowDeltaMinutes + dxMinutes);
       const constrainedStart = this.constrainMoveStart(candidateStart, duration, lockedTrack, entry.id);
-      this.activeAdjustment$$.set({
+      pendingAdjustment = {
         entryId: entry.id,
+        entry,
         track: lockedTrack,
         startAbs: constrainedStart,
         endAbs: constrainedStart + duration,
-      });
+      };
+      if (!rafScheduled) {
+        rafScheduled = true;
+        requestAnimationFrame(flushAdjustment);
+      }
     };
 
     const onUp = (upEvent: PointerEvent) => {
       document.removeEventListener('pointermove', onMove);
       document.removeEventListener('pointerup', onUp);
-      const adjustment = this.activeAdjustment$$();
-      this.activeAdjustment$$.set(null);
-      if (!moved) {
-        // A plain click (no drag) on the segment body opens the picker in
-        // edit mode — matches the plan's "on edit selection open the same
-        // picker" without introducing a separate click handler that would
-        // race with the drag's pointerdown.
-        this.pickerState$$.set({ mode: 'edit', entryId: entry.id, x: upEvent.clientX, y: upEvent.clientY });
-        return;
-      }
-      if (!adjustment) return;
-      this.timeEntriesService.updateEntryTime(entry.id, {
-        track: adjustment.track,
-        startAt: this.fromAbsoluteMinutes(adjustment.startAbs),
-        endAt: this.fromAbsoluteMinutes(adjustment.endAbs),
+      this.ngZone.run(() => {
+        if (pendingAdjustment) {
+          this.activeAdjustment$$.set(pendingAdjustment);
+          pendingAdjustment = null;
+        }
+        const adjustment = this.activeAdjustment$$();
+        this.activeAdjustment$$.set(null);
+        if (!moved) {
+          // A plain click (no drag) on the segment body opens the picker in
+          // edit mode — matches the plan's "on edit selection open the same
+          // picker" without introducing a separate click handler that would
+          // race with the drag's pointerdown.
+          this.pickerState$$.set({ mode: 'edit', entryId: entry.id, x: upEvent.clientX, y: upEvent.clientY });
+          return;
+        }
+        if (!adjustment) return;
+        this.timeEntriesService.updateEntryTime(entry.id, {
+          track: adjustment.track,
+          startAt: this.fromAbsoluteMinutes(adjustment.startAbs),
+          endAt: this.fromAbsoluteMinutes(adjustment.endAbs),
+        });
       });
     };
 
-    document.addEventListener('pointermove', onMove);
-    document.addEventListener('pointerup', onUp);
+    this.ngZone.runOutsideAngular(() => {
+      document.addEventListener('pointermove', onMove);
+      document.addEventListener('pointerup', onUp);
+    });
   }
 
   private startResize(event: PointerEvent, entry: TimeEntry, side: 'left' | 'right'): void {
@@ -400,10 +657,21 @@ export class TimelineBoard {
 
     this.activeAdjustment$$.set({
       entryId: entry.id,
+      entry,
       track: entry.track,
       startAbs: originStartAbs,
       endAbs: originEndAbs,
     });
+
+    let pendingAdjustment: ActiveAdjustment | null = null;
+    let rafScheduled = false;
+    const flushAdjustment = () => {
+      rafScheduled = false;
+      if (!pendingAdjustment) return;
+      const next = pendingAdjustment;
+      pendingAdjustment = null;
+      this.ngZone.run(() => this.activeAdjustment$$.set(next));
+    };
 
     const onMove = (moveEvent: PointerEvent) => {
       moved = true;
@@ -411,54 +679,68 @@ export class TimelineBoard {
       if (side === 'left') {
         const candidateStart = this.snapValue(originStartAbs + dxMinutes);
         const newStart = Math.max(lower, Math.min(candidateStart, originEndAbs - MIN_DURATION_MINUTES));
-        this.activeAdjustment$$.set({
+        pendingAdjustment = {
           entryId: entry.id,
+          entry,
           track: entry.track,
           startAbs: newStart,
           endAbs: originEndAbs,
-        });
+        };
       } else {
         const candidateEnd = this.snapValue(originEndAbs + dxMinutes);
         const newEnd = Math.min(upper, Math.max(candidateEnd, originStartAbs + MIN_DURATION_MINUTES));
-        this.activeAdjustment$$.set({
+        pendingAdjustment = {
           entryId: entry.id,
+          entry,
           track: entry.track,
           startAbs: originStartAbs,
           endAbs: newEnd,
-        });
+        };
+      }
+      if (!rafScheduled) {
+        rafScheduled = true;
+        requestAnimationFrame(flushAdjustment);
       }
     };
 
     const onUp = () => {
       document.removeEventListener('pointermove', onMove);
       document.removeEventListener('pointerup', onUp);
-      const adjustment = this.activeAdjustment$$();
-      this.activeAdjustment$$.set(null);
-      if (!moved || !adjustment) return;
-      this.timeEntriesService.updateEntryTime(entry.id, {
-        track: entry.track,
-        startAt: this.fromAbsoluteMinutes(adjustment.startAbs),
-        endAt: this.fromAbsoluteMinutes(adjustment.endAbs),
+      this.ngZone.run(() => {
+        if (pendingAdjustment) {
+          this.activeAdjustment$$.set(pendingAdjustment);
+          pendingAdjustment = null;
+        }
+        const adjustment = this.activeAdjustment$$();
+        this.activeAdjustment$$.set(null);
+        if (!moved || !adjustment) return;
+        this.timeEntriesService.updateEntryTime(entry.id, {
+          track: entry.track,
+          startAt: this.fromAbsoluteMinutes(adjustment.startAbs),
+          endAt: this.fromAbsoluteMinutes(adjustment.endAbs),
+        });
       });
     };
 
-    document.addEventListener('pointermove', onMove);
-    document.addEventListener('pointerup', onUp);
+    this.ngZone.runOutsideAngular(() => {
+      document.addEventListener('pointermove', onMove);
+      document.addEventListener('pointerup', onUp);
+    });
   }
 
   protected onLaneMouseMove(event: MouseEvent, dayIso: string, track: TimeTrack): void {
     if (this.activeAdjustment$$()) {
-      this.previewSlot$$.set(null);
+      this.setPreviewSlot(null);
       return;
     }
     const laneRect = (event.currentTarget as HTMLElement).getBoundingClientRect();
     const rawMinute = ((event.clientX - laneRect.left) / laneRect.width) * MINUTES_PER_DAY;
     const slot = this.findGapSlot(dayIso, track, rawMinute);
     if (!slot) {
-      this.previewSlot$$.set(null);
+      this.setPreviewSlot(null);
       return;
     }
-    this.previewSlot$$.set({
+    this.setPreviewSlot({
       dayIso,
       track,
       leftPct: (slot.start / MINUTES_PER_DAY) * 100,
@@ -467,7 +749,26 @@ export class TimelineBoard {
   }
 
   protected onLaneMouseLeave(): void {
-    this.previewSlot$$.set(null);
+    this.setPreviewSlot(null);
+  }
+
+  // Every mousemove tick recomputes a brand-new object even when nothing about
+  // the preview actually changed — skip the signal write in that case so a
+  // still cursor doesn't keep re-marking the component dirty.
+  private setPreviewSlot(next: PreviewSlot | null): void {
+    const current = this.previewSlot$$();
+    if (current === next) return;
+    if (
+      current &&
+      next &&
+      current.dayIso === next.dayIso &&
+      current.track === next.track &&
+      current.leftPct === next.leftPct &&
+      current.widthPct === next.widthPct
+    ) {
+      return;
+    }
+    this.previewSlot$$.set(next);
   }
 
   protected onLaneClick(event: MouseEvent, dayIso: string, track: TimeTrack): void {
@@ -512,12 +813,18 @@ export class TimelineBoard {
     this.pickerState$$.set(null);
   }
 
+  // Scoped to the day itself + the previous day (an entry can only overlap
+  // today's [0, 1440) minute range if it started today or crossed into today
+  // from yesterday — a later day's entries start at/after tomorrow's base and
+  // can never reach back into today) — O(couple of entries) instead of every
+  // entry ever loaded.
   private findGapSlot(dayIso: string, track: TimeTrack, rawMinute: number): { start: number; end: number } | null {
     const dayAbsBase = this.dayIsoToDayNumber(dayIso) * MINUTES_PER_DAY;
-    const trackEntries = this.timeEntriesService
-      .entries$$()
-      .filter((entry) => entry.track === track)
-      .map((entry) => ({ start: this.toAbsoluteMinutes(entry.startAt), end: this.toAbsoluteMinutes(entry.endAt) }));
+    const index = this.timeEntriesService.entriesByDay$$();
+    const previousDayIso = this.dayNumberToDayIso(this.dayIsoToDayNumber(dayIso) - 1);
+    const trackEntries = [...(index.get(dayIso)?.[track] ?? []), ...(index.get(previousDayIso)?.[track] ?? [])].map(
+      (entry) => ({ start: this.toAbsoluteMinutes(entry.startAt), end: this.toAbsoluteMinutes(entry.endAt) }),
+    );
 
     const rawAbs = dayAbsBase + rawMinute;
     if (trackEntries.some((range) => rawAbs >= range.start && rawAbs < range.end)) return null;
@@ -558,16 +865,26 @@ export class TimelineBoard {
     return Math.max(lower, Math.min(candidateStart, upper));
   }
 
+  // Rows have a fixed, known height (rowHeightPx$$) — so the scroll compensation
+  // for 30 newly-prepended days is computed analytically, not by measuring
+  // scrollHeight after a render. That lets scrollTop$$ (which drives the
+  // virtualization window) update in the SAME synchronous tick as
+  // visibleStartDayNumber$$, so the very first re-render already has a
+  // consistent (new day count, new scrollTop) pair — no intermediate frame
+  // where the window is computed against a stale scrollTop, which used to
+  // show a flash of the wrong/blank rows and a visible jump until the native
+  // scroll event eventually caught the signal up.
   private prependOlderDays(scrollEl: HTMLDivElement): void {
     this.isPrependingDays = true;
-    const previousScrollHeight = scrollEl.scrollHeight;
-    const previousScrollTop = scrollEl.scrollTop;
+    const anchoredScrollTop = this.scrollTop$$() + OLDER_DAYS_BATCH * this.rowHeightPx$$();
+
     this.visibleStartDayNumber$$.update((dayNumber) => dayNumber - OLDER_DAYS_BATCH);
+    this.scrollTop$$.set(anchoredScrollTop);
 
     afterNextRender(
       {
         write: () => {
-          scrollEl.scrollTop = scrollEl.scrollHeight - previousScrollHeight + previousScrollTop;
+          scrollEl.scrollTop = anchoredScrollTop;
           this.isPrependingDays = false;
         },
       },

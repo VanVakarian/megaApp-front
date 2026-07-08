@@ -88,12 +88,15 @@
 .timeline-scroll {
   display: flex;
   flex-direction: column;
-  gap: var(--row-gap);
   flex: 1 1 auto;
   min-height: 0;
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
+}
+
+.row-spacer {
+  flex: 0 0 auto;
 }
 
 .timeline-board.compact {
@@ -116,7 +119,6 @@
   bottom: 0;
   width: 1px;
   pointer-events: none;
-  background-attachment: fixed;
   background-image: repeating-linear-gradient(to bottom,
       color-mix(in oklab, var(--v-color-text-muted) 20%, transparent) 0 4px,
       transparent 4px 8px);
@@ -135,9 +137,9 @@
   height: calc(var(--primary-h, 42px) + var(--secondary-h, 22px));
   min-width: 0;
   flex: 0 0 auto;
-}
-
-.day-row:not(:last-child) {
+  // Border + margin must total exactly the ROW_BORDER_PX + ROW_GAP_PX constants in
+  // timeline-board.ts — the virtualization math assumes every row occupies the same height.
+  margin-bottom: var(--row-gap);
   border-bottom: 1px solid var(--v-color-border-subtle);
 }
 
@@ -203,7 +205,7 @@
   font-size: 11.5px;
   display: flex;
   align-items: center;
-  --v-tooltip-fill-padding: 0 var(--unit-2);
+  padding: 0 var(--unit-2);
   cursor: grab;
   user-select: none;
   touch-action: none;
@@ -222,7 +224,6 @@
   width: 1px;
   pointer-events: none;
   z-index: 1;
-  background-attachment: fixed;
   background-image: repeating-linear-gradient(to bottom,
       rgba(255, 255, 255, 0.4) 0 4px,
       transparent 4px 8px);
@@ -234,12 +235,11 @@
       transparent 4px 8px);
 }
 
-.seg>v-tooltip {
-  // No position here on purpose — v-tooltip's own [fill] mode already sets
-  // position:absolute;inset:0 to stretch over the whole segment; overriding
-  // it to relative here collapses it back to its shrink-to-fit content size
-  // (only the left portion covered — resize handle-r, hover-anywhere, etc.
-  // all stop working past the text).
+// Segments no longer wrap their content in a per-instance <v-tooltip> (hundreds
+// of them tanked performance) — stacking segment-label above .seg-grid-line
+// (z-index: 1) has to be done here instead.
+.seg segment-label {
+  position: relative;
   z-index: 2;
 }
 
@@ -257,11 +257,11 @@
   top: 1px;
   bottom: 1px;
   font-size: 10px;
-  --v-tooltip-fill-padding: 0 var(--unit-1);
+  padding: 0 var(--unit-1);
 }
 
 .seg.seg-short {
-  --v-tooltip-fill-padding: 0 2px;
+  padding: 0 2px;
 }
 
 .timeline-board.compact .seg-secondary {
@@ -321,6 +321,37 @@
 
 .seg:hover .handle {
   background: rgba(255, 255, 255, 0.25);
+}
+
+.seg-tooltip-panel {
+  position: fixed;
+  z-index: var(--v-tooltip-z-index);
+  background: var(--v-color-surface-accent);
+  color: var(--v-color-text);
+  border: 1px solid var(--v-color-border-subtle);
+  border-radius: var(--unit-2);
+  box-shadow: var(--v-shadow-outer-2);
+  padding: var(--unit-2) var(--unit-3);
+  font-size: 0.85rem;
+  font-weight: 400;
+  line-height: 1.4;
+  text-align: left;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(4px);
+  transition:
+    opacity var(--animation-duration-fast) ease,
+    transform var(--animation-duration-fast) ease;
+}
+
+.seg-tooltip-panel.below {
+  transform: translateY(-4px);
+}
+
+.seg-tooltip-panel.visible {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .seg-preview {
