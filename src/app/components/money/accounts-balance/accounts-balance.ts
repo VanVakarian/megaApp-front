@@ -62,7 +62,7 @@ export class AccountsBalance {
       case AccountKind.CARD:
         return IconName.CreditCard;
       case AccountKind.CHECKING:
-        return IconName.AccontBalance;
+        return IconName.AccountBalance;
       case AccountKind.DEPOSIT:
         return IconName.Savings;
       case AccountKind.BROKERAGE:
@@ -70,7 +70,7 @@ export class AccountsBalance {
       case AccountKind.CRYPTO:
         return IconName.CurrencyBitcoin;
       default:
-        return IconName.AccontBalanceWallet;
+        return IconName.AccountBalanceWallet;
     }
   }
 
