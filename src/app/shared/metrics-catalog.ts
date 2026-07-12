@@ -6,6 +6,7 @@ import { HARDWARE_METRICS_DEFINITION } from '@app/shared/metrics-catalog.hardwar
 import { MEGAAPP_METRICS_DEFINITION } from '@app/shared/metrics-catalog.megaapp';
 import { SOZVON_KONSPEKT_METRICS_DEFINITION } from '@app/shared/metrics-catalog.sozvon-konspekt';
 import { SPREAD_CAPTURE_BOT_METRICS_DEFINITION } from '@app/shared/metrics-catalog.spread-capture-bot';
+import { SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION } from '@app/shared/metrics-catalog.spread-capture-bot-v4';
 
 export type { MetricsGroupDefinition, MetricsServiceDefinition } from '@app/shared/metrics-catalog-metric';
 
@@ -37,6 +38,7 @@ function buildCatalog(definition: MetricsServiceDefinition): ResolvedCatalog {
 
 const STATIC_CATALOGS: ResolvedCatalog[] = [
   buildCatalog(SPREAD_CAPTURE_BOT_METRICS_DEFINITION),
+  buildCatalog(SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION),
   buildCatalog(MEGAAPP_METRICS_DEFINITION),
   buildCatalog(SOZVON_KONSPEKT_METRICS_DEFINITION),
 ];
