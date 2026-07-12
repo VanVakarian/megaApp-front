@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, OnDestroy, OnInit, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, OnDestroy, OnInit, signal } from '@angular/core';
 import { MetricsHealthService } from '@app/services/metrics-health.service';
 import { MetricsSettingsService } from '@app/services/metrics-settings.service';
 import { MetricsService } from '@app/services/metrics.service';
@@ -126,6 +126,7 @@ export class MetricsDashboard implements OnInit, OnDestroy {
   // metrics-settings.service.ts) — every page load opens on the Dashboard panel.
   private readonly expandedPanel$$ = signal<string>(DASHBOARD_PANEL_KEY);
   private readonly isSettingsPanelExpanded$$ = signal(false);
+  private readonly dashboardHistoryEffect = effect(() => this.loadDashboardHistory());
 
   protected readonly serviceOptions$$ = computed<MetricsServiceOption[]>(() => {
     const discoveredServices = new Set<string>();
@@ -395,6 +396,9 @@ export class MetricsDashboard implements OnInit, OnDestroy {
 
     clearMetricSyncCrosshair();
     this.expandedPanel$$.set(service);
+    if (service !== DASHBOARD_PANEL_KEY) {
+      this.metricsService.loadHistory(service);
+    }
   }
 
   protected onCardWidthChange(value: string): void {
@@ -422,6 +426,12 @@ export class MetricsDashboard implements OnInit, OnDestroy {
 
   protected clearMetricsCache(): void {
     this.metricsService.clearCache();
+    const expanded = this.resolvedExpandedPanel();
+    if (expanded === DASHBOARD_PANEL_KEY) {
+      this.loadDashboardHistory();
+      return;
+    }
+    this.metricsService.loadHistory(expanded);
   }
 
   protected warnAfterSeconds(service: string): number {
@@ -552,6 +562,16 @@ export class MetricsDashboard implements OnInit, OnDestroy {
       ...current,
       [service]: this.nextDashboardServiceOrder(),
     });
+  }
+
+  private loadDashboardHistory(): void {
+    const selections = this.dashboardSelection$$();
+    for (const service of Object.keys(this.dashboardServiceSelection$$())) {
+      const names = Object.keys(selections[service] ?? {});
+      if (names.length > 0) {
+        this.metricsService.loadHistory(service, names);
+      }
+    }
   }
 
   // Falls back to the Dashboard panel (not "first visible service") the moment the

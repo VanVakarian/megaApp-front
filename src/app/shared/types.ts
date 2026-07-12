@@ -203,6 +203,16 @@ export interface MetricPoint {
   value: number;
 }
 
+export interface MetricSnapshot {
+  granularity: MetricGranularity;
+  bucket: number;
+  metrics: Record<string, number>;
+}
+
+export interface MetricsHistoryResponse {
+  snapshots: MetricSnapshot[];
+}
+
 export interface MetricsUpdateWsMessage {
   type: WebSocketMessageType.METRICS_UPDATE;
   payload: { points: MetricPoint[] };
