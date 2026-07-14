@@ -1,10 +1,10 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, OnDestroy, OnInit, signal } from '@angular/core';
+import { DeviceInfoService } from '@app/services/device-info.service';
 import { MetricsHealthService } from '@app/services/metrics-health.service';
-import { MetricsSettingsService } from '@app/services/metrics-settings.service';
+import { CardSizeMode, MetricsSettingsService } from '@app/services/metrics-settings.service';
 import { MetricsService } from '@app/services/metrics.service';
 import { METRICS_GRANULARITY_STEP_SECONDS, METRICS_GRANULARITY_WINDOW_PERIODS } from '@app/shared/chart-config';
 import { formatMetricUnitValue, MetricUnit } from '@app/shared/metric-units';
-import { MetricChartMode } from '@app/shared/metrics-chart-mode';
 import {
   metricAggregation,
   metricChartMode,
@@ -17,6 +17,7 @@ import {
   metricsServiceLabel,
   metricUnit,
 } from '@app/shared/metrics-catalog';
+import { MetricChartMode } from '@app/shared/metrics-chart-mode';
 import {
   buildCollapsedMetricWindow,
   buildMetricPointsIndex,
@@ -48,6 +49,11 @@ const DASHBOARD_PANEL_KEY = '__dashboard__';
 const GRANULARITY_OPTIONS: MetricGranularity[] = ['minute', 'hour', 'day'];
 const MINUTE_COLLAPSE_CARD_WIDTH_THRESHOLD_PX = 600;
 const COLLAPSED_MINUTE_STEP_SECONDS = 5 * 60;
+const CARD_SIZE_MODE_LABELS: Record<CardSizeMode, string> = {
+  [CardSizeMode.Small]: 'Маленькая карточка',
+  [CardSizeMode.Large]: 'Большая карточка',
+};
+const CARD_SIZE_MODES: CardSizeMode[] = [CardSizeMode.Small, CardSizeMode.Large];
 
 interface MetricChartCardData {
   key: string;
@@ -96,15 +102,21 @@ interface MetricsServiceOption {
 export class MetricsDashboard implements OnInit, OnDestroy {
   protected readonly metricsService = inject(MetricsService);
   protected readonly metricsHealthService = inject(MetricsHealthService);
+  protected readonly deviceInfoService = inject(DeviceInfoService);
   protected readonly Icon = IconName;
+  protected readonly CardSizeMode = CardSizeMode;
   protected readonly settingsPanelKey = SETTINGS_PANEL_KEY;
   protected readonly dashboardPanelKey = DASHBOARD_PANEL_KEY;
+  protected readonly cardSizeModes = CARD_SIZE_MODES;
+  protected readonly cardSizeModeLabels = CARD_SIZE_MODE_LABELS;
 
   private readonly metricsSettingsService = inject(MetricsSettingsService);
 
   private readonly now$$ = signal(Date.now());
-  protected readonly cardWidthPx$$ = this.metricsSettingsService.cardWidthPx$$;
-  protected readonly cardHeightPx$$ = this.metricsSettingsService.cardHeightPx$$;
+  protected readonly cardWidthPx$$ = this.metricsSettingsService.activeCardWidthPx$$;
+  protected readonly cardHeightPx$$ = this.metricsSettingsService.activeCardHeightPx$$;
+  protected readonly cardSizeByMode$$ = this.metricsSettingsService.cardSizeByMode$$;
+  protected readonly activeCardSizeMode$$ = this.metricsSettingsService.activeCardSizeMode$$;
   protected readonly granularityOptions = GRANULARITY_OPTIONS;
   protected readonly granularityToggleItems: VToggleItem[] = this.granularityOptions.map((granularity) => ({
     id: granularity,
@@ -121,6 +133,15 @@ export class MetricsDashboard implements OnInit, OnDestroy {
   protected readonly isSavingSettings$$ = this.metricsSettingsService.isSaving$$;
   private nowTickIntervalId: ReturnType<typeof setInterval> | null = null;
   private readonly minuteMetricCollapseCache = new MinuteMetricCollapseCache();
+  private readonly isPageScrolled$$ = signal(window.scrollY > 0);
+  private readonly onWindowScroll = () => this.isPageScrolled$$.set(window.scrollY > 0);
+
+  protected readonly stickyBarClasses$$ = computed(() => {
+    if (!this.deviceInfoService.isDesktopScreen$$()) return '';
+    return this.isPageScrolled$$()
+      ? 'sticky top-0 z-10 shadow-[0_10px_15px_-10px_rgba(0,0,0,0.3)]'
+      : 'sticky top-0 z-10';
+  });
 
   // Which panel is expanded is transient UI state, not persisted anywhere (see
   // metrics-settings.service.ts) — every page load opens on the Dashboard panel.
@@ -314,6 +335,7 @@ export class MetricsDashboard implements OnInit, OnDestroy {
   public ngOnInit(): void {
     this.metricsService.subscribe();
     this.nowTickIntervalId = setInterval(() => this.now$$.set(Date.now()), NOW_TICK_INTERVAL_MS);
+    window.addEventListener('scroll', this.onWindowScroll, { passive: true });
   }
 
   public ngOnDestroy(): void {
@@ -321,6 +343,7 @@ export class MetricsDashboard implements OnInit, OnDestroy {
     if (this.nowTickIntervalId !== null) {
       clearInterval(this.nowTickIntervalId);
     }
+    window.removeEventListener('scroll', this.onWindowScroll);
   }
 
   protected serviceLabel(service: string): string {
@@ -401,16 +424,20 @@ export class MetricsDashboard implements OnInit, OnDestroy {
     }
   }
 
-  protected onCardWidthChange(value: string): void {
+  protected onCardWidthChange(mode: CardSizeMode, value: string): void {
     const widthPx = Number(value);
     if (!Number.isFinite(widthPx) || widthPx <= 0) return;
-    this.metricsSettingsService.setCardWidthPx(widthPx);
+    this.metricsSettingsService.setCardWidthPx(mode, widthPx);
   }
 
-  protected onCardHeightChange(value: string): void {
+  protected onCardHeightChange(mode: CardSizeMode, value: string): void {
     const heightPx = Number(value);
     if (!Number.isFinite(heightPx) || heightPx <= 0) return;
-    this.metricsSettingsService.setCardHeightPx(heightPx);
+    this.metricsSettingsService.setCardHeightPx(mode, heightPx);
+  }
+
+  protected cycleCardSizeMode(): void {
+    this.metricsSettingsService.cycleActiveCardSizeMode();
   }
 
   protected onSyncCrosshairEnabledChange(value: boolean): void {

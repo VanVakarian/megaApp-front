@@ -1,5 +1,5 @@
 import { HttpClient } from '@angular/common/http';
-import { inject, Injectable, signal, WritableSignal } from '@angular/core';
+import { computed, inject, Injectable, signal, WritableSignal } from '@angular/core';
 import { LocalStorageService } from '@app/services/local-storage.service';
 import { NotificationService } from '@app/services/notification.service';
 import { SeverityThresholds } from '@app/shared/metrics-severity';
@@ -11,9 +11,22 @@ export type DashboardServiceSelection = Record<string, number>;
 export type SeverityThresholdsOverrides = Record<string, SeverityThresholds>;
 export type ServiceHeaderVisibility = Record<string, boolean>;
 
+export const CardSizeMode = {
+  Small: 'small',
+  Large: 'large',
+} as const;
+export type CardSizeMode = (typeof CardSizeMode)[keyof typeof CardSizeMode];
+
+export interface CardSize {
+  widthPx: number;
+  heightPx: number;
+}
+
+export type CardSizeByMode = Record<CardSizeMode, CardSize>;
+
 interface StoredMetricsSettings {
-  cardWidthPx: number;
-  cardHeightPx: number;
+  cardSizeByMode: CardSizeByMode;
+  activeCardSizeMode: CardSizeMode;
   granularity: MetricGranularity;
   syncCrosshairEnabled: boolean;
   forceZeroBaselineEnabled: boolean;
@@ -26,12 +39,28 @@ interface StoredMetricsSettings {
 const STORAGE_KEY = 'metrics_settings';
 const SETTINGS_ENDPOINT = '/api/metrics-settings/';
 const SAVE_DEBOUNCE_MS = 5_000;
-const DEFAULT_CARD_WIDTH_PX = 304;
-const DEFAULT_CHART_HEIGHT_PX = 112;
+const DEFAULT_SMALL_CARD_WIDTH_PX = 304;
+const DEFAULT_SMALL_CARD_HEIGHT_PX = 112;
+const DEFAULT_LARGE_CARD_WIDTH_PX = 480;
+const DEFAULT_LARGE_CARD_HEIGHT_PX = 220;
+
+const DEFAULT_SMALL_CARD_SIZE: CardSize = {
+  widthPx: DEFAULT_SMALL_CARD_WIDTH_PX,
+  heightPx: DEFAULT_SMALL_CARD_HEIGHT_PX,
+};
+const DEFAULT_LARGE_CARD_SIZE: CardSize = {
+  widthPx: DEFAULT_LARGE_CARD_WIDTH_PX,
+  heightPx: DEFAULT_LARGE_CARD_HEIGHT_PX,
+};
+
+const DEFAULT_CARD_SIZE_BY_MODE: CardSizeByMode = {
+  [CardSizeMode.Small]: DEFAULT_SMALL_CARD_SIZE,
+  [CardSizeMode.Large]: DEFAULT_LARGE_CARD_SIZE,
+};
 
 const DEFAULTS: StoredMetricsSettings = {
-  cardWidthPx: DEFAULT_CARD_WIDTH_PX,
-  cardHeightPx: DEFAULT_CHART_HEIGHT_PX,
+  cardSizeByMode: DEFAULT_CARD_SIZE_BY_MODE,
+  activeCardSizeMode: CardSizeMode.Small,
   granularity: 'minute',
   syncCrosshairEnabled: false,
   forceZeroBaselineEnabled: false,
@@ -57,6 +86,39 @@ const OBSOLETE_KEYS = [
   'metrics_severity_thresholds',
 ];
 
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value);
+}
+
+function isValidCardSize(value: unknown): value is CardSize {
+  if (typeof value !== 'object' || value === null) return false;
+  const candidate = value as Partial<CardSize>;
+  return (
+    isFiniteNumber(candidate.widthPx) &&
+    candidate.widthPx > 0 &&
+    isFiniteNumber(candidate.heightPx) &&
+    candidate.heightPx > 0
+  );
+}
+
+function isValidCardSizeByMode(value: unknown): value is CardSizeByMode {
+  if (typeof value !== 'object' || value === null) return false;
+  const candidate = value as Partial<CardSizeByMode>;
+  return isValidCardSize(candidate[CardSizeMode.Small]) && isValidCardSize(candidate[CardSizeMode.Large]);
+}
+
+function isValidCardSizeMode(value: unknown): value is CardSizeMode {
+  return value === CardSizeMode.Small || value === CardSizeMode.Large;
+}
+
+function resolveCardSizeByMode(raw: Partial<StoredMetricsSettings>): CardSizeByMode {
+  return isValidCardSizeByMode(raw.cardSizeByMode) ? raw.cardSizeByMode : DEFAULT_CARD_SIZE_BY_MODE;
+}
+
+function resolveActiveCardSizeMode(raw: Partial<StoredMetricsSettings>): CardSizeMode {
+  return isValidCardSizeMode(raw.activeCardSizeMode) ? raw.activeCardSizeMode : CardSizeMode.Small;
+}
+
 // Every setter does signal.set() + a synchronous localStorage write, the same
 // way SettingsService does it — no effect() anywhere. An effect that reacts to
 // this state and also writes back into it (even indirectly) is how the
@@ -69,8 +131,8 @@ const OBSOLETE_KEYS = [
   providedIn: 'root',
 })
 export class MetricsSettingsService {
-  public readonly cardWidthPx$$: WritableSignal<number>;
-  public readonly cardHeightPx$$: WritableSignal<number>;
+  public readonly cardSizeByMode$$: WritableSignal<CardSizeByMode>;
+  public readonly activeCardSizeMode$$: WritableSignal<CardSizeMode>;
   public readonly granularity$$: WritableSignal<MetricGranularity>;
   public readonly syncCrosshairEnabled$$: WritableSignal<boolean>;
   public readonly forceZeroBaselineEnabled$$: WritableSignal<boolean>;
@@ -79,6 +141,9 @@ export class MetricsSettingsService {
   public readonly severityThresholdOverrides$$: WritableSignal<SeverityThresholdsOverrides>;
   public readonly serviceHeaderVisibility$$: WritableSignal<ServiceHeaderVisibility>;
   public readonly isSaving$$: WritableSignal<boolean> = signal(false);
+
+  public readonly activeCardWidthPx$$ = computed(() => this.cardSizeByMode$$()[this.activeCardSizeMode$$()].widthPx);
+  public readonly activeCardHeightPx$$ = computed(() => this.cardSizeByMode$$()[this.activeCardSizeMode$$()].heightPx);
 
   private readonly http = inject(HttpClient);
   private readonly localStorageService = inject(LocalStorageService);
@@ -92,12 +157,17 @@ export class MetricsSettingsService {
       this.localStorageService.removeUserScoped(key);
     }
 
-    const stored = this.localStorageService.getUserScoped<Partial<StoredMetricsSettings>>(STORAGE_KEY);
-    const initial: StoredMetricsSettings = { ...DEFAULTS, ...stored };
+    const stored = this.localStorageService.getUserScoped<Partial<StoredMetricsSettings>>(STORAGE_KEY) ?? {};
+    const initial: StoredMetricsSettings = {
+      ...DEFAULTS,
+      ...stored,
+      cardSizeByMode: resolveCardSizeByMode(stored),
+      activeCardSizeMode: resolveActiveCardSizeMode(stored),
+    };
     this.lastConfirmed = initial;
 
-    this.cardWidthPx$$ = signal(initial.cardWidthPx);
-    this.cardHeightPx$$ = signal(initial.cardHeightPx);
+    this.cardSizeByMode$$ = signal(initial.cardSizeByMode);
+    this.activeCardSizeMode$$ = signal(initial.activeCardSizeMode);
     this.granularity$$ = signal(initial.granularity);
     this.syncCrosshairEnabled$$ = signal(initial.syncCrosshairEnabled);
     this.forceZeroBaselineEnabled$$ = signal(initial.forceZeroBaselineEnabled);
@@ -109,14 +179,23 @@ export class MetricsSettingsService {
     this.loadFromServer();
   }
 
-  public setCardWidthPx(value: number): void {
-    this.cardWidthPx$$.set(value);
+  public setCardWidthPx(mode: CardSizeMode, value: number): void {
+    this.updateCardSize(mode, { widthPx: value });
+  }
+
+  public setCardHeightPx(mode: CardSizeMode, value: number): void {
+    this.updateCardSize(mode, { heightPx: value });
+  }
+
+  public setActiveCardSizeMode(mode: CardSizeMode): void {
+    this.activeCardSizeMode$$.set(mode);
     this.persist();
   }
 
-  public setCardHeightPx(value: number): void {
-    this.cardHeightPx$$.set(value);
-    this.persist();
+  public cycleActiveCardSizeMode(): void {
+    this.setActiveCardSizeMode(
+      this.activeCardSizeMode$$() === CardSizeMode.Small ? CardSizeMode.Large : CardSizeMode.Small,
+    );
   }
 
   public setGranularity(value: MetricGranularity): void {
@@ -154,6 +233,12 @@ export class MetricsSettingsService {
     this.persist();
   }
 
+  private updateCardSize(mode: CardSizeMode, patch: Partial<CardSize>): void {
+    const current = this.cardSizeByMode$$();
+    this.cardSizeByMode$$.set({ ...current, [mode]: { ...current[mode], ...patch } });
+    this.persist();
+  }
+
   private persist(): void {
     this.persistLocalOnly();
     this.scheduleSave();
@@ -165,8 +250,8 @@ export class MetricsSettingsService {
 
   private snapshot(): StoredMetricsSettings {
     return {
-      cardWidthPx: this.cardWidthPx$$(),
-      cardHeightPx: this.cardHeightPx$$(),
+      cardSizeByMode: this.cardSizeByMode$$(),
+      activeCardSizeMode: this.activeCardSizeMode$$(),
       granularity: this.granularity$$(),
       syncCrosshairEnabled: this.syncCrosshairEnabled$$(),
       forceZeroBaselineEnabled: this.forceZeroBaselineEnabled$$(),
@@ -178,8 +263,8 @@ export class MetricsSettingsService {
   }
 
   private applySnapshot(value: StoredMetricsSettings): void {
-    this.cardWidthPx$$.set(value.cardWidthPx);
-    this.cardHeightPx$$.set(value.cardHeightPx);
+    this.cardSizeByMode$$.set(value.cardSizeByMode);
+    this.activeCardSizeMode$$.set(value.activeCardSizeMode);
     this.granularity$$.set(value.granularity);
     this.syncCrosshairEnabled$$.set(value.syncCrosshairEnabled);
     this.forceZeroBaselineEnabled$$.set(value.forceZeroBaselineEnabled);
@@ -217,7 +302,12 @@ export class MetricsSettingsService {
   private async loadFromServer(): Promise<void> {
     try {
       const response = await firstValueFrom(this.http.get<Partial<StoredMetricsSettings>>(SETTINGS_ENDPOINT));
-      const merged: StoredMetricsSettings = { ...DEFAULTS, ...response };
+      const merged: StoredMetricsSettings = {
+        ...DEFAULTS,
+        ...response,
+        cardSizeByMode: resolveCardSizeByMode(response),
+        activeCardSizeMode: resolveActiveCardSizeMode(response),
+      };
       this.lastConfirmed = merged;
       this.applySnapshot(merged);
     } catch (error) {
