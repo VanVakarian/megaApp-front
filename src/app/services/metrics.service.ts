@@ -5,20 +5,37 @@ import { NotificationService } from '@app/services/notification.service';
 import { buildCacheKey } from '@app/shared/cache';
 import { idbGet, idbRemove, idbSet } from '@app/shared/idb-cache';
 import { metricsServiceDefinitions } from '@app/shared/metrics-catalog';
+import {
+  METRIC_GRANULARITIES,
+  MetricsHistoryWatermarks,
+  earliestHistoryBucket,
+  emptyMetricsHistoryWatermarks,
+  firstMissingHistoryBucket,
+  latestClosedHistoryBucket,
+  parseMetricsHistoryWatermarks,
+} from '@app/shared/metrics-history-range';
 import { MetricGranularity, MetricPoint, MetricsHistoryResponse, WebSocketMessageType } from '@app/shared/types';
 
 const STORAGE_KEY = 'metrics_detail';
-const MINUTE_STEP_SECONDS = 60;
-const METRICS_WINDOW_SECONDS = 48 * 60 * 60;
-const HISTORY_WINDOW_SECONDS = 24 * 60 * 60;
+const CACHE_WINDOW_SECONDS: Record<MetricGranularity, number> = {
+  minute: 48 * 60 * 60,
+  hour: 30 * 24 * 60 * 60,
+  day: 365 * 24 * 60 * 60,
+};
 const CACHE_WRITE_DELAY_MS = 1_000;
 const REFRESH_CHECK_DELAY_MS = 250;
 const REFRESH_RETRY_DELAY_MS = 60_000;
 
 interface MetricsCacheState {
   points: MetricPoint[];
-  historyCheckedThrough: number;
+  historyCheckedThrough: MetricsHistoryWatermarks | number;
   historyServices: string[];
+}
+
+interface MetricsHistoryRequest {
+  since: MetricsHistoryWatermarks;
+  targets: MetricsHistoryWatermarks;
+  refreshedServices: Set<string>;
 }
 
 @Injectable({
@@ -32,15 +49,19 @@ export class MetricsService {
   private readonly notificationService = inject(NotificationService);
   private readonly http = inject(HttpClient);
   private readonly pointsByKey = new Map<string, MetricPoint>();
-  private readonly minuteBucketCounts = new Map<number, number>();
+  private readonly bucketCounts: Record<MetricGranularity, Map<number, number>> = {
+    minute: new Map(),
+    hour: new Map(),
+    day: new Map(),
+  };
+  private readonly latestBuckets = emptyMetricsHistoryWatermarks();
   private readonly knownServices = new Set(metricsServiceDefinitions().map((definition) => definition.service));
   private refreshedServices = new Set<string>();
 
   private isSubscribed = false;
   private isCacheLoaded = false;
-  private latestMinuteBucket = 0;
   private latestRealtimeMinuteBucket = 0;
-  private historyCheckedThrough = 0;
+  private historyCheckedThrough = emptyMetricsHistoryWatermarks();
   private retryAfterMs = 0;
   private cacheWriteTimeoutId: ReturnType<typeof setTimeout> | null = null;
   private refreshCheckTimeoutId: ReturnType<typeof setTimeout> | null = null;
@@ -58,7 +79,7 @@ export class MetricsService {
         this.mergePoints(cached, false, false);
       } else if (cached) {
         this.mergePoints(cached.points ?? [], false, false);
-        this.historyCheckedThrough = Number.isFinite(cached.historyCheckedThrough) ? cached.historyCheckedThrough : 0;
+        this.historyCheckedThrough = parseMetricsHistoryWatermarks(cached.historyCheckedThrough);
         this.refreshedServices = new Set(Array.isArray(cached.historyServices) ? cached.historyServices : []);
       }
       this.isCacheLoaded = true;
@@ -104,9 +125,11 @@ export class MetricsService {
 
   public clearCache(): void {
     this.pointsByKey.clear();
-    this.minuteBucketCounts.clear();
-    this.latestMinuteBucket = 0;
-    this.historyCheckedThrough = 0;
+    for (const granularity of METRIC_GRANULARITIES) {
+      this.bucketCounts[granularity].clear();
+      this.latestBuckets[granularity] = 0;
+    }
+    this.historyCheckedThrough = emptyMetricsHistoryWatermarks();
     this.refreshedServices.clear();
     this.points$$.set([]);
     if (this.cacheWriteTimeoutId !== null) {
@@ -120,25 +143,35 @@ export class MetricsService {
   private refreshHistory(showNotification = false): void {
     if (this.isRefreshing$$()) return;
 
-    const services = Array.from(this.knownServices).sort();
-    if (services.length === 0) return;
+    const request = this.buildHistoryRequest(showNotification);
+    if (!request) return;
 
     this.isRefreshing$$.set(true);
     if (showNotification) {
       this.retryAfterMs = 0;
     }
 
-    const anchor = this.latestRealtimeMinuteBucket;
-    let params = new HttpParams().set('services', services.join(','));
-    if (anchor > 0) {
-      params = params.set('latestBucket', anchor);
-    }
+    const params = new HttpParams()
+      .set('minuteSince', request.since.minute)
+      .set('hourSince', request.since.hour)
+      .set('daySince', request.since.day);
 
     this.http.get<MetricsHistoryResponse>('/api/metrics/history', { params }).subscribe({
       next: (response) => {
-        this.mergeHistories(response.histories ?? []);
-        this.refreshedServices = new Set(services);
-        this.historyCheckedThrough = Math.max(anchor, this.latestRealtimeMinuteBucket, this.latestMinuteBucket);
+        const histories = response.histories ?? [];
+        this.mergeHistories(histories);
+        this.refreshedServices = new Set([
+          ...request.refreshedServices,
+          ...histories
+            .map((history) => history.service?.trim())
+            .filter((service): service is string => Boolean(service)),
+        ]);
+        for (const granularity of METRIC_GRANULARITIES) {
+          this.historyCheckedThrough[granularity] = Math.max(
+            this.historyCheckedThrough[granularity],
+            request.targets[granularity],
+          );
+        }
         this.retryAfterMs = 0;
         this.isRefreshing$$.set(false);
         this.scheduleCacheWrite();
@@ -173,7 +206,7 @@ export class MetricsService {
         }
       }
     }
-    this.pruneMinutes();
+    this.prunePoints();
     this.publishPoints(true);
   }
 
@@ -183,7 +216,7 @@ export class MetricsService {
     for (const point of newPoints) {
       this.insertPoint(point, isRealtime);
     }
-    this.pruneMinutes();
+    this.prunePoints();
     this.publishPoints(shouldSave);
   }
 
@@ -202,29 +235,30 @@ export class MetricsService {
     const isNew = !this.pointsByKey.has(key);
     this.pointsByKey.set(key, point);
     this.knownServices.add(point.service);
+    this.latestBuckets[point.granularity] = Math.max(this.latestBuckets[point.granularity], point.bucket);
+    if (isNew) {
+      const bucketCounts = this.bucketCounts[point.granularity];
+      bucketCounts.set(point.bucket, (bucketCounts.get(point.bucket) ?? 0) + 1);
+    }
 
     if (point.granularity === 'minute') {
-      this.latestMinuteBucket = Math.max(this.latestMinuteBucket, point.bucket);
       if (isRealtime) {
         this.latestRealtimeMinuteBucket = Math.max(this.latestRealtimeMinuteBucket, point.bucket);
-      }
-      if (isNew) {
-        this.minuteBucketCounts.set(point.bucket, (this.minuteBucketCounts.get(point.bucket) ?? 0) + 1);
       }
     }
   }
 
-  private pruneMinutes(): void {
-    const minMinuteBucket = this.latestMinuteBucket - METRICS_WINDOW_SECONDS;
-    if (minMinuteBucket <= 0) return;
+  private prunePoints(): void {
     for (const [key, point] of this.pointsByKey) {
-      if (point.granularity !== 'minute' || point.bucket >= minMinuteBucket) continue;
+      const minBucket = this.latestBuckets[point.granularity] - CACHE_WINDOW_SECONDS[point.granularity];
+      if (minBucket <= 0 || point.bucket >= minBucket) continue;
       this.pointsByKey.delete(key);
-      const bucketCount = (this.minuteBucketCounts.get(point.bucket) ?? 1) - 1;
+      const bucketCounts = this.bucketCounts[point.granularity];
+      const bucketCount = (bucketCounts.get(point.bucket) ?? 1) - 1;
       if (bucketCount > 0) {
-        this.minuteBucketCounts.set(point.bucket, bucketCount);
+        bucketCounts.set(point.bucket, bucketCount);
       } else {
-        this.minuteBucketCounts.delete(point.bucket);
+        bucketCounts.delete(point.bucket);
       }
     }
   }
@@ -247,33 +281,50 @@ export class MetricsService {
     }
     this.refreshCheckTimeoutId = setTimeout(() => {
       this.refreshCheckTimeoutId = null;
-      if (Date.now() < this.retryAfterMs || !this.shouldRefreshHistory()) return;
+      if (Date.now() < this.retryAfterMs) return;
       this.refreshHistory();
     }, REFRESH_CHECK_DELAY_MS);
   }
 
-  private shouldRefreshHistory(): boolean {
-    const latestBucket = this.latestRealtimeMinuteBucket;
-    if (latestBucket <= 0) return false;
-    if (this.refreshedServices.size === 0) return true;
+  private buildHistoryRequest(force: boolean): MetricsHistoryRequest | null {
+    if (this.latestRealtimeMinuteBucket <= 0) return null;
+
+    let fullRefresh = force || this.refreshedServices.size === 0;
     for (const service of this.knownServices) {
-      if (!this.refreshedServices.has(service)) return true;
-    }
-    if (this.historyCheckedThrough <= 0) return true;
-    if (latestBucket <= this.historyCheckedThrough) return false;
-    if (latestBucket - this.historyCheckedThrough > HISTORY_WINDOW_SECONDS) return true;
-
-    for (
-      let bucket = this.historyCheckedThrough + MINUTE_STEP_SECONDS;
-      bucket <= latestBucket;
-      bucket += MINUTE_STEP_SECONDS
-    ) {
-      if (!this.minuteBucketCounts.has(bucket)) return true;
+      if (!this.refreshedServices.has(service)) {
+        fullRefresh = true;
+        break;
+      }
     }
 
-    this.historyCheckedThrough = latestBucket;
-    this.scheduleCacheWrite();
-    return false;
+    const since = emptyMetricsHistoryWatermarks();
+    const targets = emptyMetricsHistoryWatermarks();
+    let needsRefresh = fullRefresh;
+    let watermarksChanged = false;
+
+    for (const granularity of METRIC_GRANULARITIES) {
+      const target = latestClosedHistoryBucket(granularity, this.latestRealtimeMinuteBucket);
+      targets[granularity] = target;
+      since[granularity] = fullRefresh
+        ? earliestHistoryBucket(granularity, target)
+        : firstMissingHistoryBucket(
+            granularity,
+            this.historyCheckedThrough[granularity],
+            target,
+            this.bucketCounts[granularity],
+          );
+
+      if (since[granularity] <= target) {
+        needsRefresh = true;
+      } else if (this.historyCheckedThrough[granularity] < target) {
+        this.historyCheckedThrough[granularity] = target;
+        watermarksChanged = true;
+      }
+    }
+
+    if (watermarksChanged) this.scheduleCacheWrite();
+    if (!needsRefresh) return null;
+    return { since, targets, refreshedServices: new Set(this.knownServices) };
   }
 
   private scheduleCacheWrite(): void {
@@ -282,7 +333,7 @@ export class MetricsService {
       this.cacheWriteTimeoutId = null;
       void idbSet<MetricsCacheState>(buildCacheKey(STORAGE_KEY), {
         points: this.points$$(),
-        historyCheckedThrough: this.historyCheckedThrough,
+        historyCheckedThrough: { ...this.historyCheckedThrough },
         historyServices: Array.from(this.refreshedServices).sort(),
       });
     }, CACHE_WRITE_DELAY_MS);
