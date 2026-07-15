@@ -115,12 +115,22 @@
           <v-button class="v-primary"
                     [config]="{
                       paddingX: 3,
+                      isDisabled: metricsService.isRefreshing$$(),
                     }"
                     (onClick)="clearMetricsCache()">
             <v-icon v-prefix
                     [name]="Icon.Delete"
                     [size]="5" />
             Очистить кэш метрик
+          </v-button>
+
+          <v-button class="v-primary"
+                    [config]="{
+                      paddingX: 3,
+                      isDisabled: metricsService.isRefreshing$$(),
+                    }"
+                    (onClick)="forceRefreshMetrics()">
+            Force refresh metrics
           </v-button>
         </div>
 

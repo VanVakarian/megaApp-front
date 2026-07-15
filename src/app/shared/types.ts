@@ -209,8 +209,13 @@ export interface MetricSnapshot {
   metrics: Record<string, number>;
 }
 
-export interface MetricsHistoryResponse {
+export interface ServiceMetricHistory {
+  service: string;
   snapshots: MetricSnapshot[];
+}
+
+export interface MetricsHistoryResponse {
+  histories: ServiceMetricHistory[];
 }
 
 export interface MetricsUpdateWsMessage {
