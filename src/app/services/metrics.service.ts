@@ -287,7 +287,10 @@ export class MetricsService {
   }
 
   private buildHistoryRequest(force: boolean): MetricsHistoryRequest | null {
-    if (this.latestRealtimeMinuteBucket <= 0) return null;
+    const latestMinuteBucket =
+      this.latestRealtimeMinuteBucket > 0
+        ? this.latestRealtimeMinuteBucket
+        : Math.floor(Date.now() / 60_000) * 60 - 60;
 
     let fullRefresh = force || this.refreshedServices.size === 0;
     for (const service of this.knownServices) {
@@ -303,7 +306,7 @@ export class MetricsService {
     let watermarksChanged = false;
 
     for (const granularity of METRIC_GRANULARITIES) {
-      const target = latestClosedHistoryBucket(granularity, this.latestRealtimeMinuteBucket);
+      const target = latestClosedHistoryBucket(granularity, latestMinuteBucket);
       targets[granularity] = target;
       since[granularity] = fullRefresh
         ? earliestHistoryBucket(granularity, target)
