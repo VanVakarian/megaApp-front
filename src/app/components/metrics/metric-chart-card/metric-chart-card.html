@@ -1,9 +1,12 @@
 <v-card class="block"
+        [class.cursor-pointer]="isInteractiveInput()"
         [style.width.px]="widthPxInput()"
         [config]="{
           padding: 3,
           borderRadius: 2,
-        }">
+          isSelected: isSelectedInput(),
+        }"
+        (click)="onCardClick($event)">
   <div class="flex items-center justify-between gap-2 text-sm">
     <span class="flex items-center min-w-0 gap-1">
       <span class="opacity-70 truncate"

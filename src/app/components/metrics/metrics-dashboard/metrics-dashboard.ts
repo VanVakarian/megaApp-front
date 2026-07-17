@@ -4,7 +4,8 @@ import { MetricsHealthService } from '@app/services/metrics-health.service';
 import { CardSizeMode, MetricsSettingsService } from '@app/services/metrics-settings.service';
 import { MetricsService } from '@app/services/metrics.service';
 import { METRICS_GRANULARITY_STEP_SECONDS, METRICS_GRANULARITY_WINDOW_PERIODS } from '@app/shared/chart-config';
-import { formatMetricUnitValue, MetricUnit } from '@app/shared/metric-units';
+import { formatMetricUnitValue } from '@app/shared/metric-units';
+import { MetricAggregation } from '@app/shared/metrics-aggregation';
 import {
   metricAggregation,
   metricChartMode,
@@ -27,7 +28,6 @@ import {
   buildSparseLineSeriesFromPoints,
   filterMetricPointsByWindow,
   metricPointsIndexKey,
-  MetricSeriesPoint,
   MinuteMetricCollapseCache,
   previousCompletedBucket,
 } from '@app/shared/metrics-series';
@@ -41,7 +41,11 @@ import { VExpand } from '@ui-kit/components/v-expand/v-expand';
 import { IconName, VIcon } from '@ui-kit/components/v-icon/v-icon';
 import { VInput } from '@ui-kit/components/v-input/v-input';
 import { VToggle, VToggleItem } from '@ui-kit/components/v-toggle/v-toggle';
-import { MetricChartCard } from '../metric-chart-card/metric-chart-card';
+import {
+  MetricCardGrid,
+  MetricChartCardData,
+  MetricChartCardSeriesDisplay,
+} from '../metric-card-grid/metric-card-grid';
 
 const NOW_TICK_INTERVAL_MS = 30_000;
 const SETTINGS_PANEL_KEY = '__settings__';
@@ -54,23 +58,6 @@ const CARD_SIZE_MODE_LABELS: Record<CardSizeMode, string> = {
   [CardSizeMode.Large]: 'Большая карточка',
 };
 const CARD_SIZE_MODES: CardSizeMode[] = [CardSizeMode.Small, CardSizeMode.Large];
-
-interface MetricChartCardData {
-  key: string;
-  label: string;
-  technicalName: string;
-  value: number;
-  displayValue: string;
-  unit: MetricUnit;
-  granularity: MetricGranularity;
-  color: string;
-  series: MetricSeriesPoint[];
-  chartMode: MetricChartMode;
-  windowStartBucket: number;
-  windowEndBucket: number;
-  displayStepSeconds: number;
-  description: string;
-}
 
 interface MetricGroupData {
   id: string;
@@ -96,7 +83,7 @@ interface MetricsServiceOption {
 @Component({
   selector: 'metrics-dashboard',
   templateUrl: './metrics-dashboard.html',
-  imports: [VButton, VCard, VCheckbox, VExpand, VInput, VIcon, VToggle, MetricChartCard],
+  imports: [VButton, VCard, VCheckbox, VExpand, VInput, VIcon, VToggle, MetricCardGrid],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class MetricsDashboard implements OnInit, OnDestroy {
@@ -127,6 +114,12 @@ export class MetricsDashboard implements OnInit, OnDestroy {
   protected readonly forceZeroBaselineEnabled$$ = this.metricsSettingsService.forceZeroBaselineEnabled$$;
   protected readonly useCollapsedMinutes$$ = computed(
     () => this.cardWidthPx$$() < MINUTE_COLLAPSE_CARD_WIDTH_THRESHOLD_PX,
+  );
+  // The expanded (Large-size) card shown by metric-card-grid isn't necessarily as
+  // wide as the currently active mode, so it needs its own collapse decision based
+  // on the Large mode's configured width rather than the active mode's width.
+  protected readonly useCollapsedMinutesForExpanded$$ = computed(
+    () => this.cardSizeByMode$$()[CardSizeMode.Large].widthPx < MINUTE_COLLAPSE_CARD_WIDTH_THRESHOLD_PX,
   );
   protected readonly dashboardSelection$$ = this.metricsSettingsService.dashboardSelection$$;
   protected readonly dashboardServiceSelection$$ = this.metricsSettingsService.dashboardServiceSelection$$;
@@ -180,6 +173,7 @@ export class MetricsDashboard implements OnInit, OnDestroy {
     const granularity = this.selectedGranularity$$();
     const stepSeconds = METRICS_GRANULARITY_STEP_SECONDS[granularity];
     const useCollapsedMinutes = granularity === 'minute' && this.useCollapsedMinutes$$();
+    const useCollapsedMinutesForExpanded = granularity === 'minute' && this.useCollapsedMinutesForExpanded$$();
     // The current 5-minute bucket keeps growing as new minute points arrive, so a
     // sum metric looks like it dips right before it — only fully elapsed buckets
     // are safe to compare against each other.
@@ -211,17 +205,20 @@ export class MetricsDashboard implements OnInit, OnDestroy {
         METRICS_GRANULARITY_WINDOW_PERIODS[granularity],
         stepSeconds,
       );
-      const displayWindow = useCollapsedMinutes
-        ? buildCollapsedMetricWindow(serviceWindow, COLLAPSED_MINUTE_STEP_SECONDS)
-        : serviceWindow;
-      const displayStepSeconds = useCollapsedMinutes ? COLLAPSED_MINUTE_STEP_SECONDS : stepSeconds;
       const pointsIndex = buildMetricPointsIndex(servicePoints, serviceWindow.startBucket, serviceWindow.endBucket);
 
-      const buildCard = (name: string): MetricChartCardData => {
-        const key = metricPointsIndexKey(option.service, name);
-        const metricPoints = pointsIndex.get(key) ?? [];
-        const aggregation = metricAggregation(option.service, name);
-        const displayPoints = useCollapsedMinutes
+      const buildSeriesDisplay = (
+        key: string,
+        metricPoints: MetricPoint[],
+        aggregation: MetricAggregation,
+        chartMode: MetricChartMode,
+        useCollapsed: boolean,
+      ): MetricChartCardSeriesDisplay => {
+        const displayWindow = useCollapsed
+          ? buildCollapsedMetricWindow(serviceWindow, COLLAPSED_MINUTE_STEP_SECONDS)
+          : serviceWindow;
+        const displayStepSeconds = useCollapsed ? COLLAPSED_MINUTE_STEP_SECONDS : stepSeconds;
+        const displayPoints = useCollapsed
           ? filterMetricPointsByWindow(
               this.minuteMetricCollapseCache.collapse(key, metricPoints, aggregation, COLLAPSED_MINUTE_STEP_SECONDS),
               displayWindow.startBucket,
@@ -230,11 +227,28 @@ export class MetricsDashboard implements OnInit, OnDestroy {
                 : displayWindow.endBucket,
             )
           : metricPoints;
-        const chartMode = metricChartMode(option.service, name);
         const series =
           chartMode === 'bar'
             ? buildSparseBarSeriesFromPoints(displayPoints)
             : buildSparseLineSeriesFromPoints(displayPoints, displayStepSeconds);
+        return {
+          series,
+          windowStartBucket: displayWindow.startBucket,
+          windowEndBucket: displayWindow.endBucket,
+          displayStepSeconds,
+        };
+      };
+
+      const buildCard = (name: string): MetricChartCardData => {
+        const key = metricPointsIndexKey(option.service, name);
+        const metricPoints = pointsIndex.get(key) ?? [];
+        const aggregation = metricAggregation(option.service, name);
+        const chartMode = metricChartMode(option.service, name);
+        const display = buildSeriesDisplay(key, metricPoints, aggregation, chartMode, useCollapsedMinutes);
+        const expandedDisplay =
+          useCollapsedMinutesForExpanded === useCollapsedMinutes
+            ? display
+            : buildSeriesDisplay(key, metricPoints, aggregation, chartMode, useCollapsedMinutesForExpanded);
         const rawValue = metricPoints[metricPoints.length - 1]?.value ?? 0;
         const color = metricColor(option.service, name);
         const unit = metricUnit(option.service, name);
@@ -247,12 +261,10 @@ export class MetricsDashboard implements OnInit, OnDestroy {
           unit,
           granularity,
           color,
-          series,
           chartMode,
-          windowStartBucket: displayWindow.startBucket,
-          windowEndBucket: displayWindow.endBucket,
-          displayStepSeconds,
           description: metricDescription(option.service, name),
+          display,
+          expandedDisplay,
         };
       };
 

@@ -6,6 +6,7 @@ import {
   ElementRef,
   input,
   OnDestroy,
+  output,
   viewChild,
 } from '@angular/core';
 import {
@@ -86,6 +87,10 @@ export class MetricChartCard implements OnDestroy {
   public readonly descriptionInput = input<string>('');
   public readonly widthPxInput = input<number>(DEFAULT_CARD_WIDTH_PX);
   public readonly heightPxInput = input<number>(DEFAULT_CHART_HEIGHT_PX);
+  public readonly isSelectedInput = input<boolean>(false);
+  public readonly isInteractiveInput = input<boolean>(false);
+
+  public readonly cardClickOutput = output<void>();
 
   protected readonly Icon = IconName;
 
@@ -107,6 +112,11 @@ export class MetricChartCard implements OnDestroy {
 
     return formatMetricUnitValue(this.unitInput(), nearest.value);
   });
+
+  protected onCardClick(event: MouseEvent): void {
+    if (!this.isInteractiveInput() || event.target instanceof HTMLCanvasElement) return;
+    this.cardClickOutput.emit();
+  }
 
   private readonly chartCanvasElem = viewChild<ElementRef<HTMLCanvasElement>>('chartCanvas');
   private chart: Chart | null = null;

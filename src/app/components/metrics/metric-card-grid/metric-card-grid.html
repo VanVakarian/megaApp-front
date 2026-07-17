@@ -1,0 +1,23 @@
+@for (item of renderItems$$(); track trackRenderItem(item)) {
+  @let display = item.isExpanded ? item.card.expandedDisplay : item.card.display;
+  <metric-chart-card [labelInput]="item.card.label"
+                     [technicalNameInput]="item.card.technicalName"
+                     [valueInput]="item.card.value"
+                     [displayValueInput]="item.card.displayValue"
+                     [colorInput]="item.card.color"
+                     [unitInput]="item.card.unit"
+                     [granularityInput]="item.card.granularity"
+                     [seriesInput]="display.series"
+                     [chartModeInput]="item.card.chartMode"
+                     [windowStartInput]="display.windowStartBucket"
+                     [windowEndInput]="display.windowEndBucket"
+                     [displayStepSecondsInput]="display.displayStepSeconds"
+                     [syncCrosshairEnabledInput]="syncCrosshairEnabledInput()"
+                     [forceZeroBaselineInput]="forceZeroBaselineInput()"
+                     [descriptionInput]="item.card.description"
+                     [widthPxInput]="item.isExpanded ? expandedWidthPxInput() : cardWidthPxInput()"
+                     [heightPxInput]="item.isExpanded ? expandedHeightPxInput() : cardHeightPxInput()"
+                     [isSelectedInput]="item.card.key === selectedKey$$()"
+                     [isInteractiveInput]="canExpand$$()"
+                     (cardClickOutput)="onCardToggle(item.card.key)" />
+}

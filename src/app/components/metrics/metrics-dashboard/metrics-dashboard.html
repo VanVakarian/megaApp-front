@@ -252,27 +252,13 @@
           <div class="flex flex-col gap-4 p-4">
             <div>
               <div class="opacity-70 mb-2 font-semibold">{{ row.label }}</div>
-              <div class="flex flex-wrap gap-3">
-                @for (card of row.cards; track card.key) {
-                  <metric-chart-card [labelInput]="card.label"
-                                     [technicalNameInput]="card.technicalName"
-                                     [valueInput]="card.value"
-                                     [displayValueInput]="card.displayValue"
-                                     [colorInput]="card.color"
-                                     [unitInput]="card.unit"
-                                     [granularityInput]="card.granularity"
-                                     [seriesInput]="card.series"
-                                     [chartModeInput]="card.chartMode"
-                                     [windowStartInput]="card.windowStartBucket"
-                                     [windowEndInput]="card.windowEndBucket"
-                                     [displayStepSecondsInput]="card.displayStepSeconds"
-                                     [syncCrosshairEnabledInput]="syncCrosshairEnabled$$()"
-                                     [forceZeroBaselineInput]="forceZeroBaselineEnabled$$()"
-                                     [descriptionInput]="card.description"
-                                     [widthPxInput]="cardWidthPx$$()"
-                                     [heightPxInput]="cardHeightPx$$()" />
-                }
-              </div>
+              <metric-card-grid [cardsInput]="row.cards"
+                                [cardWidthPxInput]="cardWidthPx$$()"
+                                [cardHeightPxInput]="cardHeightPx$$()"
+                                [expandedWidthPxInput]="cardSizeByMode$$()[CardSizeMode.Large].widthPx"
+                                [expandedHeightPxInput]="cardSizeByMode$$()[CardSizeMode.Large].heightPx"
+                                [syncCrosshairEnabledInput]="syncCrosshairEnabled$$()"
+                                [forceZeroBaselineInput]="forceZeroBaselineEnabled$$()" />
             </div>
           </div>
         </v-card>
@@ -289,27 +275,13 @@
             @for (group of serviceMetricsData$$().get(service.service)?.groups ?? []; track group.id) {
               <div>
                 <div class="opacity-70 mb-2 font-semibold">{{ group.label }}</div>
-                <div class="flex flex-wrap gap-3">
-                  @for (card of group.cards; track card.key) {
-                    <metric-chart-card [labelInput]="card.label"
-                                       [technicalNameInput]="card.technicalName"
-                                       [valueInput]="card.value"
-                                       [displayValueInput]="card.displayValue"
-                                       [colorInput]="card.color"
-                                       [unitInput]="card.unit"
-                                       [granularityInput]="card.granularity"
-                                       [seriesInput]="card.series"
-                                       [chartModeInput]="card.chartMode"
-                                       [windowStartInput]="card.windowStartBucket"
-                                       [windowEndInput]="card.windowEndBucket"
-                                       [displayStepSecondsInput]="card.displayStepSeconds"
-                                       [syncCrosshairEnabledInput]="syncCrosshairEnabled$$()"
-                                       [forceZeroBaselineInput]="forceZeroBaselineEnabled$$()"
-                                       [descriptionInput]="card.description"
-                                       [widthPxInput]="cardWidthPx$$()"
-                                       [heightPxInput]="cardHeightPx$$()" />
-                  }
-                </div>
+                <metric-card-grid [cardsInput]="group.cards"
+                                  [cardWidthPxInput]="cardWidthPx$$()"
+                                  [cardHeightPxInput]="cardHeightPx$$()"
+                                  [expandedWidthPxInput]="cardSizeByMode$$()[CardSizeMode.Large].widthPx"
+                                  [expandedHeightPxInput]="cardSizeByMode$$()[CardSizeMode.Large].heightPx"
+                                  [syncCrosshairEnabledInput]="syncCrosshairEnabled$$()"
+                                  [forceZeroBaselineInput]="forceZeroBaselineEnabled$$()" />
               </div>
             } @empty {
               <div class="opacity-60 text-sm">Нет метрик</div>
