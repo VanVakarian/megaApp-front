@@ -48,11 +48,16 @@ interface MoneySnapshot {
 
 interface SnapshotResponse extends DataResponse<MoneySnapshot> {}
 
+export interface ExpenseChartYMaxSetting {
+  rawValue: string;
+  currencyTicker: string;
+}
+
 interface MoneySettings {
   displayCurrency: string;
   chartRangeStart: string | null;
   chartRangeEnd: string | null;
-  expenseChartYMaxPerCurrency: Record<string, string>;
+  expenseChartYMax: ExpenseChartYMaxSetting | null;
   keepTransactionCurrency: boolean;
 }
 
@@ -71,7 +76,7 @@ function defaultSettings(): MoneySettings {
     displayCurrency: 'RUB',
     chartRangeStart: null,
     chartRangeEnd: null,
-    expenseChartYMaxPerCurrency: {},
+    expenseChartYMax: null,
     keepTransactionCurrency: true,
   };
 }
@@ -113,8 +118,8 @@ export class MoneyService {
   public readonly displayCurrency$$: WritableSignal<string> = signal(readSettings().displayCurrency);
   public readonly chartRangeStart$$: WritableSignal<string | null> = signal(readSettings().chartRangeStart);
   public readonly chartRangeEnd$$: WritableSignal<string | null> = signal(readSettings().chartRangeEnd);
-  public readonly expenseChartYMaxPerCurrency$$: WritableSignal<Record<string, string>> = signal(
-    readSettings().expenseChartYMaxPerCurrency,
+  public readonly expenseChartYMax$$: WritableSignal<ExpenseChartYMaxSetting | null> = signal(
+    readSettings().expenseChartYMax,
   );
   public readonly keepTransactionCurrency$$: WritableSignal<boolean> = signal(readSettings().keepTransactionCurrency);
 
@@ -142,9 +147,9 @@ export class MoneyService {
     this.saveSettings({ displayCurrency: id });
   }
 
-  public setExpenseChartYMaxPerCurrency(map: Record<string, string>): void {
-    this.expenseChartYMaxPerCurrency$$.set(map);
-    this.saveSettings({ expenseChartYMaxPerCurrency: map });
+  public setExpenseChartYMax(setting: ExpenseChartYMaxSetting | null): void {
+    this.expenseChartYMax$$.set(setting);
+    this.saveSettings({ expenseChartYMax: setting });
   }
 
   public setKeepTransactionCurrency(value: boolean): void {
@@ -185,7 +190,7 @@ export class MoneyService {
     this.displayCurrency$$.set(defaults.displayCurrency);
     this.chartRangeStart$$.set(defaults.chartRangeStart);
     this.chartRangeEnd$$.set(defaults.chartRangeEnd);
-    this.expenseChartYMaxPerCurrency$$.set(defaults.expenseChartYMaxPerCurrency);
+    this.expenseChartYMax$$.set(defaults.expenseChartYMax);
     this.keepTransactionCurrency$$.set(defaults.keepTransactionCurrency);
   }
 

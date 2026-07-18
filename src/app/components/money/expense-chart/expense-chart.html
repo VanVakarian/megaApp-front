@@ -4,6 +4,7 @@
     <div class="flex items-center gap-2">
       <v-input #yMaxElem
                [style.width.px]="yMaxWidth$$()"
+               [style.opacity]="isYMaxAuto$$() ? 0.55 : 1"
                [config]="{
                  inputmode: 'numeric',
                  textAlign: 'right',

@@ -1,9 +1,10 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 import { VButton } from '@ui-kit/components/v-button/v-button';
 import { VCard } from '@ui-kit/components/v-card/v-card';
+import { VExpand } from '@ui-kit/components/v-expand/v-expand';
 import { IconName, VIcon } from '@ui-kit/components/v-icon/v-icon';
 import { VSlider, VSliderConfig, VSliderRangeValue } from '@ui-kit/components/v-slider/v-slider';
-import { VToggle, VToggleItem } from '@ui-kit/components/v-toggle/v-toggle';
+import { VToggleItem } from '@ui-kit/components/v-toggle/v-toggle';
 import { MoneyComputeService } from '../../services/money-compute.service';
 import { MoneyService } from '../../services/money.service';
 import { BalanceChartData } from '../../shared/types';
@@ -41,9 +42,9 @@ enum MoneyTab {
     IncomeChart,
     VButton,
     VCard,
+    VExpand,
     VIcon,
     VSlider,
-    VToggle,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -63,6 +64,8 @@ export class MoneyScreen implements OnInit {
     const currency = this.moneyService.currencies$$().find((c) => c.ticker === this.displayCurrency$$());
     return currency?.symbol ?? '₽';
   });
+
+  protected readonly keepNativeCurrency$$ = computed(() => this.moneyService.keepTransactionCurrency$$());
 
   protected readonly currencyToggleItems: VToggleItem[] = [
     { id: 'RUB', label: '₽' },
@@ -179,6 +182,10 @@ export class MoneyScreen implements OnInit {
   protected setDisplayCurrency(id: string): void {
     if (!id || id === this.moneyService.displayCurrency$$()) return;
     this.moneyService.setDisplayCurrency(id);
+  }
+
+  protected toggleKeepNativeCurrency(): void {
+    this.moneyService.setKeepTransactionCurrency(!this.keepNativeCurrency$$());
   }
 
   public ngOnInit(): void {

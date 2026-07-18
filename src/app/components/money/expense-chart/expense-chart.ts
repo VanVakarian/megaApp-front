@@ -13,7 +13,13 @@ import {
   viewChild,
 } from '@angular/core';
 import { MoneyService } from '@app/services/money.service';
-import { EXPENSE_CATEGORY_CONFIG, EXPENSE_CHART_CONFIG, getExpenseCategoryColor } from '@app/shared/chart-config';
+import {
+  EXPENSE_CATEGORY_CONFIG,
+  EXPENSE_CHART_CONFIG,
+  formatMonthYearLabel,
+  getExpenseCategoryColor,
+} from '@app/shared/chart-config';
+import { convertAmount } from '@app/shared/money-utils';
 import { ExpenseChartData } from '@app/shared/types';
 import { VButton } from '@ui-kit/components/v-button/v-button';
 import { VCheckbox } from '@ui-kit/components/v-checkbox/v-checkbox';
@@ -57,10 +63,25 @@ export class ExpenseChart implements AfterViewInit, OnDestroy {
   protected readonly yearlyMode$$ = signal(false);
 
   private readonly moneyService = inject(MoneyService);
+  private readonly today = new Date().toISOString().substring(0, 10);
+  private readonly latestRates$$ = computed(() => this.moneyService.getRatesForDate(this.today) ?? {});
 
-  protected readonly yMaxInput$$ = computed(
-    () => this.moneyService.expenseChartYMaxPerCurrency$$()[this.currencyTickerInput()] ?? '',
-  );
+  protected readonly isYMaxAuto$$ = computed(() => {
+    const setting = this.moneyService.expenseChartYMax$$();
+    return !!setting && setting.currencyTicker !== this.currencyTickerInput();
+  });
+
+  protected readonly yMaxInput$$ = computed(() => {
+    const setting = this.moneyService.expenseChartYMax$$();
+    if (!setting) return '';
+    const ticker = this.currencyTickerInput();
+    if (setting.currencyTicker === ticker) return setting.rawValue;
+
+    const rawNum = Number(setting.rawValue);
+    if (!setting.rawValue || isNaN(rawNum)) return '';
+    const converted = convertAmount(rawNum, setting.currencyTicker, ticker, this.latestRates$$());
+    return String(Math.round(converted));
+  });
   protected readonly yMaxWidth$$ = computed(() => Math.max(60, 60 + this.yMaxInput$$().length * 10));
 
   private yearBoundaries: { year: string; startIdx: number; endIdx: number }[] = [];
@@ -165,6 +186,11 @@ export class ExpenseChart implements AfterViewInit, OnDestroy {
         if (ctx.parsed.y === 0) return '';
         return ` ${ctx.dataset.label}: ${new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(ctx.parsed.y)} ${this.currencySymbolInput()}`;
       };
+      chart.options.plugins.tooltip.callbacks.footer = (items) => {
+        if (items.length < 2) return [];
+        const sum = items.reduce((acc, item) => acc + item.parsed.y, 0);
+        return `${new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(sum)} ${this.currencySymbolInput()}`;
+      };
     }
     this.chart$$.set(chart);
   }
@@ -190,9 +216,9 @@ export class ExpenseChart implements AfterViewInit, OnDestroy {
   }
 
   protected onYMaxChange(value: string): void {
-    const ticker = this.currencyTickerInput();
-    const newMap = { ...this.moneyService.expenseChartYMaxPerCurrency$$(), [ticker]: value };
-    this.moneyService.setExpenseChartYMaxPerCurrency(newMap);
+    this.moneyService.setExpenseChartYMax(
+      value ? { rawValue: value, currencyTicker: this.currencyTickerInput() } : null,
+    );
   }
 
   protected focusYMaxInput(): void {
@@ -286,7 +312,7 @@ export class ExpenseChart implements AfterViewInit, OnDestroy {
         }
       });
       yearMap.forEach((bounds, year) => this.yearBoundaries.push({ year, ...bounds }));
-      labels = months.map(() => '');
+      labels = months.map((m) => formatMonthYearLabel(m));
     }
 
     (chart.options.scales!['x']!.ticks as any).callback = yearly

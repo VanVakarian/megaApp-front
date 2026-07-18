@@ -277,6 +277,7 @@ export const INCOME_CHART_CONFIG: ChartConfiguration<'bar'> = {
       tooltip: {
         mode: 'index',
         intersect: false,
+        footerAlign: 'right',
         callbacks: {
           label: (ctx) => {
             if (ctx.parsed.y === 0) return '';
@@ -333,6 +334,11 @@ export function rgbToRgba(rgb: string, alpha: number): string {
   return rgb.replace('rgb(', 'rgba(').replace(')', `, ${alpha})`);
 }
 
+export function formatMonthYearLabel(dateISO: string): string {
+  const date = new Date(dateISO + 'T00:00:00');
+  return `${date.toLocaleDateString('en-US', { month: 'long' })} ${date.getFullYear()}`;
+}
+
 export function getExpenseCategoryColor(categoryName: string, fallbackIndex: number): string {
   const entry = EXPENSE_CATEGORY_CONFIG.find((c) => c.name === categoryName);
   return rgbToRgba(entry ? entry.color : EXPENSE_FALLBACK_COLOR, EXPENSE_COLOR_ALPHA);
@@ -350,6 +356,7 @@ export const EXPENSE_CHART_CONFIG: ChartConfiguration<'bar'> = {
         itemSort: (a, b) => b.datasetIndex - a.datasetIndex,
         mode: 'index',
         intersect: false,
+        footerAlign: 'right',
         callbacks: {
           label: (ctx) => {
             if (ctx.parsed.y === 0) return '';

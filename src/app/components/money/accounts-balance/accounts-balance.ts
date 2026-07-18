@@ -2,19 +2,16 @@ import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/c
 import { MoneyService } from '@app/services/money.service';
 import { convertAmount } from '@app/shared/money-utils';
 import { Account, AccountKind, Organization, SymbolPosition, Transaction, TransactionKind } from '@app/shared/types';
-import { VButton } from '@ui-kit/components/v-button/v-button';
 import { VCard } from '@ui-kit/components/v-card/v-card';
 import { IconName, VIcon } from '@ui-kit/components/v-icon/v-icon';
 
 @Component({
   selector: 'accounts-balance',
   templateUrl: './accounts-balance.html',
-  imports: [VButton, VCard, VIcon],
+  imports: [VCard, VIcon],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AccountsBalance {
-  protected readonly Icon = IconName;
-
   private readonly THOUSANDS_SEP = '\u2005';
 
   // Edit this array to control the display order of accounts (by account ID).
@@ -102,10 +99,6 @@ export class AccountsBalance {
     const formatted = this.formatNumber(converted);
     if (displayCurrency.symbolPosEnum === SymbolPosition.BEFORE) return `${displayCurrency.symbol}${ws}${formatted}`;
     return `${formatted}${ws}${displayCurrency.symbol}`;
-  }
-
-  protected toggleKeepNativeCurrency(): void {
-    this.moneyService.setKeepTransactionCurrency(!this.keepNativeCurrency$$());
   }
 
   private formatNumber(amount: number): string {

@@ -11,7 +11,12 @@ import {
   untracked,
   viewChild,
 } from '@angular/core';
-import { BALANCE_ACCOUNT_PALETTE, BALANCE_CHART_CONFIG, CHART_COLORS } from '@app/shared/chart-config';
+import {
+  BALANCE_ACCOUNT_PALETTE,
+  BALANCE_CHART_CONFIG,
+  CHART_COLORS,
+  formatMonthYearLabel,
+} from '@app/shared/chart-config';
 import { BalanceChartAccountSeries, BalanceChartData } from '@app/shared/types';
 import { VButton } from '@ui-kit/components/v-button/v-button';
 import { VCheckbox } from '@ui-kit/components/v-checkbox/v-checkbox';
@@ -243,7 +248,7 @@ export class BalancesChart implements AfterViewInit, OnDestroy {
     activeSeries: BalanceChartAccountSeries[],
     suspensionFilter: 'all' | 'exclude' | 'only',
   ): void {
-    const labels = data.dates.map((d) => this.formatDateLabel(d));
+    const labels = data.dates.map((d) => formatMonthYearLabel(d));
 
     this.yearBoundaries = [];
     const yearMap = new Map<string, { startIdx: number; endIdx: number }>();
@@ -310,12 +315,5 @@ export class BalancesChart implements AfterViewInit, OnDestroy {
     chart.data.labels = labels;
     chart.data.datasets = datasets;
     chart.update('none');
-  }
-
-  private formatDateLabel(dateISO: string): string {
-    const date = new Date(dateISO + 'T00:00:00');
-    const month = date.getMonth();
-    const year = date.getFullYear();
-    return `${String(month + 1).padStart(2, '0')}.${year}`;
   }
 }

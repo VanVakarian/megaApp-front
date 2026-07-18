@@ -69,38 +69,6 @@
     </v-card>
 
     @if (activeTab$$() === MoneyTab.Setup) {
-      <v-card [config]="{
-                padding: 2,
-                borderRadius: 2,
-              }">
-        <div class="flex items-center justify-between">
-          <span class="text-sm text-gray-400">Display currency</span>
-          <div>
-            <v-toggle [items]="currencyToggleItems"
-                      [value]="[displayCurrency$$()]"
-                      (valueChange)="setDisplayCurrency($event[0])"></v-toggle>
-          </div>
-        </div>
-        @if (!isChartDataReady$$()) {
-          <div
-               class="dark:border-gray-700 mt-3 pt-2 border-t border-gray-200 h-[61px] flex items-center justify-center">
-            <div class="animate-spin w-4 h-4 border-2 rounded-full"
-                 style="border-color: var(--v-color-primary); border-top-color: transparent;"></div>
-          </div>
-        } @else if (allChartMonths$$().length > 1) {
-          <div class="dark:border-gray-700 pt-2 mt-3 border-t border-gray-200">
-            <div class="flex justify-between mb-2 text-xs text-gray-400">
-              <span>{{ sliderStartLabel$$() }}</span>
-              <span>Selected: {{ sliderRangeLabel$$() }}</span>
-              <span>{{ sliderEndLabel$$() }}</span>
-            </div>
-            <v-slider [range]="sliderRange$$()"
-                      [config]="chartRangeSliderConfig$$()"
-                      (rangeChange)="onChartRangeChange($event)" />
-          </div>
-        }
-      </v-card>
-
       <accounts-list />
       <organizations-list />
       <currencies-list />
@@ -115,6 +83,62 @@
     }
 
     @if (activeTab$$() === MoneyTab.Transactions) {
+      <v-expand>
+        <div v-header
+             class="flex items-center gap-2 p-2">
+          <v-icon [name]="Icon.Settings"
+                  [size]="5"></v-icon>
+          <span class="text-sm">Settings</span>
+        </div>
+        <div v-body
+             class="flex flex-col gap-2 p-2">
+          <div class="flex items-center justify-between">
+            <span class="text-sm text-gray-400">Display currency</span>
+            <div class="flex items-center gap-2">
+              <div class="flex gap-1">
+                @for (item of currencyToggleItems; track item.id) {
+                  <v-button class="v-flat"
+                            [class.v-primary]="displayCurrency$$() === item.id"
+                            [config]="{ padding: 1 }"
+                            (onClick)="setDisplayCurrency(item.id)">{{ item.label }}</v-button>
+                }
+              </div>
+
+              <div class="dark:border-gray-700 self-stretch w-px border-l border-gray-200"></div>
+
+              <v-button class="v-flat"
+                        [class.v-primary]="!keepNativeCurrency$$()"
+                        [config]="{
+                          isLabelHidden: true,
+                          padding: 2,
+                        }"
+                        (onClick)="toggleKeepNativeCurrency()">
+                <v-icon v-prefix
+                        [name]="Icon.CurrencyExchange"
+                        [size]="4"></v-icon>
+              </v-button>
+            </div>
+          </div>
+          @if (!isChartDataReady$$()) {
+            <div class="dark:border-gray-700 pt-2 border-t border-gray-200 h-[61px] flex items-center justify-center">
+              <div class="animate-spin w-4 h-4 border-2 rounded-full"
+                   style="border-color: var(--v-color-primary); border-top-color: transparent;"></div>
+            </div>
+          } @else if (allChartMonths$$().length > 1) {
+            <div class="dark:border-gray-700 pt-2 border-t border-gray-200">
+              <div class="flex justify-between mb-2 text-xs text-gray-400">
+                <span>{{ sliderStartLabel$$() }}</span>
+                <span>Selected: {{ sliderRangeLabel$$() }}</span>
+                <span>{{ sliderEndLabel$$() }}</span>
+              </div>
+              <v-slider [range]="sliderRange$$()"
+                        [config]="chartRangeSliderConfig$$()"
+                        (rangeChange)="onChartRangeChange($event)" />
+            </div>
+          }
+        </div>
+      </v-expand>
+
       <accounts-balance />
       <transactions-list />
     }

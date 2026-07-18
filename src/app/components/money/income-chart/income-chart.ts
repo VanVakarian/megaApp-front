@@ -11,7 +11,7 @@ import {
   untracked,
   viewChild,
 } from '@angular/core';
-import { INCOME_CHART_CONFIG, INCOME_SERIES_PALETTE } from '@app/shared/chart-config';
+import { formatMonthYearLabel, INCOME_CHART_CONFIG, INCOME_SERIES_PALETTE } from '@app/shared/chart-config';
 import { IncomeChartCategorySeries, IncomeChartData } from '@app/shared/types';
 import { VButton } from '@ui-kit/components/v-button/v-button';
 import { VCheckbox } from '@ui-kit/components/v-checkbox/v-checkbox';
@@ -131,6 +131,11 @@ export class IncomeChart implements AfterViewInit, OnDestroy {
         if (ctx.parsed.y === 0) return '';
         return ` ${ctx.dataset.label}: ${new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(ctx.parsed.y)} ${this.currencySymbolInput()}`;
       };
+      chart.options.plugins.tooltip.callbacks.footer = (items) => {
+        if (items.length < 2) return [];
+        const sum = items.reduce((acc, item) => acc + item.parsed.y, 0);
+        return `${new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(sum)} ${this.currencySymbolInput()}`;
+      };
     }
     this.chart$$.set(chart);
   }
@@ -182,14 +187,6 @@ export class IncomeChart implements AfterViewInit, OnDestroy {
   protected getCategoryColor(categoryId: number | null): string {
     const index = this.dataInput().categorySeries.findIndex((s) => s.categoryId === categoryId);
     return INCOME_SERIES_PALETTE[index % INCOME_SERIES_PALETTE.length];
-  }
-
-  private formatDateLabel(monthEndISO: string): string {
-    const date = new Date(monthEndISO + 'T00:00:00');
-    const month = date.getMonth();
-    const year = date.getFullYear();
-    if (month === 0) return String(year);
-    return `${String(month + 1).padStart(2, '0')}.${year}`;
   }
 
   private rebuildChartDatasets(
@@ -253,7 +250,7 @@ export class IncomeChart implements AfterViewInit, OnDestroy {
         }
       });
       yearMap.forEach((bounds, year) => this.yearBoundaries.push({ year, ...bounds }));
-      labels = effectiveData.months.map(() => '');
+      labels = effectiveData.months.map((m) => formatMonthYearLabel(m));
     }
 
     (chart.options.scales!['x']!.ticks as any).callback = yearly
