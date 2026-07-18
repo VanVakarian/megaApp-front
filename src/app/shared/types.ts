@@ -95,6 +95,13 @@ export interface DiaryEntryToRestore {
   history: HistoryEntry[];
 }
 
+export interface DiaryEntryToEdit {
+  id: number;
+  foodCatalogueId: number;
+  foodWeight: number;
+  historyAction: HistoryEntryAction;
+}
+
 export interface DiaryDayRestoreRequest {
   entries: DiaryEntryToRestore[];
 }
@@ -271,6 +278,7 @@ export interface ServerResponseWithMessage extends ServerResponseBasic {
 export interface ServerResponseWithDiaryId extends ServerResponseBasic {
   diaryId: number;
   kcals: number;
+  appliedHistoryEntry?: HistoryEntry | null;
 }
 
 export interface ServerResponseWithDiaryEntries extends ServerResponseBasic {

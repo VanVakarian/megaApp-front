@@ -13,6 +13,7 @@ import {
   DiaryEntry,
   DiaryEntryToCreate,
   DiaryEntryToDelete,
+  DiaryEntryToEdit,
   DiaryEntryToRestore,
   DiaryEntryToUpdate,
   DiaryEntryWithFullData,
@@ -249,6 +250,8 @@ export class FoodDiaryService extends BaseFoodService {
 
     const statsRollback = this.foodStatsService.createStatsRollback(selectedDay);
 
+    const optimisticHistoryIndex = originalEntry.history.length;
+
     this.updateDiaryEntryWithNewValues({ ...diaryEntry, kcals: newKcals });
     this.updateNutrientsOptimistically(selectedDay, nutrientsDelta, kcalsDelta);
     this.saveToLocalStorage(this.diaryRaw$$());
@@ -267,14 +270,26 @@ export class FoodDiaryService extends BaseFoodService {
 
     const successCallback = (response: ServerResponseWithDiaryId) => {
       if (response.result) {
-        this.reconcileEditedDiaryEntry(diaryEntry.id, response.kcals);
+        this.reconcileEditedDiaryEntry(
+          diaryEntry.id,
+          response.kcals,
+          optimisticHistoryIndex,
+          response.appliedHistoryEntry ?? null,
+        );
       }
+    };
+
+    const editRequest: DiaryEntryToEdit = {
+      id: diaryEntry.id,
+      foodCatalogueId: diaryEntry.foodCatalogueId,
+      foodWeight: diaryEntry.foodWeight,
+      historyAction: diaryEntry.history[0].action,
     };
 
     this.addSyncOperation({
       type: SyncOperationType.UPDATE,
       endpoint: '/api/food/diary',
-      data: diaryEntry,
+      data: editRequest,
       successCallback: successCallback,
       rollbackCallback: rollbackFunction,
       feedback: {
@@ -818,15 +833,28 @@ export class FoodDiaryService extends BaseFoodService {
     this.saveToLocalStorage(this.diaryRaw$$());
   }
 
-  private reconcileEditedDiaryEntry(diaryEntryId: number, kcals: number): void {
+  private reconcileEditedDiaryEntry(
+    diaryEntryId: number,
+    kcals: number,
+    optimisticHistoryIndex: number,
+    appliedHistoryEntry: HistoryEntry | null,
+  ): void {
     this.diaryRaw$$.update((oldDiary) => {
       const selectedDay = this.selectedDayIso$$();
       const updatedDiary = { ...oldDiary };
       const updatedDay = { ...updatedDiary[selectedDay] };
       const updatedFood = { ...updatedDay.food };
+      const entry = updatedFood[diaryEntryId];
 
-      if (updatedFood[diaryEntryId]) {
-        updatedFood[diaryEntryId] = { ...updatedFood[diaryEntryId], kcals };
+      if (entry) {
+        const history = [
+          ...entry.history.slice(0, optimisticHistoryIndex),
+          ...entry.history.slice(optimisticHistoryIndex + 1),
+        ];
+        if (appliedHistoryEntry) {
+          history.splice(optimisticHistoryIndex, 0, appliedHistoryEntry);
+        }
+        updatedFood[diaryEntryId] = { ...entry, kcals, history };
       }
 
       updatedDay.food = updatedFood;
