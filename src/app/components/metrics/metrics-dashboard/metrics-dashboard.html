@@ -12,6 +12,13 @@
         Dashboard
       </v-button>
 
+      @if (isServiceVisibleInHeader(compositeServiceKey)) {
+        <v-button [class]="isServiceExpanded(compositeServiceKey) ? 'v-primary v-raised' : 'v-primary v-flat'"
+                  (onClick)="toggleServiceExpanded(compositeServiceKey)">
+          {{ resolvedServiceLabel(compositeServiceKey) }}
+        </v-button>
+      }
+
       @for (service of visibleServiceOptions$$(); track service.service) {
         <v-button [class]="isServiceExpanded(service.service) ? 'v-primary v-raised' : 'v-primary v-flat'"
                   [config]="{
@@ -147,6 +154,112 @@
 
         <div class="flex flex-col gap-3">
           <div class="opacity-70 font-semibold">Метрики дэшборда</div>
+
+          <div class="flex flex-col gap-1">
+            <div class="text-l flex items-center gap-3 font-medium">
+              <span class="flex-1 min-w-0 font-semibold truncate">{{ resolvedServiceLabel(compositeServiceKey) }}</span>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <v-checkbox [value]="isDashboardServiceEnabled(compositeServiceKey)"
+                            (onChanged)="toggleDashboardService(compositeServiceKey, $event)"
+                            [config]="{
+                              size: 4,
+                              checkIconSize: 3,
+                              gap: 1,
+                              isDisabled: isSavingSettings$$(),
+                            }" />
+                <span>Show in dashboard</span>
+              </label>
+              @if (isDashboardServiceEnabled(compositeServiceKey)) {
+                <v-input class="shrink-0 w-12"
+                         [value]="dashboardServiceOrder(compositeServiceKey).toString()"
+                         (valueChange)="setDashboardServiceOrder(compositeServiceKey, $event)"
+                         [config]="{
+                           type: 'number',
+                           inputmode: 'numeric',
+                           inputSize: 2,
+                           textAlign: 'right',
+                           isDisabled: isSavingSettings$$(),
+                         }" />
+              }
+              <label class="flex items-center gap-2 cursor-pointer">
+                <v-checkbox [value]="isServiceVisibleInHeader(compositeServiceKey)"
+                            (onChanged)="toggleServiceVisibleInHeader(compositeServiceKey, $event)"
+                            [config]="{
+                              size: 4,
+                              checkIconSize: 3,
+                              gap: 1,
+                              isDisabled: isSavingSettings$$(),
+                            }" />
+                <span>Show in header</span>
+              </label>
+              <v-input class="shrink-0 w-40"
+                       [value]="serviceCustomLabel(compositeServiceKey)"
+                       (valueChange)="setServiceCustomLabel(compositeServiceKey, $event)"
+                       [config]="{
+                         placeholder: 'Custom name',
+                         inputSize: 3,
+                         isDisabled: isSavingSettings$$(),
+                       }" />
+              <v-button [class]="isCompositeSettingsExpanded$$() ? 'v-raised' : 'v-flat'"
+                        [config]="{
+                          isLabelHidden: true,
+                          padding: 2,
+                        }"
+                        (onClick)="toggleCompositeSettingsExpanded()">
+                <v-icon v-prefix
+                        [name]="Icon.Settings"
+                        [size]="5" />
+              </v-button>
+            </div>
+
+            <v-expand [isExpanded]="isCompositeSettingsExpanded$$()">
+              <div v-body
+                   class="flex flex-col gap-2 pt-2 pl-2">
+                @for (definition of compositeDefinitions$$(); track definition.id) {
+                  <v-card [config]="{ padding: 2, borderRadius: 2 }">
+                    <div class="flex flex-col gap-2">
+                      <div class="flex flex-wrap items-end gap-2">
+                        <v-input class="w-44"
+                                 [value]="definition.serviceA"
+                                 (valueChange)="setCompositeServiceA(definition.id, $event)"
+                                 [config]="{ placeholder: 'service key', label: 'Сервис 1', inputSize: 3 }" />
+                        <v-input class="w-44"
+                                 [value]="definition.metricName"
+                                 (valueChange)="setCompositeMetricName(definition.id, $event)"
+                                 [config]="{ placeholder: 'metric name', label: 'Метрика', inputSize: 3 }" />
+                      </div>
+                      <div class="flex flex-wrap items-end gap-2">
+                        <v-input class="w-44"
+                                 [value]="definition.serviceB"
+                                 (valueChange)="setCompositeServiceB(definition.id, $event)"
+                                 [config]="{ placeholder: 'service key', label: 'Сервис 2', inputSize: 3 }" />
+                        <v-input class="w-44"
+                                 [value]="definition.metricName"
+                                 [config]="{ label: 'Метрика', inputSize: 3, isDisabled: true }" />
+                        <v-button [config]="{ isLabelHidden: true, padding: 2 }"
+                                  (onClick)="removeCompositeDefinition(definition.id)">
+                          <v-icon v-prefix
+                                  [name]="Icon.Delete"
+                                  [size]="5" />
+                        </v-button>
+                      </div>
+                    </div>
+                  </v-card>
+                } @empty {
+                  <div class="opacity-60 text-sm">Нет составных метрик</div>
+                }
+                <v-button class="v-primary self-start"
+                          [config]="{ paddingX: 3 }"
+                          (onClick)="addCompositeDefinition()">
+                  <v-icon v-prefix
+                          [name]="Icon.Add"
+                          [size]="5" />
+                  Добавить сумму
+                </v-button>
+              </div>
+            </v-expand>
+          </div>
+
           @for (service of serviceOptions$$(); track service.service) {
             <div class="flex flex-col gap-1">
               <div class="text-l flex items-center gap-3 font-medium">
@@ -287,6 +400,31 @@
           </div>
         </v-card>
       }
+    }
+
+    @if (isServiceExpanded(compositeServiceKey)) {
+      <v-card class="mb-4"
+              [config]="{ padding: 0, borderRadius: 2 }">
+        <div class="flex flex-col gap-4 p-4">
+          @for (group of serviceMetricsData$$().get(compositeServiceKey)?.groups ?? []; track group.id) {
+            <div>
+              <div class="opacity-70 mb-2 font-semibold">{{ group.label }}</div>
+              <metric-card-grid [cardsInput]="group.cards"
+                                [cardWidthPxInput]="cardWidthPx$$()"
+                                [cardHeightPxInput]="cardHeightPx$$()"
+                                [expandedWidthPxInput]="cardSizeByMode$$()[CardSizeMode.Large].widthPx"
+                                [expandedHeightPxInput]="cardSizeByMode$$()[CardSizeMode.Large].heightPx"
+                                [syncCrosshairEnabledInput]="syncCrosshairEnabled$$()"
+                                [forceZeroBaselineInput]="forceZeroBaselineEnabled$$()"
+                                [isEditModeInput]="isCardEditMode$$()"
+                                [hideDashboardControlsInput]="true"
+                                [isSelectionDisabledInput]="isSavingSettings$$()" />
+            </div>
+          } @empty {
+            <div class="opacity-60 text-sm">Нет составных метрик. Настройте в Settings.</div>
+          }
+        </div>
+      </v-card>
     }
   </div>
 </div>

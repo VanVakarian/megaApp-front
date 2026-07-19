@@ -66,6 +66,7 @@ export class MetricCardGrid implements OnInit, OnDestroy {
   public readonly syncCrosshairEnabledInput = input<boolean>(false);
   public readonly forceZeroBaselineInput = input<boolean>(false);
   public readonly isEditModeInput = input<boolean>(false);
+  public readonly hideDashboardControlsInput = input<boolean>(false);
   public readonly isSelectionDisabledInput = input<boolean>(false);
 
   public readonly cardDashboardEnabledChangeOutput = output<{ technicalName: string; enabled: boolean }>();

@@ -8,7 +8,7 @@
         }"
         (click)="onCardClick($event)">
   <div class="flex items-center justify-between h-6 gap-2 text-sm">
-    @if (isEditModeInput()) {
+    @if (isEditModeInput() && !hideDashboardControlsInput()) {
       <div class="flex items-center flex-1 min-w-0 gap-2"
            (click)="$event.stopPropagation()">
         <v-checkbox [value]="isDashboardEnabledInput()"

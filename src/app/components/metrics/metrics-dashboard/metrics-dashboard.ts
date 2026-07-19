@@ -1,4 +1,9 @@
 import { ChangeDetectionStrategy, Component, computed, inject, OnDestroy, OnInit, signal } from '@angular/core';
+import {
+  COMPOSITE_SERVICE_KEY,
+  CompositeMetricDefinition,
+  CompositeMetricsSettingsService,
+} from '@app/services/composite-metrics-settings.service';
 import { DeviceInfoService } from '@app/services/device-info.service';
 import { MetricsHealthService } from '@app/services/metrics-health.service';
 import { CardSizeMode, MetricsSettingsService } from '@app/services/metrics-settings.service';
@@ -27,6 +32,7 @@ import {
   buildSparseLineSeriesFromPoints,
   filterMetricPointsByWindow,
   metricPointsIndexKey,
+  MetricWindow,
   MinuteMetricCollapseCache,
   previousCompletedBucket,
 } from '@app/shared/metrics-series';
@@ -49,6 +55,7 @@ import {
 const NOW_TICK_INTERVAL_MS = 30_000;
 const SETTINGS_PANEL_KEY = '__settings__';
 const DASHBOARD_PANEL_KEY = '__dashboard__';
+const DEFAULT_COMPOSITE_LABEL = 'Составные метрики';
 const GRANULARITY_OPTIONS: MetricGranularity[] = ['minute', 'hour', 'day'];
 const MINUTE_COLLAPSE_CARD_WIDTH_THRESHOLD_PX = 600;
 const COLLAPSED_MINUTE_STEP_SECONDS = 5 * 60;
@@ -87,10 +94,12 @@ export class MetricsDashboard implements OnInit, OnDestroy {
   protected readonly CardSizeMode = CardSizeMode;
   protected readonly settingsPanelKey = SETTINGS_PANEL_KEY;
   protected readonly dashboardPanelKey = DASHBOARD_PANEL_KEY;
+  protected readonly compositeServiceKey = COMPOSITE_SERVICE_KEY;
   protected readonly cardSizeModes = CARD_SIZE_MODES;
   protected readonly cardSizeModeLabels = CARD_SIZE_MODE_LABELS;
 
   private readonly metricsSettingsService = inject(MetricsSettingsService);
+  private readonly compositeMetricsSettingsService = inject(CompositeMetricsSettingsService);
 
   private readonly now$$ = signal(Date.now());
   protected readonly cardWidthPx$$ = this.metricsSettingsService.activeCardWidthPx$$;
@@ -117,6 +126,7 @@ export class MetricsDashboard implements OnInit, OnDestroy {
   protected readonly dashboardSelection$$ = this.metricsSettingsService.dashboardSelection$$;
   protected readonly dashboardServiceSelection$$ = this.metricsSettingsService.dashboardServiceSelection$$;
   protected readonly isSavingSettings$$ = this.metricsSettingsService.isSaving$$;
+  protected readonly compositeDefinitions$$ = this.compositeMetricsSettingsService.definitions$$;
   private nowTickIntervalId: ReturnType<typeof setInterval> | null = null;
   private readonly minuteMetricCollapseCache = new MinuteMetricCollapseCache();
   private readonly isPageScrolled$$ = signal(window.scrollY > 0);
@@ -133,6 +143,9 @@ export class MetricsDashboard implements OnInit, OnDestroy {
   // metrics-settings.service.ts) — every page load opens on the Dashboard panel.
   private readonly expandedPanel$$ = signal<string>(DASHBOARD_PANEL_KEY);
   private readonly isSettingsPanelExpanded$$ = signal(false);
+
+  // Transient — every page load opens with the composite editor collapsed.
+  protected readonly isCompositeSettingsExpanded$$ = signal(false);
 
   // Transient too — every page load opens with cards in their normal display mode.
   protected readonly isCardEditMode$$ = signal(false);
@@ -192,6 +205,37 @@ export class MetricsDashboard implements OnInit, OnDestroy {
       pointsByService.set(point.service, [point]);
     }
 
+    const buildSeriesDisplay = (
+      key: string,
+      metricPoints: MetricPoint[],
+      aggregation: MetricAggregation,
+      chartMode: MetricChartMode,
+      useCollapsed: boolean,
+      window: MetricWindow,
+    ): MetricChartCardSeriesDisplay => {
+      const displayWindow = useCollapsed ? buildCollapsedMetricWindow(window, COLLAPSED_MINUTE_STEP_SECONDS) : window;
+      const displayStepSeconds = useCollapsed ? COLLAPSED_MINUTE_STEP_SECONDS : stepSeconds;
+      const displayPoints = useCollapsed
+        ? filterMetricPointsByWindow(
+            this.minuteMetricCollapseCache.collapse(key, metricPoints, aggregation, COLLAPSED_MINUTE_STEP_SECONDS),
+            displayWindow.startBucket,
+            aggregation === 'sum'
+              ? Math.min(displayWindow.endBucket, lastClosedCollapsedBucket)
+              : displayWindow.endBucket,
+          )
+        : metricPoints;
+      const series =
+        chartMode === 'bar'
+          ? buildSparseBarSeriesFromPoints(displayPoints)
+          : buildSparseLineSeriesFromPoints(displayPoints, displayStepSeconds);
+      return {
+        series,
+        windowStartBucket: displayWindow.startBucket,
+        windowEndBucket: displayWindow.endBucket,
+        displayStepSeconds,
+      };
+    };
+
     const result = new Map<string, ServiceMetricsData>();
     for (const option of this.serviceOptions$$()) {
       const definition = metricsServiceDefinition(option.service);
@@ -205,48 +249,30 @@ export class MetricsDashboard implements OnInit, OnDestroy {
       const pointsIndex = buildMetricPointsIndex(servicePoints, serviceWindow.startBucket, serviceWindow.endBucket);
       const serviceDashboardSelection = dashboardSelection[option.service] ?? {};
 
-      const buildSeriesDisplay = (
-        key: string,
-        metricPoints: MetricPoint[],
-        aggregation: MetricAggregation,
-        chartMode: MetricChartMode,
-        useCollapsed: boolean,
-      ): MetricChartCardSeriesDisplay => {
-        const displayWindow = useCollapsed
-          ? buildCollapsedMetricWindow(serviceWindow, COLLAPSED_MINUTE_STEP_SECONDS)
-          : serviceWindow;
-        const displayStepSeconds = useCollapsed ? COLLAPSED_MINUTE_STEP_SECONDS : stepSeconds;
-        const displayPoints = useCollapsed
-          ? filterMetricPointsByWindow(
-              this.minuteMetricCollapseCache.collapse(key, metricPoints, aggregation, COLLAPSED_MINUTE_STEP_SECONDS),
-              displayWindow.startBucket,
-              aggregation === 'sum'
-                ? Math.min(displayWindow.endBucket, lastClosedCollapsedBucket)
-                : displayWindow.endBucket,
-            )
-          : metricPoints;
-        const series =
-          chartMode === 'bar'
-            ? buildSparseBarSeriesFromPoints(displayPoints)
-            : buildSparseLineSeriesFromPoints(displayPoints, displayStepSeconds);
-        return {
-          series,
-          windowStartBucket: displayWindow.startBucket,
-          windowEndBucket: displayWindow.endBucket,
-          displayStepSeconds,
-        };
-      };
-
       const buildCard = (name: string): MetricChartCardData => {
         const key = metricPointsIndexKey(option.service, name);
         const metricPoints = pointsIndex.get(key) ?? [];
         const aggregation = metricAggregation(option.service, name);
         const chartMode = metricChartMode(option.service, name);
-        const display = buildSeriesDisplay(key, metricPoints, aggregation, chartMode, useCollapsedMinutes);
+        const display = buildSeriesDisplay(
+          key,
+          metricPoints,
+          aggregation,
+          chartMode,
+          useCollapsedMinutes,
+          serviceWindow,
+        );
         const expandedDisplay =
           useCollapsedMinutesForExpanded === useCollapsedMinutes
             ? display
-            : buildSeriesDisplay(key, metricPoints, aggregation, chartMode, useCollapsedMinutesForExpanded);
+            : buildSeriesDisplay(
+                key,
+                metricPoints,
+                aggregation,
+                chartMode,
+                useCollapsedMinutesForExpanded,
+                serviceWindow,
+              );
         const rawValue = metricPoints[metricPoints.length - 1]?.value ?? 0;
         const color = metricColor(option.service, name);
         const unit = metricUnit(option.service, name);
@@ -299,6 +325,96 @@ export class MetricsDashboard implements OnInit, OnDestroy {
 
       result.set(option.service, { groups, dashboardCards });
     }
+
+    const compositeDefinitions = this.compositeDefinitions$$();
+    if (compositeDefinitions.length > 0) {
+      const buildCompositeCard = (definition: CompositeMetricDefinition): MetricChartCardData | null => {
+        if (!definition.metricName || !definition.serviceA || !definition.serviceB) return null;
+
+        const valuesByBucket = (source: string): Map<number, number> => {
+          const values = new Map<number, number>();
+          for (const point of pointsByService.get(source) ?? []) {
+            if (point.name !== definition.metricName) continue;
+            values.set(point.bucket, point.value);
+          }
+          return values;
+        };
+        const valuesA = valuesByBucket(definition.serviceA);
+        const valuesB = valuesByBucket(definition.serviceB);
+        const metricPoints: MetricPoint[] = Array.from(valuesA.keys())
+          .filter((bucket) => valuesB.has(bucket))
+          .sort((left, right) => left - right)
+          .map((bucket) => ({
+            service: COMPOSITE_SERVICE_KEY,
+            name: definition.id,
+            granularity,
+            bucket,
+            value: valuesA.get(bucket)! + valuesB.get(bucket)!,
+          }));
+
+        const key = metricPointsIndexKey(COMPOSITE_SERVICE_KEY, definition.id);
+        const aggregation = metricAggregation(definition.serviceA, definition.metricName);
+        const chartMode = metricChartMode(definition.serviceA, definition.metricName);
+        const compositeWindow = buildServiceMetricWindow(
+          metricPoints,
+          fallbackWindow.endBucket,
+          METRICS_GRANULARITY_WINDOW_PERIODS[granularity],
+          stepSeconds,
+        );
+        const display = buildSeriesDisplay(
+          key,
+          metricPoints,
+          aggregation,
+          chartMode,
+          useCollapsedMinutes,
+          compositeWindow,
+        );
+        const expandedDisplay =
+          useCollapsedMinutesForExpanded === useCollapsedMinutes
+            ? display
+            : buildSeriesDisplay(
+                key,
+                metricPoints,
+                aggregation,
+                chartMode,
+                useCollapsedMinutesForExpanded,
+                compositeWindow,
+              );
+        const rawValue = metricPoints[metricPoints.length - 1]?.value ?? 0;
+        const unit = metricUnit(definition.serviceA, definition.metricName);
+        return {
+          key,
+          label: `Σ ${metricLabel(definition.serviceA, definition.metricName)}`,
+          technicalName: definition.id,
+          value: rawValue,
+          displayValue: formatMetricUnitValue(unit, rawValue),
+          unit,
+          granularity,
+          color: metricColor(definition.serviceA, definition.metricName),
+          chartMode,
+          description: `Сумма «${definition.metricName}»: ${definition.serviceA} + ${definition.serviceB}`,
+          display,
+          expandedDisplay,
+          // No per-card dashboard toggle for composite metrics — the whole
+          // section is one on/off switch (Show in dashboard, above), so every
+          // defined sum is always part of it.
+          isDashboardEnabled: true,
+          dashboardOrder: 0,
+        };
+      };
+
+      // Order in the dashboard follows definition order — no per-card ordering
+      // control, since there's no per-card enable step for the user to set it in.
+      const compositeCards = compositeDefinitions
+        .map(buildCompositeCard)
+        .filter((card): card is MetricChartCardData => card !== null);
+
+      result.set(COMPOSITE_SERVICE_KEY, {
+        groups: [{ id: 'composite', label: DEFAULT_COMPOSITE_LABEL, cards: compositeCards }],
+        dashboardCards: compositeCards,
+      });
+    }
+
     return result;
   });
 
@@ -312,6 +428,16 @@ export class MetricsDashboard implements OnInit, OnDestroy {
       const cards = data.get(option.service)?.dashboardCards ?? [];
       if (cards.length === 0) continue;
       rows.push({ id: option.service, label: this.resolvedServiceLabel(option.service), order, cards });
+    }
+    const compositeOrder = serviceSelection[COMPOSITE_SERVICE_KEY];
+    const compositeCards = data.get(COMPOSITE_SERVICE_KEY)?.dashboardCards ?? [];
+    if (compositeOrder !== undefined && compositeCards.length > 0) {
+      rows.push({
+        id: COMPOSITE_SERVICE_KEY,
+        label: this.resolvedServiceLabel(COMPOSITE_SERVICE_KEY),
+        order: compositeOrder,
+        cards: compositeCards,
+      });
     }
     rows.sort((left, right) => left.order - right.order || left.label.localeCompare(right.label));
     return rows.map(({ id, label, cards }) => ({ id, label, cards }));
@@ -332,7 +458,9 @@ export class MetricsDashboard implements OnInit, OnDestroy {
   }
 
   protected resolvedServiceLabel(service: string): string {
-    return this.metricsSettingsService.serviceCustomLabels$$()[service]?.trim() || service;
+    const customLabel = this.metricsSettingsService.serviceCustomLabels$$()[service]?.trim();
+    if (customLabel) return customLabel;
+    return service === COMPOSITE_SERVICE_KEY ? DEFAULT_COMPOSITE_LABEL : service;
   }
 
   protected serviceColor(service: string): string {
@@ -560,6 +688,30 @@ export class MetricsDashboard implements OnInit, OnDestroy {
     this.metricsSettingsService.setServiceCustomLabels(next);
   }
 
+  protected toggleCompositeSettingsExpanded(): void {
+    this.isCompositeSettingsExpanded$$.update((value) => !value);
+  }
+
+  protected addCompositeDefinition(): void {
+    this.compositeMetricsSettingsService.addDefinition();
+  }
+
+  protected removeCompositeDefinition(id: string): void {
+    this.compositeMetricsSettingsService.removeDefinition(id);
+  }
+
+  protected setCompositeMetricName(id: string, value: string): void {
+    this.compositeMetricsSettingsService.setMetricName(id, value);
+  }
+
+  protected setCompositeServiceA(id: string, value: string): void {
+    this.compositeMetricsSettingsService.setServiceA(id, value);
+  }
+
+  protected setCompositeServiceB(id: string, value: string): void {
+    this.compositeMetricsSettingsService.setServiceB(id, value);
+  }
+
   private nextDashboardOrder(service: string): number {
     const orders = Object.values(this.dashboardSelection$$()[service] ?? {});
     return orders.length > 0 ? Math.max(...orders) + 1 : 1;
@@ -585,6 +737,9 @@ export class MetricsDashboard implements OnInit, OnDestroy {
     const current = this.expandedPanel$$();
     if (current === DASHBOARD_PANEL_KEY) {
       return current;
+    }
+    if (current === COMPOSITE_SERVICE_KEY) {
+      return this.isServiceVisibleInHeader(COMPOSITE_SERVICE_KEY) ? current : DASHBOARD_PANEL_KEY;
     }
     if (this.visibleServiceOptions$$().some((option) => option.service === current)) {
       return current;

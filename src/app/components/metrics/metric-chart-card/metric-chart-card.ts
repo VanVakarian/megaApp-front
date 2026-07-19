@@ -92,6 +92,7 @@ export class MetricChartCard implements OnDestroy {
   public readonly isSelectedInput = input<boolean>(false);
   public readonly isInteractiveInput = input<boolean>(false);
   public readonly isEditModeInput = input<boolean>(false);
+  public readonly hideDashboardControlsInput = input<boolean>(false);
   public readonly isDashboardEnabledInput = input<boolean>(false);
   public readonly dashboardOrderInput = input<number>(0);
   public readonly isSelectionDisabledInput = input<boolean>(false);
