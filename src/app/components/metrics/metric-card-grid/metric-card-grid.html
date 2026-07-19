@@ -19,5 +19,11 @@
                      [heightPxInput]="item.isExpanded ? expandedHeightPxInput() : cardHeightPxInput()"
                      [isSelectedInput]="item.card.key === selectedKey$$()"
                      [isInteractiveInput]="canExpand$$()"
-                     (cardClickOutput)="onCardToggle(item.card.key)" />
+                     [isEditModeInput]="isEditModeInput()"
+                     [isDashboardEnabledInput]="item.card.isDashboardEnabled"
+                     [dashboardOrderInput]="item.card.dashboardOrder"
+                     [isSelectionDisabledInput]="isSelectionDisabledInput()"
+                     (cardClickOutput)="onCardToggle(item.card.key)"
+                     (dashboardEnabledChangeOutput)="onCardDashboardEnabledChange(item.card.technicalName, $event)"
+                     (dashboardOrderChangeOutput)="onCardDashboardOrderChange(item.card.technicalName, $event)" />
 }

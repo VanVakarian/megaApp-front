@@ -7,6 +7,7 @@ import {
   input,
   OnDestroy,
   OnInit,
+  output,
   signal,
 } from '@angular/core';
 import { MetricUnit } from '@app/shared/metric-units';
@@ -38,6 +39,8 @@ export interface MetricChartCardData {
   // vice versa — each display size gets the series that matches its own width.
   display: MetricChartCardSeriesDisplay;
   expandedDisplay: MetricChartCardSeriesDisplay;
+  isDashboardEnabled: boolean;
+  dashboardOrder: number;
 }
 
 interface RenderItem {
@@ -62,6 +65,11 @@ export class MetricCardGrid implements OnInit, OnDestroy {
   public readonly expandedHeightPxInput = input.required<number>();
   public readonly syncCrosshairEnabledInput = input<boolean>(false);
   public readonly forceZeroBaselineInput = input<boolean>(false);
+  public readonly isEditModeInput = input<boolean>(false);
+  public readonly isSelectionDisabledInput = input<boolean>(false);
+
+  public readonly cardDashboardEnabledChangeOutput = output<{ technicalName: string; enabled: boolean }>();
+  public readonly cardDashboardOrderChangeOutput = output<{ technicalName: string; order: number }>();
 
   private readonly hostElement: HTMLElement;
   private readonly expandedKey$$ = signal<string | null>(null);
@@ -142,5 +150,13 @@ export class MetricCardGrid implements OnInit, OnDestroy {
   protected onCardToggle(key: string): void {
     if (!this.canExpand$$()) return;
     this.expandedKey$$.update((current) => (current === key ? null : key));
+  }
+
+  protected onCardDashboardEnabledChange(technicalName: string, enabled: boolean): void {
+    this.cardDashboardEnabledChangeOutput.emit({ technicalName, enabled });
+  }
+
+  protected onCardDashboardOrderChange(technicalName: string, order: number): void {
+    this.cardDashboardOrderChangeOutput.emit({ technicalName, order });
   }
 }

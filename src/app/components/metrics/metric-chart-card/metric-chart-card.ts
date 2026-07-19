@@ -24,7 +24,9 @@ import {
 } from '@app/shared/metrics-sync-crosshair';
 import { MetricGranularity } from '@app/shared/types';
 import { VCard } from '@ui-kit/components/v-card/v-card';
+import { VCheckbox } from '@ui-kit/components/v-checkbox/v-checkbox';
 import { IconName, VIcon } from '@ui-kit/components/v-icon/v-icon';
+import { VInput } from '@ui-kit/components/v-input/v-input';
 import { VTooltip } from '@ui-kit/components/v-tooltip/v-tooltip';
 import {
   BarController,
@@ -66,7 +68,7 @@ const HOVER_NO_VALUE_PLACEHOLDER = '—';
 @Component({
   selector: 'metric-chart-card',
   templateUrl: './metric-chart-card.html',
-  imports: [VCard, VIcon, VTooltip],
+  imports: [VCard, VCheckbox, VIcon, VInput, VTooltip],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class MetricChartCard implements OnDestroy {
@@ -89,8 +91,14 @@ export class MetricChartCard implements OnDestroy {
   public readonly heightPxInput = input<number>(DEFAULT_CHART_HEIGHT_PX);
   public readonly isSelectedInput = input<boolean>(false);
   public readonly isInteractiveInput = input<boolean>(false);
+  public readonly isEditModeInput = input<boolean>(false);
+  public readonly isDashboardEnabledInput = input<boolean>(false);
+  public readonly dashboardOrderInput = input<number>(0);
+  public readonly isSelectionDisabledInput = input<boolean>(false);
 
   public readonly cardClickOutput = output<void>();
+  public readonly dashboardEnabledChangeOutput = output<boolean>();
+  public readonly dashboardOrderChangeOutput = output<number>();
 
   protected readonly Icon = IconName;
 
@@ -116,6 +124,16 @@ export class MetricChartCard implements OnDestroy {
   protected onCardClick(event: MouseEvent): void {
     if (!this.isInteractiveInput() || event.target instanceof HTMLCanvasElement) return;
     this.cardClickOutput.emit();
+  }
+
+  protected onDashboardEnabledChange(enabled: boolean): void {
+    this.dashboardEnabledChangeOutput.emit(enabled);
+  }
+
+  protected onDashboardOrderChange(rawValue: string): void {
+    const order = Number(rawValue);
+    if (!Number.isFinite(order)) return;
+    this.dashboardOrderChangeOutput.emit(order);
   }
 
   private readonly chartCanvasElem = viewChild<ElementRef<HTMLCanvasElement>>('chartCanvas');

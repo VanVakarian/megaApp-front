@@ -37,6 +37,17 @@
     </div>
 
     <div class="shrink-0 flex-nowrap flex items-center gap-2 ml-auto">
+      <v-button [class]="isCardEditMode$$() ? 'v-primary v-raised' : 'v-flat'"
+                [config]="{
+                  isLabelHidden: true,
+                  padding: 2,
+                }"
+                (onClick)="toggleCardEditMode()">
+        <v-icon v-prefix
+                [name]="Icon.Edit"
+                [size]="6" />
+      </v-button>
+
       <v-button [class]="forceZeroBaselineEnabled$$() ? 'v-primary v-raised' : 'v-flat'"
                 [config]="{
                   isLabelHidden: true,
@@ -175,35 +186,6 @@
                   <span>Show in header</span>
                 </label>
               </div>
-              <div class="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-x-4 gap-y-1 pl-2">
-                @for (metric of dashboardMetricOptionsByService$$().get(service.service) ?? []; track metric.name) {
-                  <label class="flex items-center gap-2 text-sm cursor-pointer">
-                    <v-checkbox [value]="isDashboardMetricEnabled(service.service, metric.name)"
-                                (onChanged)="toggleDashboardMetric(service.service, metric.name, $event)"
-                                [config]="{
-                                  size: 4,
-                                  checkIconSize: 3,
-                                  gap: 1,
-                                  isDisabled: isSavingSettings$$(),
-                                }" />
-                    <span class="flex-1 min-w-0 truncate">{{ metric.label }}</span>
-                    @if (isDashboardMetricEnabled(service.service, metric.name)) {
-                      <v-input class="shrink-0 w-12"
-                               [value]="dashboardMetricOrder(service.service, metric.name).toString()"
-                               (valueChange)="setDashboardMetricOrder(service.service, metric.name, $event)"
-                               [config]="{
-                                 type: 'number',
-                                 inputmode: 'numeric',
-                                 inputSize: 2,
-                                 textAlign: 'right',
-                                 isDisabled: isSavingSettings$$(),
-                               }" />
-                    }
-                  </label>
-                } @empty {
-                  <div class="opacity-60 text-xs">Нет метрик</div>
-                }
-              </div>
             </div>
           }
         </div>
@@ -258,7 +240,11 @@
                                 [expandedWidthPxInput]="cardSizeByMode$$()[CardSizeMode.Large].widthPx"
                                 [expandedHeightPxInput]="cardSizeByMode$$()[CardSizeMode.Large].heightPx"
                                 [syncCrosshairEnabledInput]="syncCrosshairEnabled$$()"
-                                [forceZeroBaselineInput]="forceZeroBaselineEnabled$$()" />
+                                [forceZeroBaselineInput]="forceZeroBaselineEnabled$$()"
+                                [isEditModeInput]="isCardEditMode$$()"
+                                [isSelectionDisabledInput]="isSavingSettings$$()"
+                                (cardDashboardEnabledChangeOutput)="toggleDashboardMetric(row.id, $event.technicalName, $event.enabled)"
+                                (cardDashboardOrderChangeOutput)="setDashboardMetricOrder(row.id, $event.technicalName, $event.order)" />
             </div>
           </div>
         </v-card>
@@ -281,7 +267,11 @@
                                   [expandedWidthPxInput]="cardSizeByMode$$()[CardSizeMode.Large].widthPx"
                                   [expandedHeightPxInput]="cardSizeByMode$$()[CardSizeMode.Large].heightPx"
                                   [syncCrosshairEnabledInput]="syncCrosshairEnabled$$()"
-                                  [forceZeroBaselineInput]="forceZeroBaselineEnabled$$()" />
+                                  [forceZeroBaselineInput]="forceZeroBaselineEnabled$$()"
+                                  [isEditModeInput]="isCardEditMode$$()"
+                                  [isSelectionDisabledInput]="isSavingSettings$$()"
+                                  (cardDashboardEnabledChangeOutput)="toggleDashboardMetric(service.service, $event.technicalName, $event.enabled)"
+                                  (cardDashboardOrderChangeOutput)="setDashboardMetricOrder(service.service, $event.technicalName, $event.order)" />
               </div>
             } @empty {
               <div class="opacity-60 text-sm">Нет метрик</div>

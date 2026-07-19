@@ -70,11 +70,6 @@ interface ServiceMetricsData {
   dashboardCards: MetricChartCardData[];
 }
 
-interface DashboardMetricOption {
-  name: string;
-  label: string;
-}
-
 interface MetricsServiceOption {
   service: string;
   label: string;
@@ -141,6 +136,9 @@ export class MetricsDashboard implements OnInit, OnDestroy {
   private readonly expandedPanel$$ = signal<string>(DASHBOARD_PANEL_KEY);
   private readonly isSettingsPanelExpanded$$ = signal(false);
 
+  // Transient too — every page load opens with cards in their normal display mode.
+  protected readonly isCardEditMode$$ = signal(false);
+
   protected readonly serviceOptions$$ = computed<MetricsServiceOption[]>(() => {
     const discoveredServices = new Set<string>();
     for (const definition of metricsServiceDefinitions()) {
@@ -206,6 +204,7 @@ export class MetricsDashboard implements OnInit, OnDestroy {
         stepSeconds,
       );
       const pointsIndex = buildMetricPointsIndex(servicePoints, serviceWindow.startBucket, serviceWindow.endBucket);
+      const serviceDashboardSelection = dashboardSelection[option.service] ?? {};
 
       const buildSeriesDisplay = (
         key: string,
@@ -252,6 +251,7 @@ export class MetricsDashboard implements OnInit, OnDestroy {
         const rawValue = metricPoints[metricPoints.length - 1]?.value ?? 0;
         const color = metricColor(option.service, name);
         const unit = metricUnit(option.service, name);
+        const dashboardOrder = serviceDashboardSelection[name];
         return {
           key,
           label: metricLabel(option.service, name),
@@ -265,6 +265,8 @@ export class MetricsDashboard implements OnInit, OnDestroy {
           description: metricDescription(option.service, name),
           display,
           expandedDisplay,
+          isDashboardEnabled: dashboardOrder !== undefined,
+          dashboardOrder: dashboardOrder ?? 0,
         };
       };
 
@@ -314,33 +316,6 @@ export class MetricsDashboard implements OnInit, OnDestroy {
     }
     rows.sort((left, right) => left.order - right.order || left.label.localeCompare(right.label));
     return rows.map(({ id, label, cards }) => ({ id, label, cards }));
-  });
-
-  protected readonly dashboardMetricOptionsByService$$ = computed<Map<string, DashboardMetricOption[]>>(() => {
-    const observedNamesByService = new Map<string, Set<string>>();
-    for (const point of this.metricsService.points$$()) {
-      const observedNames = observedNamesByService.get(point.service);
-      if (observedNames) {
-        observedNames.add(point.name);
-        continue;
-      }
-      observedNamesByService.set(point.service, new Set([point.name]));
-    }
-
-    const result = new Map<string, DashboardMetricOption[]>();
-    for (const option of this.serviceOptions$$()) {
-      const knownNames = metricsCatalogKnownNames(option.service);
-      const observedNames = observedNamesByService.get(option.service) ?? new Set<string>();
-      const discoveredNames = Array.from(observedNames)
-        .filter((name) => !knownNames.has(name))
-        .sort();
-      const names = [...knownNames, ...discoveredNames];
-      result.set(
-        option.service,
-        names.map((name) => ({ name, label: metricLabel(option.service, name) })),
-      );
-    }
-    return result;
   });
 
   public ngOnInit(): void {
@@ -489,14 +464,6 @@ export class MetricsDashboard implements OnInit, OnDestroy {
     this.metricsHealthService.setSeverityThresholds(service, { ...current, errorAfterSeconds: value });
   }
 
-  protected isDashboardMetricEnabled(service: string, name: string): boolean {
-    return this.dashboardSelection$$()[service]?.[name] !== undefined;
-  }
-
-  protected dashboardMetricOrder(service: string, name: string): number {
-    return this.dashboardSelection$$()[service]?.[name] ?? 0;
-  }
-
   protected toggleDashboardMetric(service: string, name: string, enabled: boolean): void {
     const current = this.dashboardSelection$$();
     const serviceSelection = { ...current[service] };
@@ -519,10 +486,7 @@ export class MetricsDashboard implements OnInit, OnDestroy {
     }
   }
 
-  protected setDashboardMetricOrder(service: string, name: string, rawValue: string): void {
-    const order = Number(rawValue);
-    if (!Number.isFinite(order)) return;
-
+  protected setDashboardMetricOrder(service: string, name: string, order: number): void {
     const current = this.dashboardSelection$$();
     if (current[service]?.[name] === undefined) return;
 
@@ -530,6 +494,10 @@ export class MetricsDashboard implements OnInit, OnDestroy {
       ...current,
       [service]: { ...current[service], [name]: order },
     });
+  }
+
+  protected toggleCardEditMode(): void {
+    this.isCardEditMode$$.update((value) => !value);
   }
 
   protected isDashboardServiceEnabled(service: string): boolean {
