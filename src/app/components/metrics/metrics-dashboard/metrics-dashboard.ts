@@ -15,7 +15,6 @@ import {
   metricsCatalogKnownNames,
   metricsServiceDefinition,
   metricsServiceDefinitions,
-  metricsServiceLabel,
   metricUnit,
 } from '@app/shared/metrics-catalog';
 import { MetricChartMode } from '@app/shared/metrics-chart-mode';
@@ -72,7 +71,6 @@ interface ServiceMetricsData {
 
 interface MetricsServiceOption {
   service: string;
-  label: string;
 }
 
 @Component({
@@ -151,12 +149,13 @@ export class MetricsDashboard implements OnInit, OnDestroy {
       discoveredServices.add(point.service);
     }
 
+    // Sorted by the raw technical service key, never by the (editable) display
+    // label — sorting by the label would reorder this list on every keystroke
+    // while typing a custom name in the settings panel below, kicking focus out
+    // of the input mid-edit.
     return Array.from(discoveredServices)
-      .map((service) => ({
-        service,
-        label: metricsServiceLabel(service),
-      }))
-      .sort((left, right) => left.label.localeCompare(right.label));
+      .sort((left, right) => left.localeCompare(right))
+      .map((service) => ({ service }));
   });
 
   // Separate from serviceOptions$$ on purpose: settings panels (dashboard metric
@@ -312,7 +311,7 @@ export class MetricsDashboard implements OnInit, OnDestroy {
       if (order === undefined) continue;
       const cards = data.get(option.service)?.dashboardCards ?? [];
       if (cards.length === 0) continue;
-      rows.push({ id: option.service, label: option.label, order, cards });
+      rows.push({ id: option.service, label: this.resolvedServiceLabel(option.service), order, cards });
     }
     rows.sort((left, right) => left.order - right.order || left.label.localeCompare(right.label));
     return rows.map(({ id, label, cards }) => ({ id, label, cards }));
@@ -332,8 +331,8 @@ export class MetricsDashboard implements OnInit, OnDestroy {
     window.removeEventListener('scroll', this.onWindowScroll);
   }
 
-  protected serviceLabel(service: string): string {
-    return metricsServiceLabel(service);
+  protected resolvedServiceLabel(service: string): string {
+    return this.metricsSettingsService.serviceCustomLabels$$()[service]?.trim() || service;
   }
 
   protected serviceColor(service: string): string {
@@ -544,6 +543,21 @@ export class MetricsDashboard implements OnInit, OnDestroy {
       next[service] = false;
     }
     this.metricsSettingsService.setServiceHeaderVisibility(next);
+  }
+
+  protected serviceCustomLabel(service: string): string {
+    return this.metricsSettingsService.serviceCustomLabels$$()[service] ?? '';
+  }
+
+  protected setServiceCustomLabel(service: string, value: string): void {
+    const current = this.metricsSettingsService.serviceCustomLabels$$();
+    const next = { ...current };
+    if (value.trim()) {
+      next[service] = value;
+    } else {
+      delete next[service];
+    }
+    this.metricsSettingsService.setServiceCustomLabels(next);
   }
 
   private nextDashboardOrder(service: string): number {

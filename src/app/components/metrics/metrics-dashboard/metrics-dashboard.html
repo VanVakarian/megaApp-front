@@ -3,7 +3,7 @@
   <div class="flex flex-wrap items-start gap-2 px-4 pt-2 pb-2 transition-shadow duration-300 ease-out"
        [class]="stickyBarClasses$$()"
        [style.background-color]="deviceInfoService.isDesktopScreen$$() ? 'var(--v-color-bg)' : null">
-    <div class="flex flex-wrap flex-1 min-w-0 gap-2">
+    <div class="flex flex-wrap flex-initial min-w-0 gap-2">
       <v-button [class]="isServiceExpanded(dashboardPanelKey) ? 'v-primary v-raised' : 'v-primary v-flat'"
                 [config]="{
                   color: dashboardButtonColor(),
@@ -18,12 +18,14 @@
                     color: sectionButtonColor(service.service),
                   }"
                   (onClick)="toggleServiceExpanded(service.service)">
-          {{ service.label }}
+          {{ resolvedServiceLabel(service.service) }}
         </v-button>
       } @empty {
         <div class="opacity-60 text-sm">Нет сервисов</div>
       }
+    </div>
 
+    <div class="flex flex-wrap items-center flex-initial min-w-0 gap-2 ml-auto">
       <v-button [class]="isServiceExpanded(settingsPanelKey) ? 'v-raised' : 'v-flat'"
                 [config]="{
                   isLabelHidden: true,
@@ -34,9 +36,7 @@
                 [name]="Icon.Settings"
                 [size]="6" />
       </v-button>
-    </div>
 
-    <div class="shrink-0 flex-nowrap flex items-center gap-2 ml-auto">
       <v-button [class]="isCardEditMode$$() ? 'v-primary v-raised' : 'v-flat'"
                 [config]="{
                   isLabelHidden: true,
@@ -150,7 +150,7 @@
           @for (service of serviceOptions$$(); track service.service) {
             <div class="flex flex-col gap-1">
               <div class="text-l flex items-center gap-3 font-medium">
-                <span class="flex-1 min-w-0 font-semibold truncate">{{ service.label }}</span>
+                <span class="flex-1 min-w-0 font-mono font-semibold truncate">{{ service.service }}</span>
                 <label class="flex items-center gap-2 cursor-pointer">
                   <v-checkbox [value]="isDashboardServiceEnabled(service.service)"
                               (onChanged)="toggleDashboardService(service.service, $event)"
@@ -185,6 +185,14 @@
                               }" />
                   <span>Show in header</span>
                 </label>
+                <v-input class="shrink-0 w-40"
+                         [value]="serviceCustomLabel(service.service)"
+                         (valueChange)="setServiceCustomLabel(service.service, $event)"
+                         [config]="{
+                           placeholder: 'Custom name',
+                           inputSize: 3,
+                           isDisabled: isSavingSettings$$(),
+                         }" />
               </div>
             </div>
           }
@@ -195,7 +203,7 @@
           <div class="flex flex-wrap gap-8 pl-2">
             @for (service of serviceOptions$$(); track service.service) {
               <div class="flex flex-col gap-1">
-                <div class="text-sm truncate">{{ service.label }}</div>
+                <div class="font-mono text-sm truncate">{{ service.service }}</div>
                 <div class="flex items-center gap-2">
                   <v-input class="w-20"
                            [value]="warnAfterSeconds(service.service).toString()"

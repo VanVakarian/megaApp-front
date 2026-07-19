@@ -2,7 +2,6 @@ import { metric, MetricsServiceDefinition } from '@app/shared/metrics-catalog-me
 
 export const HARDWARE_METRICS_DEFINITION: MetricsServiceDefinition = {
   service: 'hardware:',
-  label: 'Hardware Server',
   groups: [
     {
       id: 'cpu',
@@ -61,7 +60,8 @@ export const HARDWARE_METRICS_DEFINITION: MetricsServiceDefinition = {
           color: '#0f766e',
           unit: 'count',
           aggregation: 'avg',
-          description: 'Системный load average за 5 минут. Хорошо показывает устойчивую тенденцию, а не короткий всплеск.',
+          description:
+            'Системный load average за 5 минут. Хорошо показывает устойчивую тенденцию, а не короткий всплеск.',
         }),
         metric('load15', {
           label: 'Load 15m',
@@ -100,7 +100,8 @@ export const HARDWARE_METRICS_DEFINITION: MetricsServiceDefinition = {
           label: 'Flatline RSS',
           color: '#84cc16',
           aggregation: 'avg',
-          description: 'Текущий RSS процесса Flatline: сколько физической памяти реально держит сам сервис прямо сейчас.',
+          description:
+            'Текущий RSS процесса Flatline: сколько физической памяти реально держит сам сервис прямо сейчас.',
         }),
       ],
     },

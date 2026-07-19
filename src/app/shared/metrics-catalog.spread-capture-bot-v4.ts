@@ -2,7 +2,6 @@ import { metric, MetricsServiceDefinition } from '@app/shared/metrics-catalog-me
 
 export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition = {
   service: 'spread-capture-bot-v4',
-  label: 'Spread Capture Bot V4',
   groups: [
     {
       id: 'pulse',

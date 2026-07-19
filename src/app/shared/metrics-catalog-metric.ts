@@ -1,6 +1,6 @@
+import { MetricUnit } from '@app/shared/metric-units';
 import { MetricAggregation } from '@app/shared/metrics-aggregation';
 import { MetricChartMode } from '@app/shared/metrics-chart-mode';
-import { MetricUnit } from '@app/shared/metric-units';
 
 export interface MetricConfig {
   name: string;
@@ -20,7 +20,6 @@ export interface MetricsGroupDefinition {
 
 export interface MetricsServiceDefinition {
   service: string;
-  label: string;
   groups: MetricsGroupDefinition[];
 }
 

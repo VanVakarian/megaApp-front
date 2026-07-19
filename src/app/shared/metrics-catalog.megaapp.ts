@@ -2,7 +2,6 @@ import { metric, MetricsServiceDefinition } from '@app/shared/metrics-catalog-me
 
 export const MEGAAPP_METRICS_DEFINITION: MetricsServiceDefinition = {
   service: 'megaapp',
-  label: 'MegaApp',
   groups: [
     {
       id: 'activity',

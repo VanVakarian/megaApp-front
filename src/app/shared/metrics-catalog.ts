@@ -1,12 +1,12 @@
-import { MetricAggregation } from '@app/shared/metrics-aggregation';
-import { MetricChartMode } from '@app/shared/metrics-chart-mode';
 import { MetricUnit } from '@app/shared/metric-units';
+import { MetricAggregation } from '@app/shared/metrics-aggregation';
 import { DEFAULT_METRIC_COLOR, MetricConfig, MetricsServiceDefinition } from '@app/shared/metrics-catalog-metric';
 import { HARDWARE_METRICS_DEFINITION } from '@app/shared/metrics-catalog.hardware';
 import { MEGAAPP_METRICS_DEFINITION } from '@app/shared/metrics-catalog.megaapp';
 import { SOZVON_KONSPEKT_METRICS_DEFINITION } from '@app/shared/metrics-catalog.sozvon-konspekt';
 import { SPREAD_CAPTURE_BOT_METRICS_DEFINITION } from '@app/shared/metrics-catalog.spread-capture-bot';
 import { SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION } from '@app/shared/metrics-catalog.spread-capture-bot-v4';
+import { MetricChartMode } from '@app/shared/metrics-chart-mode';
 
 export type { MetricsGroupDefinition, MetricsServiceDefinition } from '@app/shared/metrics-catalog-metric';
 
@@ -50,17 +50,12 @@ const STATIC_CATALOG_BY_SERVICE = new Map<string, ResolvedCatalog>(
 const HARDWARE_CATALOG = buildCatalog(HARDWARE_METRICS_DEFINITION);
 const HARDWARE_SERVICE_PREFIX = 'hardware:';
 
-const METRICS_SERVICE_VARIANTS: Record<string, { baseService: string; label: string }> = {
-  'megaapp-test': { baseService: 'megaapp', label: 'MegaApp Test' },
+const METRICS_SERVICE_VARIANTS: Record<string, { baseService: string }> = {
+  'megaapp-test': { baseService: 'megaapp' },
 };
 
 function isHardwareService(service: string): boolean {
   return service.startsWith(HARDWARE_SERVICE_PREFIX);
-}
-
-function hardwareServiceLabel(service: string): string {
-  const suffix = service.slice(HARDWARE_SERVICE_PREFIX.length).trim();
-  return suffix ? `Hardware: ${suffix}` : HARDWARE_CATALOG.definition.label;
 }
 
 function resolveCatalog(service: string): ResolvedCatalog | null {
@@ -74,20 +69,13 @@ function resolveCatalog(service: string): ResolvedCatalog | null {
   return null;
 }
 
-export function metricsServiceLabel(service: string): string {
-  if (isHardwareService(service)) return hardwareServiceLabel(service);
-  const variant = METRICS_SERVICE_VARIANTS[service];
-  if (variant) return variant.label;
-  return STATIC_CATALOG_BY_SERVICE.get(service)?.definition.label ?? service;
-}
-
 export function metricsServiceDefinition(service: string | null | undefined): MetricsServiceDefinition | null {
   if (!service) return null;
   const catalog = resolveCatalog(service);
   if (!catalog) return null;
   if (service === catalog.definition.service) return catalog.definition;
-  // Динамический hardware-хост или megaapp-test-вариант — те же группы/метрики, другие service/label.
-  return { ...catalog.definition, service, label: metricsServiceLabel(service) };
+  // Динамический hardware-хост или megaapp-test-вариант — те же группы/метрики, другой service.
+  return { ...catalog.definition, service };
 }
 
 export function metricsServiceDefinitions(): MetricsServiceDefinition[] {

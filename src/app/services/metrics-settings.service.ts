@@ -10,6 +10,7 @@ export type DashboardMetricSelection = Record<string, Record<string, number>>;
 export type DashboardServiceSelection = Record<string, number>;
 export type SeverityThresholdsOverrides = Record<string, SeverityThresholds>;
 export type ServiceHeaderVisibility = Record<string, boolean>;
+export type ServiceCustomLabels = Record<string, string>;
 
 export const CardSizeMode = {
   Small: 'small',
@@ -34,6 +35,7 @@ interface StoredMetricsSettings {
   dashboardServiceSelection: DashboardServiceSelection;
   severityThresholds: SeverityThresholdsOverrides;
   serviceHeaderVisibility: ServiceHeaderVisibility;
+  serviceCustomLabels: ServiceCustomLabels;
 }
 
 const STORAGE_KEY = 'metrics_settings';
@@ -68,6 +70,7 @@ const DEFAULTS: StoredMetricsSettings = {
   dashboardServiceSelection: {},
   severityThresholds: {},
   serviceHeaderVisibility: {},
+  serviceCustomLabels: {},
 };
 
 // Old per-field keys from before settings were combined into STORAGE_KEY — deleted once, never read.
@@ -140,6 +143,7 @@ export class MetricsSettingsService {
   public readonly dashboardServiceSelection$$: WritableSignal<DashboardServiceSelection>;
   public readonly severityThresholdOverrides$$: WritableSignal<SeverityThresholdsOverrides>;
   public readonly serviceHeaderVisibility$$: WritableSignal<ServiceHeaderVisibility>;
+  public readonly serviceCustomLabels$$: WritableSignal<ServiceCustomLabels>;
   public readonly isSaving$$: WritableSignal<boolean> = signal(false);
 
   public readonly activeCardWidthPx$$ = computed(() => this.cardSizeByMode$$()[this.activeCardSizeMode$$()].widthPx);
@@ -175,6 +179,7 @@ export class MetricsSettingsService {
     this.dashboardServiceSelection$$ = signal(initial.dashboardServiceSelection);
     this.severityThresholdOverrides$$ = signal(initial.severityThresholds);
     this.serviceHeaderVisibility$$ = signal(initial.serviceHeaderVisibility);
+    this.serviceCustomLabels$$ = signal(initial.serviceCustomLabels);
 
     this.loadFromServer();
   }
@@ -233,6 +238,11 @@ export class MetricsSettingsService {
     this.persist();
   }
 
+  public setServiceCustomLabels(value: ServiceCustomLabels): void {
+    this.serviceCustomLabels$$.set(value);
+    this.persist();
+  }
+
   private updateCardSize(mode: CardSizeMode, patch: Partial<CardSize>): void {
     const current = this.cardSizeByMode$$();
     this.cardSizeByMode$$.set({ ...current, [mode]: { ...current[mode], ...patch } });
@@ -259,6 +269,7 @@ export class MetricsSettingsService {
       dashboardServiceSelection: this.dashboardServiceSelection$$(),
       severityThresholds: this.severityThresholdOverrides$$(),
       serviceHeaderVisibility: this.serviceHeaderVisibility$$(),
+      serviceCustomLabels: this.serviceCustomLabels$$(),
     };
   }
 
@@ -272,6 +283,7 @@ export class MetricsSettingsService {
     this.dashboardServiceSelection$$.set(value.dashboardServiceSelection);
     this.severityThresholdOverrides$$.set(value.severityThresholds);
     this.serviceHeaderVisibility$$.set(value.serviceHeaderVisibility);
+    this.serviceCustomLabels$$.set(value.serviceCustomLabels);
     this.localStorageService.setUserScoped(STORAGE_KEY, value);
   }
 

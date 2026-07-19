@@ -2,7 +2,6 @@ import { metric, MetricsServiceDefinition } from '@app/shared/metrics-catalog-me
 
 export const SOZVON_KONSPEKT_METRICS_DEFINITION: MetricsServiceDefinition = {
   service: 'sozvon-konspekt',
-  label: 'Sozvon Konspekt',
   groups: [
     {
       id: 'recognition',
