@@ -28,7 +28,6 @@ export type CardSizeByMode = Record<CardSizeMode, CardSize>;
 interface StoredMetricsSettings {
   cardSizeByMode: CardSizeByMode;
   activeCardSizeMode: CardSizeMode;
-  granularity: MetricGranularity;
   syncCrosshairEnabled: boolean;
   forceZeroBaselineEnabled: boolean;
   dashboardSelection: DashboardMetricSelection;
@@ -39,6 +38,8 @@ interface StoredMetricsSettings {
 }
 
 const STORAGE_KEY = 'metrics_settings';
+const GRANULARITY_STORAGE_KEY = 'metrics_granularity';
+const DEFAULT_GRANULARITY: MetricGranularity = 'minute';
 const SETTINGS_ENDPOINT = '/api/metrics-settings/';
 const DEFAULT_SMALL_CARD_WIDTH_PX = 304;
 const DEFAULT_SMALL_CARD_HEIGHT_PX = 112;
@@ -62,7 +63,6 @@ const DEFAULT_CARD_SIZE_BY_MODE: CardSizeByMode = {
 const DEFAULTS: StoredMetricsSettings = {
   cardSizeByMode: DEFAULT_CARD_SIZE_BY_MODE,
   activeCardSizeMode: CardSizeMode.Small,
-  granularity: 'minute',
   syncCrosshairEnabled: false,
   forceZeroBaselineEnabled: false,
   dashboardSelection: {},
@@ -75,13 +75,13 @@ const DEFAULTS: StoredMetricsSettings = {
 // Old per-field keys from before settings were combined into STORAGE_KEY — deleted once, never read.
 // metrics_selected_service/metrics_settings_expanded are here too: which panel was expanded is no
 // longer persisted anywhere — every page load opens on the Dashboard panel, collapsed Settings.
+// metrics_granularity is NOT here — it's the live GRANULARITY_STORAGE_KEY, kept local-only on purpose.
 const OBSOLETE_KEYS = [
   'metrics_expanded_services',
   'metrics_selected_service',
   'metrics_settings_expanded',
   'metrics_card_width_px',
   'metrics_card_height_px',
-  'metrics_granularity',
   'metrics_sync_crosshair_enabled',
   'metrics_dashboard_selection',
   'metrics_dashboard_service_selection',
@@ -168,9 +168,11 @@ export class MetricsSettingsService {
       activeCardSizeMode: resolveActiveCardSizeMode(stored),
     };
 
+    const storedGranularity = this.localStorageService.getUserScoped<MetricGranularity>(GRANULARITY_STORAGE_KEY);
+
     this.cardSizeByMode$$ = signal(initial.cardSizeByMode);
     this.activeCardSizeMode$$ = signal(initial.activeCardSizeMode);
-    this.granularity$$ = signal(initial.granularity);
+    this.granularity$$ = signal(storedGranularity ?? DEFAULT_GRANULARITY);
     this.syncCrosshairEnabled$$ = signal(initial.syncCrosshairEnabled);
     this.forceZeroBaselineEnabled$$ = signal(initial.forceZeroBaselineEnabled);
     this.dashboardSelection$$ = signal(initial.dashboardSelection);
@@ -203,6 +205,7 @@ export class MetricsSettingsService {
 
   public setGranularity(value: MetricGranularity): void {
     this.granularity$$.set(value);
+    this.localStorageService.setUserScoped(GRANULARITY_STORAGE_KEY, value);
   }
 
   public setSyncCrosshairEnabled(value: boolean): void {
@@ -242,7 +245,6 @@ export class MetricsSettingsService {
     return {
       cardSizeByMode: this.cardSizeByMode$$(),
       activeCardSizeMode: this.activeCardSizeMode$$(),
-      granularity: this.granularity$$(),
       syncCrosshairEnabled: this.syncCrosshairEnabled$$(),
       forceZeroBaselineEnabled: this.forceZeroBaselineEnabled$$(),
       dashboardSelection: this.dashboardSelection$$(),
@@ -256,7 +258,6 @@ export class MetricsSettingsService {
   private applySnapshot(value: StoredMetricsSettings): void {
     this.cardSizeByMode$$.set(value.cardSizeByMode);
     this.activeCardSizeMode$$.set(value.activeCardSizeMode);
-    this.granularity$$.set(value.granularity);
     this.syncCrosshairEnabled$$.set(value.syncCrosshairEnabled);
     this.forceZeroBaselineEnabled$$.set(value.forceZeroBaselineEnabled);
     this.dashboardSelection$$.set(value.dashboardSelection);

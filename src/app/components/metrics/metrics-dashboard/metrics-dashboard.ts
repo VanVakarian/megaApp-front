@@ -180,6 +180,34 @@ export class MetricsDashboard implements OnInit, OnDestroy {
     this.serviceOptions$$().filter((option) => this.isServiceVisibleInHeader(option.service)),
   );
 
+  // Header tab order follows the same order set for the dashboard cards
+  // (dashboardServiceSelection$$), composite included — services without a
+  // dashboard order keep their original (alphabetical) relative position, after
+  // the ordered ones. Kept separate from serviceOptions$$/visibleServiceOptions$$,
+  // which stay alphabetical, since those also drive the Settings panel's service
+  // list, and reordering it while its own order input is being typed into would
+  // kick focus out mid-edit.
+  protected readonly headerEntries$$ = computed<{ service: string; isComposite: boolean }[]>(() => {
+    const entries: { service: string; isComposite: boolean }[] = [];
+    if (this.isServiceVisibleInHeader(this.compositeServiceKey)) {
+      entries.push({ service: this.compositeServiceKey, isComposite: true });
+    }
+    for (const option of this.visibleServiceOptions$$()) {
+      entries.push({ service: option.service, isComposite: false });
+    }
+
+    const orderMap = this.dashboardServiceSelection$$();
+    return entries
+      .map((entry, index) => ({ entry, index, order: orderMap[entry.service] }))
+      .sort((left, right) => {
+        if (left.order !== undefined && right.order !== undefined) return left.order - right.order;
+        if (left.order !== undefined) return -1;
+        if (right.order !== undefined) return 1;
+        return left.index - right.index;
+      })
+      .map(({ entry }) => entry);
+  });
+
   protected readonly serviceMetricsData$$ = computed<Map<string, ServiceMetricsData>>(() => {
     const granularity = this.selectedGranularity$$();
     const stepSeconds = METRICS_GRANULARITY_STEP_SECONDS[granularity];

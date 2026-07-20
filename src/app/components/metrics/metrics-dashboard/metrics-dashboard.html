@@ -12,21 +12,21 @@
         Dashboard
       </v-button>
 
-      @if (isServiceVisibleInHeader(compositeServiceKey)) {
-        <v-button [class]="isServiceExpanded(compositeServiceKey) ? 'v-primary v-raised' : 'v-primary v-flat'"
-                  (onClick)="toggleServiceExpanded(compositeServiceKey)">
-          {{ resolvedServiceLabel(compositeServiceKey) }}
-        </v-button>
-      }
-
-      @for (service of visibleServiceOptions$$(); track service.service) {
-        <v-button [class]="isServiceExpanded(service.service) ? 'v-primary v-raised' : 'v-primary v-flat'"
-                  [config]="{
-                    color: sectionButtonColor(service.service),
-                  }"
-                  (onClick)="toggleServiceExpanded(service.service)">
-          {{ resolvedServiceLabel(service.service) }}
-        </v-button>
+      @for (entry of headerEntries$$(); track entry.service) {
+        @if (entry.isComposite) {
+          <v-button [class]="isServiceExpanded(entry.service) ? 'v-raised' : 'v-flat'"
+                    (onClick)="toggleServiceExpanded(entry.service)">
+            {{ resolvedServiceLabel(entry.service) }}
+          </v-button>
+        } @else {
+          <v-button [class]="isServiceExpanded(entry.service) ? 'v-primary v-raised' : 'v-primary v-flat'"
+                    [config]="{
+                      color: sectionButtonColor(entry.service),
+                    }"
+                    (onClick)="toggleServiceExpanded(entry.service)">
+            {{ resolvedServiceLabel(entry.service) }}
+          </v-button>
+        }
       } @empty {
         <div class="opacity-60 text-sm">Нет сервисов</div>
       }
@@ -176,6 +176,16 @@
           <div class="flex flex-col gap-1">
             <div class="text-l flex items-center gap-3 font-medium">
               <span class="flex-1 min-w-0 font-semibold truncate">{{ resolvedServiceLabel(compositeServiceKey) }}</span>
+              <v-button [class]="isCompositeSettingsExpanded$$() ? 'v-raised' : 'v-flat'"
+                        [config]="{
+                          isLabelHidden: true,
+                          padding: 2,
+                        }"
+                        (onClick)="toggleCompositeSettingsExpanded()">
+                <v-icon v-prefix
+                        [name]="Icon.Settings"
+                        [size]="5" />
+              </v-button>
               <label class="flex items-center gap-2 cursor-pointer">
                 <v-checkbox [value]="isDashboardServiceEnabled(compositeServiceKey)"
                             (onChanged)="toggleDashboardService(compositeServiceKey, $event)"
@@ -218,16 +228,6 @@
                          inputSize: 3,
                          isDisabled: isSavingSettings$$(),
                        }" />
-              <v-button [class]="isCompositeSettingsExpanded$$() ? 'v-raised' : 'v-flat'"
-                        [config]="{
-                          isLabelHidden: true,
-                          padding: 2,
-                        }"
-                        (onClick)="toggleCompositeSettingsExpanded()">
-                <v-icon v-prefix
-                        [name]="Icon.Settings"
-                        [size]="5" />
-              </v-button>
             </div>
 
             <v-expand [isExpanded]="isCompositeSettingsExpanded$$()">
