@@ -33,6 +33,21 @@
     </div>
 
     <div class="flex flex-wrap items-center flex-initial min-w-0 gap-2 ml-auto">
+      @if (hasUnsavedSettings$$()) {
+        <v-button class="v-primary v-raised"
+                  [config]="{
+                    paddingX: 3,
+                    color: '#22c55e',
+                    isDisabled: isSavingSettings$$(),
+                  }"
+                  (onClick)="saveSettings()">
+          <v-icon v-prefix
+                  [name]="Icon.Check"
+                  [size]="5" />
+          Сохранить
+        </v-button>
+      }
+
       <v-button [class]="isServiceExpanded(settingsPanelKey) ? 'v-raised' : 'v-flat'"
                 [config]="{
                   isLabelHidden: true,
@@ -59,6 +74,7 @@
                 [config]="{
                   isLabelHidden: true,
                   padding: 2,
+                  isDisabled: isSavingSettings$$(),
                 }"
                 (onClick)="toggleForceZeroBaseline()">
         <v-icon class="rotate-180"
@@ -71,6 +87,7 @@
                 [config]="{
                   isLabelHidden: true,
                   padding: 2,
+                  isDisabled: isSavingSettings$$(),
                 }"
                 (onClick)="cycleCardSizeMode()">
         <v-icon v-prefix
@@ -81,6 +98,7 @@
 
       <v-toggle [items]="granularityToggleItems"
                 [value]="granularityToggleValue()"
+                [config]="{ isDisabled: isSavingSettings$$() }"
                 (valueChange)="onGranularityToggleChange($event)" />
     </div>
   </div>

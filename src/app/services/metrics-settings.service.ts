@@ -40,7 +40,6 @@ interface StoredMetricsSettings {
 
 const STORAGE_KEY = 'metrics_settings';
 const SETTINGS_ENDPOINT = '/api/metrics-settings/';
-const SAVE_DEBOUNCE_MS = 5_000;
 const DEFAULT_SMALL_CARD_WIDTH_PX = 304;
 const DEFAULT_SMALL_CARD_HEIGHT_PX = 112;
 const DEFAULT_LARGE_CARD_WIDTH_PX = 480;
@@ -122,14 +121,15 @@ function resolveActiveCardSizeMode(raw: Partial<StoredMetricsSettings>): CardSiz
   return isValidCardSizeMode(raw.activeCardSizeMode) ? raw.activeCardSizeMode : CardSizeMode.Small;
 }
 
-// Every setter does signal.set() + a synchronous localStorage write, the same
-// way SettingsService does it — no effect() anywhere. An effect that reacts to
-// this state and also writes back into it (even indirectly) is how the
-// previous version of this service produced an infinite loop on page load.
-//
-// Server sync is debounced (SAVE_DEBOUNCE_MS after the last change) and sends
-// the full settings object, not a per-field diff — simpler than SyncQueueService's
-// retry queue, appropriate for a low-traffic, single-in-flight-request save.
+function isDeepEqual(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  if (typeof a !== 'object' || typeof b !== 'object' || a === null || b === null) return false;
+  const aEntries = Object.entries(a as Record<string, unknown>);
+  const bRecord = b as Record<string, unknown>;
+  if (aEntries.length !== Object.keys(bRecord).length) return false;
+  return aEntries.every(([key, value]) => isDeepEqual(value, bRecord[key]));
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -145,6 +145,7 @@ export class MetricsSettingsService {
   public readonly serviceHeaderVisibility$$: WritableSignal<ServiceHeaderVisibility>;
   public readonly serviceCustomLabels$$: WritableSignal<ServiceCustomLabels>;
   public readonly isSaving$$: WritableSignal<boolean> = signal(false);
+  public readonly isDirty$$ = computed(() => !isDeepEqual(this.snapshot(), this.lastConfirmed$$()));
 
   public readonly activeCardWidthPx$$ = computed(() => this.cardSizeByMode$$()[this.activeCardSizeMode$$()].widthPx);
   public readonly activeCardHeightPx$$ = computed(() => this.cardSizeByMode$$()[this.activeCardSizeMode$$()].heightPx);
@@ -152,9 +153,7 @@ export class MetricsSettingsService {
   private readonly http = inject(HttpClient);
   private readonly localStorageService = inject(LocalStorageService);
   private readonly notificationService = inject(NotificationService);
-
-  private lastConfirmed: StoredMetricsSettings = DEFAULTS;
-  private saveTimeoutId: ReturnType<typeof setTimeout> | null = null;
+  private readonly lastConfirmed$$: WritableSignal<StoredMetricsSettings>;
 
   constructor() {
     for (const key of OBSOLETE_KEYS) {
@@ -168,7 +167,6 @@ export class MetricsSettingsService {
       cardSizeByMode: resolveCardSizeByMode(stored),
       activeCardSizeMode: resolveActiveCardSizeMode(stored),
     };
-    this.lastConfirmed = initial;
 
     this.cardSizeByMode$$ = signal(initial.cardSizeByMode);
     this.activeCardSizeMode$$ = signal(initial.activeCardSizeMode);
@@ -180,6 +178,7 @@ export class MetricsSettingsService {
     this.severityThresholdOverrides$$ = signal(initial.severityThresholds);
     this.serviceHeaderVisibility$$ = signal(initial.serviceHeaderVisibility);
     this.serviceCustomLabels$$ = signal(initial.serviceCustomLabels);
+    this.lastConfirmed$$ = signal(initial);
 
     this.loadFromServer();
   }
@@ -194,7 +193,6 @@ export class MetricsSettingsService {
 
   public setActiveCardSizeMode(mode: CardSizeMode): void {
     this.activeCardSizeMode$$.set(mode);
-    this.persist();
   }
 
   public cycleActiveCardSizeMode(): void {
@@ -205,57 +203,39 @@ export class MetricsSettingsService {
 
   public setGranularity(value: MetricGranularity): void {
     this.granularity$$.set(value);
-    this.persist();
   }
 
   public setSyncCrosshairEnabled(value: boolean): void {
     this.syncCrosshairEnabled$$.set(value);
-    this.persist();
   }
 
   public setForceZeroBaselineEnabled(value: boolean): void {
     this.forceZeroBaselineEnabled$$.set(value);
-    this.persist();
   }
 
   public setDashboardSelection(value: DashboardMetricSelection): void {
     this.dashboardSelection$$.set(value);
-    this.persist();
   }
 
   public setDashboardServiceSelection(value: DashboardServiceSelection): void {
     this.dashboardServiceSelection$$.set(value);
-    this.persist();
   }
 
   public setSeverityThresholdOverrides(value: SeverityThresholdsOverrides): void {
     this.severityThresholdOverrides$$.set(value);
-    this.persist();
   }
 
   public setServiceHeaderVisibility(value: ServiceHeaderVisibility): void {
     this.serviceHeaderVisibility$$.set(value);
-    this.persist();
   }
 
   public setServiceCustomLabels(value: ServiceCustomLabels): void {
     this.serviceCustomLabels$$.set(value);
-    this.persist();
   }
 
   private updateCardSize(mode: CardSizeMode, patch: Partial<CardSize>): void {
     const current = this.cardSizeByMode$$();
     this.cardSizeByMode$$.set({ ...current, [mode]: { ...current[mode], ...patch } });
-    this.persist();
-  }
-
-  private persist(): void {
-    this.persistLocalOnly();
-    this.scheduleSave();
-  }
-
-  private persistLocalOnly(): void {
-    this.localStorageService.setUserScoped(STORAGE_KEY, this.snapshot());
   }
 
   private snapshot(): StoredMetricsSettings {
@@ -285,26 +265,19 @@ export class MetricsSettingsService {
     this.serviceHeaderVisibility$$.set(value.serviceHeaderVisibility);
     this.serviceCustomLabels$$.set(value.serviceCustomLabels);
     this.localStorageService.setUserScoped(STORAGE_KEY, value);
+    this.lastConfirmed$$.set(value);
   }
 
-  private scheduleSave(): void {
-    if (this.saveTimeoutId !== null) {
-      clearTimeout(this.saveTimeoutId);
-    }
-    this.saveTimeoutId = setTimeout(() => this.save(), SAVE_DEBOUNCE_MS);
-  }
-
-  private async save(): Promise<void> {
-    this.saveTimeoutId = null;
+  public async saveNow(): Promise<void> {
     const snapshot = this.snapshot();
 
     this.isSaving$$.set(true);
     try {
       await firstValueFrom(this.http.put(SETTINGS_ENDPOINT, snapshot));
-      this.lastConfirmed = snapshot;
+      this.localStorageService.setUserScoped(STORAGE_KEY, snapshot);
+      this.lastConfirmed$$.set(snapshot);
     } catch (error) {
       console.error('Failed to save metrics settings:', error);
-      this.applySnapshot(this.lastConfirmed);
       this.notificationService.showSyncError('Failed to save metrics settings');
     } finally {
       this.isSaving$$.set(false);
@@ -320,7 +293,6 @@ export class MetricsSettingsService {
         cardSizeByMode: resolveCardSizeByMode(response),
         activeCardSizeMode: resolveActiveCardSizeMode(response),
       };
-      this.lastConfirmed = merged;
       this.applySnapshot(merged);
     } catch (error) {
       console.error('Failed to fetch metrics settings from server:', error);

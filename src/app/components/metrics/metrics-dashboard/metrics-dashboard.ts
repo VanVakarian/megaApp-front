@@ -126,6 +126,7 @@ export class MetricsDashboard implements OnInit, OnDestroy {
   protected readonly dashboardSelection$$ = this.metricsSettingsService.dashboardSelection$$;
   protected readonly dashboardServiceSelection$$ = this.metricsSettingsService.dashboardServiceSelection$$;
   protected readonly isSavingSettings$$ = this.metricsSettingsService.isSaving$$;
+  protected readonly hasUnsavedSettings$$ = this.metricsSettingsService.isDirty$$;
   protected readonly compositeDefinitions$$ = this.compositeMetricsSettingsService.definitions$$;
   private nowTickIntervalId: ReturnType<typeof setInterval> | null = null;
   private readonly minuteMetricCollapseCache = new MinuteMetricCollapseCache();
@@ -559,6 +560,10 @@ export class MetricsDashboard implements OnInit, OnDestroy {
 
   protected toggleForceZeroBaseline(): void {
     this.metricsSettingsService.setForceZeroBaselineEnabled(!this.forceZeroBaselineEnabled$$());
+  }
+
+  protected saveSettings(): void {
+    this.metricsSettingsService.saveNow();
   }
 
   protected clearMetricsCache(): void {
