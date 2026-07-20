@@ -188,7 +188,7 @@ export class FoodDiaryService extends BaseFoodService {
     this.updateNutrientsOptimistically(selectedDay, nutrientsDelta, kcalsDelta);
     this.saveToLocalStorage(this.diaryRaw$$());
 
-    this.foodStatsService.updateStatsOptimistically(selectedDay, 0, kcalsDelta);
+    this.foodStatsService.updateStatsOptimistically(selectedDay, null, kcalsDelta);
 
     const successCallback = (response: ServerResponseWithDiaryId) => {
       if (response.result && response.diaryId) {
@@ -257,7 +257,7 @@ export class FoodDiaryService extends BaseFoodService {
     this.saveToLocalStorage(this.diaryRaw$$());
 
     if (kcalsDelta !== 0) {
-      this.foodStatsService.updateStatsOptimistically(selectedDay, 0, kcalsDelta);
+      this.foodStatsService.updateStatsOptimistically(selectedDay, null, kcalsDelta);
     }
 
     const rollbackFunction = () => {
@@ -335,7 +335,7 @@ export class FoodDiaryService extends BaseFoodService {
     this.updateNutrientsOptimistically(selectedDay, nutrientsDelta, kcalsDelta);
     this.saveToLocalStorage(this.diaryRaw$$());
 
-    this.foodStatsService.updateStatsOptimistically(selectedDay, 0, kcalsDelta);
+    this.foodStatsService.updateStatsOptimistically(selectedDay, null, kcalsDelta);
 
     const rollbackFunction = () => {
       this.diaryRaw$$.set(originalDiary);
@@ -383,7 +383,7 @@ export class FoodDiaryService extends BaseFoodService {
     this.updateNutrientsOptimistically(selectedDay, nutrientsDelta, kcalsDelta);
     this.saveToLocalStorage(this.diaryRaw$$());
 
-    this.foodStatsService.updateStatsOptimistically(selectedDay, 0, kcalsDelta);
+    this.foodStatsService.updateStatsOptimistically(selectedDay, null, kcalsDelta);
 
     const rollbackFunction = () => {
       this.diaryRaw$$.set(originalDiary);
@@ -435,7 +435,7 @@ export class FoodDiaryService extends BaseFoodService {
     this.addDiaryEntriesForDay(snapshot.dateISO, tempEntries);
     this.updateNutrientsOptimistically(snapshot.dateISO, nutrientsDelta, kcalsDelta);
     this.saveToLocalStorage(this.diaryRaw$$());
-    this.foodStatsService.updateStatsOptimistically(snapshot.dateISO, 0, kcalsDelta);
+    this.foodStatsService.updateStatsOptimistically(snapshot.dateISO, null, kcalsDelta);
 
     const successCallback = (response: ServerResponseWithDiaryEntries) => {
       if (response.result && response.diaryEntries?.length) {
@@ -488,9 +488,7 @@ export class FoodDiaryService extends BaseFoodService {
     const originalDiary = { ...this.diaryRaw$$() };
     const dateISO = bodyWeight.dateISO;
 
-    const currentWeight = originalDiary[dateISO]?.bodyWeight || 0;
     const newWeight = Number(bodyWeight.bodyWeight);
-    const weightDelta = newWeight - currentWeight;
 
     const statsRollback = this.foodStatsService.createStatsRollback(dateISO);
 
@@ -505,16 +503,12 @@ export class FoodDiaryService extends BaseFoodService {
     });
     this.saveToLocalStorage(this.diaryRaw$$());
 
-    if (weightDelta !== 0) {
-      this.foodStatsService.updateStatsOptimistically(dateISO, weightDelta, 0);
-    }
+    this.foodStatsService.updateStatsOptimistically(dateISO, newWeight, 0);
 
     const rollbackFunction = () => {
       this.diaryRaw$$.set(originalDiary);
       this.saveToLocalStorage(originalDiary);
-      if (weightDelta !== 0) {
-        statsRollback();
-      }
+      statsRollback();
     };
 
     this.addSyncOperation({
@@ -1096,7 +1090,7 @@ export class FoodDiaryService extends BaseFoodService {
     this.updateNutrientsOptimistically(dateISO, nutrientsDelta, kcalsDelta);
 
     if (kcalsDelta !== 0) {
-      this.foodStatsService.updateStatsOptimistically(dateISO, 0, kcalsDelta);
+      this.foodStatsService.updateStatsOptimistically(dateISO, null, kcalsDelta);
     }
   }
 
@@ -1174,7 +1168,7 @@ export class FoodDiaryService extends BaseFoodService {
     this.updateNutrientsOptimistically(dateISO, nutrientsDelta, kcalsDelta);
 
     if (kcalsDelta !== 0) {
-      this.foodStatsService.updateStatsOptimistically(dateISO, 0, kcalsDelta);
+      this.foodStatsService.updateStatsOptimistically(dateISO, null, kcalsDelta);
     }
   }
 
@@ -1225,7 +1219,7 @@ export class FoodDiaryService extends BaseFoodService {
 
     this.saveToLocalStorage(this.diaryRaw$$());
     this.updateNutrientsOptimistically(dateISO, nutrientsDelta, kcalsDelta);
-    this.foodStatsService.updateStatsOptimistically(dateISO, 0, kcalsDelta);
+    this.foodStatsService.updateStatsOptimistically(dateISO, null, kcalsDelta);
   }
 
   private handleDiaryDayDeleted(dateISO: string): void {
@@ -1240,7 +1234,7 @@ export class FoodDiaryService extends BaseFoodService {
     this.clearDiaryEntriesForDay(dateISO);
     this.updateNutrientsOptimistically(dateISO, nutrientsDelta, kcalsDelta);
     this.saveToLocalStorage(this.diaryRaw$$());
-    this.foodStatsService.updateStatsOptimistically(dateISO, 0, kcalsDelta);
+    this.foodStatsService.updateStatsOptimistically(dateISO, null, kcalsDelta);
   }
 
   private isValidBodyWeightUpdatePayload(payload: BodyWeightToUpdate): payload is BodyWeightToUpdate {
@@ -1265,5 +1259,6 @@ export class FoodDiaryService extends BaseFoodService {
     });
 
     this.saveToLocalStorage(this.diaryRaw$$());
+    this.foodStatsService.updateStatsOptimistically(bodyWeightToUpdate.dateISO, bodyWeightToUpdate.newBodyWeight, 0);
   }
 }

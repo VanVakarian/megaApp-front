@@ -81,8 +81,8 @@ export class FoodStatsService {
     }
   }
 
-  public updateStats(dateIso: string, weightDelta: number, kcalsDelta: number) {
-    if (!weightDelta && !kcalsDelta) return;
+  public updateStats(dateIso: string, newWeight: number | null, kcalsDelta: number) {
+    if (newWeight === null && !kcalsDelta) return;
 
     const stats = this.stats$$();
     const dateStats = stats[dateIso];
@@ -90,7 +90,13 @@ export class FoodStatsService {
     if (dateStats) {
       this.stats$$.set({
         ...stats,
-        [dateIso]: [dateStats[0] + weightDelta, dateStats[1], dateStats[2] + kcalsDelta, dateStats[3], dateStats[4]],
+        [dateIso]: [
+          newWeight === null ? dateStats[0] : newWeight,
+          dateStats[1],
+          dateStats[2] + kcalsDelta,
+          dateStats[3],
+          dateStats[4],
+        ],
       });
     }
   }
@@ -455,8 +461,8 @@ export class FoodStatsService {
     };
   }
 
-  public updateStatsOptimistically(dateIso: string, weightDelta: number, kcalsDelta: number): void {
-    this.updateStats(dateIso, weightDelta, kcalsDelta);
+  public updateStatsOptimistically(dateIso: string, newWeight: number | null, kcalsDelta: number): void {
+    this.updateStats(dateIso, newWeight, kcalsDelta);
     this.saveStatsToLocalStorage();
   }
 }
