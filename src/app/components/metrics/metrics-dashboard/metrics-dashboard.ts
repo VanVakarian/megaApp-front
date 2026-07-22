@@ -1,9 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, OnDestroy, OnInit, signal } from '@angular/core';
-import {
-  COMPOSITE_SERVICE_KEY,
-  CompositeMetricDefinition,
-  CompositeMetricsSettingsService,
-} from '@app/services/composite-metrics-settings.service';
+import { CompositeMetricsSettingsService } from '@app/services/composite-metrics-settings.service';
 import { DeviceInfoService } from '@app/services/device-info.service';
 import { MetricsHealthService } from '@app/services/metrics-health.service';
 import { CardSizeMode, MetricsSettingsService } from '@app/services/metrics-settings.service';
@@ -38,7 +34,7 @@ import {
 } from '@app/shared/metrics-series';
 import { mutedSectionColor, severityColor } from '@app/shared/metrics-severity';
 import { clearMetricSyncCrosshair } from '@app/shared/metrics-sync-crosshair';
-import { MetricGranularity, MetricPoint } from '@app/shared/types';
+import { COMPOSITE_SERVICE_KEY, CompositeMetricDefinition, MetricGranularity, MetricPoint } from '@app/shared/types';
 import { VButton } from '@ui-kit/components/v-button/v-button';
 import { VCard } from '@ui-kit/components/v-card/v-card';
 import { VCheckbox } from '@ui-kit/components/v-checkbox/v-checkbox';

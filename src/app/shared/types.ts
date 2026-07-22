@@ -202,6 +202,15 @@ export interface MetricsLatestWsMessage {
 
 export type MetricGranularity = 'minute' | 'hour' | 'day';
 
+export const COMPOSITE_SERVICE_KEY = '__composite__';
+
+export interface CompositeMetricDefinition {
+  id: string;
+  metricName: string;
+  serviceA: string;
+  serviceB: string;
+}
+
 export interface MetricPoint {
   service: string;
   name: string;

@@ -1,32 +1,17 @@
-import { inject, Injectable, signal, WritableSignal } from '@angular/core';
-import { LocalStorageService } from '@app/services/local-storage.service';
+import { inject, Injectable, WritableSignal } from '@angular/core';
+import { MetricsSettingsService } from '@app/services/metrics-settings.service';
+import { CompositeMetricDefinition } from '@app/shared/types';
 
-export const COMPOSITE_SERVICE_KEY = '__composite__';
-
-export interface CompositeMetricDefinition {
-  id: string;
-  metricName: string;
-  serviceA: string;
-  serviceB: string;
-}
-
-const STORAGE_KEY = 'composite_metrics_definitions';
-
-// Local-only by design: no server sync, no debounce, unlike MetricsSettingsService.
-// Definitions are recomputed into chart series on the fly (see metrics-dashboard.ts),
-// nothing derived from them is persisted anywhere.
+// CRUD-only facade — the array itself lives on MetricsSettingsService and rides
+// its explicit-save flow (isDirty$$/saveNow), same as every other metrics setting.
 @Injectable({
   providedIn: 'root',
 })
 export class CompositeMetricsSettingsService {
-  public readonly definitions$$: WritableSignal<CompositeMetricDefinition[]>;
+  private readonly metricsSettingsService = inject(MetricsSettingsService);
 
-  private readonly localStorageService = inject(LocalStorageService);
-
-  constructor() {
-    const stored = this.localStorageService.getUserScoped<CompositeMetricDefinition[]>(STORAGE_KEY) ?? [];
-    this.definitions$$ = signal(stored);
-  }
+  public readonly definitions$$: WritableSignal<CompositeMetricDefinition[]> =
+    this.metricsSettingsService.compositeMetrics$$;
 
   public addDefinition(): void {
     this.persist([...this.definitions$$(), { id: crypto.randomUUID(), metricName: '', serviceA: '', serviceB: '' }]);
@@ -49,11 +34,12 @@ export class CompositeMetricsSettingsService {
   }
 
   private updateDefinition(id: string, patch: Partial<Omit<CompositeMetricDefinition, 'id'>>): void {
-    this.persist(this.definitions$$().map((definition) => (definition.id === id ? { ...definition, ...patch } : definition)));
+    this.persist(
+      this.definitions$$().map((definition) => (definition.id === id ? { ...definition, ...patch } : definition)),
+    );
   }
 
   private persist(next: CompositeMetricDefinition[]): void {
-    this.definitions$$.set(next);
-    this.localStorageService.setUserScoped(STORAGE_KEY, next);
+    this.metricsSettingsService.setCompositeMetrics(next);
   }
 }

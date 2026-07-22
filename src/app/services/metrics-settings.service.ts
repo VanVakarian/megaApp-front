@@ -3,7 +3,7 @@ import { computed, inject, Injectable, signal, WritableSignal } from '@angular/c
 import { LocalStorageService } from '@app/services/local-storage.service';
 import { NotificationService } from '@app/services/notification.service';
 import { SeverityThresholds } from '@app/shared/metrics-severity';
-import { MetricGranularity } from '@app/shared/types';
+import { CompositeMetricDefinition, MetricGranularity } from '@app/shared/types';
 import { firstValueFrom } from 'rxjs';
 
 export type DashboardMetricSelection = Record<string, Record<string, number>>;
@@ -27,19 +27,22 @@ export type CardSizeByMode = Record<CardSizeMode, CardSize>;
 
 interface StoredMetricsSettings {
   cardSizeByMode: CardSizeByMode;
-  activeCardSizeMode: CardSizeMode;
   syncCrosshairEnabled: boolean;
-  forceZeroBaselineEnabled: boolean;
   dashboardSelection: DashboardMetricSelection;
   dashboardServiceSelection: DashboardServiceSelection;
   severityThresholds: SeverityThresholdsOverrides;
   serviceHeaderVisibility: ServiceHeaderVisibility;
   serviceCustomLabels: ServiceCustomLabels;
+  compositeMetrics: CompositeMetricDefinition[];
 }
 
 const STORAGE_KEY = 'metrics_settings';
 const GRANULARITY_STORAGE_KEY = 'metrics_granularity';
 const DEFAULT_GRANULARITY: MetricGranularity = 'minute';
+const ACTIVE_CARD_SIZE_MODE_STORAGE_KEY = 'metrics_active_card_size_mode';
+const DEFAULT_ACTIVE_CARD_SIZE_MODE: CardSizeMode = CardSizeMode.Small;
+const FORCE_ZERO_BASELINE_ENABLED_STORAGE_KEY = 'metrics_force_zero_baseline_enabled';
+const DEFAULT_FORCE_ZERO_BASELINE_ENABLED = false;
 const SETTINGS_ENDPOINT = '/api/metrics-settings/';
 const DEFAULT_SMALL_CARD_WIDTH_PX = 304;
 const DEFAULT_SMALL_CARD_HEIGHT_PX = 112;
@@ -62,20 +65,22 @@ const DEFAULT_CARD_SIZE_BY_MODE: CardSizeByMode = {
 
 const DEFAULTS: StoredMetricsSettings = {
   cardSizeByMode: DEFAULT_CARD_SIZE_BY_MODE,
-  activeCardSizeMode: CardSizeMode.Small,
   syncCrosshairEnabled: false,
-  forceZeroBaselineEnabled: false,
   dashboardSelection: {},
   dashboardServiceSelection: {},
   severityThresholds: {},
   serviceHeaderVisibility: {},
   serviceCustomLabels: {},
+  compositeMetrics: [],
 };
 
 // Old per-field keys from before settings were combined into STORAGE_KEY — deleted once, never read.
 // metrics_selected_service/metrics_settings_expanded are here too: which panel was expanded is no
 // longer persisted anywhere — every page load opens on the Dashboard panel, collapsed Settings.
-// metrics_granularity is NOT here — it's the live GRANULARITY_STORAGE_KEY, kept local-only on purpose.
+// metrics_granularity/metrics_active_card_size_mode/metrics_force_zero_baseline_enabled are NOT
+// here — they're the live *_STORAGE_KEY constants above, kept local-only on purpose.
+// composite_metrics_definitions is here too: composite metrics used to have their own local-only
+// storage key before joining the rest of this service's server-synced fields.
 const OBSOLETE_KEYS = [
   'metrics_expanded_services',
   'metrics_selected_service',
@@ -86,6 +91,7 @@ const OBSOLETE_KEYS = [
   'metrics_dashboard_selection',
   'metrics_dashboard_service_selection',
   'metrics_severity_thresholds',
+  'composite_metrics_definitions',
 ];
 
 function isFiniteNumber(value: unknown): value is number {
@@ -117,8 +123,29 @@ function resolveCardSizeByMode(raw: Partial<StoredMetricsSettings>): CardSizeByM
   return isValidCardSizeByMode(raw.cardSizeByMode) ? raw.cardSizeByMode : DEFAULT_CARD_SIZE_BY_MODE;
 }
 
-function resolveActiveCardSizeMode(raw: Partial<StoredMetricsSettings>): CardSizeMode {
-  return isValidCardSizeMode(raw.activeCardSizeMode) ? raw.activeCardSizeMode : CardSizeMode.Small;
+function resolveActiveCardSizeMode(value: unknown): CardSizeMode {
+  return isValidCardSizeMode(value) ? value : DEFAULT_ACTIVE_CARD_SIZE_MODE;
+}
+
+function resolveForceZeroBaselineEnabled(value: unknown): boolean {
+  return typeof value === 'boolean' ? value : DEFAULT_FORCE_ZERO_BASELINE_ENABLED;
+}
+
+function isValidCompositeMetricDefinition(value: unknown): value is CompositeMetricDefinition {
+  if (typeof value !== 'object' || value === null) return false;
+  const candidate = value as Partial<CompositeMetricDefinition>;
+  return (
+    typeof candidate.id === 'string' &&
+    typeof candidate.metricName === 'string' &&
+    typeof candidate.serviceA === 'string' &&
+    typeof candidate.serviceB === 'string'
+  );
+}
+
+function resolveCompositeMetrics(raw: Partial<StoredMetricsSettings>): CompositeMetricDefinition[] {
+  return Array.isArray(raw.compositeMetrics)
+    ? raw.compositeMetrics.filter(isValidCompositeMetricDefinition)
+    : DEFAULTS.compositeMetrics;
 }
 
 function isDeepEqual(a: unknown, b: unknown): boolean {
@@ -144,6 +171,7 @@ export class MetricsSettingsService {
   public readonly severityThresholdOverrides$$: WritableSignal<SeverityThresholdsOverrides>;
   public readonly serviceHeaderVisibility$$: WritableSignal<ServiceHeaderVisibility>;
   public readonly serviceCustomLabels$$: WritableSignal<ServiceCustomLabels>;
+  public readonly compositeMetrics$$: WritableSignal<CompositeMetricDefinition[]>;
   public readonly isSaving$$: WritableSignal<boolean> = signal(false);
   public readonly isDirty$$ = computed(() => !isDeepEqual(this.snapshot(), this.lastConfirmed$$()));
 
@@ -165,21 +193,28 @@ export class MetricsSettingsService {
       ...DEFAULTS,
       ...stored,
       cardSizeByMode: resolveCardSizeByMode(stored),
-      activeCardSizeMode: resolveActiveCardSizeMode(stored),
+      compositeMetrics: resolveCompositeMetrics(stored),
     };
 
     const storedGranularity = this.localStorageService.getUserScoped<MetricGranularity>(GRANULARITY_STORAGE_KEY);
+    const storedActiveCardSizeMode = this.localStorageService.getUserScoped<CardSizeMode>(
+      ACTIVE_CARD_SIZE_MODE_STORAGE_KEY,
+    );
+    const storedForceZeroBaselineEnabled = this.localStorageService.getUserScoped<boolean>(
+      FORCE_ZERO_BASELINE_ENABLED_STORAGE_KEY,
+    );
 
     this.cardSizeByMode$$ = signal(initial.cardSizeByMode);
-    this.activeCardSizeMode$$ = signal(initial.activeCardSizeMode);
+    this.activeCardSizeMode$$ = signal(resolveActiveCardSizeMode(storedActiveCardSizeMode));
     this.granularity$$ = signal(storedGranularity ?? DEFAULT_GRANULARITY);
     this.syncCrosshairEnabled$$ = signal(initial.syncCrosshairEnabled);
-    this.forceZeroBaselineEnabled$$ = signal(initial.forceZeroBaselineEnabled);
+    this.forceZeroBaselineEnabled$$ = signal(resolveForceZeroBaselineEnabled(storedForceZeroBaselineEnabled));
     this.dashboardSelection$$ = signal(initial.dashboardSelection);
     this.dashboardServiceSelection$$ = signal(initial.dashboardServiceSelection);
     this.severityThresholdOverrides$$ = signal(initial.severityThresholds);
     this.serviceHeaderVisibility$$ = signal(initial.serviceHeaderVisibility);
     this.serviceCustomLabels$$ = signal(initial.serviceCustomLabels);
+    this.compositeMetrics$$ = signal(initial.compositeMetrics);
     this.lastConfirmed$$ = signal(initial);
 
     this.loadFromServer();
@@ -195,6 +230,7 @@ export class MetricsSettingsService {
 
   public setActiveCardSizeMode(mode: CardSizeMode): void {
     this.activeCardSizeMode$$.set(mode);
+    this.localStorageService.setUserScoped(ACTIVE_CARD_SIZE_MODE_STORAGE_KEY, mode);
   }
 
   public cycleActiveCardSizeMode(): void {
@@ -214,6 +250,7 @@ export class MetricsSettingsService {
 
   public setForceZeroBaselineEnabled(value: boolean): void {
     this.forceZeroBaselineEnabled$$.set(value);
+    this.localStorageService.setUserScoped(FORCE_ZERO_BASELINE_ENABLED_STORAGE_KEY, value);
   }
 
   public setDashboardSelection(value: DashboardMetricSelection): void {
@@ -236,6 +273,10 @@ export class MetricsSettingsService {
     this.serviceCustomLabels$$.set(value);
   }
 
+  public setCompositeMetrics(value: CompositeMetricDefinition[]): void {
+    this.compositeMetrics$$.set(value);
+  }
+
   private updateCardSize(mode: CardSizeMode, patch: Partial<CardSize>): void {
     const current = this.cardSizeByMode$$();
     this.cardSizeByMode$$.set({ ...current, [mode]: { ...current[mode], ...patch } });
@@ -244,27 +285,25 @@ export class MetricsSettingsService {
   private snapshot(): StoredMetricsSettings {
     return {
       cardSizeByMode: this.cardSizeByMode$$(),
-      activeCardSizeMode: this.activeCardSizeMode$$(),
       syncCrosshairEnabled: this.syncCrosshairEnabled$$(),
-      forceZeroBaselineEnabled: this.forceZeroBaselineEnabled$$(),
       dashboardSelection: this.dashboardSelection$$(),
       dashboardServiceSelection: this.dashboardServiceSelection$$(),
       severityThresholds: this.severityThresholdOverrides$$(),
       serviceHeaderVisibility: this.serviceHeaderVisibility$$(),
       serviceCustomLabels: this.serviceCustomLabels$$(),
+      compositeMetrics: this.compositeMetrics$$(),
     };
   }
 
   private applySnapshot(value: StoredMetricsSettings): void {
     this.cardSizeByMode$$.set(value.cardSizeByMode);
-    this.activeCardSizeMode$$.set(value.activeCardSizeMode);
     this.syncCrosshairEnabled$$.set(value.syncCrosshairEnabled);
-    this.forceZeroBaselineEnabled$$.set(value.forceZeroBaselineEnabled);
     this.dashboardSelection$$.set(value.dashboardSelection);
     this.dashboardServiceSelection$$.set(value.dashboardServiceSelection);
     this.severityThresholdOverrides$$.set(value.severityThresholds);
     this.serviceHeaderVisibility$$.set(value.serviceHeaderVisibility);
     this.serviceCustomLabels$$.set(value.serviceCustomLabels);
+    this.compositeMetrics$$.set(value.compositeMetrics);
     this.localStorageService.setUserScoped(STORAGE_KEY, value);
     this.lastConfirmed$$.set(value);
   }
@@ -292,7 +331,7 @@ export class MetricsSettingsService {
         ...DEFAULTS,
         ...response,
         cardSizeByMode: resolveCardSizeByMode(response),
-        activeCardSizeMode: resolveActiveCardSizeMode(response),
+        compositeMetrics: resolveCompositeMetrics(response),
       };
       this.applySnapshot(merged);
     } catch (error) {
