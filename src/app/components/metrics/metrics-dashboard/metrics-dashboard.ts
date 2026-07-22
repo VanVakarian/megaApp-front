@@ -386,9 +386,18 @@ export class MetricsDashboard implements OnInit, OnDestroy {
           METRICS_GRANULARITY_WINDOW_PERIODS[granularity],
           stepSeconds,
         );
+        // Regular per-service cards get this trim for free from buildMetricPointsIndex
+        // (windowed at index-build time) — composite metricPoints are assembled
+        // straight from the full retained history above, so without this they'd leak
+        // off-window historical values into the raw (non-collapsed) display's min/max.
+        const windowedMetricPoints = filterMetricPointsByWindow(
+          metricPoints,
+          compositeWindow.startBucket,
+          compositeWindow.endBucket,
+        );
         const display = buildSeriesDisplay(
           key,
-          metricPoints,
+          windowedMetricPoints,
           aggregation,
           chartMode,
           useCollapsedMinutes,
@@ -399,13 +408,13 @@ export class MetricsDashboard implements OnInit, OnDestroy {
             ? display
             : buildSeriesDisplay(
                 key,
-                metricPoints,
+                windowedMetricPoints,
                 aggregation,
                 chartMode,
                 useCollapsedMinutesForExpanded,
                 compositeWindow,
               );
-        const rawValue = metricPoints[metricPoints.length - 1]?.value ?? 0;
+        const rawValue = windowedMetricPoints[windowedMetricPoints.length - 1]?.value ?? 0;
         const unit = metricUnit(definition.serviceA, definition.metricName);
         return {
           key,
