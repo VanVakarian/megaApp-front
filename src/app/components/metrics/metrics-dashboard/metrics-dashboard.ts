@@ -366,15 +366,17 @@ export class MetricsDashboard implements OnInit, OnDestroy {
         };
         const valuesA = valuesByBucket(definition.serviceA);
         const valuesB = valuesByBucket(definition.serviceB);
-        const metricPoints: MetricPoint[] = Array.from(valuesA.keys())
-          .filter((bucket) => valuesB.has(bucket))
+        const buckets = definition.treatMissingAsZero
+          ? new Set([...valuesA.keys(), ...valuesB.keys()])
+          : new Set(Array.from(valuesA.keys()).filter((bucket) => valuesB.has(bucket)));
+        const metricPoints: MetricPoint[] = Array.from(buckets)
           .sort((left, right) => left - right)
           .map((bucket) => ({
             service: COMPOSITE_SERVICE_KEY,
             name: definition.id,
             granularity,
             bucket,
-            value: valuesA.get(bucket)! + valuesB.get(bucket)!,
+            value: (valuesA.get(bucket) ?? 0) + (valuesB.get(bucket) ?? 0),
           }));
 
         const key = metricPointsIndexKey(COMPOSITE_SERVICE_KEY, definition.id);
@@ -748,6 +750,10 @@ export class MetricsDashboard implements OnInit, OnDestroy {
 
   protected setCompositeServiceB(id: string, value: string): void {
     this.compositeMetricsSettingsService.setServiceB(id, value);
+  }
+
+  protected setCompositeTreatMissingAsZero(id: string, value: boolean): void {
+    this.compositeMetricsSettingsService.setTreatMissingAsZero(id, value);
   }
 
   private nextDashboardOrder(service: string): number {

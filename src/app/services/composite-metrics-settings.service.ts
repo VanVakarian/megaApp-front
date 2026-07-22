@@ -33,6 +33,10 @@ export class CompositeMetricsSettingsService {
     this.updateDefinition(id, { serviceB });
   }
 
+  public setTreatMissingAsZero(id: string, treatMissingAsZero: boolean): void {
+    this.updateDefinition(id, { treatMissingAsZero });
+  }
+
   private updateDefinition(id: string, patch: Partial<Omit<CompositeMetricDefinition, 'id'>>): void {
     this.persist(
       this.definitions$$().map((definition) => (definition.id === id ? { ...definition, ...patch } : definition)),

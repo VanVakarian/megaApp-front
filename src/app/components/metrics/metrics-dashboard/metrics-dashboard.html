@@ -259,6 +259,17 @@
                                   [size]="5" />
                         </v-button>
                       </div>
+                      <label class="flex items-center gap-2 cursor-pointer">
+                        <v-checkbox [value]="!!definition.treatMissingAsZero"
+                                    (onChanged)="setCompositeTreatMissingAsZero(definition.id, $event)"
+                                    [config]="{
+                                      size: 4,
+                                      checkIconSize: 3,
+                                      gap: 1,
+                                      isDisabled: isSavingSettings$$(),
+                                    }" />
+                        <span>Считать отсутствие значения за 0</span>
+                      </label>
                     </div>
                   </v-card>
                 } @empty {
