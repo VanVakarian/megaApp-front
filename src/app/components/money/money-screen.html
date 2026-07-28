@@ -1,19 +1,15 @@
 <div class="flex items-stretch justify-center w-full min-w-0 gap-2 p-2">
 
   <div class="w-96 flex flex-col flex-shrink-0 gap-2">
-    <v-card [config]="{
-              padding: 2,
-              borderRadius: 2,
-            }">
+    <v-card [borderRadius]="2"
+            [padding]="2">
       <div class="flex gap-2">
         <v-button [class.v-flat]="activeTab$$() === MoneyTab.Setup"
                   [class.flex-grow]="activeTab$$() === MoneyTab.Setup"
                   [class.v-link]="activeTab$$() !== MoneyTab.Setup"
                   [class.v-link-static]="activeTab$$() !== MoneyTab.Setup"
-                  [config]="{
-                    padding: 2,
-                    isLabelHidden: activeTab$$() !== MoneyTab.Setup,
-                  }"
+                  [isLabelHidden]="activeTab$$() !== MoneyTab.Setup"
+                  [padding]="2"
                   (onClick)="setActiveTab(MoneyTab.Setup)">
           <v-icon v-prefix
                   [name]="Icon.Settings"
@@ -25,10 +21,8 @@
                   [class.flex-grow]="activeTab$$() === MoneyTab.Categories"
                   [class.v-link]="activeTab$$() !== MoneyTab.Categories"
                   [class.v-link-static]="activeTab$$() !== MoneyTab.Categories"
-                  [config]="{
-                    padding: 2,
-                    isLabelHidden: activeTab$$() !== MoneyTab.Categories,
-                  }"
+                  [isLabelHidden]="activeTab$$() !== MoneyTab.Categories"
+                  [padding]="2"
                   (onClick)="setActiveTab(MoneyTab.Categories)">
           <v-icon v-prefix
                   [name]="Icon.Category"
@@ -40,10 +34,8 @@
                   [class.flex-grow]="activeTab$$() === MoneyTab.Assets"
                   [class.v-link]="activeTab$$() !== MoneyTab.Assets"
                   [class.v-link-static]="activeTab$$() !== MoneyTab.Assets"
-                  [config]="{
-                    padding: 2,
-                    isLabelHidden: activeTab$$() !== MoneyTab.Assets,
-                  }"
+                  [isLabelHidden]="activeTab$$() !== MoneyTab.Assets"
+                  [padding]="2"
                   (onClick)="setActiveTab(MoneyTab.Assets)">
           <v-icon v-prefix
                   [name]="Icon.Enterprise"
@@ -55,10 +47,8 @@
                   [class.flex-grow]="activeTab$$() === MoneyTab.Transactions"
                   [class.v-link]="activeTab$$() !== MoneyTab.Transactions"
                   [class.v-link-static]="activeTab$$() !== MoneyTab.Transactions"
-                  [config]="{
-                    padding: 2,
-                    isLabelHidden: activeTab$$() !== MoneyTab.Transactions,
-                  }"
+                  [isLabelHidden]="activeTab$$() !== MoneyTab.Transactions"
+                  [padding]="2"
                   (onClick)="setActiveTab(MoneyTab.Transactions)">
           <v-icon v-prefix
                   [name]="Icon.List"
@@ -99,7 +89,7 @@
                 @for (item of currencyToggleItems; track item.id) {
                   <v-button class="v-flat"
                             [class.v-primary]="displayCurrency$$() === item.id"
-                            [config]="{ padding: 1 }"
+                            [padding]="1"
                             (onClick)="setDisplayCurrency(item.id)">{{ item.label }}</v-button>
                 }
               </div>
@@ -108,10 +98,8 @@
 
               <v-button class="v-flat"
                         [class.v-primary]="!keepNativeCurrency$$()"
-                        [config]="{
-                          isLabelHidden: true,
-                          padding: 2,
-                        }"
+                        [isLabelHidden]="true"
+                        [padding]="2"
                         (onClick)="toggleKeepNativeCurrency()">
                 <v-icon v-prefix
                         [name]="Icon.CurrencyExchange"
@@ -132,7 +120,11 @@
                 <span>{{ sliderEndLabel$$() }}</span>
               </div>
               <v-slider [range]="sliderRange$$()"
-                        [config]="chartRangeSliderConfig$$()"
+                        [valueList]="chartRangeSliderValueList$$()"
+                        [isRange]="true"
+                        [min]="0"
+                        [max]="chartRangeSliderMax$$()"
+                        [thumbBorderRadius]="2"
                         (rangeChange)="onChartRangeChange($event)" />
             </div>
           }
@@ -146,10 +138,8 @@
 
   <div class="flex flex-col flex-1 max-w-full min-w-0 gap-2">
     <v-card class="w-full max-w-full min-w-0"
-            [config]="{
-              padding: 3,
-              borderRadius: 2,
-            }">
+            [borderRadius]="2"
+            [padding]="3">
       @if (isChartDataReady$$()) {
         <expense-chart [dataInput]="expenseChartData$$()"
                        [monthRangeInput]="monthRangeForCharts$$()"
@@ -164,10 +154,8 @@
     </v-card>
 
     <v-card class="w-full max-w-full min-w-0"
-            [config]="{
-              padding: 3,
-              borderRadius: 2,
-            }">
+            [borderRadius]="2"
+            [padding]="3">
       @if (isChartDataReady$$()) {
         <income-chart [dataInput]="incomeChartData$$()"
                       [monthRangeInput]="monthRangeForCharts$$()"
@@ -181,10 +169,8 @@
     </v-card>
 
     <v-card class="w-full max-w-full min-w-0"
-            [config]="{
-              padding: 3,
-              borderRadius: 2,
-            }">
+            [borderRadius]="2"
+            [padding]="3">
       @if (isChartDataReady$$()) {
         <balances-chart [dataInput]="balanceChartDataClipped$$()"
                         [currencySymbolInput]="displayCurrencySymbol$$()" />

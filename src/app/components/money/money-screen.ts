@@ -3,7 +3,7 @@ import { VButton } from '@ui-kit/components/v-button/v-button';
 import { VCard } from '@ui-kit/components/v-card/v-card';
 import { VExpand } from '@ui-kit/components/v-expand/v-expand';
 import { IconName, VIcon } from '@ui-kit/components/v-icon/v-icon';
-import { VSlider, VSliderConfig, VSliderRangeValue } from '@ui-kit/components/v-slider/v-slider';
+import { VSlider, VSliderRangeValue } from '@ui-kit/components/v-slider/v-slider';
 import { VToggleItem } from '@ui-kit/components/v-toggle/v-toggle';
 import { MoneyComputeService } from '../../services/money-compute.service';
 import { MoneyService } from '../../services/money.service';
@@ -104,15 +104,9 @@ export class MoneyScreen implements OnInit {
 
   protected readonly sliderRange$$ = computed((): VSliderRangeValue => [this.rangeStartIdx$$(), this.rangeEndIdx$$()]);
 
-  protected readonly chartRangeSliderConfig$$ = computed(
-    (): VSliderConfig => ({
-      isRange: true,
-      min: 0,
-      max: Math.max(0, this.allChartMonths$$().length - 1),
-      valueList: this.allChartMonths$$().map((_, i) => i),
-      thumbBorderRadius: 2,
-    }),
-  );
+  protected readonly chartRangeSliderMax$$ = computed(() => Math.max(0, this.allChartMonths$$().length - 1));
+
+  protected readonly chartRangeSliderValueList$$ = computed(() => this.allChartMonths$$().map((_, i) => i));
 
   protected readonly sliderStartLabel$$ = computed((): string =>
     this.formatSliderMonth(this.allChartMonths$$()[this.rangeStartIdx$$()]),

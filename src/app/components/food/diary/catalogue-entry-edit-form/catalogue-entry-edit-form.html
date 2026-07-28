@@ -24,76 +24,54 @@
 
     <div class="flex flex-col gap-2">
       <v-input formControlName="name"
-               [config]="{
-                 label: 'Название продукта',
-                 placeholder: 'Введите название продукта',
-                 type: 'text'
-               }" />
+               label="Название продукта"
+               placeholder="Введите название продукта" />
 
       <div class="flex gap-3 *:flex-1">
         <v-input formControlName="kcals"
                  class=""
-                 [config]="{
-                   label: 'Калории (на 100г)',
-                   placeholder: '0',
-                   type: 'text',
-                   inputmode: 'numeric',
-                   textAlign: 'right',
-                 }" />
+                 inputmode="numeric"
+                 label="Калории (на 100г)"
+                 placeholder="0"
+                 textAlign="right" />
 
         <v-input formControlName="fiber"
-                 [config]="{
-                   label: 'Клетчатка',
-                   placeholder: '0',
-                   type: 'text',
-                   inputmode: 'decimal',
-                   textAlign: 'right',
-                 }" />
+                 inputmode="decimal"
+                 label="Клетчатка"
+                 placeholder="0"
+                 textAlign="right" />
       </div>
 
       <div class="flex gap-3 *:flex-1">
         <v-input formControlName="protein"
-                 [config]="{
-                   label: 'Белки',
-                   placeholder: '0',
-                   type: 'text',
-                   inputmode: 'decimal',
-                   textAlign: 'right',
-                 }" />
+                 inputmode="decimal"
+                 label="Белки"
+                 placeholder="0"
+                 textAlign="right" />
         <v-input formControlName="fat"
-                 [config]="{
-                   label: 'Жиры',
-                   placeholder: '0',
-                   type: 'text',
-                   inputmode: 'decimal',
-                   textAlign: 'right',
-                 }" />
+                 inputmode="decimal"
+                 label="Жиры"
+                 placeholder="0"
+                 textAlign="right" />
 
         <v-input formControlName="carbs"
-                 [config]="{
-                   label: 'Углеводы',
-                   placeholder: '0',
-                   type: 'text',
-                   inputmode: 'decimal',
-                   textAlign: 'right',
-                 }" />
+                 inputmode="decimal"
+                 label="Углеводы"
+                 placeholder="0"
+                 textAlign="right" />
       </div>
 
       <v-input formControlName="description"
-               [config]="{
-                 label: 'Описание',
-                 placeholder: 'Введите описание продукта для улучшения результатов поиска',
-                 isTextarea: true,
-                 rows: 3
-               }" />
+               label="Описание"
+               placeholder="Введите описание продукта для улучшения результатов поиска"
+               [isTextarea]="true"
+               [rows]="3" />
     </div>
 
     <div class="flex justify-between gap-4 mt-0">
       <v-button class="v-link v-link-static"
-                [config]="{
-                  isLabelHidden: true,
-                  padding: 0,
-                }"
+                [isLabelHidden]="true"
+                [padding]="0"
                 (click)="goBack()">
         <v-icon v-prefix
                 [name]="Icon.ChevronLeft"
@@ -103,10 +81,7 @@
       <div class="flex gap-3 ml-auto">
         @if (mode$$() === this.formMode.Edit && productToEdit$$()?.canDelete) {
           <v-button class="v-danger"
-                    [config]="{
-                      type: 'button',
-                      isDisabled: isSaving$$() || isDeleting$$(),
-                    }"
+                    [isDisabled]="isSaving$$() || isDeleting$$()"
                     (click)="openDeleteConfirmation()">
             {{ isDeleting$$() ? 'Удаление...' : 'Удалить' }}
           </v-button>
@@ -114,10 +89,7 @@
 
         <v-button class="v-primary"
                   type="submit"
-                  [config]="{
-                    type: 'submit',
-                    isDisabled: !isFormValid() || isSaving$$() || isDeleting$$(),
-                  }">
+                  [isDisabled]="!isFormValid() || isSaving$$() || isDeleting$$()">
           {{ isSaving$$() ? 'Сохранение...' : (mode$$() === this.formMode.Edit ? 'Сохранить изменения' : 'Добавить продукт') }}
         </v-button>
       </div>

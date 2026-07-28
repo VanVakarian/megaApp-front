@@ -1,15 +1,11 @@
 <div>
-  <v-card [config]="{
-            padding: 4,
-            borderRadius: 2,
-          }">
+  <v-card [borderRadius]="2"
+          [padding]="4">
     <div class="flex items-center justify-between mb-1">
       <div class="text-lg font-semibold">Transactions</div>
       <div class="flex items-center gap-2">
         <v-button class="v-flat"
-                  [config]="{
-                    paddingY: 1,
-                  }"
+                  [paddingY]="1"
                   (onClick)="showNewTransactionForm()">
           <v-icon v-prefix
                   [name]="Icon.Add"
@@ -35,10 +31,8 @@
                 <div class="text-sm">{{ m.group.dateDisplay }}</div>
                 <div class="hover-actions">
                   <v-button class="v-flat"
-                            [config]="{
-                              isLabelHidden: true,
-                              padding: 1,
-                            }"
+                            [isLabelHidden]="true"
+                            [padding]="1"
                             (onClick)="showTransactionForm(m.group.date, undefined)">
                     <v-icon v-prefix
                             [name]="Icon.Add"
@@ -116,20 +110,16 @@
 
                 <div class="hover-actions">
                   <v-button class="v-flat"
-                            [config]="{
-                              isLabelHidden: true,
-                              padding: 1,
-                            }"
+                            [isLabelHidden]="true"
+                            [padding]="1"
                             (onClick)="showTransactionForm(undefined, transaction)">
                     <v-icon v-prefix
                             [name]="Icon.Edit"
                             [size]="4"></v-icon>
                   </v-button>
                   <v-button class="v-danger"
-                            [config]="{
-                              isLabelHidden: true,
-                              padding: 1,
-                            }"
+                            [isLabelHidden]="true"
+                            [padding]="1"
                             (onClick)="deleteTransaction(transaction.id!)">
                     <v-icon v-prefix
                             [name]="Icon.Delete"

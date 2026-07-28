@@ -1,19 +1,14 @@
 <div [class.mb-4]="searchResults$$().length === 0"
      class="flex justify-center gap-4 px-4 pt-4">
   <v-input class="catalogue-entry-name-input w-full"
-           [config]="{
-             type: 'text'
-           }"
            (onEnterPressed)="onSearchEnterPressed($event)"
            [(value)]="foodAddModalService.searchQuery$$">
     @if (isLegacySearch$$()) {
       <v-button class="v-primary mx-2"
                 v-prefix
                 tabindex="-1"
-                [config]="{
-                  isLabelHidden: true,
-                  padding: 1,
-                }"
+                [isLabelHidden]="true"
+                [padding]="1"
                 (mousedown)="$event.preventDefault()"
                 (click)="toggleLegacySearch()">
         <v-icon v-prefix
@@ -24,10 +19,8 @@
       <v-button class="v-flat mx-2"
                 v-prefix
                 tabindex="-1"
-                [config]="{
-                  isLabelHidden: true,
-                  padding: 1,
-                }"
+                [isLabelHidden]="true"
+                [padding]="1"
                 (mousedown)="$event.preventDefault()"
                 (click)="toggleLegacySearch()">
         <v-icon v-prefix
@@ -40,12 +33,10 @@
       <v-button class="v-link v-link-static"
                 v-postfix
                 tabindex="-1"
-                [config]="{
-                  isLabelHidden: true,
-                  bgOpacity: '0',
-                  paddingX: 2,
-                  paddingY: 0,
-                }"
+                [isLabelHidden]="true"
+                [paddingX]="2"
+                [paddingY]="0"
+                bgOpacity="0"
                 (mousedown)="$event.preventDefault()"
                 (click)="onSearchClearClick()">
         <v-icon v-prefix
@@ -58,10 +49,8 @@
   <!--
   @if (deviceInfoService.hasCameras$$() && deviceInfoService.isMobileDevice$$()) {
     <v-button raised
-              [config]="{
-                padding: 2,
-                isLabelHidden: true,
-              }"
+              [isLabelHidden]="true"
+              [padding]="2"
               (click)="takePhoto()">
       <v-icon v-prefix
               [name]="Icon.PhotoCamera"
@@ -88,12 +77,10 @@
       @for (catalogueEntry of searchResults$$(); track catalogueEntry.id) {
         <v-card [attr.data-flip-key]="'catalogue-' + catalogueEntry.id"
                 class="w-full cursor-pointer"
-                [config]="{
-                  padding: 1,
-                  backgroundImageUrl: getImageUrl(catalogueEntry),
-                  backgroundImageOpacity: 0,
-                  minHeight: '104px'
-                }"
+                [padding]="1"
+                minHeight="104px"
+                [backgroundImageUrl]="getImageUrl(catalogueEntry)"
+                [backgroundImageOpacity]="0"
                 (click)="selectProduct(catalogueEntry)">
           <div class="flex flex-col justify-between h-full">
             <div>
@@ -113,9 +100,7 @@
   @if (searchResults$$().length > 0) {
     <v-card [animate.enter]="AnimationClass.FADE_SCALE_IN"
             class="w-full h-full cursor-pointer"
-            [config]="{
-              padding: 2
-            }"
+            [padding]="2"
             (click)="addProduct()">
       <div class="add-catalogue-entry flex items-center justify-center w-full h-full">
         <v-icon [name]="Icon.Add"
@@ -128,10 +113,8 @@
 @if (searchResults$$().length > 0 && this.deviceInfoService.isMobileScreen$$()) {
   <div class="sticky bottom-0 flex justify-start px-4 pb-4">
     <v-button class="v-danger"
-              [config]="{
-                isLabelHidden: true,
-                padding: 1,
-              }"
+              [isLabelHidden]="true"
+              [padding]="1"
               (click)="closeModal()">
       <v-icon v-prefix
               [name]="Icon.Close"

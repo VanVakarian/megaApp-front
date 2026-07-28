@@ -2,10 +2,8 @@
 
   @if (deviceInfoService.isDesktopScreen$$()) {
     <div class="">
-      <v-card [config]="{
-              borderRadius: 2,
-              padding: 0
-            }">
+      <v-card [borderRadius]="2"
+              [padding]="0">
         <div class="w-full my-2 text-xl font-semibold text-center">Статистика</div>
       </v-card>
     </div>
@@ -40,14 +38,12 @@
   </div>
 
   <v-slider class="mb-1"
-            [config]="{
-              isTouchMode: deviceInfoService.isMobileScreen$$(),
-              min: 0,
-              max: maxSliderValue$$(),
-              isRange: true,
-              valueList: sliderValueList$$(),
-              thumbBorderRadius: 2,
-            }"
+            [valueList]="sliderValueList$$()"
+            [isRange]="true"
+            [isTouchMode]="deviceInfoService.isMobileScreen$$()"
+            [min]="0"
+            [max]="maxSliderValue$$()"
+            [thumbBorderRadius]="2"
             [range]="selectedRange$$()"
             (rangeChange)="onRangeChange($event)" />
 

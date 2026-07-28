@@ -2,16 +2,13 @@
   <div class="flex justify-end">
     <v-input class="w-1/3"
              [formControl]="form.controls.bodyWeight"
-             [config]="{
-               type: 'text',
-               inputmode: 'decimal',
-               label: 'Вес',
-               fontSize: '20px',
-               fontWeight: 500,
-               textAlign: 'right',
-               isAutoSubmitEnabled: true,
-               autoSubmitResult: autoSubmitResult$$(),
-             }"
+             inputmode="decimal"
+             label="Вес"
+             fontSize="20px"
+             [fontWeight]="500"
+             textAlign="right"
+             [isAutoSubmitEnabled]="true"
+             [autoSubmitResult]="autoSubmitResult$$()"
              (onAutoSubmit)="onAutoSubmit()">
       <span v-postfix
             class="ml-1 mr-3 cursor-pointer select-none"

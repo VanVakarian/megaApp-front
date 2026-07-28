@@ -11,12 +11,10 @@
                       [class.v-link]="!button.selected"
                       [class.v-link-static]="!button.selected"
                       [class.v-flat]="button.selected"
-                      [config]="{
-                        width: '100%',
-                        padding: 2,
-                        isLabelHidden: navigationService.isCollapsed$$(),
-                        textAlign: 'left',
-                      }"
+                      [isLabelHidden]="navigationService.isCollapsed$$()"
+                      width="100%"
+                      [padding]="2"
+                      textAlign="left"
                       (click)="navigateToLink(button.link)">
               <v-icon v-prefix
                       [name]="button.iconName"
@@ -37,10 +35,8 @@
         }
 
         <v-button class="v-link v-link-static menu-item"
-                  [config]="{
-                    padding: 2,
-                    isLabelHidden: true,
-                  }"
+                  [isLabelHidden]="true"
+                  [padding]="2"
                   (click)="toggleMenuCollapse()">
           <v-icon v-prefix
                   [name]="getCollapseIconName()"
@@ -57,12 +53,10 @@
                       [class.v-link]="!button.selected"
                       [class.v-link-static]="!button.selected"
                       [class.v-flat]="button.selected"
-                      [config]="{
-                        width: '100%',
-                        padding: 2,
-                        isLabelHidden: navigationService.isCollapsed$$(),
-                        textAlign: 'left',
-                      }"
+                      [isLabelHidden]="navigationService.isCollapsed$$()"
+                      width="100%"
+                      [padding]="2"
+                      textAlign="left"
                       (click)="navigateToLink(button.link)">
               <v-icon v-prefix
                       [name]="button.iconName"
@@ -82,11 +76,9 @@
         @for (button of visibleButtons$$(); track button.label) {
           @if (button.label !== "DarkThemeSwitch") {
             <v-button class="v-primary side-menu-button h-12 overflow-hidden pointer-events-auto"
-                      [config]="{
-                        width: '100%',
-                        gap: 3,
-                        textAlign: 'left',
-                      }"
+                      width="100%"
+                      [gap]="3"
+                      textAlign="left"
                       (click)="navigateToLink(button.link); closeMobileMenu()">
 
               <div [ngClass]="[button.bgClass]"
@@ -114,11 +106,9 @@
          class="fixed bottom-0 right-0 z-50 mb-4 mr-4">
       <v-button [class.v-danger]="isMobileMenuOpen$$()"
                 [class.v-flat]="!isMobileMenuOpen$$()"
-                [config]="{
-                  isLabelHidden: true,
-                  padding: 3,
-                  borderRadius: 7,
-                }"
+                [isLabelHidden]="true"
+                [borderRadius]="7"
+                [padding]="3"
                 (click)="toggleMobileMenu()">
         <v-icon v-prefix
                 [name]="isMobileMenuOpen$$() ? Icon.Close : Icon.Menu"

@@ -1,11 +1,9 @@
 <v-card class="block"
         [class.cursor-pointer]="isInteractiveInput()"
         [style.width.px]="widthPxInput()"
-        [config]="{
-          padding: 3,
-          borderRadius: 2,
-          isSelected: isSelectedInput(),
-        }"
+        [isSelected]="isSelectedInput()"
+        [borderRadius]="2"
+        [padding]="3"
         (click)="onCardClick($event)">
   <div class="flex items-center justify-between h-6 gap-2 text-sm">
     @if (isEditModeInput() && !hideDashboardControlsInput()) {
@@ -13,25 +11,21 @@
            (click)="$event.stopPropagation()">
         <v-checkbox [value]="isDashboardEnabledInput()"
                     (onChanged)="onDashboardEnabledChange($event)"
-                    [config]="{
-                      size: 4,
-                      checkIconSize: 3,
-                      gap: 1,
-                      isDisabled: isSelectionDisabledInput(),
-                    }" />
+                    [isDisabled]="isSelectionDisabledInput()"
+                    [size]="4"
+                    [gap]="1"
+                    [checkIconSize]="3" />
         <span class="flex-1 min-w-0 truncate">{{ labelInput() }}</span>
         @if (isDashboardEnabledInput()) {
           <v-input class="shrink-0 w-12"
                    [value]="dashboardOrderInput().toString()"
                    (valueChange)="onDashboardOrderChange($event)"
-                   [config]="{
-                     type: 'number',
-                     inputmode: 'numeric',
-                     inputSize: 2,
-                     textAlign: 'right',
-                     paddingY: '2px',
-                     isDisabled: isSelectionDisabledInput(),
-                   }" />
+                   type="number"
+                   inputmode="numeric"
+                   [isDisabled]="isSelectionDisabledInput()"
+                   [inputSize]="2"
+                   paddingY="2px"
+                   textAlign="right" />
         }
       </div>
     } @else {

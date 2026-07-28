@@ -5,9 +5,7 @@
        [style.background-color]="deviceInfoService.isDesktopScreen$$() ? 'var(--v-color-bg)' : null">
     <div class="flex flex-wrap flex-initial min-w-0 gap-2">
       <v-button [class]="isServiceExpanded(dashboardPanelKey) ? 'v-primary v-raised' : 'v-primary v-flat'"
-                [config]="{
-                  color: dashboardButtonColor(),
-                }"
+                [color]="dashboardButtonColor()"
                 (onClick)="toggleServiceExpanded(dashboardPanelKey)">
         Dashboard
       </v-button>
@@ -20,9 +18,7 @@
           </v-button>
         } @else {
           <v-button [class]="isServiceExpanded(entry.service) ? 'v-primary v-raised' : 'v-primary v-flat'"
-                    [config]="{
-                      color: sectionButtonColor(entry.service),
-                    }"
+                    [color]="sectionButtonColor(entry.service)"
                     (onClick)="toggleServiceExpanded(entry.service)">
             {{ resolvedServiceLabel(entry.service) }}
           </v-button>
@@ -35,11 +31,9 @@
     <div class="flex flex-wrap items-center flex-initial min-w-0 gap-2 ml-auto">
       @if (hasUnsavedSettings$$()) {
         <v-button class="v-primary v-raised"
-                  [config]="{
-                    paddingX: 3,
-                    color: '#22c55e',
-                    isDisabled: isSavingSettings$$(),
-                  }"
+                  [isDisabled]="isSavingSettings$$()"
+                  [paddingX]="3"
+                  color="#22c55e"
                   (onClick)="saveSettings()">
           <v-icon v-prefix
                   [name]="Icon.Check"
@@ -49,10 +43,8 @@
       }
 
       <v-button [class]="isServiceExpanded(settingsPanelKey) ? 'v-raised' : 'v-flat'"
-                [config]="{
-                  isLabelHidden: true,
-                  padding: 2,
-                }"
+                [isLabelHidden]="true"
+                [padding]="2"
                 (onClick)="toggleServiceExpanded(settingsPanelKey)">
         <v-icon v-prefix
                 [name]="Icon.Settings"
@@ -60,10 +52,8 @@
       </v-button>
 
       <v-button [class]="isCardEditMode$$() ? 'v-primary v-raised' : 'v-flat'"
-                [config]="{
-                  isLabelHidden: true,
-                  padding: 2,
-                }"
+                [isLabelHidden]="true"
+                [padding]="2"
                 (onClick)="toggleCardEditMode()">
         <v-icon v-prefix
                 [name]="Icon.Edit"
@@ -71,10 +61,8 @@
       </v-button>
 
       <v-button [class]="forceZeroBaselineEnabled$$() ? 'v-primary v-raised' : 'v-flat'"
-                [config]="{
-                  isLabelHidden: true,
-                  padding: 2,
-                }"
+                [isLabelHidden]="true"
+                [padding]="2"
                 (onClick)="toggleForceZeroBaseline()">
         <v-icon class="rotate-180"
                 v-prefix
@@ -83,10 +71,8 @@
       </v-button>
 
       <v-button class="v-flat"
-                [config]="{
-                  isLabelHidden: true,
-                  padding: 2,
-                }"
+                [isLabelHidden]="true"
+                [padding]="2"
                 (onClick)="cycleCardSizeMode()">
         <v-icon v-prefix
                 class="rotate-90"
@@ -96,7 +82,7 @@
 
       <v-toggle [items]="granularityToggleItems"
                 [value]="granularityToggleValue()"
-                [config]="{ isDisabled: isSavingSettings$$() }"
+                [isDisabled]="isSavingSettings$$()"
                 (valueChange)="onGranularityToggleChange($event)" />
     </div>
   </div>
@@ -114,23 +100,19 @@
               <v-input class="w-32"
                        [value]="cardSizeByMode$$()[mode].widthPx.toString()"
                        (valueChange)="onCardWidthChange(mode, $event)"
-                       [config]="{
-                         type: 'number',
-                         inputmode: 'numeric',
-                         label: 'Ширина, px',
-                         textAlign: 'right',
-                         isDisabled: isSavingSettings$$(),
-                       }" />
+                       type="number"
+                       inputmode="numeric"
+                       label="Ширина, px"
+                       [isDisabled]="isSavingSettings$$()"
+                       textAlign="right" />
               <v-input class="w-32"
                        [value]="cardSizeByMode$$()[mode].heightPx.toString()"
                        (valueChange)="onCardHeightChange(mode, $event)"
-                       [config]="{
-                         type: 'number',
-                         inputmode: 'numeric',
-                         label: 'Высота, px',
-                         textAlign: 'right',
-                         isDisabled: isSavingSettings$$(),
-                       }" />
+                       type="number"
+                       inputmode="numeric"
+                       label="Высота, px"
+                       [isDisabled]="isSavingSettings$$()"
+                       textAlign="right" />
             </div>
           }
         </div>
@@ -139,18 +121,14 @@
           <label class="flex items-center gap-2 text-sm">
             <v-checkbox [value]="syncCrosshairEnabled$$()"
                         (onChanged)="onSyncCrosshairEnabledChange($event)"
-                        [config]="{
-                          mode: 'switch',
-                          isDisabled: isSavingSettings$$(),
-                        }" />
+                        mode="switch"
+                        [isDisabled]="isSavingSettings$$()" />
             <span>Синхролиния наведения</span>
           </label>
 
           <v-button class="v-primary"
-                    [config]="{
-                      paddingX: 3,
-                      isDisabled: metricsService.isRefreshing$$(),
-                    }"
+                    [isDisabled]="metricsService.isRefreshing$$()"
+                    [paddingX]="3"
                     (onClick)="clearMetricsCache()">
             <v-icon v-prefix
                     [name]="Icon.Delete"
@@ -159,10 +137,8 @@
           </v-button>
 
           <v-button class="v-primary"
-                    [config]="{
-                      paddingX: 3,
-                      isDisabled: metricsService.isRefreshing$$(),
-                    }"
+                    [isDisabled]="metricsService.isRefreshing$$()"
+                    [paddingX]="3"
                     (onClick)="forceRefreshMetrics()">
             Force refresh metrics
           </v-button>
@@ -175,10 +151,8 @@
             <div class="text-l flex items-center gap-3 font-medium">
               <span class="flex-1 min-w-0 font-semibold truncate">{{ resolvedServiceLabel(compositeServiceKey) }}</span>
               <v-button [class]="isCompositeSettingsExpanded$$() ? 'v-raised' : 'v-flat'"
-                        [config]="{
-                          isLabelHidden: true,
-                          padding: 2,
-                        }"
+                        [isLabelHidden]="true"
+                        [padding]="2"
                         (onClick)="toggleCompositeSettingsExpanded()">
                 <v-icon v-prefix
                         [name]="Icon.Settings"
@@ -187,72 +161,74 @@
               <label class="flex items-center gap-2 cursor-pointer">
                 <v-checkbox [value]="isDashboardServiceEnabled(compositeServiceKey)"
                             (onChanged)="toggleDashboardService(compositeServiceKey, $event)"
-                            [config]="{
-                              size: 4,
-                              checkIconSize: 3,
-                              gap: 1,
-                              isDisabled: isSavingSettings$$(),
-                            }" />
+                            [isDisabled]="isSavingSettings$$()"
+                            [size]="4"
+                            [gap]="1"
+                            [checkIconSize]="3" />
                 <span>Show in dashboard</span>
               </label>
               @if (isDashboardServiceEnabled(compositeServiceKey)) {
                 <v-input class="shrink-0 w-12"
                          [value]="dashboardServiceOrder(compositeServiceKey).toString()"
                          (valueChange)="setDashboardServiceOrder(compositeServiceKey, $event)"
-                         [config]="{
-                           type: 'number',
-                           inputmode: 'numeric',
-                           inputSize: 2,
-                           textAlign: 'right',
-                           isDisabled: isSavingSettings$$(),
-                         }" />
+                         type="number"
+                         inputmode="numeric"
+                         [isDisabled]="isSavingSettings$$()"
+                         [inputSize]="2"
+                         textAlign="right" />
               }
               <label class="flex items-center gap-2 cursor-pointer">
                 <v-checkbox [value]="isServiceVisibleInHeader(compositeServiceKey)"
                             (onChanged)="toggleServiceVisibleInHeader(compositeServiceKey, $event)"
-                            [config]="{
-                              size: 4,
-                              checkIconSize: 3,
-                              gap: 1,
-                              isDisabled: isSavingSettings$$(),
-                            }" />
+                            [isDisabled]="isSavingSettings$$()"
+                            [size]="4"
+                            [gap]="1"
+                            [checkIconSize]="3" />
                 <span>Show in header</span>
               </label>
               <v-input class="shrink-0 w-40"
                        [value]="serviceCustomLabel(compositeServiceKey)"
                        (valueChange)="setServiceCustomLabel(compositeServiceKey, $event)"
-                       [config]="{
-                         placeholder: 'Custom name',
-                         inputSize: 3,
-                         isDisabled: isSavingSettings$$(),
-                       }" />
+                       placeholder="Custom name"
+                       [isDisabled]="isSavingSettings$$()"
+                       [inputSize]="3" />
             </div>
 
             <v-expand [isExpanded]="isCompositeSettingsExpanded$$()">
               <div v-body
                    class="flex flex-col gap-2 pt-2 pl-2">
                 @for (definition of compositeDefinitions$$(); track definition.id) {
-                  <v-card [config]="{ padding: 2, borderRadius: 2 }">
+                  <v-card [borderRadius]="2"
+                          [padding]="2">
                     <div class="flex flex-col gap-2">
                       <div class="flex flex-wrap items-end gap-2">
                         <v-input class="w-44"
                                  [value]="definition.serviceA"
                                  (valueChange)="setCompositeServiceA(definition.id, $event)"
-                                 [config]="{ placeholder: 'service key', label: 'Сервис 1', inputSize: 3 }" />
+                                 label="Сервис 1"
+                                 placeholder="service key"
+                                 [inputSize]="3" />
                         <v-input class="w-44"
                                  [value]="definition.metricName"
                                  (valueChange)="setCompositeMetricName(definition.id, $event)"
-                                 [config]="{ placeholder: 'metric name', label: 'Метрика', inputSize: 3 }" />
+                                 label="Метрика"
+                                 placeholder="metric name"
+                                 [inputSize]="3" />
                       </div>
                       <div class="flex flex-wrap items-end gap-2">
                         <v-input class="w-44"
                                  [value]="definition.serviceB"
                                  (valueChange)="setCompositeServiceB(definition.id, $event)"
-                                 [config]="{ placeholder: 'service key', label: 'Сервис 2', inputSize: 3 }" />
+                                 label="Сервис 2"
+                                 placeholder="service key"
+                                 [inputSize]="3" />
                         <v-input class="w-44"
                                  [value]="definition.metricName"
-                                 [config]="{ label: 'Метрика', inputSize: 3, isDisabled: true }" />
-                        <v-button [config]="{ isLabelHidden: true, padding: 2 }"
+                                 label="Метрика"
+                                 [isDisabled]="true"
+                                 [inputSize]="3" />
+                        <v-button [isLabelHidden]="true"
+                                  [padding]="2"
                                   (onClick)="removeCompositeDefinition(definition.id)">
                           <v-icon v-prefix
                                   [name]="Icon.Delete"
@@ -262,12 +238,10 @@
                       <label class="flex items-center gap-2 cursor-pointer">
                         <v-checkbox [value]="!!definition.treatMissingAsZero"
                                     (onChanged)="setCompositeTreatMissingAsZero(definition.id, $event)"
-                                    [config]="{
-                                      size: 4,
-                                      checkIconSize: 3,
-                                      gap: 1,
-                                      isDisabled: isSavingSettings$$(),
-                                    }" />
+                                    [isDisabled]="isSavingSettings$$()"
+                                    [size]="4"
+                                    [gap]="1"
+                                    [checkIconSize]="3" />
                         <span>Считать отсутствие значения за 0</span>
                       </label>
                     </div>
@@ -276,7 +250,7 @@
                   <div class="opacity-60 text-sm">Нет составных метрик</div>
                 }
                 <v-button class="v-primary self-start"
-                          [config]="{ paddingX: 3 }"
+                          [paddingX]="3"
                           (onClick)="addCompositeDefinition()">
                   <v-icon v-prefix
                           [name]="Icon.Add"
@@ -294,45 +268,37 @@
                 <label class="flex items-center gap-2 cursor-pointer">
                   <v-checkbox [value]="isDashboardServiceEnabled(service.service)"
                               (onChanged)="toggleDashboardService(service.service, $event)"
-                              [config]="{
-                                size: 4,
-                                checkIconSize: 3,
-                                gap: 1,
-                                isDisabled: isSavingSettings$$(),
-                              }" />
+                              [isDisabled]="isSavingSettings$$()"
+                              [size]="4"
+                              [gap]="1"
+                              [checkIconSize]="3" />
                   <span>Show in dashboard</span>
                 </label>
                 @if (isDashboardServiceEnabled(service.service)) {
                   <v-input class="shrink-0 w-12"
                            [value]="dashboardServiceOrder(service.service).toString()"
                            (valueChange)="setDashboardServiceOrder(service.service, $event)"
-                           [config]="{
-                             type: 'number',
-                             inputmode: 'numeric',
-                             inputSize: 2,
-                             textAlign: 'right',
-                             isDisabled: isSavingSettings$$(),
-                           }" />
+                           type="number"
+                           inputmode="numeric"
+                           [isDisabled]="isSavingSettings$$()"
+                           [inputSize]="2"
+                           textAlign="right" />
                 }
                 <label class="flex items-center gap-2 cursor-pointer">
                   <v-checkbox [value]="isServiceVisibleInHeader(service.service)"
                               (onChanged)="toggleServiceVisibleInHeader(service.service, $event)"
-                              [config]="{
-                                size: 4,
-                                checkIconSize: 3,
-                                gap: 1,
-                                isDisabled: isSavingSettings$$(),
-                              }" />
+                              [isDisabled]="isSavingSettings$$()"
+                              [size]="4"
+                              [gap]="1"
+                              [checkIconSize]="3" />
                   <span>Show in header</span>
                 </label>
                 <v-input class="shrink-0 w-40"
                          [value]="serviceCustomLabel(service.service)"
                          (valueChange)="setServiceCustomLabel(service.service, $event)"
-                         [config]="{
-                           placeholder: 'Custom name',
-                           inputSize: 3,
-                           isDisabled: isSavingSettings$$(),
-                         }" />
+                         placeholder="Custom name"
+                         [isDisabled]="isSavingSettings$$()"
+                         [inputSize]="3" />
               </div>
             </div>
           }
@@ -348,25 +314,21 @@
                   <v-input class="w-20"
                            [value]="warnAfterSeconds(service.service).toString()"
                            (valueChange)="setWarnAfterSeconds(service.service, $event)"
-                           [config]="{
-                             type: 'number',
-                             inputmode: 'numeric',
-                             inputSize: 4,
-                             textAlign: 'right',
-                             label: 'Warn',
-                             isDisabled: isSavingSettings$$(),
-                           }" />
+                           type="number"
+                           inputmode="numeric"
+                           label="Warn"
+                           [isDisabled]="isSavingSettings$$()"
+                           [inputSize]="4"
+                           textAlign="right" />
                   <v-input class="w-20"
                            [value]="errorAfterSeconds(service.service).toString()"
                            (valueChange)="setErrorAfterSeconds(service.service, $event)"
-                           [config]="{
-                             type: 'number',
-                             inputmode: 'numeric',
-                             inputSize: 4,
-                             textAlign: 'right',
-                             label: 'Error',
-                             isDisabled: isSavingSettings$$(),
-                           }" />
+                           type="number"
+                           inputmode="numeric"
+                           label="Error"
+                           [isDisabled]="isSavingSettings$$()"
+                           [inputSize]="4"
+                           textAlign="right" />
                 </div>
               </div>
             }
@@ -378,7 +340,8 @@
     @if (isServiceExpanded(dashboardPanelKey)) {
       @for (row of dashboardRows$$(); track row.id) {
         <v-card class="mb-4"
-                [config]="{ padding: 0, borderRadius: 2 }">
+                [borderRadius]="2"
+                [padding]="0">
           <div class="flex flex-col gap-4 p-4">
             <div>
               <div class="opacity-70 mb-2 font-semibold">{{ row.label }}</div>
@@ -404,7 +367,8 @@
     @for (service of visibleServiceOptions$$(); track service.service) {
       @if (isServiceExpanded(service.service)) {
         <v-card class="mb-4"
-                [config]="{ padding: 0, borderRadius: 2 }">
+                [borderRadius]="2"
+                [padding]="0">
           <div class="flex flex-col gap-4 p-4">
             @for (group of serviceMetricsData$$().get(service.service)?.groups ?? []; track group.id) {
               <div>
@@ -431,7 +395,8 @@
 
     @if (isServiceExpanded(compositeServiceKey)) {
       <v-card class="mb-4"
-              [config]="{ padding: 0, borderRadius: 2 }">
+              [borderRadius]="2"
+              [padding]="0">
         <div class="flex flex-col gap-4 p-4">
           @for (group of serviceMetricsData$$().get(compositeServiceKey)?.groups ?? []; track group.id) {
             <div>

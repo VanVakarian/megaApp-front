@@ -1,15 +1,11 @@
 <div>
 
-  <v-card [config]="{
-            padding: 4,
-            borderRadius: 2,
-          }">
+  <v-card [borderRadius]="2"
+          [padding]="4">
     <div class="flex items-center justify-between mb-4">
       <div class="text-lg font-semibold">Categories</div>
       <v-button class="v-flat"
-                [config]="{
-                  paddingY: 1,
-                }"
+                [paddingY]="1"
                 (onClick)="showCreateForm()">
         <v-icon v-prefix
                 [name]="Icon.Add"
@@ -47,10 +43,8 @@
 
                   <div class="flex gap-2">
                     <v-button class="v-flat"
-                              [config]="{
-                                isLabelHidden: true,
-                                padding: iconButton.padding,
-                              }"
+                              [isLabelHidden]="true"
+                              [padding]="iconButton.padding"
                               (onClick)="editCategory(parentCategory)">
                       <v-icon v-prefix
                               [name]="Icon.Edit"
@@ -58,11 +52,9 @@
                     </v-button>
 
                     <v-button class="v-danger"
-                              [config]="{
-                                isLabelHidden: true,
-                                padding: iconButton.padding,
-                                isDisabled: !canDeleteCategory(parentCategory.id!),
-                              }"
+                              [isDisabled]="!canDeleteCategory(parentCategory.id!)"
+                              [isLabelHidden]="true"
+                              [padding]="iconButton.padding"
                               (onClick)="deleteCategory(parentCategory.id!)">
                       <v-icon v-prefix
                               [name]="Icon.Delete"
@@ -83,10 +75,8 @@
 
                         <div class="flex gap-2">
                           <v-button class="v-flat"
-                                    [config]="{
-                                      isLabelHidden: true,
-                                      padding: iconButton.padding,
-                                    }"
+                                    [isLabelHidden]="true"
+                                    [padding]="iconButton.padding"
                                     (onClick)="editCategory(childCategory)">
                             <v-icon v-prefix
                                     [name]="Icon.Edit"
@@ -94,11 +84,9 @@
                           </v-button>
 
                           <v-button class="v-danger"
-                                    [config]="{
-                                      isLabelHidden: true,
-                                      padding: iconButton.padding,
-                                      isDisabled: !canDeleteCategory(childCategory.id!),
-                                    }"
+                                    [isDisabled]="!canDeleteCategory(childCategory.id!)"
+                                    [isLabelHidden]="true"
+                                    [padding]="iconButton.padding"
                                     (onClick)="deleteCategory(childCategory.id!)">
                             <v-icon v-prefix
                                     [name]="Icon.Delete"
