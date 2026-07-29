@@ -8,9 +8,8 @@
         @for (button of visibleButtons$$(); track button.label) {
           @if (button.label !== "DarkThemeSwitch" && button.label !== "Настройки") {
             <v-button class="menu-item"
-                      [class.v-link]="!button.selected"
-                      [class.v-link-static]="!button.selected"
-                      [class.v-flat]="button.selected"
+                      [surface]="button.selected ? 'flat' : 'link'"
+                      [isLinkStatic]="!button.selected"
                       [isLabelHidden]="navigationService.isCollapsed$$()"
                       width="100%"
                       [padding]="2"
@@ -34,7 +33,9 @@
           </div>
         }
 
-        <v-button class="v-link v-link-static menu-item"
+        <v-button class="menu-item"
+                  surface="link"
+                  [isLinkStatic]="true"
                   [isLabelHidden]="true"
                   [padding]="2"
                   (click)="toggleMenuCollapse()">
@@ -50,9 +51,8 @@
         @for (button of visibleButtons$$(); track button.label) {
           @if (button.label === "Настройки") {
             <v-button class="menu-item"
-                      [class.v-link]="!button.selected"
-                      [class.v-link-static]="!button.selected"
-                      [class.v-flat]="button.selected"
+                      [surface]="button.selected ? 'flat' : 'link'"
+                      [isLinkStatic]="!button.selected"
                       [isLabelHidden]="navigationService.isCollapsed$$()"
                       width="100%"
                       [padding]="2"
@@ -105,7 +105,7 @@
     <div [class]="shouldHideFabButtons$$() ? 'fab-slide-hidden' : 'fab-slide-visible'"
          class="fixed bottom-0 right-0 z-50 mb-4 mr-4">
       <v-button [class.v-danger]="isMobileMenuOpen$$()"
-                [class.v-flat]="!isMobileMenuOpen$$()"
+                [surface]="isMobileMenuOpen$$() ? 'default' : 'flat'"
                 [isLabelHidden]="true"
                 [borderRadius]="7"
                 [padding]="3"

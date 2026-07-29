@@ -4,7 +4,7 @@
     <div class="flex items-center justify-between mb-1">
       <div class="text-lg font-semibold">Transactions</div>
       <div class="flex items-center gap-2">
-        <v-button class="v-flat"
+        <v-button surface="flat"
                   [paddingY]="1"
                   (onClick)="showNewTransactionForm()">
           <v-icon v-prefix
@@ -30,7 +30,7 @@
               <div class="group relative flex items-center justify-between">
                 <div class="text-sm">{{ m.group.dateDisplay }}</div>
                 <div class="hover-actions">
-                  <v-button class="v-flat"
+                  <v-button surface="flat"
                             [isLabelHidden]="true"
                             [padding]="1"
                             (onClick)="showTransactionForm(m.group.date, undefined)">
@@ -109,7 +109,7 @@
                 </div>
 
                 <div class="hover-actions">
-                  <v-button class="v-flat"
+                  <v-button surface="flat"
                             [isLabelHidden]="true"
                             [padding]="1"
                             (onClick)="showTransactionForm(undefined, transaction)">

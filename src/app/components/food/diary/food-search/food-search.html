@@ -16,7 +16,8 @@
                 [size]="6" />
       </v-button>
     } @else {
-      <v-button class="v-flat mx-2"
+      <v-button class="mx-2"
+                surface="flat"
                 v-prefix
                 tabindex="-1"
                 [isLabelHidden]="true"
@@ -30,13 +31,14 @@
     }
 
     @if (foodAddModalService.searchQuery$$() !== '') {
-      <v-button class="v-link v-link-static"
+      <v-button surface="link"
+                [isLinkStatic]="true"
                 v-postfix
                 tabindex="-1"
                 [isLabelHidden]="true"
                 [paddingX]="2"
                 [paddingY]="0"
-                bgOpacity="0"
+                [bgOpacity]="0"
                 (mousedown)="$event.preventDefault()"
                 (click)="onSearchClearClick()">
         <v-icon v-prefix

@@ -19,12 +19,14 @@ import { IncomeChart } from './income-chart/income-chart';
 import { OrganizationsList } from './organizations-list/organizations-list';
 import { TransactionsList } from './transactions-list/transactions-list';
 
-enum MoneyTab {
-  Setup = 'setup',
-  Categories = 'categories',
-  Assets = 'assets',
-  Transactions = 'transactions',
-}
+const MoneyTab = {
+  Setup: 'setup',
+  Categories: 'categories',
+  Assets: 'assets',
+  Transactions: 'transactions',
+} as const;
+
+type MoneyTab = (typeof MoneyTab)[keyof typeof MoneyTab];
 
 @Component({
   selector: 'money-screen',

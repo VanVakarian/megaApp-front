@@ -9,11 +9,13 @@ import { sleep } from '@app/shared/utils';
 import { firstValueFrom, timeout } from 'rxjs';
 import { NotificationService } from './notification.service';
 
-export enum SyncOperationType {
-  CREATE = 'create', // POST
-  UPDATE = 'update', // PUT
-  DELETE = 'delete', // DELETE
-}
+export const SyncOperationType = {
+  CREATE: 'create', // POST
+  UPDATE: 'update', // PUT
+  DELETE: 'delete', // DELETE
+} as const;
+
+export type SyncOperationType = (typeof SyncOperationType)[keyof typeof SyncOperationType];
 
 export interface SyncOperationFeedback {
   successMessage: string;

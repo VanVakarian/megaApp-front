@@ -4,7 +4,8 @@
        [class]="stickyBarClasses$$()"
        [style.background-color]="deviceInfoService.isDesktopScreen$$() ? 'var(--v-color-bg)' : null">
     <div class="flex flex-wrap flex-initial min-w-0 gap-2">
-      <v-button [class]="isServiceExpanded(dashboardPanelKey) ? 'v-primary v-raised' : 'v-primary v-flat'"
+      <v-button class="v-primary"
+                [surface]="isServiceExpanded(dashboardPanelKey) ? 'raised' : 'flat'"
                 [color]="dashboardButtonColor()"
                 (onClick)="toggleServiceExpanded(dashboardPanelKey)">
         Dashboard
@@ -12,12 +13,13 @@
 
       @for (entry of headerEntries$$(); track entry.service) {
         @if (entry.isComposite) {
-          <v-button [class]="isServiceExpanded(entry.service) ? 'v-raised' : 'v-flat'"
+          <v-button [surface]="isServiceExpanded(entry.service) ? 'raised' : 'flat'"
                     (onClick)="toggleServiceExpanded(entry.service)">
             {{ resolvedServiceLabel(entry.service) }}
           </v-button>
         } @else {
-          <v-button [class]="isServiceExpanded(entry.service) ? 'v-primary v-raised' : 'v-primary v-flat'"
+          <v-button class="v-primary"
+                    [surface]="isServiceExpanded(entry.service) ? 'raised' : 'flat'"
                     [color]="sectionButtonColor(entry.service)"
                     (onClick)="toggleServiceExpanded(entry.service)">
             {{ resolvedServiceLabel(entry.service) }}
@@ -30,7 +32,8 @@
 
     <div class="flex flex-wrap items-center flex-initial min-w-0 gap-2 ml-auto">
       @if (hasUnsavedSettings$$()) {
-        <v-button class="v-primary v-raised"
+        <v-button class="v-primary"
+                  surface="raised"
                   [isDisabled]="isSavingSettings$$()"
                   [paddingX]="3"
                   color="#22c55e"
@@ -42,7 +45,7 @@
         </v-button>
       }
 
-      <v-button [class]="isServiceExpanded(settingsPanelKey) ? 'v-raised' : 'v-flat'"
+      <v-button [surface]="isServiceExpanded(settingsPanelKey) ? 'raised' : 'flat'"
                 [isLabelHidden]="true"
                 [padding]="2"
                 (onClick)="toggleServiceExpanded(settingsPanelKey)">
@@ -51,7 +54,8 @@
                 [size]="6" />
       </v-button>
 
-      <v-button [class]="isCardEditMode$$() ? 'v-primary v-raised' : 'v-flat'"
+      <v-button [class.v-primary]="isCardEditMode$$()"
+                [surface]="isCardEditMode$$() ? 'raised' : 'flat'"
                 [isLabelHidden]="true"
                 [padding]="2"
                 (onClick)="toggleCardEditMode()">
@@ -60,7 +64,8 @@
                 [size]="6" />
       </v-button>
 
-      <v-button [class]="forceZeroBaselineEnabled$$() ? 'v-primary v-raised' : 'v-flat'"
+      <v-button [class.v-primary]="forceZeroBaselineEnabled$$()"
+                [surface]="forceZeroBaselineEnabled$$() ? 'raised' : 'flat'"
                 [isLabelHidden]="true"
                 [padding]="2"
                 (onClick)="toggleForceZeroBaseline()">
@@ -70,7 +75,7 @@
                 [size]="6" />
       </v-button>
 
-      <v-button class="v-flat"
+      <v-button surface="flat"
                 [isLabelHidden]="true"
                 [padding]="2"
                 (onClick)="cycleCardSizeMode()">
@@ -150,7 +155,7 @@
           <div class="flex flex-col gap-1">
             <div class="text-l flex items-center gap-3 font-medium">
               <span class="flex-1 min-w-0 font-semibold truncate">{{ resolvedServiceLabel(compositeServiceKey) }}</span>
-              <v-button [class]="isCompositeSettingsExpanded$$() ? 'v-raised' : 'v-flat'"
+              <v-button [surface]="isCompositeSettingsExpanded$$() ? 'raised' : 'flat'"
                         [isLabelHidden]="true"
                         [padding]="2"
                         (onClick)="toggleCompositeSettingsExpanded()">

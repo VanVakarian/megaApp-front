@@ -48,13 +48,16 @@
             (rangeChange)="onRangeChange($event)" />
 
   <div class="flex gap-3">
-    <v-button class="v-flat grow"
+    <v-button class="grow"
+              surface="flat"
               (onClick)="animateClipDateRange(-1)"> Выбрать всё </v-button>
 
-    <v-button class="v-flat grow"
+    <v-button class="grow"
+              surface="flat"
               (onClick)="animateClipDateRange(360)"> 1 год </v-button>
 
-    <v-button class="v-flat grow"
+    <v-button class="grow"
+              surface="flat"
               (onClick)="animateClipDateRange(90)"> 3 месяца </v-button>
   </div>
 

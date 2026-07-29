@@ -1,5 +1,5 @@
 <div class="flex justify-end gap-2 mb-2">
-  <v-button class="v-flat"
+  <v-button surface="flat"
             [isLabelHidden]="true"
             [padding]="2"
             (click)="toggleInfoPanel()">
@@ -8,7 +8,7 @@
             [size]="6" />
   </v-button>
 
-  <v-button class="v-flat"
+  <v-button surface="flat"
             [isLabelHidden]="true"
             [padding]="2"
             (click)="toggleChartsPanel()">
@@ -17,7 +17,7 @@
             [size]="6" />
   </v-button>
 
-  <v-button class="v-flat"
+  <v-button surface="flat"
             [isLabelHidden]="true"
             [padding]="2"
             (click)="toggleHistoryPanel()">
@@ -100,13 +100,14 @@
              textAlign="right"
              (onInputChanged)="onNewWeightInput()">
       @if (foodWeightNewControl.value !== null) {
-        <v-button class="v-link v-link-static"
+        <v-button surface="link"
+                  [isLinkStatic]="true"
                   v-prefix
                   tabindex="-1"
                   [isLabelHidden]="true"
                   [paddingX]="2"
                   [paddingY]="0"
-                  bgOpacity="0"
+                  [bgOpacity]="0"
                   (mousedown)="$event.preventDefault()"
                   (click)="onWeightNewResetClick()">
           <v-icon v-prefix
@@ -131,13 +132,14 @@
              textAlign="right"
              (onInputChanged)="onChangeWeightInput()">
       @if (foodWeightChangeControl.value !== null) {
-        <v-button class="v-link v-link-static"
+        <v-button surface="link"
+                  [isLinkStatic]="true"
                   v-prefix
                   tabindex="-1"
                   [isLabelHidden]="true"
                   [paddingX]="2"
                   [paddingY]="0"
-                  bgOpacity="0"
+                  [bgOpacity]="0"
                   (mousedown)="$event.preventDefault()"
                   (click)="onWeightChangeResetClick()">
           <v-icon v-prefix
@@ -180,7 +182,7 @@
     </div>
 
     <div class="flex gap-4">
-      <v-button class="v-flat"
+      <v-button surface="flat"
                 width="100%"
                 (onClick)="closeConfirmationModal()">
         Нет

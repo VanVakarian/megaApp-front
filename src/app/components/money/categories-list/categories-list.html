@@ -4,7 +4,7 @@
           [padding]="4">
     <div class="flex items-center justify-between mb-4">
       <div class="text-lg font-semibold">Categories</div>
-      <v-button class="v-flat"
+      <v-button surface="flat"
                 [paddingY]="1"
                 (onClick)="showCreateForm()">
         <v-icon v-prefix
@@ -42,7 +42,7 @@
                   </div>
 
                   <div class="flex gap-2">
-                    <v-button class="v-flat"
+                    <v-button surface="flat"
                               [isLabelHidden]="true"
                               [padding]="iconButton.padding"
                               (onClick)="editCategory(parentCategory)">
@@ -74,7 +74,7 @@
                         </div>
 
                         <div class="flex gap-2">
-                          <v-button class="v-flat"
+                          <v-button surface="flat"
                                     [isLabelHidden]="true"
                                     [padding]="iconButton.padding"
                                     (onClick)="editCategory(childCategory)">

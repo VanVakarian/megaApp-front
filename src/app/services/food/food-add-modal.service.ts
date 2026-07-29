@@ -1,26 +1,30 @@
 import { Injectable, signal, WritableSignal } from '@angular/core';
 import { CatalogueEntry } from '@app/shared/types';
 
-export enum ModalState {
-  CLOSED = 'CLOSED',
-  SEARCH = 'SEARCH',
-  ADD_DIARY_ENTRY = 'ADD_DIARY_ENTRY',
-  CREATE_NEW_PRODUCT = 'CREATE_NEW_PRODUCT',
-  EDIT_PRODUCT = 'EDIT_PRODUCT',
-  CAMERA_PREVIEW = 'CAMERA_PREVIEW',
-}
+export const ModalState = {
+  CLOSED: 'CLOSED',
+  SEARCH: 'SEARCH',
+  ADD_DIARY_ENTRY: 'ADD_DIARY_ENTRY',
+  CREATE_NEW_PRODUCT: 'CREATE_NEW_PRODUCT',
+  EDIT_PRODUCT: 'EDIT_PRODUCT',
+  CAMERA_PREVIEW: 'CAMERA_PREVIEW',
+} as const;
 
-enum ModalEvent {
-  OPEN,
-  CLOSE,
-  SELECT_PRODUCT,
-  ADD_PRODUCT,
-  EDIT_PRODUCT,
-  DELETE_PRODUCT,
-  GO_BACK,
-  SUBMIT_SUCCESS,
-  TAKE_PHOTO,
-}
+export type ModalState = (typeof ModalState)[keyof typeof ModalState];
+
+const ModalEvent = {
+  OPEN: 'OPEN',
+  CLOSE: 'CLOSE',
+  SELECT_PRODUCT: 'SELECT_PRODUCT',
+  ADD_PRODUCT: 'ADD_PRODUCT',
+  EDIT_PRODUCT: 'EDIT_PRODUCT',
+  DELETE_PRODUCT: 'DELETE_PRODUCT',
+  GO_BACK: 'GO_BACK',
+  SUBMIT_SUCCESS: 'SUBMIT_SUCCESS',
+  TAKE_PHOTO: 'TAKE_PHOTO',
+} as const;
+
+type ModalEvent = (typeof ModalEvent)[keyof typeof ModalEvent];
 
 interface ModalContext {
   from: ModalState;

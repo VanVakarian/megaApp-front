@@ -15,14 +15,14 @@
              class="w-10 h-10 rounded object-contain border border-[color:var(--v-outline-color)]"
              alt="">
 
-        <v-button class="v-flat"
+        <v-button surface="flat"
                   [paddingX]="2"
                   [paddingY]="1"
                   (onClick)="clearLogo()">
           Remove
         </v-button>
 
-        <v-button class="v-flat"
+        <v-button surface="flat"
                   [paddingX]="2"
                   [paddingY]="1"
                   (onClick)="triggerFileInput()">
@@ -31,7 +31,7 @@
       } @else {
         <div class="w-10 h-10 rounded border border-dashed border-[color:var(--v-outline-color)] opacity-40"></div>
 
-        <v-button class="v-flat"
+        <v-button surface="flat"
                   [paddingX]="2"
                   [paddingY]="1"
                   (onClick)="triggerFileInput()">
@@ -54,7 +54,7 @@
       {{ isEditing() ? 'Update' : 'Create' }}
     </v-button>
 
-    <v-button class="v-flat"
+    <v-button surface="flat"
               (onClick)="cancel()">
       Cancel
     </v-button>

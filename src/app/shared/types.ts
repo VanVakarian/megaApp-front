@@ -22,30 +22,32 @@ export interface VerifyResponse {
 
 //                                                                            WS
 
-export enum WebSocketMessageType {
-  PING = 'PING',
-  SYNC_STATUS = 'SYNC_STATUS',
-  DIARY_ENTRY_CREATED = 'DIARY_ENTRY_CREATED',
-  DIARY_ENTRY_UPDATED = 'DIARY_ENTRY_UPDATED',
-  DIARY_ENTRY_DELETED = 'DIARY_ENTRY_DELETED',
-  DIARY_DAY_DELETED = 'DIARY_DAY_DELETED',
-  BODY_WEIGHT_UPDATED = 'BODY_WEIGHT_UPDATED',
-  START_VOICE_RECORDING = 'START_VOICE_RECORDING',
-  AUDIO_CHUNK = 'AUDIO_CHUNK',
-  STOP_VOICE_RECORDING = 'STOP_VOICE_RECORDING',
-  SEARCH_QUERY = 'SEARCH_QUERY',
-  SEARCH_RESULTS = 'SEARCH_RESULTS',
-  CATALOGUE_ENTRY_SAVED = 'CATALOGUE_ENTRY_SAVED',
-  CATALOGUE_IMAGE_GENERATED = 'CATALOGUE_IMAGE_GENERATED',
-  METRICS_HEALTH = 'METRICS_HEALTH',
-  METRICS_LATEST = 'METRICS_LATEST',
-  METRICS_UPDATE = 'METRICS_UPDATE',
-  METRICS_SUBSCRIBE = 'METRICS_SUBSCRIBE',
-  METRICS_UNSUBSCRIBE = 'METRICS_UNSUBSCRIBE',
-}
+export const WebSocketMessageType = {
+  PING: 'PING',
+  SYNC_STATUS: 'SYNC_STATUS',
+  DIARY_ENTRY_CREATED: 'DIARY_ENTRY_CREATED',
+  DIARY_ENTRY_UPDATED: 'DIARY_ENTRY_UPDATED',
+  DIARY_ENTRY_DELETED: 'DIARY_ENTRY_DELETED',
+  DIARY_DAY_DELETED: 'DIARY_DAY_DELETED',
+  BODY_WEIGHT_UPDATED: 'BODY_WEIGHT_UPDATED',
+  START_VOICE_RECORDING: 'START_VOICE_RECORDING',
+  AUDIO_CHUNK: 'AUDIO_CHUNK',
+  STOP_VOICE_RECORDING: 'STOP_VOICE_RECORDING',
+  SEARCH_QUERY: 'SEARCH_QUERY',
+  SEARCH_RESULTS: 'SEARCH_RESULTS',
+  CATALOGUE_ENTRY_SAVED: 'CATALOGUE_ENTRY_SAVED',
+  CATALOGUE_IMAGE_GENERATED: 'CATALOGUE_IMAGE_GENERATED',
+  METRICS_HEALTH: 'METRICS_HEALTH',
+  METRICS_LATEST: 'METRICS_LATEST',
+  METRICS_UPDATE: 'METRICS_UPDATE',
+  METRICS_SUBSCRIBE: 'METRICS_SUBSCRIBE',
+  METRICS_UNSUBSCRIBE: 'METRICS_UNSUBSCRIBE',
+} as const;
+
+export type WebSocketMessageType = (typeof WebSocketMessageType)[keyof typeof WebSocketMessageType];
 
 export interface PingWsMessage {
-  type: WebSocketMessageType.PING;
+  type: typeof WebSocketMessageType.PING;
 }
 
 export interface UserDataLastModifiedTs {
@@ -53,14 +55,14 @@ export interface UserDataLastModifiedTs {
 }
 
 export interface SyncStatusWsMessage {
-  type: WebSocketMessageType.SYNC_STATUS;
+  type: typeof WebSocketMessageType.SYNC_STATUS;
   payload: UserDataLastModifiedTs;
 }
 
 export interface DiaryEntryToCreate extends DiaryEntry {}
 
 export interface DiaryEntryCreatedWsMessage {
-  type: WebSocketMessageType.DIARY_ENTRY_CREATED;
+  type: typeof WebSocketMessageType.DIARY_ENTRY_CREATED;
   payload: DiaryEntryToCreate;
 }
 
@@ -72,7 +74,7 @@ export interface DiaryEntryToUpdate {
 }
 
 export interface DiaryEntryUpdatedWsMessage {
-  type: WebSocketMessageType.DIARY_ENTRY_UPDATED;
+  type: typeof WebSocketMessageType.DIARY_ENTRY_UPDATED;
   payload: DiaryEntryToUpdate;
 }
 
@@ -81,7 +83,7 @@ export interface DiaryEntryToDelete {
 }
 
 export interface DiaryEntryDeletedWsMessage {
-  type: WebSocketMessageType.DIARY_ENTRY_DELETED;
+  type: typeof WebSocketMessageType.DIARY_ENTRY_DELETED;
   payload: DiaryEntryToDelete;
 }
 
@@ -112,7 +114,7 @@ export interface DeletedDiaryDaySnapshot {
 }
 
 export interface DiaryDayDeletedWsMessage {
-  type: WebSocketMessageType.DIARY_DAY_DELETED;
+  type: typeof WebSocketMessageType.DIARY_DAY_DELETED;
   payload: DiaryDayToDelete;
 }
 
@@ -122,32 +124,32 @@ export interface BodyWeightToUpdate {
 }
 
 export interface BodyWeightUpdatedWsMessage {
-  type: WebSocketMessageType.BODY_WEIGHT_UPDATED;
+  type: typeof WebSocketMessageType.BODY_WEIGHT_UPDATED;
   payload: BodyWeightToUpdate;
 }
 
 export interface StartVoiceRecordingWsMessage {
-  type: WebSocketMessageType.START_VOICE_RECORDING;
+  type: typeof WebSocketMessageType.START_VOICE_RECORDING;
 }
 
 export interface AudioChunkWsMessage {
-  type: WebSocketMessageType.AUDIO_CHUNK;
+  type: typeof WebSocketMessageType.AUDIO_CHUNK;
   data: string;
   sequence: number;
 }
 
 export interface StopVoiceRecordingWsMessage {
-  type: WebSocketMessageType.STOP_VOICE_RECORDING;
+  type: typeof WebSocketMessageType.STOP_VOICE_RECORDING;
 }
 
 export interface SearchQueryWsMessage {
-  type: WebSocketMessageType.SEARCH_QUERY;
+  type: typeof WebSocketMessageType.SEARCH_QUERY;
   query: string;
   sequenceNumber: number;
 }
 
 export interface SearchResultsWsMessage {
-  type: WebSocketMessageType.SEARCH_RESULTS;
+  type: typeof WebSocketMessageType.SEARCH_RESULTS;
   payload: {
     query: string;
     catalogueIds: number[];
@@ -157,12 +159,12 @@ export interface SearchResultsWsMessage {
 }
 
 export interface CatalogueEntrySavedWsMessage {
-  type: WebSocketMessageType.CATALOGUE_ENTRY_SAVED;
+  type: typeof WebSocketMessageType.CATALOGUE_ENTRY_SAVED;
   payload: CatalogueEntry;
 }
 
 export interface CatalogueImageGeneratedWsMessage {
-  type: WebSocketMessageType.CATALOGUE_IMAGE_GENERATED;
+  type: typeof WebSocketMessageType.CATALOGUE_IMAGE_GENERATED;
   payload: {
     catalogueId: number;
     imageVersion: number;
@@ -181,7 +183,7 @@ export interface MetricsHealthStatus {
 }
 
 export interface MetricsHealthWsMessage {
-  type: WebSocketMessageType.METRICS_HEALTH;
+  type: typeof WebSocketMessageType.METRICS_HEALTH;
   payload: MetricsHealthStatus;
 }
 
@@ -196,7 +198,7 @@ export interface MetricsLatestSnapshot {
 }
 
 export interface MetricsLatestWsMessage {
-  type: WebSocketMessageType.METRICS_LATEST;
+  type: typeof WebSocketMessageType.METRICS_LATEST;
   payload: MetricsLatestSnapshot;
 }
 
@@ -236,16 +238,16 @@ export interface MetricsHistoryResponse {
 }
 
 export interface MetricsUpdateWsMessage {
-  type: WebSocketMessageType.METRICS_UPDATE;
+  type: typeof WebSocketMessageType.METRICS_UPDATE;
   payload: { points: MetricPoint[] };
 }
 
 export interface MetricsSubscribeWsMessage {
-  type: WebSocketMessageType.METRICS_SUBSCRIBE;
+  type: typeof WebSocketMessageType.METRICS_SUBSCRIBE;
 }
 
 export interface MetricsUnsubscribeWsMessage {
-  type: WebSocketMessageType.METRICS_UNSUBSCRIBE;
+  type: typeof WebSocketMessageType.METRICS_UNSUBSCRIBE;
 }
 
 export type IncomingWsMessage =
@@ -346,15 +348,17 @@ export interface UserSettings {
   isUserAdmin?: boolean; // TODO[068]: Think of a better way to work with admin privileges
 }
 
-export enum KeyOfUserSettings {
-  selectedChapterFood = 'selectedChapterFood',
-  selectedChapterMoney = 'selectedChapterMoney',
-  darkTheme = 'darkTheme',
-  liteVersion = 'liteVersion',
-  height = 'height',
-  userName = 'userName',
-  isUserAdmin = 'isUserAdmin',
-}
+export const KeyOfUserSettings = {
+  selectedChapterFood: 'selectedChapterFood',
+  selectedChapterMoney: 'selectedChapterMoney',
+  darkTheme: 'darkTheme',
+  liteVersion: 'liteVersion',
+  height: 'height',
+  userName: 'userName',
+  isUserAdmin: 'isUserAdmin',
+} as const;
+
+export type KeyOfUserSettings = (typeof KeyOfUserSettings)[keyof typeof KeyOfUserSettings];
 
 export type SettingsChapterNames = 'selectedChapterFood' | 'selectedChapterMoney' | '';
 
@@ -424,12 +428,14 @@ export interface UnifiedDiary {
   };
 }
 
-export enum HistoryEntryAction {
-  INIT = 'init',
-  SET = 'set',
-  ADD = 'add',
-  SUBTRACT = 'subtract',
-}
+export const HistoryEntryAction = {
+  INIT: 'init',
+  SET: 'set',
+  ADD: 'add',
+  SUBTRACT: 'subtract',
+} as const;
+
+export type HistoryEntryAction = (typeof HistoryEntryAction)[keyof typeof HistoryEntryAction];
 
 export interface HistoryEntry {
   action: HistoryEntryAction;
@@ -489,10 +495,12 @@ export interface StatsChartData {
 
 //                                                                         MONEY
 
-export enum SymbolPosition {
-  BEFORE = 'before',
-  AFTER = 'after',
-}
+export const SymbolPosition = {
+  BEFORE: 'before',
+  AFTER: 'after',
+} as const;
+
+export type SymbolPosition = (typeof SymbolPosition)[keyof typeof SymbolPosition];
 
 export interface Currency {
   id?: number;
@@ -503,10 +511,12 @@ export interface Currency {
   whitespace: boolean;
 }
 
-export enum CategoryType {
-  INCOME = 'income',
-  EXPENSE = 'expense',
-}
+export const CategoryType = {
+  INCOME: 'income',
+  EXPENSE: 'expense',
+} as const;
+
+export type CategoryType = (typeof CategoryType)[keyof typeof CategoryType];
 
 export interface Category {
   id?: number;
@@ -515,14 +525,16 @@ export interface Category {
   categoryType: CategoryType;
 }
 
-export enum AccountKind {
-  CASH = 'cash',
-  CARD = 'card',
-  CHECKING = 'checking',
-  DEPOSIT = 'deposit',
-  BROKERAGE = 'brokerage',
-  CRYPTO = 'crypto',
-}
+export const AccountKind = {
+  CASH: 'cash',
+  CARD: 'card',
+  CHECKING: 'checking',
+  DEPOSIT: 'deposit',
+  BROKERAGE: 'brokerage',
+  CRYPTO: 'crypto',
+} as const;
+
+export type AccountKind = (typeof AccountKind)[keyof typeof AccountKind];
 
 export interface Organization {
   id?: number;
@@ -540,11 +552,13 @@ export interface Account {
   organizationId?: number | null;
 }
 
-export enum AssetType {
-  STOCK = 'stock',
-  BOND = 'bond',
-  CRYPTO = 'crypto',
-}
+export const AssetType = {
+  STOCK: 'stock',
+  BOND: 'bond',
+  CRYPTO: 'crypto',
+} as const;
+
+export type AssetType = (typeof AssetType)[keyof typeof AssetType];
 
 export interface Asset {
   id?: number;
@@ -556,21 +570,23 @@ export interface Asset {
   suspendedUntil?: string | null;
 }
 
-export enum TransactionKind {
-  INCOME = 'income',
-  EXPENSE = 'expense',
-  TRANSFER = 'transfer',
-  INVEST_BUY = 'invest_buy',
-  INVEST_SELL = 'invest_sell',
-  INVEST_DIVIDEND = 'invest_dividend',
-}
+export const TransactionKind = {
+  INCOME: 'income',
+  EXPENSE: 'expense',
+  TRANSFER: 'transfer',
+  INVEST_BUY: 'invest_buy',
+  INVEST_SELL: 'invest_sell',
+  INVEST_DIVIDEND: 'invest_dividend',
+} as const;
+
+export type TransactionKind = (typeof TransactionKind)[keyof typeof TransactionKind];
 
 export interface InvestAssetTrade {
   id: number;
   dateISO: string;
   accountId: number;
   amount: number;
-  kind: TransactionKind.INVEST_BUY | TransactionKind.INVEST_SELL;
+  kind: typeof TransactionKind.INVEST_BUY | typeof TransactionKind.INVEST_SELL;
   notes?: string | null;
   detailsJSON?: any;
   assetId?: number | null;

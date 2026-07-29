@@ -9,12 +9,14 @@ interface NutrientBarState {
   barColor: string;
 }
 
-export enum NutrientType {
-  Protein = 'protein',
-  Fat = 'fat',
-  Carbs = 'carbs',
-  Fiber = 'fiber',
-}
+export const NutrientType = {
+  Protein: 'protein',
+  Fat: 'fat',
+  Carbs: 'carbs',
+  Fiber: 'fiber',
+} as const;
+
+export type NutrientType = (typeof NutrientType)[keyof typeof NutrientType];
 
 @Component({
   selector: 'nutrition-summary',

@@ -12,7 +12,9 @@
                         (ngModelChange)="dateISO$$.set($event)">
       <span v-prefix
             class="flex items-center">
-        <v-button class="date-nav-v-button v-link v-link-static"
+        <v-button class="date-nav-v-button"
+                  surface="link"
+                  [isLinkStatic]="true"
                   tabindex="-1"
                   [padding]="1"
                   (mousedown)="$event.preventDefault()"
@@ -21,7 +23,9 @@
                   [name]="Icon.KeyboardArrowLeft"
                   [size]="6"></v-icon>
         </v-button>
-        <v-button class="date-nav-v-button v-link v-link-static"
+        <v-button class="date-nav-v-button"
+                  surface="link"
+                  [isLinkStatic]="true"
                   tabindex="-1"
                   [padding]="1"
                   (mousedown)="$event.preventDefault()"
@@ -32,7 +36,9 @@
         </v-button>
       </span>
 
-      <v-button class="calendar-v-button v-link v-link-static mr-2"
+      <v-button class="calendar-v-button mr-2"
+                surface="link"
+                [isLinkStatic]="true"
                 v-postfix
                 tabindex="-1"
                 [padding]="1"
@@ -337,7 +343,7 @@
       {{ isEditing$$() ? 'Update' : 'Add' }}
     </v-button>
 
-    <v-button class="v-flat"
+    <v-button surface="flat"
               (onClick)="cancel()">
       Cancel
     </v-button>

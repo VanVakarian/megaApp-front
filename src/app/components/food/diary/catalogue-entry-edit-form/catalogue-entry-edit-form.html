@@ -69,7 +69,8 @@
     </div>
 
     <div class="flex justify-between gap-4 mt-0">
-      <v-button class="v-link v-link-static"
+      <v-button surface="link"
+                [isLinkStatic]="true"
                 [isLabelHidden]="true"
                 [padding]="0"
                 (click)="goBack()">

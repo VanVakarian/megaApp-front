@@ -114,7 +114,8 @@
 @if (deviceInfoService.isDesktopScreen$$() || hasSelectedDayDiaryEntries$$() || canRestoreSelectedDay$$()) {
   <div class="flex justify-start gap-4 mt-4">
     @if (hasSelectedDayDiaryEntries$$()) {
-      <v-button class="v-flat shrink-0"
+      <v-button class="shrink-0"
+                surface="flat"
                 [isLabelHidden]="true"
                 [padding]="2"
                 (onClick)="openDeleteDayConfirmationModal()">
@@ -125,7 +126,8 @@
     }
 
     @if (canRestoreSelectedDay$$()) {
-      <v-button class="v-flat shrink-0"
+      <v-button class="shrink-0"
+                surface="flat"
                 [isLabelHidden]="true"
                 [padding]="2"
                 (onClick)="onRestoreDayClicked()">
@@ -137,7 +139,7 @@
 
     @if (deviceInfoService.isDesktopScreen$$()) {
       <v-button [class.v-primary]="addDiaryEntryButtonVariant$$() === 'primary'"
-                [class.v-raised]="addDiaryEntryButtonVariant$$() === 'raised'"
+                [surface]="addDiaryEntryButtonVariant$$() === 'raised' ? 'raised' : 'default'"
                 class="grow"
                 width="100%"
                 (onClick)="openAddFoodModal()">
@@ -193,7 +195,7 @@
     </div>
 
     <div class="flex gap-4">
-      <v-button class="v-flat"
+      <v-button surface="flat"
                 width="100%"
                 (onClick)="closeDeleteDayConfirmationModal()">
         Нет

@@ -678,7 +678,9 @@ export class TransactionForm {
   }
 
   private isPersistedInvestKind(kind: TransactionKind): boolean {
-    return [TransactionKind.INVEST_BUY, TransactionKind.INVEST_SELL, TransactionKind.INVEST_DIVIDEND].includes(kind);
+    return (
+      kind === TransactionKind.INVEST_BUY || kind === TransactionKind.INVEST_SELL || kind === TransactionKind.INVEST_DIVIDEND
+    );
   }
 
   private mapPersistedKindToUiKind(kind: TransactionKind): TransactionKind {

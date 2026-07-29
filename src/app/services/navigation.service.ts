@@ -6,11 +6,13 @@ import { SettingsService } from '@app/services/settings.service';
 import { SettingsChapterNames } from '@app/shared/types';
 import { IconName } from '@ui-kit/components/v-icon/v-icon';
 
-enum MenuPlace {
-  Mobile = 'mobile',
-  Desktop = 'desktop',
-  Both = 'both',
-}
+const MenuPlace = {
+  Mobile: 'mobile',
+  Desktop: 'desktop',
+  Both: 'both',
+} as const;
+
+type MenuPlace = (typeof MenuPlace)[keyof typeof MenuPlace];
 
 export interface MenuButton {
   label: string;

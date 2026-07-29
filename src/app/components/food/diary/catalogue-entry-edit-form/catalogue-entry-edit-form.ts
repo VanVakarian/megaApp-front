@@ -9,10 +9,12 @@ import { VButton } from '@ui-kit/components/v-button/v-button';
 import { IconName, VIcon } from '@ui-kit/components/v-icon/v-icon';
 import { VInput } from '@ui-kit/components/v-input/v-input';
 
-enum FormMode {
-  Create = 'create',
-  Edit = 'edit',
-}
+const FormMode = {
+  Create: 'create',
+  Edit: 'edit',
+} as const;
+
+type FormMode = (typeof FormMode)[keyof typeof FormMode];
 
 const POSITIVE_INTEGER_PATTERN = /^\d+$/;
 const POSITIVE_DECIMAL_PATTERN = /^\d*[.,]?\d*$/;

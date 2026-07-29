@@ -12,11 +12,13 @@ import { AuthResponse, UserCreds, VerifyResponse } from '@app/shared/types';
 import { firstValueFrom, Observable, throwError } from 'rxjs';
 import { catchError, map, tap, timeout } from 'rxjs/operators';
 
-export enum AuthSessionState {
-  Unknown = 'unknown',
-  Guest = 'guest',
-  Authenticated = 'authenticated',
-}
+export const AuthSessionState = {
+  Unknown: 'unknown',
+  Guest: 'guest',
+  Authenticated: 'authenticated',
+} as const;
+
+export type AuthSessionState = (typeof AuthSessionState)[keyof typeof AuthSessionState];
 
 @Injectable({
   providedIn: 'root',

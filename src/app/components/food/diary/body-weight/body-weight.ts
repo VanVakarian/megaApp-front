@@ -8,14 +8,14 @@ interface BodyWeightForm {
   bodyWeight: FormControl<string | null>;
 }
 
-enum FormLabels {
-  WEIGHT = 'Вес',
-  WEIGHT_UNIT = 'кг',
-}
+const FormLabels = {
+  WEIGHT: 'Вес',
+  WEIGHT_UNIT: 'кг',
+} as const;
 
-enum FormErrors {
-  WEIGHT = 'ХХ.Х или ХХ',
-}
+const FormErrors = {
+  WEIGHT: 'ХХ.Х или ХХ',
+} as const;
 
 @Component({
   selector: 'body-weight',
