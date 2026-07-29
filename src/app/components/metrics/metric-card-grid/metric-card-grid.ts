@@ -4,12 +4,14 @@ import {
   computed,
   effect,
   ElementRef,
+  inject,
   input,
   OnDestroy,
   OnInit,
   output,
   signal,
 } from '@angular/core';
+import { DeviceInfoService } from '@app/services/device-info.service';
 import { MetricUnit } from '@app/shared/metric-units';
 import { MetricChartMode } from '@app/shared/metrics-chart-mode';
 import { MetricSeriesPoint } from '@app/shared/metrics-series';
@@ -72,6 +74,7 @@ export class MetricCardGrid implements OnInit, OnDestroy {
   public readonly cardDashboardEnabledChangeOutput = output<{ technicalName: string; enabled: boolean }>();
   public readonly cardDashboardOrderChangeOutput = output<{ technicalName: string; order: number }>();
 
+  private readonly deviceInfoService = inject(DeviceInfoService);
   private readonly hostElement: HTMLElement;
   private readonly expandedKey$$ = signal<string | null>(null);
   private readonly containerWidthPx$$ = signal(0);
@@ -84,8 +87,9 @@ export class MetricCardGrid implements OnInit, OnDestroy {
   // so the whole interaction turns itself off instead of taking an external flag.
   protected readonly canExpand$$ = computed(
     () =>
-      this.cardWidthPxInput() !== this.expandedWidthPxInput() ||
-      this.cardHeightPxInput() !== this.expandedHeightPxInput(),
+      this.deviceInfoService.isDesktopScreen$$() &&
+      (this.cardWidthPxInput() !== this.expandedWidthPxInput() ||
+        this.cardHeightPxInput() !== this.expandedHeightPxInput()),
   );
 
   // The single source of truth for "which card is highlighted/expanded right

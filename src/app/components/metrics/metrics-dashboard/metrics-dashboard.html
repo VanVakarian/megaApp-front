@@ -75,15 +75,17 @@
                 [size]="6" />
       </v-button>
 
-      <v-button surface="flat"
-                [isLabelHidden]="true"
-                [padding]="2"
-                (onClick)="cycleCardSizeMode()">
-        <v-icon v-prefix
-                class="rotate-90"
-                [name]="activeCardSizeMode$$() === CardSizeMode.Large ? Icon.UnfoldLess : Icon.UnfoldMore"
-                [size]="6" />
-      </v-button>
+      @if (deviceInfoService.isDesktopScreen$$()) {
+        <v-button surface="flat"
+                  [isLabelHidden]="true"
+                  [padding]="2"
+                  (onClick)="cycleCardSizeMode()">
+          <v-icon v-prefix
+                  class="rotate-90"
+                  [name]="activeCardSizeMode$$() === CardSizeMode.Large ? Icon.UnfoldLess : Icon.UnfoldMore"
+                  [size]="6" />
+        </v-button>
+      }
 
       <v-toggle [items]="granularityToggleItems"
                 [value]="granularityToggleValue()"

@@ -97,15 +97,30 @@ export function clearMetricSyncCrosshair(): void {
   requestCrosshairRedraw();
 }
 
+// Touch devices never fire `mouseout` on releasing a chart (Chart.js maps
+// touchend to mouseup, not mouseout), so the crosshair would otherwise stick
+// forever after a tap — tapping anywhere outside every card is the escape hatch.
+function handleOutsideTap(event: PointerEvent): void {
+  const target = event.target instanceof Element ? event.target : null;
+  if (target?.closest('metric-chart-card')) {
+    return;
+  }
+  clearMetricSyncCrosshair();
+}
+
 export const metricSyncCrosshairPlugin: Plugin<'line' | 'bar'> = {
   id: 'metricSyncCrosshair',
   afterInit(chart) {
+    if (registeredCharts.size === 0) {
+      document.addEventListener('pointerdown', handleOutsideTap);
+    }
     registeredCharts.add(chart);
   },
   afterDestroy(chart) {
     registeredCharts.delete(chart);
     if (registeredCharts.size === 0) {
       hoverBucketState$$.set(null);
+      document.removeEventListener('pointerdown', handleOutsideTap);
     }
   },
   afterEvent(chart, args, pluginOptions) {
