@@ -11,8 +11,7 @@ import {
   output,
   signal,
 } from '@angular/core';
-import { DeviceInfoService } from '@app/services/device-info.service';
-import { TooltipMode } from '@app/services/metrics-settings.service';
+import { CardLayoutMode, TooltipMode } from '@app/services/metrics-settings.service';
 import { MetricUnit } from '@app/shared/metric-units';
 import { MetricChartMode } from '@app/shared/metrics-chart-mode';
 import { MetricSeriesPoint } from '@app/shared/metrics-series';
@@ -37,11 +36,13 @@ export interface MetricChartCardData {
   color: string;
   chartMode: MetricChartMode;
   description: string;
-  // Two independently-computed series: the normal card width may fall below the
-  // minute-collapse threshold while the expanded (Large) width sits above it, or
-  // vice versa — each display size gets the series that matches its own width.
+  // Two independently-built series, always both present: the fitted-to-columns
+  // display (5-minute buckets) and the full-width display (raw per-minute). Which
+  // one a given card shows is a render-time decision (is this card the one
+  // expanded by click, or is the whole grid in Wide layout mode) — not a width
+  // comparison, since a card's rendered width alone doesn't say which role it's in.
   display: MetricChartCardSeriesDisplay;
-  expandedDisplay: MetricChartCardSeriesDisplay;
+  fullWidthDisplay: MetricChartCardSeriesDisplay;
   isDashboardEnabled: boolean;
   dashboardOrder: number;
 }
@@ -51,21 +52,26 @@ interface RenderItem {
   isExpanded: boolean;
 }
 
+// Purely a safety bound against pathological inputs (e.g. an absurdly small
+// target width on a very wide container) — no realistic layout of metric cards
+// ever approaches this many columns.
+const MAX_COLUMN_SEARCH = 64;
+
 @Component({
   selector: 'metric-card-grid',
   templateUrl: './metric-card-grid.html',
   imports: [MetricChartCard],
   host: {
-    class: 'flex flex-wrap gap-3',
+    class: 'grid gap-3',
+    '[style.grid-template-columns]': 'gridTemplateColumns$$()',
   },
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class MetricCardGrid implements OnInit, OnDestroy {
   public readonly cardsInput = input.required<MetricChartCardData[]>();
-  public readonly cardWidthPxInput = input.required<number>();
-  public readonly cardHeightPxInput = input.required<number>();
-  public readonly expandedWidthPxInput = input.required<number>();
-  public readonly expandedHeightPxInput = input.required<number>();
+  public readonly targetWidthPxInput = input.required<number>();
+  public readonly heightPxInput = input.required<number>();
+  public readonly layoutModeInput = input.required<CardLayoutMode>();
   public readonly syncCrosshairEnabledInput = input<boolean>(false);
   public readonly forceZeroBaselineInput = input<boolean>(false);
   public readonly tooltipModeInput = input<TooltipMode>(TooltipMode.Nearest);
@@ -76,23 +82,53 @@ export class MetricCardGrid implements OnInit, OnDestroy {
   public readonly cardDashboardEnabledChangeOutput = output<{ technicalName: string; enabled: boolean }>();
   public readonly cardDashboardOrderChangeOutput = output<{ technicalName: string; order: number }>();
 
-  private readonly deviceInfoService = inject(DeviceInfoService);
   private readonly hostElement: HTMLElement;
   private readonly expandedKey$$ = signal<string | null>(null);
   private readonly containerWidthPx$$ = signal(0);
   private readonly gapPx$$ = signal(0);
   private resizeObserver: ResizeObserver | null = null;
 
-  // Expanding only means something when the expanded size actually differs from
-  // the normal one — e.g. when every card is already shown at Large size (the
-  // global "expanded" mode), a card and its "expanded" copy would be identical,
-  // so the whole interaction turns itself off instead of taking an external flag.
-  protected readonly canExpand$$ = computed(
-    () =>
-      this.deviceInfoService.isDesktopScreen$$() &&
-      (this.cardWidthPxInput() !== this.expandedWidthPxInput() ||
-        this.cardHeightPxInput() !== this.expandedHeightPxInput()),
-  );
+  // How many columns fit this container: in Wide mode always 1 (every card gets
+  // its own full-width row, regardless of how much room there is). In Compact
+  // mode, the fitted width for N columns — (available width minus gaps) / N —
+  // shrinks monotonically as N grows, so the column count whose fitted width is
+  // closest to the target is found by walking N upward only while the next step
+  // keeps improving. That walk lands exactly on the symmetric midpoint between
+  // two neighboring column counts' fitted widths, with no separate threshold needed.
+  protected readonly columnCount$$ = computed(() => {
+    if (this.layoutModeInput() === CardLayoutMode.Wide) return 1;
+
+    const target = this.targetWidthPxInput();
+    const containerWidth = this.containerWidthPx$$();
+    const gap = this.gapPx$$();
+    if (target <= 0 || containerWidth <= 0) return 1;
+
+    const fittedWidth = (columns: number) => (containerWidth - gap * (columns - 1)) / columns;
+    let bestColumns = 1;
+    let bestDelta = Math.abs(fittedWidth(1) - target);
+    for (let columns = 2; columns <= MAX_COLUMN_SEARCH; columns++) {
+      const width = fittedWidth(columns);
+      if (width <= 0) break;
+      const delta = Math.abs(width - target);
+      if (delta >= bestDelta) break;
+      bestColumns = columns;
+      bestDelta = delta;
+    }
+    return bestColumns;
+  });
+
+  // Column tracks are rendered as native CSS grid columns rather than a per-card
+  // JS-computed pixel width — the browser then resizes them synchronously with
+  // the container on every reflow, with no JS/ResizeObserver round-trip in the
+  // way. Only the discrete column count (columnCount$$, changed rarely) goes
+  // through JS; the continuous in-between resizing is entirely native.
+  // minmax(0, 1fr) instead of a bare 1fr guards against a track being forced
+  // wider than its share by a card's own content (e.g. the chart canvas).
+  protected readonly gridTemplateColumns$$ = computed(() => `repeat(${this.columnCount$$()}, minmax(0, 1fr))`);
+
+  // Expanding only makes sense with at least two columns — with one column, the
+  // "expanded" copy would be identical to the row card it sits under.
+  protected readonly canExpand$$ = computed(() => this.columnCount$$() >= 2);
 
   // The single source of truth for "which card is highlighted/expanded right
   // now" — null whenever expanding isn't possible, so callers never need to
@@ -104,20 +140,9 @@ export class MetricCardGrid implements OnInit, OnDestroy {
     this.expandedKey$$.set(null);
   });
 
-  // How many cards fit on one visual row, derived purely from measured container
-  // width and the fixed per-card width — no DOM position reads needed since every
-  // card in a row shares the same width.
-  private readonly cardsPerRow$$ = computed(() => {
-    const cardWidth = this.cardWidthPxInput();
-    const containerWidth = this.containerWidthPx$$();
-    const gap = this.gapPx$$();
-    if (cardWidth <= 0 || containerWidth <= 0) return 1;
-    return Math.max(1, Math.floor((containerWidth + gap) / (cardWidth + gap)));
-  });
-
   // Inserts the expanded card right after the last card of the row that contains
   // it, so it always lands as a new row directly under the clicked card's row,
-  // regardless of how many cards fit per row at the current width.
+  // regardless of how many columns fit at the current width.
   protected readonly renderItems$$ = computed<RenderItem[]>(() => {
     const cards = this.cardsInput();
     const items: RenderItem[] = cards.map((card) => ({ card, isExpanded: false }));
@@ -126,9 +151,9 @@ export class MetricCardGrid implements OnInit, OnDestroy {
     const expandedIndex = expandedKey === null ? -1 : cards.findIndex((card) => card.key === expandedKey);
     if (expandedIndex === -1) return items;
 
-    const perRow = this.cardsPerRow$$();
-    const rowIndex = Math.floor(expandedIndex / perRow);
-    const insertAt = Math.min((rowIndex + 1) * perRow, cards.length);
+    const columns = this.columnCount$$();
+    const rowIndex = Math.floor(expandedIndex / columns);
+    const insertAt = Math.min((rowIndex + 1) * columns, cards.length);
     items.splice(insertAt, 0, { card: cards[expandedIndex], isExpanded: true });
     return items;
   });
@@ -152,6 +177,25 @@ export class MetricCardGrid implements OnInit, OnDestroy {
 
   protected trackRenderItem(item: RenderItem): string {
     return item.isExpanded ? `expanded:${item.card.key}` : item.card.key;
+  }
+
+  // Full-width role covers both the card expanded by click and, in Wide mode,
+  // every normal card — a normal Compact-mode card that happens to land on one
+  // column (e.g. a narrow phone screen) still keeps the fitted (5-minute) display,
+  // since it's the layout mode and click state that decide the role, not the
+  // pixel width a card happens to render at.
+  protected isFullWidthRole(item: RenderItem): boolean {
+    return item.isExpanded || this.layoutModeInput() === CardLayoutMode.Wide;
+  }
+
+  protected cardDisplay(item: RenderItem): MetricChartCardSeriesDisplay {
+    return this.isFullWidthRole(item) ? item.card.fullWidthDisplay : item.card.display;
+  }
+
+  // The expanded card spans every column (its own full-width row); normal cards
+  // take the single column the grid auto-places them into.
+  protected cardGridColumn(item: RenderItem): string | null {
+    return item.isExpanded ? '1 / -1' : null;
   }
 
   protected onCardToggle(key: string): void {

@@ -75,25 +75,23 @@
                 [size]="6" />
       </v-button>
 
-      @if (deviceInfoService.isDesktopScreen$$()) {
-        <v-button surface="flat"
-                  [isLabelHidden]="true"
-                  [padding]="2"
-                  (onClick)="cycleCardSizeMode()">
-          <v-icon v-prefix
-                  class="rotate-90"
-                  [name]="activeCardSizeMode$$() === CardSizeMode.Large ? Icon.UnfoldLess : Icon.UnfoldMore"
-                  [size]="6" />
-        </v-button>
-      }
+      <v-button surface="flat"
+                [isLabelHidden]="true"
+                [padding]="2"
+                (onClick)="cycleCardLayoutMode()">
+        <v-icon v-prefix
+                class="rotate-90"
+                [name]="cardLayoutMode$$() === CardLayoutMode.Wide ? Icon.UnfoldLess : Icon.UnfoldMore"
+                [size]="6" />
+      </v-button>
 
       <v-button surface="flat"
                 [isLabelHidden]="true"
                 [padding]="2"
                 (onClick)="cycleTooltipMode()">
         <v-icon v-prefix
-                [class]="activeTooltipMode$$() === TooltipMode.Nearest ? 'rotate-[135deg]' : ''"
-                [name]="activeTooltipMode$$() === TooltipMode.Vertical ? Icon.HorizontalAlignCenter : Icon.StepInto"
+                [class]="activeTooltipMode$$() === TooltipMode.Nearest ? '' : 'rotate-[135deg]'"
+                [name]="activeTooltipMode$$() === TooltipMode.Vertical ? Icon.StepInto : Icon.HorizontalAlignCenter"
                 [size]="6" />
       </v-button>
 
@@ -111,27 +109,24 @@
            class="flex flex-col gap-8 p-4">
         <div class="flex flex-col gap-3">
           <div class="opacity-70 font-semibold">Размер карточек</div>
-          @for (mode of cardSizeModes; track mode) {
-            <div class="flex flex-wrap items-end gap-3 pl-2">
-              <span class="w-36 text-sm">{{ cardSizeModeLabels[mode] }}</span>
-              <v-input class="w-32"
-                       [value]="cardSizeByMode$$()[mode].widthPx.toString()"
-                       (valueChange)="onCardWidthChange(mode, $event)"
-                       type="number"
-                       inputmode="numeric"
-                       label="Ширина, px"
-                       [isDisabled]="isSavingSettings$$()"
-                       textAlign="right" />
-              <v-input class="w-32"
-                       [value]="cardSizeByMode$$()[mode].heightPx.toString()"
-                       (valueChange)="onCardHeightChange(mode, $event)"
-                       type="number"
-                       inputmode="numeric"
-                       label="Высота, px"
-                       [isDisabled]="isSavingSettings$$()"
-                       textAlign="right" />
-            </div>
-          }
+          <div class="flex flex-wrap items-end gap-3 pl-2">
+            <v-input class="w-32"
+                     [value]="targetWidthPx$$().toString()"
+                     (valueChange)="onCardWidthChange($event)"
+                     type="number"
+                     inputmode="numeric"
+                     label="Целевая ширина, px"
+                     [isDisabled]="isSavingSettings$$()"
+                     textAlign="right" />
+            <v-input class="w-32"
+                     [value]="heightPx$$().toString()"
+                     (valueChange)="onCardHeightChange($event)"
+                     type="number"
+                     inputmode="numeric"
+                     label="Высота, px"
+                     [isDisabled]="isSavingSettings$$()"
+                     textAlign="right" />
+          </div>
         </div>
 
         <div class="flex flex-wrap items-end gap-3">
@@ -363,10 +358,9 @@
             <div>
               <div class="opacity-70 mb-2 font-semibold">{{ row.label }}</div>
               <metric-card-grid [cardsInput]="row.cards"
-                                [cardWidthPxInput]="cardWidthPx$$()"
-                                [cardHeightPxInput]="cardHeightPx$$()"
-                                [expandedWidthPxInput]="cardSizeByMode$$()[CardSizeMode.Large].widthPx"
-                                [expandedHeightPxInput]="cardSizeByMode$$()[CardSizeMode.Large].heightPx"
+                                [targetWidthPxInput]="targetWidthPx$$()"
+                                [heightPxInput]="heightPx$$()"
+                                [layoutModeInput]="cardLayoutMode$$()"
                                 [syncCrosshairEnabledInput]="syncCrosshairEnabled$$()"
                                 [forceZeroBaselineInput]="forceZeroBaselineEnabled$$()"
                                 [tooltipModeInput]="activeTooltipMode$$()"
@@ -392,10 +386,9 @@
               <div>
                 <div class="opacity-70 mb-2 font-semibold">{{ group.label }}</div>
                 <metric-card-grid [cardsInput]="group.cards"
-                                  [cardWidthPxInput]="cardWidthPx$$()"
-                                  [cardHeightPxInput]="cardHeightPx$$()"
-                                  [expandedWidthPxInput]="cardSizeByMode$$()[CardSizeMode.Large].widthPx"
-                                  [expandedHeightPxInput]="cardSizeByMode$$()[CardSizeMode.Large].heightPx"
+                                  [targetWidthPxInput]="targetWidthPx$$()"
+                                  [heightPxInput]="heightPx$$()"
+                                  [layoutModeInput]="cardLayoutMode$$()"
                                   [syncCrosshairEnabledInput]="syncCrosshairEnabled$$()"
                                   [forceZeroBaselineInput]="forceZeroBaselineEnabled$$()"
                                   [tooltipModeInput]="activeTooltipMode$$()"
@@ -421,10 +414,9 @@
             <div>
               <div class="opacity-70 mb-2 font-semibold">{{ group.label }}</div>
               <metric-card-grid [cardsInput]="group.cards"
-                                [cardWidthPxInput]="cardWidthPx$$()"
-                                [cardHeightPxInput]="cardHeightPx$$()"
-                                [expandedWidthPxInput]="cardSizeByMode$$()[CardSizeMode.Large].widthPx"
-                                [expandedHeightPxInput]="cardSizeByMode$$()[CardSizeMode.Large].heightPx"
+                                [targetWidthPxInput]="targetWidthPx$$()"
+                                [heightPxInput]="heightPx$$()"
+                                [layoutModeInput]="cardLayoutMode$$()"
                                 [syncCrosshairEnabledInput]="syncCrosshairEnabled$$()"
                                 [forceZeroBaselineInput]="forceZeroBaselineEnabled$$()"
                                 [tooltipModeInput]="activeTooltipMode$$()"

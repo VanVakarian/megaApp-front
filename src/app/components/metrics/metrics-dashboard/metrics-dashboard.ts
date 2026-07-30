@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, OnDestroy, OnInit
 import { CompositeMetricsSettingsService } from '@app/services/composite-metrics-settings.service';
 import { DeviceInfoService } from '@app/services/device-info.service';
 import { MetricsHealthService } from '@app/services/metrics-health.service';
-import { CardSizeMode, MetricsSettingsService, TooltipMode } from '@app/services/metrics-settings.service';
+import { CardLayoutMode, MetricsSettingsService, TooltipMode } from '@app/services/metrics-settings.service';
 import { MetricsService } from '@app/services/metrics.service';
 import { METRICS_GRANULARITY_STEP_SECONDS, METRICS_GRANULARITY_WINDOW_PERIODS } from '@app/shared/chart-config';
 import { formatMetricUnitValue } from '@app/shared/metric-units';
@@ -53,13 +53,7 @@ const SETTINGS_PANEL_KEY = '__settings__';
 const DASHBOARD_PANEL_KEY = '__dashboard__';
 const DEFAULT_COMPOSITE_LABEL = 'Составные метрики';
 const GRANULARITY_OPTIONS: MetricGranularity[] = ['minute', 'hour', 'day'];
-const MINUTE_COLLAPSE_CARD_WIDTH_THRESHOLD_PX = 600;
 const COLLAPSED_MINUTE_STEP_SECONDS = 5 * 60;
-const CARD_SIZE_MODE_LABELS: Record<CardSizeMode, string> = {
-  [CardSizeMode.Small]: 'Маленькая карточка',
-  [CardSizeMode.Large]: 'Большая карточка',
-};
-const CARD_SIZE_MODES: CardSizeMode[] = [CardSizeMode.Small, CardSizeMode.Large];
 
 interface MetricGroupData {
   id: string;
@@ -87,22 +81,19 @@ export class MetricsDashboard implements OnInit, OnDestroy {
   protected readonly metricsHealthService = inject(MetricsHealthService);
   protected readonly deviceInfoService = inject(DeviceInfoService);
   protected readonly Icon = IconName;
-  protected readonly CardSizeMode = CardSizeMode;
+  protected readonly CardLayoutMode = CardLayoutMode;
   protected readonly TooltipMode = TooltipMode;
   protected readonly settingsPanelKey = SETTINGS_PANEL_KEY;
   protected readonly dashboardPanelKey = DASHBOARD_PANEL_KEY;
   protected readonly compositeServiceKey = COMPOSITE_SERVICE_KEY;
-  protected readonly cardSizeModes = CARD_SIZE_MODES;
-  protected readonly cardSizeModeLabels = CARD_SIZE_MODE_LABELS;
 
   private readonly metricsSettingsService = inject(MetricsSettingsService);
   private readonly compositeMetricsSettingsService = inject(CompositeMetricsSettingsService);
 
   private readonly now$$ = signal(Date.now());
-  protected readonly cardWidthPx$$ = this.metricsSettingsService.activeCardWidthPx$$;
-  protected readonly cardHeightPx$$ = this.metricsSettingsService.activeCardHeightPx$$;
-  protected readonly cardSizeByMode$$ = this.metricsSettingsService.cardSizeByMode$$;
-  protected readonly activeCardSizeMode$$ = this.metricsSettingsService.activeCardSizeMode$$;
+  protected readonly targetWidthPx$$ = computed(() => this.metricsSettingsService.cardSize$$().widthPx);
+  protected readonly heightPx$$ = computed(() => this.metricsSettingsService.cardSize$$().heightPx);
+  protected readonly cardLayoutMode$$ = this.metricsSettingsService.cardLayoutMode$$;
   protected readonly activeTooltipMode$$ = this.metricsSettingsService.activeTooltipMode$$;
   protected readonly granularityOptions = GRANULARITY_OPTIONS;
   protected readonly granularityToggleItems: VToggleItem[] = this.granularityOptions.map((granularity) => ({
@@ -112,15 +103,6 @@ export class MetricsDashboard implements OnInit, OnDestroy {
   protected readonly selectedGranularity$$ = this.metricsSettingsService.granularity$$;
   protected readonly syncCrosshairEnabled$$ = this.metricsSettingsService.syncCrosshairEnabled$$;
   protected readonly forceZeroBaselineEnabled$$ = this.metricsSettingsService.forceZeroBaselineEnabled$$;
-  protected readonly useCollapsedMinutes$$ = computed(
-    () => this.cardWidthPx$$() < MINUTE_COLLAPSE_CARD_WIDTH_THRESHOLD_PX,
-  );
-  // The expanded (Large-size) card shown by metric-card-grid isn't necessarily as
-  // wide as the currently active mode, so it needs its own collapse decision based
-  // on the Large mode's configured width rather than the active mode's width.
-  protected readonly useCollapsedMinutesForExpanded$$ = computed(
-    () => this.cardSizeByMode$$()[CardSizeMode.Large].widthPx < MINUTE_COLLAPSE_CARD_WIDTH_THRESHOLD_PX,
-  );
   protected readonly dashboardSelection$$ = this.metricsSettingsService.dashboardSelection$$;
   protected readonly dashboardServiceSelection$$ = this.metricsSettingsService.dashboardServiceSelection$$;
   protected readonly isSavingSettings$$ = this.metricsSettingsService.isSaving$$;
@@ -209,8 +191,9 @@ export class MetricsDashboard implements OnInit, OnDestroy {
   protected readonly serviceMetricsData$$ = computed<Map<string, ServiceMetricsData>>(() => {
     const granularity = this.selectedGranularity$$();
     const stepSeconds = METRICS_GRANULARITY_STEP_SECONDS[granularity];
-    const useCollapsedMinutes = granularity === 'minute' && this.useCollapsedMinutes$$();
-    const useCollapsedMinutesForExpanded = granularity === 'minute' && this.useCollapsedMinutesForExpanded$$();
+    // 5-minute collapsing only makes sense for the raw minute-granularity feed —
+    // hour/day granularity is already bucketed, nothing to collapse further.
+    const isMinuteGranularity = granularity === 'minute';
     // The current 5-minute bucket keeps growing as new minute points arrive, so a
     // sum metric looks like it dips right before it — only fully elapsed buckets
     // are safe to compare against each other.
@@ -281,25 +264,10 @@ export class MetricsDashboard implements OnInit, OnDestroy {
         const metricPoints = pointsIndex.get(key) ?? [];
         const aggregation = metricAggregation(option.service, name);
         const chartMode = metricChartMode(option.service, name);
-        const display = buildSeriesDisplay(
-          key,
-          metricPoints,
-          aggregation,
-          chartMode,
-          useCollapsedMinutes,
-          serviceWindow,
-        );
-        const expandedDisplay =
-          useCollapsedMinutesForExpanded === useCollapsedMinutes
-            ? display
-            : buildSeriesDisplay(
-                key,
-                metricPoints,
-                aggregation,
-                chartMode,
-                useCollapsedMinutesForExpanded,
-                serviceWindow,
-              );
+        const display = buildSeriesDisplay(key, metricPoints, aggregation, chartMode, isMinuteGranularity, serviceWindow);
+        const fullWidthDisplay = isMinuteGranularity
+          ? buildSeriesDisplay(key, metricPoints, aggregation, chartMode, false, serviceWindow)
+          : display;
         const rawValue = metricPoints[metricPoints.length - 1]?.value ?? 0;
         const color = metricColor(option.service, name);
         const unit = metricUnit(option.service, name);
@@ -316,7 +284,7 @@ export class MetricsDashboard implements OnInit, OnDestroy {
           chartMode,
           description: metricDescription(option.service, name),
           display,
-          expandedDisplay,
+          fullWidthDisplay,
           isDashboardEnabled: dashboardOrder !== undefined,
           dashboardOrder: dashboardOrder ?? 0,
         };
@@ -404,20 +372,12 @@ export class MetricsDashboard implements OnInit, OnDestroy {
           windowedMetricPoints,
           aggregation,
           chartMode,
-          useCollapsedMinutes,
+          isMinuteGranularity,
           compositeWindow,
         );
-        const expandedDisplay =
-          useCollapsedMinutesForExpanded === useCollapsedMinutes
-            ? display
-            : buildSeriesDisplay(
-                key,
-                windowedMetricPoints,
-                aggregation,
-                chartMode,
-                useCollapsedMinutesForExpanded,
-                compositeWindow,
-              );
+        const fullWidthDisplay = isMinuteGranularity
+          ? buildSeriesDisplay(key, windowedMetricPoints, aggregation, chartMode, false, compositeWindow)
+          : display;
         const rawValue = windowedMetricPoints[windowedMetricPoints.length - 1]?.value ?? 0;
         const unit = metricUnit(definition.serviceA, definition.metricName);
         return {
@@ -432,7 +392,7 @@ export class MetricsDashboard implements OnInit, OnDestroy {
           chartMode,
           description: `Сумма «${definition.metricName}»: ${definition.serviceA} + ${definition.serviceB}`,
           display,
-          expandedDisplay,
+          fullWidthDisplay,
           // No per-card dashboard toggle for composite metrics — the whole
           // section is one on/off switch (Show in dashboard, above), so every
           // defined sum is always part of it.
@@ -572,20 +532,20 @@ export class MetricsDashboard implements OnInit, OnDestroy {
     this.expandedPanel$$.set(service);
   }
 
-  protected onCardWidthChange(mode: CardSizeMode, value: string): void {
+  protected onCardWidthChange(value: string): void {
     const widthPx = Number(value);
     if (!Number.isFinite(widthPx) || widthPx <= 0) return;
-    this.metricsSettingsService.setCardWidthPx(mode, widthPx);
+    this.metricsSettingsService.setCardWidthPx(widthPx);
   }
 
-  protected onCardHeightChange(mode: CardSizeMode, value: string): void {
+  protected onCardHeightChange(value: string): void {
     const heightPx = Number(value);
     if (!Number.isFinite(heightPx) || heightPx <= 0) return;
-    this.metricsSettingsService.setCardHeightPx(mode, heightPx);
+    this.metricsSettingsService.setCardHeightPx(heightPx);
   }
 
-  protected cycleCardSizeMode(): void {
-    this.metricsSettingsService.cycleActiveCardSizeMode();
+  protected cycleCardLayoutMode(): void {
+    this.metricsSettingsService.cycleCardLayoutMode();
   }
 
   protected cycleTooltipMode(): void {

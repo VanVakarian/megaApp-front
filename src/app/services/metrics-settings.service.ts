@@ -12,11 +12,11 @@ export type SeverityThresholdsOverrides = Record<string, SeverityThresholds>;
 export type ServiceHeaderVisibility = Record<string, boolean>;
 export type ServiceCustomLabels = Record<string, string>;
 
-export const CardSizeMode = {
-  Small: 'small',
-  Large: 'large',
+export const CardLayoutMode = {
+  Compact: 'compact',
+  Wide: 'wide',
 } as const;
-export type CardSizeMode = (typeof CardSizeMode)[keyof typeof CardSizeMode];
+export type CardLayoutMode = (typeof CardLayoutMode)[keyof typeof CardLayoutMode];
 
 export const TooltipMode = {
   Nearest: 'nearest',
@@ -29,10 +29,8 @@ export interface CardSize {
   heightPx: number;
 }
 
-export type CardSizeByMode = Record<CardSizeMode, CardSize>;
-
 interface StoredMetricsSettings {
-  cardSizeByMode: CardSizeByMode;
+  cardSize: CardSize;
   syncCrosshairEnabled: boolean;
   dashboardSelection: DashboardMetricSelection;
   dashboardServiceSelection: DashboardServiceSelection;
@@ -45,34 +43,23 @@ interface StoredMetricsSettings {
 const STORAGE_KEY = 'metrics_settings';
 const GRANULARITY_STORAGE_KEY = 'metrics_granularity';
 const DEFAULT_GRANULARITY: MetricGranularity = 'minute';
-const ACTIVE_CARD_SIZE_MODE_STORAGE_KEY = 'metrics_active_card_size_mode';
-const DEFAULT_ACTIVE_CARD_SIZE_MODE: CardSizeMode = CardSizeMode.Small;
+const ACTIVE_CARD_LAYOUT_MODE_STORAGE_KEY = 'metrics_active_card_layout_mode';
+const DEFAULT_CARD_LAYOUT_MODE: CardLayoutMode = CardLayoutMode.Compact;
 const ACTIVE_TOOLTIP_MODE_STORAGE_KEY = 'metrics_active_tooltip_mode';
 const DEFAULT_ACTIVE_TOOLTIP_MODE: TooltipMode = TooltipMode.Nearest;
 const FORCE_ZERO_BASELINE_ENABLED_STORAGE_KEY = 'metrics_force_zero_baseline_enabled';
 const DEFAULT_FORCE_ZERO_BASELINE_ENABLED = false;
 const SETTINGS_ENDPOINT = '/api/metrics-settings/';
-const DEFAULT_SMALL_CARD_WIDTH_PX = 304;
-const DEFAULT_SMALL_CARD_HEIGHT_PX = 112;
-const DEFAULT_LARGE_CARD_WIDTH_PX = 480;
-const DEFAULT_LARGE_CARD_HEIGHT_PX = 220;
+const DEFAULT_CARD_WIDTH_PX = 304;
+const DEFAULT_CARD_HEIGHT_PX = 112;
 
-const DEFAULT_SMALL_CARD_SIZE: CardSize = {
-  widthPx: DEFAULT_SMALL_CARD_WIDTH_PX,
-  heightPx: DEFAULT_SMALL_CARD_HEIGHT_PX,
-};
-const DEFAULT_LARGE_CARD_SIZE: CardSize = {
-  widthPx: DEFAULT_LARGE_CARD_WIDTH_PX,
-  heightPx: DEFAULT_LARGE_CARD_HEIGHT_PX,
-};
-
-const DEFAULT_CARD_SIZE_BY_MODE: CardSizeByMode = {
-  [CardSizeMode.Small]: DEFAULT_SMALL_CARD_SIZE,
-  [CardSizeMode.Large]: DEFAULT_LARGE_CARD_SIZE,
+const DEFAULT_CARD_SIZE: CardSize = {
+  widthPx: DEFAULT_CARD_WIDTH_PX,
+  heightPx: DEFAULT_CARD_HEIGHT_PX,
 };
 
 const DEFAULTS: StoredMetricsSettings = {
-  cardSizeByMode: DEFAULT_CARD_SIZE_BY_MODE,
+  cardSize: DEFAULT_CARD_SIZE,
   syncCrosshairEnabled: false,
   dashboardSelection: {},
   dashboardServiceSelection: {},
@@ -85,11 +72,14 @@ const DEFAULTS: StoredMetricsSettings = {
 // Old per-field keys from before settings were combined into STORAGE_KEY — deleted once, never read.
 // metrics_selected_service/metrics_settings_expanded are here too: which panel was expanded is no
 // longer persisted anywhere — every page load opens on the Dashboard panel, collapsed Settings.
-// metrics_granularity/metrics_active_card_size_mode/metrics_force_zero_baseline_enabled/
+// metrics_granularity/metrics_active_card_layout_mode/metrics_force_zero_baseline_enabled/
 // metrics_active_tooltip_mode are NOT here — they're the live *_STORAGE_KEY constants above,
 // kept local-only on purpose.
 // composite_metrics_definitions is here too: composite metrics used to have their own local-only
 // storage key before joining the rest of this service's server-synced fields.
+// metrics_active_card_size_mode is here too: the old Small/Large split (each with its own width
+// and height) was replaced by one flat card size plus a Compact/Wide layout mode — the old
+// per-mode signal has no equivalent to migrate into, it's simply gone.
 const OBSOLETE_KEYS = [
   'metrics_expanded_services',
   'metrics_selected_service',
@@ -101,6 +91,7 @@ const OBSOLETE_KEYS = [
   'metrics_dashboard_service_selection',
   'metrics_severity_thresholds',
   'composite_metrics_definitions',
+  'metrics_active_card_size_mode',
 ];
 
 function isFiniteNumber(value: unknown): value is number {
@@ -118,22 +109,16 @@ function isValidCardSize(value: unknown): value is CardSize {
   );
 }
 
-function isValidCardSizeByMode(value: unknown): value is CardSizeByMode {
-  if (typeof value !== 'object' || value === null) return false;
-  const candidate = value as Partial<CardSizeByMode>;
-  return isValidCardSize(candidate[CardSizeMode.Small]) && isValidCardSize(candidate[CardSizeMode.Large]);
+function resolveCardSize(raw: Partial<StoredMetricsSettings>): CardSize {
+  return isValidCardSize(raw.cardSize) ? raw.cardSize : DEFAULT_CARD_SIZE;
 }
 
-function isValidCardSizeMode(value: unknown): value is CardSizeMode {
-  return value === CardSizeMode.Small || value === CardSizeMode.Large;
+function isValidCardLayoutMode(value: unknown): value is CardLayoutMode {
+  return value === CardLayoutMode.Compact || value === CardLayoutMode.Wide;
 }
 
-function resolveCardSizeByMode(raw: Partial<StoredMetricsSettings>): CardSizeByMode {
-  return isValidCardSizeByMode(raw.cardSizeByMode) ? raw.cardSizeByMode : DEFAULT_CARD_SIZE_BY_MODE;
-}
-
-function resolveActiveCardSizeMode(value: unknown): CardSizeMode {
-  return isValidCardSizeMode(value) ? value : DEFAULT_ACTIVE_CARD_SIZE_MODE;
+function resolveCardLayoutMode(value: unknown): CardLayoutMode {
+  return isValidCardLayoutMode(value) ? value : DEFAULT_CARD_LAYOUT_MODE;
 }
 
 function isValidTooltipMode(value: unknown): value is TooltipMode {
@@ -178,8 +163,8 @@ function isDeepEqual(a: unknown, b: unknown): boolean {
   providedIn: 'root',
 })
 export class MetricsSettingsService {
-  public readonly cardSizeByMode$$: WritableSignal<CardSizeByMode>;
-  public readonly activeCardSizeMode$$: WritableSignal<CardSizeMode>;
+  public readonly cardSize$$: WritableSignal<CardSize>;
+  public readonly cardLayoutMode$$: WritableSignal<CardLayoutMode>;
   public readonly activeTooltipMode$$: WritableSignal<TooltipMode>;
   public readonly granularity$$: WritableSignal<MetricGranularity>;
   public readonly syncCrosshairEnabled$$: WritableSignal<boolean>;
@@ -192,9 +177,6 @@ export class MetricsSettingsService {
   public readonly compositeMetrics$$: WritableSignal<CompositeMetricDefinition[]>;
   public readonly isSaving$$: WritableSignal<boolean> = signal(false);
   public readonly isDirty$$ = computed(() => !isDeepEqual(this.snapshot(), this.lastConfirmed$$()));
-
-  public readonly activeCardWidthPx$$ = computed(() => this.cardSizeByMode$$()[this.activeCardSizeMode$$()].widthPx);
-  public readonly activeCardHeightPx$$ = computed(() => this.cardSizeByMode$$()[this.activeCardSizeMode$$()].heightPx);
 
   private readonly http = inject(HttpClient);
   private readonly localStorageService = inject(LocalStorageService);
@@ -210,13 +192,13 @@ export class MetricsSettingsService {
     const initial: StoredMetricsSettings = {
       ...DEFAULTS,
       ...stored,
-      cardSizeByMode: resolveCardSizeByMode(stored),
+      cardSize: resolveCardSize(stored),
       compositeMetrics: resolveCompositeMetrics(stored),
     };
 
     const storedGranularity = this.localStorageService.getUserScoped<MetricGranularity>(GRANULARITY_STORAGE_KEY);
-    const storedActiveCardSizeMode = this.localStorageService.getUserScoped<CardSizeMode>(
-      ACTIVE_CARD_SIZE_MODE_STORAGE_KEY,
+    const storedCardLayoutMode = this.localStorageService.getUserScoped<CardLayoutMode>(
+      ACTIVE_CARD_LAYOUT_MODE_STORAGE_KEY,
     );
     const storedActiveTooltipMode = this.localStorageService.getUserScoped<TooltipMode>(
       ACTIVE_TOOLTIP_MODE_STORAGE_KEY,
@@ -225,8 +207,8 @@ export class MetricsSettingsService {
       FORCE_ZERO_BASELINE_ENABLED_STORAGE_KEY,
     );
 
-    this.cardSizeByMode$$ = signal(initial.cardSizeByMode);
-    this.activeCardSizeMode$$ = signal(resolveActiveCardSizeMode(storedActiveCardSizeMode));
+    this.cardSize$$ = signal(initial.cardSize);
+    this.cardLayoutMode$$ = signal(resolveCardLayoutMode(storedCardLayoutMode));
     this.activeTooltipMode$$ = signal(resolveActiveTooltipMode(storedActiveTooltipMode));
     this.granularity$$ = signal(storedGranularity ?? DEFAULT_GRANULARITY);
     this.syncCrosshairEnabled$$ = signal(initial.syncCrosshairEnabled);
@@ -242,22 +224,22 @@ export class MetricsSettingsService {
     this.loadFromServer();
   }
 
-  public setCardWidthPx(mode: CardSizeMode, value: number): void {
-    this.updateCardSize(mode, { widthPx: value });
+  public setCardWidthPx(value: number): void {
+    this.updateCardSize({ widthPx: value });
   }
 
-  public setCardHeightPx(mode: CardSizeMode, value: number): void {
-    this.updateCardSize(mode, { heightPx: value });
+  public setCardHeightPx(value: number): void {
+    this.updateCardSize({ heightPx: value });
   }
 
-  public setActiveCardSizeMode(mode: CardSizeMode): void {
-    this.activeCardSizeMode$$.set(mode);
-    this.localStorageService.setUserScoped(ACTIVE_CARD_SIZE_MODE_STORAGE_KEY, mode);
+  public setCardLayoutMode(mode: CardLayoutMode): void {
+    this.cardLayoutMode$$.set(mode);
+    this.localStorageService.setUserScoped(ACTIVE_CARD_LAYOUT_MODE_STORAGE_KEY, mode);
   }
 
-  public cycleActiveCardSizeMode(): void {
-    this.setActiveCardSizeMode(
-      this.activeCardSizeMode$$() === CardSizeMode.Small ? CardSizeMode.Large : CardSizeMode.Small,
+  public cycleCardLayoutMode(): void {
+    this.setCardLayoutMode(
+      this.cardLayoutMode$$() === CardLayoutMode.Compact ? CardLayoutMode.Wide : CardLayoutMode.Compact,
     );
   }
 
@@ -310,14 +292,13 @@ export class MetricsSettingsService {
     this.compositeMetrics$$.set(value);
   }
 
-  private updateCardSize(mode: CardSizeMode, patch: Partial<CardSize>): void {
-    const current = this.cardSizeByMode$$();
-    this.cardSizeByMode$$.set({ ...current, [mode]: { ...current[mode], ...patch } });
+  private updateCardSize(patch: Partial<CardSize>): void {
+    this.cardSize$$.set({ ...this.cardSize$$(), ...patch });
   }
 
   private snapshot(): StoredMetricsSettings {
     return {
-      cardSizeByMode: this.cardSizeByMode$$(),
+      cardSize: this.cardSize$$(),
       syncCrosshairEnabled: this.syncCrosshairEnabled$$(),
       dashboardSelection: this.dashboardSelection$$(),
       dashboardServiceSelection: this.dashboardServiceSelection$$(),
@@ -329,7 +310,7 @@ export class MetricsSettingsService {
   }
 
   private applySnapshot(value: StoredMetricsSettings): void {
-    this.cardSizeByMode$$.set(value.cardSizeByMode);
+    this.cardSize$$.set(value.cardSize);
     this.syncCrosshairEnabled$$.set(value.syncCrosshairEnabled);
     this.dashboardSelection$$.set(value.dashboardSelection);
     this.dashboardServiceSelection$$.set(value.dashboardServiceSelection);
@@ -363,7 +344,7 @@ export class MetricsSettingsService {
       const merged: StoredMetricsSettings = {
         ...DEFAULTS,
         ...response,
-        cardSizeByMode: resolveCardSizeByMode(response),
+        cardSize: resolveCardSize(response),
         compositeMetrics: resolveCompositeMetrics(response),
       };
       this.applySnapshot(merged);

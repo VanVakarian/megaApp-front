@@ -1,6 +1,7 @@
 @for (item of renderItems$$(); track trackRenderItem(item)) {
-  @let display = item.isExpanded ? item.card.expandedDisplay : item.card.display;
-  <metric-chart-card [labelInput]="item.card.label"
+  @let display = cardDisplay(item);
+  <metric-chart-card [style.grid-column]="cardGridColumn(item)"
+                     [labelInput]="item.card.label"
                      [technicalNameInput]="item.card.technicalName"
                      [valueInput]="item.card.value"
                      [displayValueInput]="item.card.displayValue"
@@ -16,8 +17,7 @@
                      [forceZeroBaselineInput]="forceZeroBaselineInput()"
                      [tooltipModeInput]="tooltipModeInput()"
                      [descriptionInput]="item.card.description"
-                     [widthPxInput]="item.isExpanded ? expandedWidthPxInput() : cardWidthPxInput()"
-                     [heightPxInput]="item.isExpanded ? expandedHeightPxInput() : cardHeightPxInput()"
+                     [heightPxInput]="heightPxInput()"
                      [isSelectedInput]="item.card.key === selectedKey$$()"
                      [isInteractiveInput]="canExpand$$()"
                      [isEditModeInput]="isEditModeInput()"

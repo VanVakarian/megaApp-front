@@ -55,7 +55,6 @@ Chart.register(
   metricSyncCrosshairPlugin,
 );
 
-export const DEFAULT_CARD_WIDTH_PX = 304;
 export const DEFAULT_CHART_HEIGHT_PX = 112;
 
 // How many display steps away from the hovered time a real point may still be
@@ -90,7 +89,6 @@ export class MetricChartCard implements OnDestroy {
   public readonly forceZeroBaselineInput = input<boolean>(false);
   public readonly tooltipModeInput = input<TooltipMode>(TooltipMode.Nearest);
   public readonly descriptionInput = input<string>('');
-  public readonly widthPxInput = input<number>(DEFAULT_CARD_WIDTH_PX);
   public readonly heightPxInput = input<number>(DEFAULT_CHART_HEIGHT_PX);
   public readonly isSelectedInput = input<boolean>(false);
   public readonly isInteractiveInput = input<boolean>(false);
