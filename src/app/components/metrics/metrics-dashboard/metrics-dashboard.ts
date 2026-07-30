@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, OnDestroy, OnInit
 import { CompositeMetricsSettingsService } from '@app/services/composite-metrics-settings.service';
 import { DeviceInfoService } from '@app/services/device-info.service';
 import { MetricsHealthService } from '@app/services/metrics-health.service';
-import { CardSizeMode, MetricsSettingsService } from '@app/services/metrics-settings.service';
+import { CardSizeMode, MetricsSettingsService, TooltipMode } from '@app/services/metrics-settings.service';
 import { MetricsService } from '@app/services/metrics.service';
 import { METRICS_GRANULARITY_STEP_SECONDS, METRICS_GRANULARITY_WINDOW_PERIODS } from '@app/shared/chart-config';
 import { formatMetricUnitValue } from '@app/shared/metric-units';
@@ -88,6 +88,7 @@ export class MetricsDashboard implements OnInit, OnDestroy {
   protected readonly deviceInfoService = inject(DeviceInfoService);
   protected readonly Icon = IconName;
   protected readonly CardSizeMode = CardSizeMode;
+  protected readonly TooltipMode = TooltipMode;
   protected readonly settingsPanelKey = SETTINGS_PANEL_KEY;
   protected readonly dashboardPanelKey = DASHBOARD_PANEL_KEY;
   protected readonly compositeServiceKey = COMPOSITE_SERVICE_KEY;
@@ -102,6 +103,7 @@ export class MetricsDashboard implements OnInit, OnDestroy {
   protected readonly cardHeightPx$$ = this.metricsSettingsService.activeCardHeightPx$$;
   protected readonly cardSizeByMode$$ = this.metricsSettingsService.cardSizeByMode$$;
   protected readonly activeCardSizeMode$$ = this.metricsSettingsService.activeCardSizeMode$$;
+  protected readonly activeTooltipMode$$ = this.metricsSettingsService.activeTooltipMode$$;
   protected readonly granularityOptions = GRANULARITY_OPTIONS;
   protected readonly granularityToggleItems: VToggleItem[] = this.granularityOptions.map((granularity) => ({
     id: granularity,
@@ -584,6 +586,10 @@ export class MetricsDashboard implements OnInit, OnDestroy {
 
   protected cycleCardSizeMode(): void {
     this.metricsSettingsService.cycleActiveCardSizeMode();
+  }
+
+  protected cycleTooltipMode(): void {
+    this.metricsSettingsService.cycleActiveTooltipMode();
   }
 
   protected onSyncCrosshairEnabledChange(value: boolean): void {

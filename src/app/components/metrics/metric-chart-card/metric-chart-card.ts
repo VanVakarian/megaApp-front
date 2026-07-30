@@ -9,9 +9,11 @@ import {
   output,
   viewChild,
 } from '@angular/core';
+import { TooltipMode } from '@app/services/metrics-settings.service';
 import {
   createMetricBarConfig,
   createMetricSparseLineConfig,
+  MetricTooltipInteractionMode,
   pickMetricTickIntervalSeconds,
 } from '@app/shared/chart-config';
 import { formatMetricUnitValue, MetricUnit } from '@app/shared/metric-units';
@@ -86,6 +88,7 @@ export class MetricChartCard implements OnDestroy {
   public readonly displayStepSecondsInput = input<number>(60);
   public readonly syncCrosshairEnabledInput = input<boolean>(false);
   public readonly forceZeroBaselineInput = input<boolean>(false);
+  public readonly tooltipModeInput = input<TooltipMode>(TooltipMode.Nearest);
   public readonly descriptionInput = input<string>('');
   public readonly widthPxInput = input<number>(DEFAULT_CARD_WIDTH_PX);
   public readonly heightPxInput = input<number>(DEFAULT_CHART_HEIGHT_PX);
@@ -122,8 +125,8 @@ export class MetricChartCard implements OnDestroy {
     return formatMetricUnitValue(this.unitInput(), nearest.value);
   });
 
-  protected onCardClick(event: MouseEvent): void {
-    if (!this.isInteractiveInput() || event.target instanceof HTMLCanvasElement) return;
+  protected onCardClick(): void {
+    if (!this.isInteractiveInput()) return;
     this.cardClickOutput.emit();
   }
 
@@ -147,6 +150,7 @@ export class MetricChartCard implements OnDestroy {
     const color = this.colorInput();
     const unit = this.unitInput();
     const granularity = this.granularityInput();
+    const tooltipMode = this.tooltipModeInput();
     const series = this.seriesInput();
     this.windowStartInput();
     this.windowEndInput();
@@ -154,7 +158,7 @@ export class MetricChartCard implements OnDestroy {
     this.syncCrosshairEnabledInput();
     this.forceZeroBaselineInput();
     if (!canvasElem) return;
-    this.ensureChart(canvasElem.nativeElement, chartMode, color, unit, granularity);
+    this.ensureChart(canvasElem.nativeElement, chartMode, color, unit, granularity, tooltipMode);
     this.updateChart(series);
   });
 
@@ -169,11 +173,14 @@ export class MetricChartCard implements OnDestroy {
     color: string,
     unit: MetricUnit,
     granularity: MetricGranularity,
+    tooltipMode: TooltipMode,
   ): ChartConfiguration {
+    const tooltipInteractionMode: MetricTooltipInteractionMode =
+      tooltipMode === TooltipMode.Vertical ? 'index' : 'nearest';
     if (chartMode === 'bar') {
-      return createMetricBarConfig(color, unit, granularity);
+      return createMetricBarConfig(color, unit, granularity, tooltipInteractionMode);
     }
-    return createMetricSparseLineConfig(color, unit, granularity);
+    return createMetricSparseLineConfig(color, unit, granularity, tooltipInteractionMode);
   }
 
   private ensureChart(
@@ -182,8 +189,9 @@ export class MetricChartCard implements OnDestroy {
     color: string,
     unit: MetricUnit,
     granularity: MetricGranularity,
+    tooltipMode: TooltipMode,
   ): void {
-    const signature = `${chartMode}:${color}:${unit}:${granularity}`;
+    const signature = `${chartMode}:${color}:${unit}:${granularity}:${tooltipMode}`;
     if (this.chart && this.chartSignature === signature) {
       return;
     }
@@ -197,7 +205,7 @@ export class MetricChartCard implements OnDestroy {
       return;
     }
 
-    this.chart = new Chart(ctx, this.createChartConfig(chartMode, color, unit, granularity));
+    this.chart = new Chart(ctx, this.createChartConfig(chartMode, color, unit, granularity, tooltipMode));
     this.chartSignature = signature;
   }
 

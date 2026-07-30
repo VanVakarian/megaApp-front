@@ -12,6 +12,7 @@ import {
   signal,
 } from '@angular/core';
 import { DeviceInfoService } from '@app/services/device-info.service';
+import { TooltipMode } from '@app/services/metrics-settings.service';
 import { MetricUnit } from '@app/shared/metric-units';
 import { MetricChartMode } from '@app/shared/metrics-chart-mode';
 import { MetricSeriesPoint } from '@app/shared/metrics-series';
@@ -67,6 +68,7 @@ export class MetricCardGrid implements OnInit, OnDestroy {
   public readonly expandedHeightPxInput = input.required<number>();
   public readonly syncCrosshairEnabledInput = input<boolean>(false);
   public readonly forceZeroBaselineInput = input<boolean>(false);
+  public readonly tooltipModeInput = input<TooltipMode>(TooltipMode.Nearest);
   public readonly isEditModeInput = input<boolean>(false);
   public readonly hideDashboardControlsInput = input<boolean>(false);
   public readonly isSelectionDisabledInput = input<boolean>(false);

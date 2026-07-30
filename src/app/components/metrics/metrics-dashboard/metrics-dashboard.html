@@ -87,6 +87,16 @@
         </v-button>
       }
 
+      <v-button surface="flat"
+                [isLabelHidden]="true"
+                [padding]="2"
+                (onClick)="cycleTooltipMode()">
+        <v-icon v-prefix
+                [class]="activeTooltipMode$$() === TooltipMode.Nearest ? 'rotate-[135deg]' : ''"
+                [name]="activeTooltipMode$$() === TooltipMode.Vertical ? Icon.HorizontalAlignCenter : Icon.StepInto"
+                [size]="6" />
+      </v-button>
+
       <v-toggle [items]="granularityToggleItems"
                 [value]="granularityToggleValue()"
                 [isDisabled]="isSavingSettings$$()"
@@ -359,6 +369,7 @@
                                 [expandedHeightPxInput]="cardSizeByMode$$()[CardSizeMode.Large].heightPx"
                                 [syncCrosshairEnabledInput]="syncCrosshairEnabled$$()"
                                 [forceZeroBaselineInput]="forceZeroBaselineEnabled$$()"
+                                [tooltipModeInput]="activeTooltipMode$$()"
                                 [isEditModeInput]="isCardEditMode$$()"
                                 [isSelectionDisabledInput]="isSavingSettings$$()"
                                 (cardDashboardEnabledChangeOutput)="toggleDashboardMetric(row.id, $event.technicalName, $event.enabled)"
@@ -387,6 +398,7 @@
                                   [expandedHeightPxInput]="cardSizeByMode$$()[CardSizeMode.Large].heightPx"
                                   [syncCrosshairEnabledInput]="syncCrosshairEnabled$$()"
                                   [forceZeroBaselineInput]="forceZeroBaselineEnabled$$()"
+                                  [tooltipModeInput]="activeTooltipMode$$()"
                                   [isEditModeInput]="isCardEditMode$$()"
                                   [isSelectionDisabledInput]="isSavingSettings$$()"
                                   (cardDashboardEnabledChangeOutput)="toggleDashboardMetric(service.service, $event.technicalName, $event.enabled)"
@@ -415,6 +427,7 @@
                                 [expandedHeightPxInput]="cardSizeByMode$$()[CardSizeMode.Large].heightPx"
                                 [syncCrosshairEnabledInput]="syncCrosshairEnabled$$()"
                                 [forceZeroBaselineInput]="forceZeroBaselineEnabled$$()"
+                                [tooltipModeInput]="activeTooltipMode$$()"
                                 [isEditModeInput]="isCardEditMode$$()"
                                 [hideDashboardControlsInput]="true"
                                 [isSelectionDisabledInput]="isSavingSettings$$()" />

@@ -18,6 +18,12 @@ export const CardSizeMode = {
 } as const;
 export type CardSizeMode = (typeof CardSizeMode)[keyof typeof CardSizeMode];
 
+export const TooltipMode = {
+  Nearest: 'nearest',
+  Vertical: 'vertical',
+} as const;
+export type TooltipMode = (typeof TooltipMode)[keyof typeof TooltipMode];
+
 export interface CardSize {
   widthPx: number;
   heightPx: number;
@@ -41,6 +47,8 @@ const GRANULARITY_STORAGE_KEY = 'metrics_granularity';
 const DEFAULT_GRANULARITY: MetricGranularity = 'minute';
 const ACTIVE_CARD_SIZE_MODE_STORAGE_KEY = 'metrics_active_card_size_mode';
 const DEFAULT_ACTIVE_CARD_SIZE_MODE: CardSizeMode = CardSizeMode.Small;
+const ACTIVE_TOOLTIP_MODE_STORAGE_KEY = 'metrics_active_tooltip_mode';
+const DEFAULT_ACTIVE_TOOLTIP_MODE: TooltipMode = TooltipMode.Nearest;
 const FORCE_ZERO_BASELINE_ENABLED_STORAGE_KEY = 'metrics_force_zero_baseline_enabled';
 const DEFAULT_FORCE_ZERO_BASELINE_ENABLED = false;
 const SETTINGS_ENDPOINT = '/api/metrics-settings/';
@@ -77,8 +85,9 @@ const DEFAULTS: StoredMetricsSettings = {
 // Old per-field keys from before settings were combined into STORAGE_KEY — deleted once, never read.
 // metrics_selected_service/metrics_settings_expanded are here too: which panel was expanded is no
 // longer persisted anywhere — every page load opens on the Dashboard panel, collapsed Settings.
-// metrics_granularity/metrics_active_card_size_mode/metrics_force_zero_baseline_enabled are NOT
-// here — they're the live *_STORAGE_KEY constants above, kept local-only on purpose.
+// metrics_granularity/metrics_active_card_size_mode/metrics_force_zero_baseline_enabled/
+// metrics_active_tooltip_mode are NOT here — they're the live *_STORAGE_KEY constants above,
+// kept local-only on purpose.
 // composite_metrics_definitions is here too: composite metrics used to have their own local-only
 // storage key before joining the rest of this service's server-synced fields.
 const OBSOLETE_KEYS = [
@@ -127,6 +136,14 @@ function resolveActiveCardSizeMode(value: unknown): CardSizeMode {
   return isValidCardSizeMode(value) ? value : DEFAULT_ACTIVE_CARD_SIZE_MODE;
 }
 
+function isValidTooltipMode(value: unknown): value is TooltipMode {
+  return value === TooltipMode.Nearest || value === TooltipMode.Vertical;
+}
+
+function resolveActiveTooltipMode(value: unknown): TooltipMode {
+  return isValidTooltipMode(value) ? value : DEFAULT_ACTIVE_TOOLTIP_MODE;
+}
+
 function resolveForceZeroBaselineEnabled(value: unknown): boolean {
   return typeof value === 'boolean' ? value : DEFAULT_FORCE_ZERO_BASELINE_ENABLED;
 }
@@ -163,6 +180,7 @@ function isDeepEqual(a: unknown, b: unknown): boolean {
 export class MetricsSettingsService {
   public readonly cardSizeByMode$$: WritableSignal<CardSizeByMode>;
   public readonly activeCardSizeMode$$: WritableSignal<CardSizeMode>;
+  public readonly activeTooltipMode$$: WritableSignal<TooltipMode>;
   public readonly granularity$$: WritableSignal<MetricGranularity>;
   public readonly syncCrosshairEnabled$$: WritableSignal<boolean>;
   public readonly forceZeroBaselineEnabled$$: WritableSignal<boolean>;
@@ -200,12 +218,16 @@ export class MetricsSettingsService {
     const storedActiveCardSizeMode = this.localStorageService.getUserScoped<CardSizeMode>(
       ACTIVE_CARD_SIZE_MODE_STORAGE_KEY,
     );
+    const storedActiveTooltipMode = this.localStorageService.getUserScoped<TooltipMode>(
+      ACTIVE_TOOLTIP_MODE_STORAGE_KEY,
+    );
     const storedForceZeroBaselineEnabled = this.localStorageService.getUserScoped<boolean>(
       FORCE_ZERO_BASELINE_ENABLED_STORAGE_KEY,
     );
 
     this.cardSizeByMode$$ = signal(initial.cardSizeByMode);
     this.activeCardSizeMode$$ = signal(resolveActiveCardSizeMode(storedActiveCardSizeMode));
+    this.activeTooltipMode$$ = signal(resolveActiveTooltipMode(storedActiveTooltipMode));
     this.granularity$$ = signal(storedGranularity ?? DEFAULT_GRANULARITY);
     this.syncCrosshairEnabled$$ = signal(initial.syncCrosshairEnabled);
     this.forceZeroBaselineEnabled$$ = signal(resolveForceZeroBaselineEnabled(storedForceZeroBaselineEnabled));
@@ -236,6 +258,17 @@ export class MetricsSettingsService {
   public cycleActiveCardSizeMode(): void {
     this.setActiveCardSizeMode(
       this.activeCardSizeMode$$() === CardSizeMode.Small ? CardSizeMode.Large : CardSizeMode.Small,
+    );
+  }
+
+  public setActiveTooltipMode(mode: TooltipMode): void {
+    this.activeTooltipMode$$.set(mode);
+    this.localStorageService.setUserScoped(ACTIVE_TOOLTIP_MODE_STORAGE_KEY, mode);
+  }
+
+  public cycleActiveTooltipMode(): void {
+    this.setActiveTooltipMode(
+      this.activeTooltipMode$$() === TooltipMode.Nearest ? TooltipMode.Vertical : TooltipMode.Nearest,
     );
   }
 

@@ -1,7 +1,18 @@
 import { formatMetricUnitValue, MetricUnit } from '@app/shared/metric-units';
 import { formatMetricBucketLabel, formatMetricTickLabel } from '@app/shared/metrics-series';
 import { MetricGranularity } from '@app/shared/types';
-import { ChartConfiguration } from 'chart.js';
+import { ChartConfiguration, ChartType, Tooltip, TooltipPositionerFunction } from 'chart.js';
+
+declare module 'chart.js' {
+  interface TooltipPositionerMap {
+    followCursor: TooltipPositionerFunction<ChartType>;
+  }
+}
+
+// A spiky metric line makes the default 'nearest'/'average' positioner (which anchors to the
+// active data point's own pixel position) bounce the tooltip box up and down with the data.
+// Anchoring to the raw cursor position instead keeps it moving smoothly with the mouse.
+Tooltip.positioners.followCursor = (_items, eventPosition) => eventPosition;
 
 interface ChartColors {
   main: string;
@@ -476,10 +487,20 @@ export function createMetricSparklineConfig(color: string): ChartConfiguration<'
   };
 }
 
-function metricSparseTooltipOptions(granularity: MetricGranularity) {
+// 'nearest' picks the point closest to the cursor by raw pixel distance (x and y both
+// count), so on a spiky line it can snap to a point noticeably left/right of the cursor
+// just because it's vertically close. 'index' ignores y entirely and always picks the
+// point whose x sits exactly under the cursor — same interaction mode the money charts
+// already use for their (multi-series) tooltips.
+export type MetricTooltipInteractionMode = 'nearest' | 'index';
+
+function metricSparseTooltipOptions(granularity: MetricGranularity, tooltipMode: MetricTooltipInteractionMode) {
   return {
-    mode: 'nearest' as const,
+    mode: tooltipMode,
     intersect: false,
+    // 'index' (Vertical mode) tracks the cursor smoothly along the line; 'nearest' (Nearest
+    // mode) snaps to whichever sample is currently active, same as the point marker below.
+    position: tooltipMode === 'index' ? ('followCursor' as const) : ('nearest' as const),
     callbacks: {
       title: (items: { parsed: { x: number } }[]) => formatMetricBucketLabel(items[0].parsed.x, granularity),
     },
@@ -490,6 +511,7 @@ export function createMetricSparseLineConfig(
   color: string,
   unit: MetricUnit,
   granularity: MetricGranularity,
+  tooltipMode: MetricTooltipInteractionMode,
 ): ChartConfiguration<'line'> {
   return {
     type: 'line',
@@ -504,6 +526,9 @@ export function createMetricSparseLineConfig(
           fill: false,
           spanGaps: false,
           pointRadius: 0,
+          // Nearest mode jumps between samples, so a marker on the active one is useful;
+          // Vertical mode already tracks the cursor continuously via the crosshair line.
+          pointHoverRadius: tooltipMode === 'nearest' ? 4 : 0,
           pointHitRadius: 12,
         },
       ],
@@ -514,7 +539,7 @@ export function createMetricSparseLineConfig(
       elements: { line: { tension: 0.3 } },
       plugins: {
         legend: { display: false },
-        tooltip: metricSparseTooltipOptions(granularity),
+        tooltip: metricSparseTooltipOptions(granularity, tooltipMode),
       },
       scales: {
         x: {
@@ -539,6 +564,7 @@ export function createMetricBarConfig(
   color: string,
   unit: MetricUnit,
   granularity: MetricGranularity,
+  tooltipMode: MetricTooltipInteractionMode,
 ): ChartConfiguration<'bar'> {
   return {
     type: 'bar',
@@ -558,7 +584,7 @@ export function createMetricBarConfig(
       maintainAspectRatio: false,
       plugins: {
         legend: { display: false },
-        tooltip: metricSparseTooltipOptions(granularity),
+        tooltip: metricSparseTooltipOptions(granularity, tooltipMode),
       },
       scales: {
         x: {
