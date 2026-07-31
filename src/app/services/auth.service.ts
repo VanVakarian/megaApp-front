@@ -4,7 +4,7 @@ import { Router } from '@angular/router';
 import { NetworkService } from '@app/services/network.service';
 import { NotificationService } from '@app/services/notification.service';
 import { SettingsService } from '@app/services/settings.service';
-import { SyncQueueService } from '@app/services/sync-queue.service';
+import { SyncEngineService } from '@app/services/sync-engine.service';
 import { buildCacheKey, clearAllUserScopedCaches } from '@app/shared/cache';
 import { SESSION_BOOTSTRAP_TIMEOUT_MS } from '@app/shared/const';
 import { idbRemove } from '@app/shared/idb-cache';
@@ -37,7 +37,7 @@ export class AuthService {
   private readonly networkService = inject(NetworkService);
   private readonly http = inject(HttpClient);
   private readonly router = inject(Router);
-  private readonly syncQueue = inject(SyncQueueService);
+  private readonly syncEngine = inject(SyncEngineService);
   private readonly settingsService = inject(SettingsService);
   private readonly notificationService = inject(NotificationService);
 
@@ -65,6 +65,7 @@ export class AuthService {
         this.sessionState$$.set(AuthSessionState.Authenticated);
         this.isAdmin$$.set(response.body.isAdmin);
         this.networkService.connect();
+        this.syncEngine.restorePendingOperation();
         return response.body;
       }),
     );
@@ -119,6 +120,7 @@ export class AuthService {
       this.sessionState$$.set(AuthSessionState.Authenticated);
       this.isAdmin$$.set(response.isAdmin);
       this.networkService.connect();
+      this.syncEngine.restorePendingOperation();
     } catch {
       if (this.sessionState$$() !== AuthSessionState.Guest) {
         this.bootstrapError$$.set(true);
@@ -134,7 +136,7 @@ export class AuthService {
 
     this.removeTokens();
     this.networkService.disconnect();
-    this.syncQueue.reset();
+    this.syncEngine.reset();
     this.settingsService.reset();
     this.notificationService.clearAll();
     clearAllUserScopedCaches();

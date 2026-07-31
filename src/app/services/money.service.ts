@@ -16,7 +16,7 @@ import {
   Transaction,
   TransactionKind,
 } from '../shared/types';
-import { SyncOperationType, SyncQueueService } from './sync-queue.service';
+import { SyncEngineService, SyncOperationMode, SyncOperationType } from './sync-engine.service';
 
 interface BaseResponse {
   success: boolean;
@@ -172,7 +172,7 @@ export class MoneyService {
 
   constructor(
     private http: HttpClient,
-    private syncQueue: SyncQueueService,
+    private syncEngine: SyncEngineService,
   ) {
     // effect(() => { console.log('CURRENCIES:', this.currencies$$()) }); // prettier-ignore
     // effect(() => { console.log('CATEGORIES:', this.categories$$()) }); // prettier-ignore
@@ -775,7 +775,8 @@ export class MoneyService {
 
     this.addTransactionToState({ ...transactionData, id: tempId });
 
-    this.syncQueue.addOperation({
+    this.syncEngine.addOperation({
+      mode: SyncOperationMode.Optimistic,
       type: SyncOperationType.CREATE,
       endpoint: '/api/money/transactions',
       data: transactionData,
@@ -808,7 +809,8 @@ export class MoneyService {
     this.updateTransactionInState(transactionData);
     this.pendingTransactionIds.add(transactionData.id);
 
-    this.syncQueue.addOperation({
+    this.syncEngine.addOperation({
+      mode: SyncOperationMode.Optimistic,
       type: SyncOperationType.UPDATE,
       endpoint: `/api/money/transactions/${transactionData.id}`,
       data: transactionData,
@@ -829,20 +831,31 @@ export class MoneyService {
 
   public deleteTransaction(transactionId: number): Observable<boolean> {
     const snapshot = this.transactions$$();
+    const twinId = snapshot.find((transaction) => transaction.id === transactionId)?.twinId;
     this.removeTransactionPairFromState(transactionId);
     this.pendingTransactionIds.add(transactionId);
+    if (twinId != null) {
+      this.pendingTransactionIds.add(twinId);
+    }
 
-    this.syncQueue.addOperation({
+    this.syncEngine.addOperation({
+      mode: SyncOperationMode.Optimistic,
       type: SyncOperationType.DELETE,
       endpoint: `/api/money/transactions/${transactionId}`,
       data: null,
       successCallback: () => {
         this.pendingTransactionIds.delete(transactionId);
+        if (twinId != null) {
+          this.pendingTransactionIds.delete(twinId);
+        }
         this.writeCacheSnapshot();
         this.requestResult$.next({ result: true });
       },
       rollbackCallback: () => {
         this.pendingTransactionIds.delete(transactionId);
+        if (twinId != null) {
+          this.pendingTransactionIds.delete(twinId);
+        }
         this.transactions$$.set(snapshot);
         this.requestResult$.next({ result: false });
       },
@@ -891,7 +904,8 @@ export class MoneyService {
       ...txs,
     ]);
 
-    this.syncQueue.addOperation({
+    this.syncEngine.addOperation({
+      mode: SyncOperationMode.Optimistic,
       type: SyncOperationType.CREATE,
       endpoint: '/api/money/transactions',
       data: { ...transferData, kind: TransactionKind.TRANSFER, isGift: false, categoryId: null },
@@ -932,7 +946,8 @@ export class MoneyService {
     this.pendingTransactionIds.add(transferData.id);
     this.pendingTransactionIds.add(transferData.twinId);
 
-    this.syncQueue.addOperation({
+    this.syncEngine.addOperation({
+      mode: SyncOperationMode.Optimistic,
       type: SyncOperationType.UPDATE,
       endpoint: `/api/money/transactions/${transferData.id}`,
       data: {

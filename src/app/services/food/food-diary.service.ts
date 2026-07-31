@@ -31,7 +31,7 @@ import { firstValueFrom, Subject } from 'rxjs';
 import { LocalStorageService } from '../local-storage.service';
 import { NetworkService } from '../network.service';
 import { NotificationService } from '../notification.service';
-import { SyncOperationType, SyncQueueService } from '../sync-queue.service';
+import { SyncEngineService, SyncOperationMode, SyncOperationType } from '../sync-engine.service';
 import { BaseFoodService } from './food-base.service';
 import { FoodCatalogueService } from './food-catalogue.service';
 import { FoodPersonalKcalsService } from './food-personal-kcals.service';
@@ -115,9 +115,9 @@ export class FoodDiaryService extends BaseFoodService {
     http: HttpClient,
     localStorageService: LocalStorageService,
     networkService: NetworkService,
-    syncQueueService: SyncQueueService,
+    syncEngine: SyncEngineService,
   ) {
-    super(http, localStorageService, networkService, syncQueueService);
+    super(http, localStorageService, networkService, syncEngine);
     this.loadDiaryFromLocalStorage();
     this.loadDeletedDaySnapshotFromLocalStorage();
     this.subscribe();
@@ -210,6 +210,7 @@ export class FoodDiaryService extends BaseFoodService {
     };
 
     this.addSyncOperation({
+      mode: SyncOperationMode.Optimistic,
       type: SyncOperationType.CREATE,
       endpoint: '/api/food/diary/',
       data: diaryEntry,
@@ -299,6 +300,7 @@ export class FoodDiaryService extends BaseFoodService {
     };
 
     this.addSyncOperation({
+      mode: SyncOperationMode.Optimistic,
       type: SyncOperationType.UPDATE,
       endpoint: '/api/food/diary',
       data: editRequest,
@@ -359,6 +361,7 @@ export class FoodDiaryService extends BaseFoodService {
     };
 
     this.addSyncOperation({
+      mode: SyncOperationMode.Optimistic,
       type: SyncOperationType.DELETE,
       endpoint: `/api/food/diary/${diaryEntryId}`,
       data: {},
@@ -409,6 +412,7 @@ export class FoodDiaryService extends BaseFoodService {
     };
 
     this.addSyncOperation({
+      mode: SyncOperationMode.Optimistic,
       type: SyncOperationType.DELETE,
       endpoint: `/api/food/diary/day/${selectedDay}`,
       data: {},
@@ -467,6 +471,7 @@ export class FoodDiaryService extends BaseFoodService {
     };
 
     this.addSyncOperation({
+      mode: SyncOperationMode.Optimistic,
       type: SyncOperationType.CREATE,
       endpoint: `/api/food/diary/day/${snapshot.dateISO}/restore`,
       data: this.createDiaryDayRestoreRequest(restoredEntries),
@@ -528,6 +533,7 @@ export class FoodDiaryService extends BaseFoodService {
     };
 
     this.addSyncOperation({
+      mode: SyncOperationMode.Optimistic,
       type: SyncOperationType.CREATE,
       endpoint: '/api/food/body-weight',
       data: bodyWeight,

@@ -6,7 +6,7 @@ import { firstValueFrom } from 'rxjs';
 import { LocalStorageService } from './local-storage.service';
 import { NetworkService } from './network.service';
 import { NotificationService } from './notification.service';
-import { SyncOperationType, SyncQueueService } from './sync-queue.service';
+import { SyncEngineService, SyncOperationMode, SyncOperationType } from './sync-engine.service';
 
 export type SettingsStatus = 'idle' | 'loading' | 'ready' | 'error';
 
@@ -25,7 +25,7 @@ export class SettingsService {
   private readonly localStorage = inject(LocalStorageService);
   private readonly notificationsService = inject(NotificationService);
   private readonly networkService = inject(NetworkService);
-  private readonly syncQueue = inject(SyncQueueService);
+  private readonly syncEngine = inject(SyncEngineService);
 
   public ensureReady(): Promise<void> {
     if (this.status$$() === 'ready') {
@@ -61,7 +61,8 @@ export class SettingsService {
       this.applyTheme(value as boolean);
     }
 
-    this.syncQueue.addOperation({
+    this.syncEngine.addOperation({
+      mode: SyncOperationMode.Optimistic,
       type: SyncOperationType.UPDATE,
       endpoint: '/api/settings/',
       data: { [key]: value },

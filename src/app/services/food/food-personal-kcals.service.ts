@@ -6,7 +6,7 @@ import { PersonalKcals, ServerResponseWithData } from '@app/shared/types';
 import { firstValueFrom } from 'rxjs';
 import { LocalStorageService } from '../local-storage.service';
 import { NetworkService } from '../network.service';
-import { SyncQueueService } from '../sync-queue.service';
+import { SyncEngineService } from '../sync-engine.service';
 import { BaseFoodService } from './food-base.service';
 
 @Injectable({
@@ -33,9 +33,9 @@ export class FoodPersonalKcalsService extends BaseFoodService {
     http: HttpClient,
     localStorageService: LocalStorageService,
     networkService: NetworkService,
-    syncQueueService: SyncQueueService,
+    syncEngine: SyncEngineService,
   ) {
-    super(http, localStorageService, networkService, syncQueueService);
+    super(http, localStorageService, networkService, syncEngine);
     this.loadPersonalKcalsFromLocalStorage();
   }
 
