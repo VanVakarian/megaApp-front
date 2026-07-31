@@ -123,6 +123,12 @@ export class MoneyService {
   );
   public readonly keepTransactionCurrency$$: WritableSignal<boolean> = signal(readSettings().keepTransactionCurrency);
 
+  // Transaction ids with an edit/delete sitting in the sync queue, not yet confirmed or rolled
+  // back. Re-navigating to the money screen re-triggers fetchSnapshot(), which can legitimately
+  // return pre-commit server state for these ids while the write is still queued/in flight —
+  // mergeSnapshotTransactions() keeps our own state for them instead of letting the snapshot win.
+  private readonly pendingTransactionIds = new Set<number>();
+
   private readonly isDataReady$$: WritableSignal<boolean> = signal(false);
   public readonly isChartDataReady$$ = computed(() => this.isDataReady$$());
 
@@ -185,6 +191,7 @@ export class MoneyService {
     this.transactions$$.set([]);
     this.rateHistory$$.set([]);
     this.isDataReady$$.set(false);
+    this.pendingTransactionIds.clear();
 
     const defaults = defaultSettings();
     this.displayCurrency$$.set(defaults.displayCurrency);
@@ -233,13 +240,35 @@ export class MoneyService {
     this.accounts$$.set((data.accounts ?? []).map((a) => this.normalizeAccount(a as AccountApi)));
     this.assets$$.set(data.assets ?? []);
     this.investAssetTrades$$.set(data.investAssetTrades ?? []);
-    this.transactions$$.set(data.transactions ?? []);
+    this.transactions$$.set(this.mergeSnapshotTransactions(this.transactions$$(), data.transactions ?? []));
     if (data.rateHistory?.length) {
       this.rateHistory$$.set(
         data.rateHistory.map((item) => ({ ...item, ratesJson: this.parseRatesJson(item.ratesJson) })),
       );
     }
     if (setReady) this.isDataReady$$.set(true);
+  }
+
+  // A snapshot refetch (re-navigating to the money screen) can legitimately reflect
+  // not-yet-committed server state for a transaction we have a pending edit/delete queued for
+  // (see pendingTransactionIds). For those ids specifically, keep our own state instead of the
+  // snapshot's — and if we've already removed one locally, don't let a stale snapshot bring it back.
+  private mergeSnapshotTransactions(current: Transaction[], incoming: Transaction[]): Transaction[] {
+    if (this.pendingTransactionIds.size === 0) return incoming;
+
+    const currentById = new Map(current.filter((tx) => tx.id !== undefined).map((tx) => [tx.id!, tx]));
+    const merged: Transaction[] = [];
+
+    for (const tx of incoming) {
+      if (tx.id !== undefined && this.pendingTransactionIds.has(tx.id)) {
+        const pending = currentById.get(tx.id);
+        if (pending) merged.push(pending);
+        continue;
+      }
+      merged.push(tx);
+    }
+
+    return merged;
   }
 
   private writeCacheSnapshot(): void {
@@ -777,16 +806,19 @@ export class MoneyService {
 
     const snapshot = this.transactions$$();
     this.updateTransactionInState(transactionData);
+    this.pendingTransactionIds.add(transactionData.id);
 
     this.syncQueue.addOperation({
       type: SyncOperationType.UPDATE,
       endpoint: `/api/money/transactions/${transactionData.id}`,
       data: transactionData,
       successCallback: () => {
+        this.pendingTransactionIds.delete(transactionData.id!);
         this.writeCacheSnapshot();
         this.requestResult$.next({ result: true });
       },
       rollbackCallback: () => {
+        this.pendingTransactionIds.delete(transactionData.id!);
         this.transactions$$.set(snapshot);
         this.requestResult$.next({ result: false });
       },
@@ -798,16 +830,19 @@ export class MoneyService {
   public deleteTransaction(transactionId: number): Observable<boolean> {
     const snapshot = this.transactions$$();
     this.removeTransactionPairFromState(transactionId);
+    this.pendingTransactionIds.add(transactionId);
 
     this.syncQueue.addOperation({
       type: SyncOperationType.DELETE,
       endpoint: `/api/money/transactions/${transactionId}`,
       data: null,
       successCallback: () => {
+        this.pendingTransactionIds.delete(transactionId);
         this.writeCacheSnapshot();
         this.requestResult$.next({ result: true });
       },
       rollbackCallback: () => {
+        this.pendingTransactionIds.delete(transactionId);
         this.transactions$$.set(snapshot);
         this.requestResult$.next({ result: false });
       },
@@ -894,6 +929,8 @@ export class MoneyService {
   }): Observable<boolean> {
     const snapshot = this.transactions$$();
     this.updateTransferInState(transferData);
+    this.pendingTransactionIds.add(transferData.id);
+    this.pendingTransactionIds.add(transferData.twinId);
 
     this.syncQueue.addOperation({
       type: SyncOperationType.UPDATE,
@@ -910,10 +947,14 @@ export class MoneyService {
         notes: transferData.notes,
       },
       successCallback: () => {
+        this.pendingTransactionIds.delete(transferData.id);
+        this.pendingTransactionIds.delete(transferData.twinId);
         this.writeCacheSnapshot();
         this.requestResult$.next({ result: true });
       },
       rollbackCallback: () => {
+        this.pendingTransactionIds.delete(transferData.id);
+        this.pendingTransactionIds.delete(transferData.twinId);
         this.transactions$$.set(snapshot);
         this.requestResult$.next({ result: false });
       },

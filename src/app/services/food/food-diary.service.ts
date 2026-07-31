@@ -84,6 +84,12 @@ export class FoodDiaryService extends BaseFoodService {
 
   private lastSyncTs = 0;
 
+  // Entry IDs with an edit/delete sitting in the sync queue, not yet confirmed or rolled back.
+  // A background refetch (SYNC_STATUS reload, periodic reload) can legitimately return
+  // pre-commit data for these IDs while the write is still queued/in flight — the fix is to
+  // keep our own optimistic state for them instead of letting the refetch response win.
+  private readonly pendingDiaryEntryIds = new Set<number>();
+
   protected getStorageKey(): string {
     return this.DIARY_STORAGE_KEY;
   }
@@ -125,6 +131,7 @@ export class FoodDiaryService extends BaseFoodService {
     this.diaryEntryResetId$$.set(null);
     this.loadedRange$$.set(null);
     this.lastSyncTs = 0;
+    this.pendingDiaryEntryIds.clear();
   }
 
   // Used only for the unsaved/unconfirmed window where the server hasn't computed entry.kcals
@@ -156,7 +163,7 @@ export class FoodDiaryService extends BaseFoodService {
     try {
       const response = await firstValueFrom(this.http.get<Diary>(`/api/food/diary-full-update?${paramsStr}`));
 
-      this.diaryRaw$$.update((diary) => ({ ...diary, ...response }));
+      this.diaryRaw$$.update((diary) => this.mergeServerDiaryResponse(diary, response));
       this.saveToLocalStorage(this.diaryRaw$$());
       this.updateLoadedRange(date);
       return response;
@@ -192,7 +199,7 @@ export class FoodDiaryService extends BaseFoodService {
 
     const successCallback = (response: ServerResponseWithDiaryId) => {
       if (response.result && response.diaryId) {
-        this.reconcileCreatedDiaryEntry(tempId, response.diaryId, response.kcals);
+        this.reconcileCreatedDiaryEntry(tempId, response.diaryId, response.kcals, response.version);
       }
     };
 
@@ -260,7 +267,10 @@ export class FoodDiaryService extends BaseFoodService {
       this.foodStatsService.updateStatsOptimistically(selectedDay, null, kcalsDelta);
     }
 
+    this.pendingDiaryEntryIds.add(diaryEntry.id);
+
     const rollbackFunction = () => {
+      this.pendingDiaryEntryIds.delete(diaryEntry.id);
       this.diaryRaw$$.set(originalDiary);
       this.saveToLocalStorage(originalDiary);
       if (kcalsDelta !== 0) {
@@ -269,10 +279,12 @@ export class FoodDiaryService extends BaseFoodService {
     };
 
     const successCallback = (response: ServerResponseWithDiaryId) => {
+      this.pendingDiaryEntryIds.delete(diaryEntry.id);
       if (response.result) {
         this.reconcileEditedDiaryEntry(
           diaryEntry.id,
           response.kcals,
+          response.version,
           optimisticHistoryIndex,
           response.appliedHistoryEntry ?? null,
         );
@@ -337,7 +349,10 @@ export class FoodDiaryService extends BaseFoodService {
 
     this.foodStatsService.updateStatsOptimistically(selectedDay, null, kcalsDelta);
 
+    this.pendingDiaryEntryIds.add(diaryEntryId);
+
     const rollbackFunction = () => {
+      this.pendingDiaryEntryIds.delete(diaryEntryId);
       this.diaryRaw$$.set(originalDiary);
       this.saveToLocalStorage(originalDiary);
       statsRollback();
@@ -347,6 +362,7 @@ export class FoodDiaryService extends BaseFoodService {
       type: SyncOperationType.DELETE,
       endpoint: `/api/food/diary/${diaryEntryId}`,
       data: {},
+      successCallback: () => this.pendingDiaryEntryIds.delete(diaryEntryId),
       rollbackCallback: rollbackFunction,
       feedback: {
         successMessage: 'Запись удалена',
@@ -807,7 +823,7 @@ export class FoodDiaryService extends BaseFoodService {
     });
   }
 
-  private reconcileCreatedDiaryEntry(tempId: number, realId: number, kcals: number): void {
+  private reconcileCreatedDiaryEntry(tempId: number, realId: number, kcals: number, version: number): void {
     this.diaryRaw$$.update((oldDiary) => {
       const selectedDay = this.selectedDayIso$$();
       const updatedDiary = { ...oldDiary };
@@ -815,7 +831,7 @@ export class FoodDiaryService extends BaseFoodService {
       const updatedFood = { ...updatedDay.food };
 
       if (updatedFood[tempId]) {
-        const entry = { ...updatedFood[tempId], id: realId, kcals };
+        const entry = { ...updatedFood[tempId], id: realId, kcals, version };
         updatedFood[realId] = entry;
         delete updatedFood[tempId];
       }
@@ -830,6 +846,7 @@ export class FoodDiaryService extends BaseFoodService {
   private reconcileEditedDiaryEntry(
     diaryEntryId: number,
     kcals: number,
+    version: number,
     optimisticHistoryIndex: number,
     appliedHistoryEntry: HistoryEntry | null,
   ): void {
@@ -848,7 +865,7 @@ export class FoodDiaryService extends BaseFoodService {
         if (appliedHistoryEntry) {
           history.splice(optimisticHistoryIndex, 0, appliedHistoryEntry);
         }
-        updatedFood[diaryEntryId] = { ...entry, kcals, history };
+        updatedFood[diaryEntryId] = { ...entry, kcals, version, history };
       }
 
       updatedDay.food = updatedFood;
@@ -969,6 +986,35 @@ export class FoodDiaryService extends BaseFoodService {
       start: newStart.toISOString().split('T')[0],
       end: newEnd.toISOString().split('T')[0],
     });
+  }
+
+  // A full-reload response can legitimately reflect not-yet-committed server state for an
+  // entry we have a pending edit/delete queued for (see pendingDiaryEntryIds). For those
+  // entries specifically, keep our own state instead of accepting the response's.
+  private mergeServerDiaryResponse(current: Diary, response: Diary): Diary {
+    if (this.pendingDiaryEntryIds.size === 0) {
+      return { ...current, ...response };
+    }
+
+    const merged: Diary = { ...current, ...response };
+
+    for (const dateISO of Object.keys(response)) {
+      const currentDay = current[dateISO];
+      if (!currentDay) continue;
+
+      const food = { ...response[dateISO].food };
+      for (const pendingId of this.pendingDiaryEntryIds) {
+        if (currentDay.food[pendingId]) {
+          food[pendingId] = currentDay.food[pendingId];
+        } else {
+          delete food[pendingId];
+        }
+      }
+
+      merged[dateISO] = { ...response[dateISO], food };
+    }
+
+    return merged;
   }
 
   private loadDiaryFromLocalStorage(): void {
@@ -1100,6 +1146,7 @@ export class FoodDiaryService extends BaseFoodService {
       typeof payload.id === 'number' &&
       typeof payload.newFoodWeight === 'number' &&
       typeof payload.newKcals === 'number' &&
+      typeof payload.version === 'number' &&
       this.isValidHistoryEntry(payload.newHistoryEntry)
     );
   }
@@ -1126,6 +1173,12 @@ export class FoodDiaryService extends BaseFoodService {
       return;
     }
 
+    // A realtime update can arrive out of order relative to what we've already applied
+    // (e.g. from another tab/device) — discard it if it's not newer than what we have.
+    if (typeof originalEntry.version === 'number' && updatedDiaryEntry.version <= originalEntry.version) {
+      return;
+    }
+
     const originalKcals = originalEntry.kcals;
 
     const updatedEntry: DiaryEntry = {
@@ -1133,6 +1186,7 @@ export class FoodDiaryService extends BaseFoodService {
       foodWeight: updatedDiaryEntry.newFoodWeight,
       kcals: updatedDiaryEntry.newKcals,
       history: [...originalEntry.history, updatedDiaryEntry.newHistoryEntry],
+      version: updatedDiaryEntry.version,
     };
 
     this.diaryRaw$$.update((diary) => {

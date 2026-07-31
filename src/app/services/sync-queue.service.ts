@@ -28,6 +28,7 @@ interface SyncOperation {
   endpoint: string;
   data: any;
   retryCount: number;
+  operationId: string;
   successCallback?: (response: any) => void;
   rollbackCallback?: () => void;
   feedback?: SyncOperationFeedback;
@@ -56,10 +57,11 @@ export class SyncQueueService {
     this.isProcessing = false;
   }
 
-  public addOperation(operation: Omit<SyncOperation, 'retryCount'>): void {
+  public addOperation(operation: Omit<SyncOperation, 'retryCount' | 'operationId'>): void {
     const fullOperation: SyncOperation = {
       ...operation,
       retryCount: 0,
+      operationId: crypto.randomUUID(),
     };
 
     // Scheduled at enqueue time, not at actual dispatch time — the queue is single-flight,
@@ -132,17 +134,15 @@ export class SyncQueueService {
   }
 
   private createRequest(operation: SyncOperation) {
-    const request$ = (() => {
-      switch (operation.type) {
-        case SyncOperationType.CREATE:
-          return this.http.post(operation.endpoint, operation.data);
-        case SyncOperationType.UPDATE:
-          return this.http.put(operation.endpoint, operation.data);
-        case SyncOperationType.DELETE:
-          return this.http.delete(operation.endpoint);
-      }
-    })();
+    const body = { ...operation.data, operationId: operation.operationId };
 
-    return request$;
+    switch (operation.type) {
+      case SyncOperationType.CREATE:
+        return this.http.post(operation.endpoint, body);
+      case SyncOperationType.UPDATE:
+        return this.http.put(operation.endpoint, body);
+      case SyncOperationType.DELETE:
+        return this.http.delete(operation.endpoint, { body });
+    }
   }
 }

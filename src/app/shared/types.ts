@@ -71,6 +71,7 @@ export interface DiaryEntryToUpdate {
   newFoodWeight: number;
   newKcals: number;
   newHistoryEntry: HistoryEntry;
+  version: number;
 }
 
 export interface DiaryEntryUpdatedWsMessage {
@@ -290,6 +291,7 @@ export interface ServerResponseWithMessage extends ServerResponseBasic {
 export interface ServerResponseWithDiaryId extends ServerResponseBasic {
   diaryId: number;
   kcals: number;
+  version: number;
   appliedHistoryEntry?: HistoryEntry | null;
 }
 
@@ -375,6 +377,7 @@ export interface DiaryEntry {
   foodWeight: number;
   kcals: number;
   history: HistoryEntry[];
+  version?: number;
 }
 
 export interface Diary {
@@ -606,6 +609,7 @@ export interface Transaction {
   notes?: string;
   detailsJSON?: any;
   twinId?: number | null;
+  version?: number;
 }
 
 export interface MoneyRateHistory {
