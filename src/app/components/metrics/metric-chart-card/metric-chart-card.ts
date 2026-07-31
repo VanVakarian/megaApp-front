@@ -10,15 +10,10 @@ import {
   viewChild,
 } from '@angular/core';
 import { TooltipMode } from '@app/services/metrics-settings.service';
-import {
-  createMetricBarConfig,
-  createMetricSparseLineConfig,
-  MetricTooltipInteractionMode,
-  pickMetricTickIntervalSeconds,
-} from '@app/shared/chart-config';
+import { createMetricBarConfig, createMetricSparseLineConfig, MetricTooltipInteractionMode } from '@app/shared/chart-config';
 import { formatMetricUnitValue, MetricUnit } from '@app/shared/metric-units';
 import { MetricChartMode } from '@app/shared/metrics-chart-mode';
-import { buildRoundTickBuckets, findNearestSeriesPoint, MetricSeriesPoint } from '@app/shared/metrics-series';
+import { buildPaddedTickBuckets, findNearestSeriesPoint, MetricSeriesPoint } from '@app/shared/metrics-series';
 import {
   hoverBucket$$,
   MetricSyncCrosshairOptions,
@@ -216,14 +211,7 @@ export class MetricChartCard implements OnDestroy {
   private updateSparseChart(series: MetricSeriesPoint[]): void {
     const windowStart = this.windowStartInput();
     const windowEnd = this.windowEndInput();
-    const granularity = this.granularityInput();
-    const stepSeconds = this.displayStepSecondsInput();
-    const windowBucketCount = Math.max(1, Math.floor((windowEnd - windowStart) / stepSeconds) + 1);
-    const tickBuckets = buildRoundTickBuckets(
-      windowStart,
-      windowEnd,
-      pickMetricTickIntervalSeconds(granularity, windowBucketCount, stepSeconds),
-    );
+    const tickBuckets = buildPaddedTickBuckets(windowStart, windowEnd);
 
     this.chart!.data.datasets[0].data = series.map((point) => ({
       x: point.bucket,

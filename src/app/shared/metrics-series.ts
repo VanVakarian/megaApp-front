@@ -185,11 +185,14 @@ export function formatMetricBucketLabel(bucketSeconds: number, granularity: Metr
   return granularity === 'hour' ? `${datePart} ${timePart}` : timePart;
 }
 
-// A tick landing exactly on local midnight already tells you the time (00:00),
-// so the axis only needs the date — dropping the time avoids doubled-up labels.
+// On the hour granularity, ticks sit days apart — showing the time alongside the
+// date is both unnecessary and, at 5 ticks across a narrow chart, wide enough to
+// overlap — so the axis only shows the date, same as the day granularity already
+// does. On other granularities, a tick landing exactly on local midnight already
+// tells you the time (00:00), so the date alone is enough there too.
 export function formatMetricTickLabel(bucketSeconds: number, granularity: MetricGranularity = 'minute'): string {
   const date = new Date(bucketSeconds * 1000);
-  if (date.getHours() === 0 && date.getMinutes() === 0) {
+  if (granularity === 'hour' || (date.getHours() === 0 && date.getMinutes() === 0)) {
     return `${pad2(date.getDate())}.${pad2(date.getMonth() + 1)}`;
   }
   return formatMetricBucketLabel(bucketSeconds, granularity);
@@ -205,28 +208,25 @@ export function buildRoundTickIndices(buckets: number[], intervalSeconds: number
   return indices;
 }
 
-// Ticks are anchored to local midnight (not UTC epoch zero) so that day-scale
-// intervals land on the actual local day boundary instead of a timezone-shifted
-// hour, and sub-day intervals land on round local clock times (00:00, 06:00, ...).
-function localMidnightBucket(bucketSeconds: number): number {
-  const date = new Date(bucketSeconds * 1000);
-  date.setHours(0, 0, 0, 0);
-  return Math.floor(date.getTime() / 1000);
-}
-
-export function buildRoundTickBuckets(
-  windowStartBucket: number,
-  windowEndBucket: number,
-  intervalSeconds: number,
-): number[] {
+// `segments + 1` buckets, evenly spaced from start to end (both included).
+function buildEvenTickBuckets(startBucket: number, endBucket: number, segments: number): number[] {
+  const span = endBucket - startBucket;
   const buckets: number[] = [];
-  const anchor = localMidnightBucket(windowStartBucket);
-  for (let bucket = anchor; bucket <= windowEndBucket; bucket += intervalSeconds) {
-    if (bucket >= windowStartBucket) {
-      buckets.push(bucket);
-    }
+  for (let index = 0; index <= segments; index++) {
+    buckets.push(Math.round(startBucket + (span * index) / segments));
   }
   return buckets;
+}
+
+// Fraction of the window trimmed off each side before placing ticks — keeps the
+// outer ticks a bit inset from the window edges instead of sitting exactly on them.
+const TICK_EDGE_PADDING_FRACTION = 2 / 24;
+const TICK_COUNT = 5;
+
+export function buildPaddedTickBuckets(windowStartBucket: number, windowEndBucket: number): number[] {
+  const span = windowEndBucket - windowStartBucket;
+  const edgePadding = span * TICK_EDGE_PADDING_FRACTION;
+  return buildEvenTickBuckets(windowStartBucket + edgePadding, windowEndBucket - edgePadding, TICK_COUNT - 1);
 }
 
 // Binary search: series is always bucket-sorted ascending (builders above guarantee it).
