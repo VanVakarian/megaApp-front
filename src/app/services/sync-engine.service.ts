@@ -1,4 +1,4 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import {
   BACKGROUND_SYNC_RETRIES_MAX,
@@ -9,6 +9,32 @@ import { sleep } from '@app/shared/utils';
 import { firstValueFrom, timeout } from 'rxjs';
 import { LocalStorageService } from './local-storage.service';
 import { NotificationService } from './notification.service';
+
+// Normalized shape of a failed request, passed to rollback/error callbacks instead of the raw
+// caught value — callers don't need to know about HttpErrorResponse/TimeoutError/etc.
+export interface SyncOperationError {
+  status: number; // 0 for network failure/timeout/anything not carrying a real HTTP status
+  body: unknown; // parsed response body, if any (e.g. { result: false, error: '...' })
+}
+
+function normalizeSyncError(error: unknown): SyncOperationError {
+  if (error instanceof HttpErrorResponse) {
+    return { status: error.status, body: error.error };
+  }
+  return { status: 0, body: null };
+}
+
+// A 4xx (other than 429) means the server looked at this exact request and rejected it for a
+// reason that won't change on retry (same idempotent operationId, same data) — retrying just
+// wastes ~6s before showing the user an error that was already final on the first attempt.
+// Everything else (no connection, timeout, 429, 5xx, or an unrecognized error shape — all
+// normalized to status 0) is treated as transient and retried, same as before this existed.
+function isRetryable(normalized: SyncOperationError): boolean {
+  if (normalized.status === 0) return true;
+  if (normalized.status === 429) return true;
+  if (normalized.status >= 500) return true;
+  return normalized.status < 400;
+}
 
 export const SyncOperationType = {
   CREATE: 'create', // POST
@@ -47,13 +73,13 @@ interface SyncOperationRequest {
 export interface OptimisticSyncOperation extends SyncOperationRequest {
   mode: typeof SyncOperationMode.Optimistic;
   successCallback?: (response: any) => void;
-  rollbackCallback?: () => void;
+  rollbackCallback?: (error: SyncOperationError) => void;
 }
 
 export interface NonOptimisticSyncOperation extends SyncOperationRequest {
   mode: typeof SyncOperationMode.NonOptimistic;
   applyCallback?: (response: any) => void;
-  errorCallback?: () => void;
+  errorCallback?: (error: SyncOperationError) => void;
 }
 
 export type SyncOperationInput = OptimisticSyncOperation | NonOptimisticSyncOperation;
@@ -62,7 +88,7 @@ interface QueuedOperation extends SyncOperationRequest {
   operationId: string;
   retryCount: number;
   onSuccess?: (response: any) => void;
-  onFailure?: () => void;
+  onFailure?: (error: SyncOperationError) => void;
   pendingTimeoutId?: ReturnType<typeof setTimeout> | null;
   pendingNotificationId?: string | null;
 }
@@ -190,14 +216,20 @@ export class SyncEngineService {
 
         return;
       } catch (error) {
+        const normalizedError = normalizeSyncError(error);
+        const terminal = !isRetryable(normalizedError);
         operation.retryCount++;
 
-        if (operation.retryCount >= BACKGROUND_SYNC_RETRIES_MAX) {
-          console.error(`Operation failed after ${BACKGROUND_SYNC_RETRIES_MAX} retries:`, error);
+        if (terminal || operation.retryCount >= BACKGROUND_SYNC_RETRIES_MAX) {
+          if (terminal) {
+            console.error('Operation failed with a non-retryable error:', error);
+          } else {
+            console.error(`Operation failed after ${BACKGROUND_SYNC_RETRIES_MAX} retries:`, error);
+          }
 
           this.clearPersistedOperation();
           this.resolvePendingFeedback(operation);
-          operation.onFailure?.();
+          operation.onFailure?.(normalizedError);
 
           if (operation.feedback) {
             this.notificationService.addNotification('error', operation.feedback.errorMessage);

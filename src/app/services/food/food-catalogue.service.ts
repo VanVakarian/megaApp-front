@@ -22,7 +22,7 @@ import { firstValueFrom } from 'rxjs';
 import { filter } from 'rxjs/operators';
 import { LocalStorageService } from '../local-storage.service';
 import { NetworkService } from '../network.service';
-import { SyncEngineService } from '../sync-engine.service';
+import { SyncEngineService, SyncOperationError, SyncOperationMode, SyncOperationType } from '../sync-engine.service';
 import { BaseFoodService } from './food-base.service';
 
 @Injectable({
@@ -308,25 +308,26 @@ export class FoodCatalogueService extends BaseFoodService {
     }
   }
 
-  public async saveProduct(productData: ProductSaveRequest): Promise<CatalogueEntry> {
-    try {
-      const response = await firstValueFrom(
-        this.http.post<ServerResponseProductSave>('/api/food/save-product', productData),
-      );
+  public saveProduct(productData: ProductSaveRequest): Promise<CatalogueEntry> {
+    return new Promise<CatalogueEntry>((resolve, reject) => {
+      this.addSyncOperation({
+        mode: SyncOperationMode.NonOptimistic,
+        type: SyncOperationType.CREATE, // always POST — save-product handles both create and update by body.id
+        endpoint: '/api/food/save-product',
+        data: productData,
+        applyCallback: (response: ServerResponseProductSave) => {
+          if (!response.result || !response.data?.catalogueEntry) {
+            reject(new Error(response.error || 'Failed to save product'));
+            return;
+          }
 
-      if (!response.result || !response.data?.catalogueEntry) {
-        throw new Error(response.error || 'Failed to save product');
-      }
-
-      const catalogueEntry = response.data.catalogueEntry;
-
-      this.upsertCatalogueEntry(catalogueEntry);
-
-      return catalogueEntry;
-    } catch (error: any) {
-      console.error('Failed to save product:', error);
-      throw error;
-    }
+          const catalogueEntry = response.data.catalogueEntry;
+          this.upsertCatalogueEntry(catalogueEntry);
+          resolve(catalogueEntry);
+        },
+        errorCallback: (error: SyncOperationError) => reject(error),
+      });
+    });
   }
 
   public async getProductById(catalogueId: number): Promise<CatalogueEntry> {
@@ -348,21 +349,25 @@ export class FoodCatalogueService extends BaseFoodService {
     }
   }
 
-  public async deleteProduct(catalogueId: number): Promise<void> {
-    try {
-      const response = await firstValueFrom(
-        this.http.delete<ServerResponseBasic>(`/api/food/catalogue/${catalogueId}`),
-      );
+  public deleteProduct(catalogueId: number): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+      this.addSyncOperation({
+        mode: SyncOperationMode.NonOptimistic,
+        type: SyncOperationType.DELETE,
+        endpoint: `/api/food/catalogue/${catalogueId}`,
+        data: {},
+        applyCallback: (response: ServerResponseBasic) => {
+          if (!response.result) {
+            reject(new Error('Failed to delete product'));
+            return;
+          }
 
-      if (!response.result) {
-        throw new Error('Failed to delete product');
-      }
-
-      this.removeCatalogueEntry(catalogueId);
-    } catch (error) {
-      console.error('Failed to delete product:', error);
-      throw error;
-    }
+          this.removeCatalogueEntry(catalogueId);
+          resolve();
+        },
+        errorCallback: (error: SyncOperationError) => reject(error),
+      });
+    });
   }
 
   private upsertCatalogueEntry(entry: CatalogueEntry): void {

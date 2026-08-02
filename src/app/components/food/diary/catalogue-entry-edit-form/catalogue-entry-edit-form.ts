@@ -214,7 +214,7 @@ export class CatalogueEntryEditForm implements OnInit {
     } catch (error: any) {
       console.error('Failed to save product:', error);
 
-      if (error?.error?.error?.includes('already exists')) {
+      if (error?.body?.error?.includes('already exists')) {
         this.error$$.set('Product with this name already exists. Please use a different name.');
       } else {
         this.error$$.set('Failed to save product. Please try again.');
@@ -262,13 +262,13 @@ export class CatalogueEntryEditForm implements OnInit {
     } catch (error: any) {
       console.error('Failed to delete product:', error);
 
-      if (error?.error?.error === 'Product is used in diary entries') {
+      if (error?.body?.error === 'product is used in diary entries') {
         this.error$$.set('Продукт уже используется в дневнике и не может быть удалён.');
         this.foodAddModalService.selectedProduct$$.set({
           ...product,
           canDelete: false,
         });
-      } else if (error?.error?.error === 'Product not found') {
+      } else if (error?.body?.error === 'product not found') {
         this.foodAddModalService.deletedProduct();
       } else {
         this.error$$.set('Не удалось удалить продукт. Попробуйте ещё раз.');
