@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { computed, effect, inject, Injectable, Signal, signal, WritableSignal } from '@angular/core';
 import { AuthService, AuthSessionState } from '@app/services/auth.service';
 import { exhaustRequest } from '@app/shared/decorators/exhaust-request.decorator';
-import { Stats, StatsChartData } from '@app/shared/types';
+import { DayStats, Stats, StatsChartData } from '@app/shared/types';
 import { firstValueFrom } from 'rxjs';
 import { dateToIsoNoTimeNoTZ, formatDateTicks } from '../../shared/utils';
 import { LocalStorageService } from '../local-storage.service';
@@ -85,20 +85,37 @@ export class FoodStatsService {
     if (newWeight === null && !kcalsDelta) return;
 
     const stats = this.stats$$();
-    const dateStats = stats[dateIso];
+    const dateStats = stats[dateIso] ?? this.buildFallbackDayStats(stats, dateIso);
 
-    if (dateStats) {
-      this.stats$$.set({
-        ...stats,
-        [dateIso]: [
-          newWeight === null ? dateStats[0] : newWeight,
-          dateStats[1],
-          dateStats[2] + kcalsDelta,
-          dateStats[3],
-          dateStats[4],
-        ],
-      });
-    }
+    this.stats$$.set({
+      ...stats,
+      [dateIso]: {
+        ...dateStats,
+        weight: newWeight === null ? dateStats.weight : newWeight,
+        consumedKcal: dateStats.consumedKcal + kcalsDelta,
+      },
+    });
+  }
+
+  // A new day (typically today) may not exist yet in stats$$ — it only gets added by a full
+  // getStats() fetch from the server. Without this fallback, an optimistic update for such a
+  // day silently no-ops, and the point only appears after the next full refresh. Carry values
+  // forward from the nearest known day at or before dateIso (never a later one, since that would
+  // show a not-yet-reached day's target/average on an earlier date). NaN when no such day exists
+  // at all (brand new user) so the chart shows a gap instead of a fake zero.
+  private buildFallbackDayStats(stats: Stats, dateIso: string): DayStats {
+    const priorDates = Object.keys(stats)
+      .filter((date) => date <= dateIso)
+      .sort();
+    const nearestKnown = priorDates.length ? stats[priorDates[priorDates.length - 1]] : null;
+
+    return {
+      weight: nearestKnown?.weight ?? Number.NaN,
+      weightAvg: nearestKnown?.weightAvg ?? Number.NaN,
+      consumedKcal: 0,
+      targetKcal: nearestKnown?.targetKcal ?? Number.NaN,
+      isVirtualKcalDay: nearestKnown?.isVirtualKcalDay ?? false,
+    };
   }
 
   private applyDateRangeOnLoad(useDefaultIfNoSaved: boolean): void {
@@ -147,17 +164,17 @@ export class FoodStatsService {
       kcalsTarget: [],
     };
 
-    Object.entries(stats).forEach(([date, values]) => {
-      const [weight, weightAvg, kcal, kcalTarget, isVirtualKcalDay] = values;
-      const hasKcal = kcal !== undefined && kcal !== null;
-      const factualKcal = !hasKcal ? Number.NaN : isVirtualKcalDay ? 0 : kcal;
-      const virtualKcal = !hasKcal ? Number.NaN : isVirtualKcalDay ? kcal : 0;
+    Object.entries(stats).forEach(([date, dayStats]) => {
+      const { weight, weightAvg, consumedKcal, targetKcal, isVirtualKcalDay } = dayStats;
+      const hasKcal = consumedKcal !== undefined && consumedKcal !== null;
+      const factualKcal = !hasKcal ? Number.NaN : isVirtualKcalDay ? 0 : consumedKcal;
+      const virtualKcal = !hasKcal ? Number.NaN : isVirtualKcalDay ? consumedKcal : 0;
       result.dates.push(date);
       result.weights.push(weight);
       result.weightsAvg.push(weightAvg);
       result.kcalsFactual.push(factualKcal);
       result.kcalsVirtual.push(virtualKcal);
-      result.kcalsTarget.push(kcalTarget);
+      result.kcalsTarget.push(targetKcal);
     });
 
     return result;

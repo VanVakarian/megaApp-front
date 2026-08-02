@@ -483,8 +483,16 @@ export interface BodyWeightInterface {
 
 //                                                                         STATS
 
+export interface DayStats {
+  weight: number;
+  weightAvg: number;
+  consumedKcal: number;
+  targetKcal: number;
+  isVirtualKcalDay: boolean;
+}
+
 export interface Stats {
-  [id: string]: [number, number, number, number, boolean?];
+  [id: string]: DayStats;
 }
 
 export interface StatsChartData {
