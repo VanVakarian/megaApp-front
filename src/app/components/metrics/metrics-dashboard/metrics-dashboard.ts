@@ -93,6 +93,7 @@ export class MetricsDashboard implements OnInit, OnDestroy {
   private readonly now$$ = signal(Date.now());
   protected readonly targetWidthPx$$ = computed(() => this.metricsSettingsService.cardSize$$().widthPx);
   protected readonly heightPx$$ = computed(() => this.metricsSettingsService.cardSize$$().heightPx);
+  protected readonly expandedHeightPx$$ = computed(() => this.metricsSettingsService.cardSize$$().expandedHeightPx);
   protected readonly cardLayoutMode$$ = this.metricsSettingsService.cardLayoutMode$$;
   protected readonly activeTooltipMode$$ = this.metricsSettingsService.activeTooltipMode$$;
   protected readonly granularityOptions = GRANULARITY_OPTIONS;
@@ -264,7 +265,14 @@ export class MetricsDashboard implements OnInit, OnDestroy {
         const metricPoints = pointsIndex.get(key) ?? [];
         const aggregation = metricAggregation(option.service, name);
         const chartMode = metricChartMode(option.service, name);
-        const display = buildSeriesDisplay(key, metricPoints, aggregation, chartMode, isMinuteGranularity, serviceWindow);
+        const display = buildSeriesDisplay(
+          key,
+          metricPoints,
+          aggregation,
+          chartMode,
+          isMinuteGranularity,
+          serviceWindow,
+        );
         const fullWidthDisplay = isMinuteGranularity
           ? buildSeriesDisplay(key, metricPoints, aggregation, chartMode, false, serviceWindow)
           : display;
@@ -542,6 +550,12 @@ export class MetricsDashboard implements OnInit, OnDestroy {
     const heightPx = Number(value);
     if (!Number.isFinite(heightPx) || heightPx <= 0) return;
     this.metricsSettingsService.setCardHeightPx(heightPx);
+  }
+
+  protected onCardExpandedHeightChange(value: string): void {
+    const expandedHeightPx = Number(value);
+    if (!Number.isFinite(expandedHeightPx) || expandedHeightPx <= 0) return;
+    this.metricsSettingsService.setCardExpandedHeightPx(expandedHeightPx);
   }
 
   protected cycleCardLayoutMode(): void {

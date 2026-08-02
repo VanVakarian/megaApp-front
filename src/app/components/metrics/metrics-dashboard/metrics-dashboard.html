@@ -126,6 +126,14 @@
                      label="Высота, px"
                      [isDisabled]="isSavingSettings$$()"
                      textAlign="right" />
+            <v-input class="w-32"
+                     [value]="expandedHeightPx$$().toString()"
+                     (valueChange)="onCardExpandedHeightChange($event)"
+                     type="number"
+                     inputmode="numeric"
+                     label="Высота развёрнутой, px"
+                     [isDisabled]="isSavingSettings$$()"
+                     textAlign="right" />
           </div>
         </div>
 
@@ -354,12 +362,13 @@
         <v-card class="mb-4"
                 [borderRadius]="2"
                 [padding]="0">
-          <div class="flex flex-col gap-4 p-4">
+          <div class="flex flex-col gap-4 p-3">
             <div>
               <div class="opacity-70 mb-2 font-semibold">{{ row.label }}</div>
               <metric-card-grid [cardsInput]="row.cards"
                                 [targetWidthPxInput]="targetWidthPx$$()"
                                 [heightPxInput]="heightPx$$()"
+                                [expandedHeightPxInput]="expandedHeightPx$$()"
                                 [layoutModeInput]="cardLayoutMode$$()"
                                 [syncCrosshairEnabledInput]="syncCrosshairEnabled$$()"
                                 [forceZeroBaselineInput]="forceZeroBaselineEnabled$$()"
@@ -381,13 +390,14 @@
         <v-card class="mb-4"
                 [borderRadius]="2"
                 [padding]="0">
-          <div class="flex flex-col gap-4 p-4">
+          <div class="flex flex-col gap-4 p-3">
             @for (group of serviceMetricsData$$().get(service.service)?.groups ?? []; track group.id) {
               <div>
                 <div class="opacity-70 mb-2 font-semibold">{{ group.label }}</div>
                 <metric-card-grid [cardsInput]="group.cards"
                                   [targetWidthPxInput]="targetWidthPx$$()"
                                   [heightPxInput]="heightPx$$()"
+                                  [expandedHeightPxInput]="expandedHeightPx$$()"
                                   [layoutModeInput]="cardLayoutMode$$()"
                                   [syncCrosshairEnabledInput]="syncCrosshairEnabled$$()"
                                   [forceZeroBaselineInput]="forceZeroBaselineEnabled$$()"
@@ -409,13 +419,14 @@
       <v-card class="mb-4"
               [borderRadius]="2"
               [padding]="0">
-        <div class="flex flex-col gap-4 p-4">
+        <div class="flex flex-col gap-4 p-3">
           @for (group of serviceMetricsData$$().get(compositeServiceKey)?.groups ?? []; track group.id) {
             <div>
               <div class="opacity-70 mb-2 font-semibold">{{ group.label }}</div>
               <metric-card-grid [cardsInput]="group.cards"
                                 [targetWidthPxInput]="targetWidthPx$$()"
                                 [heightPxInput]="heightPx$$()"
+                                [expandedHeightPxInput]="expandedHeightPx$$()"
                                 [layoutModeInput]="cardLayoutMode$$()"
                                 [syncCrosshairEnabledInput]="syncCrosshairEnabled$$()"
                                 [forceZeroBaselineInput]="forceZeroBaselineEnabled$$()"

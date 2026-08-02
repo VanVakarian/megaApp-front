@@ -27,6 +27,7 @@ export type TooltipMode = (typeof TooltipMode)[keyof typeof TooltipMode];
 export interface CardSize {
   widthPx: number;
   heightPx: number;
+  expandedHeightPx: number;
 }
 
 interface StoredMetricsSettings {
@@ -52,10 +53,12 @@ const DEFAULT_FORCE_ZERO_BASELINE_ENABLED = false;
 const SETTINGS_ENDPOINT = '/api/metrics-settings/';
 const DEFAULT_CARD_WIDTH_PX = 304;
 const DEFAULT_CARD_HEIGHT_PX = 112;
+const DEFAULT_CARD_EXPANDED_HEIGHT_PX = 400;
 
 const DEFAULT_CARD_SIZE: CardSize = {
   widthPx: DEFAULT_CARD_WIDTH_PX,
   heightPx: DEFAULT_CARD_HEIGHT_PX,
+  expandedHeightPx: DEFAULT_CARD_EXPANDED_HEIGHT_PX,
 };
 
 const DEFAULTS: StoredMetricsSettings = {
@@ -109,8 +112,17 @@ function isValidCardSize(value: unknown): value is CardSize {
   );
 }
 
+// expandedHeightPx is validated separately (not folded into isValidCardSize) so that
+// settings saved before this field existed still resolve their width/height instead
+// of falling back to DEFAULT_CARD_SIZE wholesale — only the missing field gets defaulted.
 function resolveCardSize(raw: Partial<StoredMetricsSettings>): CardSize {
-  return isValidCardSize(raw.cardSize) ? raw.cardSize : DEFAULT_CARD_SIZE;
+  if (!isValidCardSize(raw.cardSize)) return DEFAULT_CARD_SIZE;
+  const expandedHeightPx = raw.cardSize.expandedHeightPx;
+  return {
+    ...raw.cardSize,
+    expandedHeightPx:
+      isFiniteNumber(expandedHeightPx) && expandedHeightPx > 0 ? expandedHeightPx : DEFAULT_CARD_EXPANDED_HEIGHT_PX,
+  };
 }
 
 function isValidCardLayoutMode(value: unknown): value is CardLayoutMode {
@@ -230,6 +242,10 @@ export class MetricsSettingsService {
 
   public setCardHeightPx(value: number): void {
     this.updateCardSize({ heightPx: value });
+  }
+
+  public setCardExpandedHeightPx(value: number): void {
+    this.updateCardSize({ expandedHeightPx: value });
   }
 
   public setCardLayoutMode(mode: CardLayoutMode): void {

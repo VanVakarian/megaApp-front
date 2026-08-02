@@ -4,7 +4,6 @@ import {
   computed,
   effect,
   ElementRef,
-  inject,
   input,
   OnDestroy,
   OnInit,
@@ -71,6 +70,7 @@ export class MetricCardGrid implements OnInit, OnDestroy {
   public readonly cardsInput = input.required<MetricChartCardData[]>();
   public readonly targetWidthPxInput = input.required<number>();
   public readonly heightPxInput = input.required<number>();
+  public readonly expandedHeightPxInput = input.required<number>();
   public readonly layoutModeInput = input.required<CardLayoutMode>();
   public readonly syncCrosshairEnabledInput = input<boolean>(false);
   public readonly forceZeroBaselineInput = input<boolean>(false);
@@ -190,6 +190,10 @@ export class MetricCardGrid implements OnInit, OnDestroy {
 
   protected cardDisplay(item: RenderItem): MetricChartCardSeriesDisplay {
     return this.isFullWidthRole(item) ? item.card.fullWidthDisplay : item.card.display;
+  }
+
+  protected cardHeightPx(item: RenderItem): number {
+    return this.isFullWidthRole(item) ? this.expandedHeightPxInput() : this.heightPxInput();
   }
 
   // The expanded card spans every column (its own full-width row); normal cards
