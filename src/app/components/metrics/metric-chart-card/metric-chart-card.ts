@@ -6,14 +6,26 @@ import {
   ElementRef,
   input,
   OnDestroy,
+  OnInit,
   output,
+  signal,
   viewChild,
 } from '@angular/core';
 import { TooltipMode } from '@app/services/metrics-settings.service';
-import { createMetricBarConfig, createMetricSparseLineConfig, MetricTooltipInteractionMode } from '@app/shared/chart-config';
+import {
+  createMetricBarConfig,
+  createMetricSparseLineConfig,
+  MetricTooltipInteractionMode,
+} from '@app/shared/chart-config';
 import { formatMetricUnitValue, MetricUnit } from '@app/shared/metric-units';
 import { MetricChartMode } from '@app/shared/metrics-chart-mode';
-import { buildPaddedTickBuckets, findNearestSeriesPoint, MetricSeriesPoint } from '@app/shared/metrics-series';
+import {
+  buildPaddedTickBuckets,
+  buildRoundDayTickBuckets,
+  buildRoundTickBuckets,
+  findNearestSeriesPoint,
+  MetricSeriesPoint,
+} from '@app/shared/metrics-series';
 import {
   hoverBucket$$,
   MetricSyncCrosshairOptions,
@@ -58,6 +70,23 @@ export const DEFAULT_CHART_HEIGHT_PX = 112;
 // user setting.
 const CROSSHAIR_CAPTURE_STEP_MULTIPLIER = 3;
 
+// On a full-width chart, ticks land on round time values instead of being evenly
+// spaced across the window: round hours for minute granularity, local day starts
+// (00:00) for hour/day granularity.
+const ROUND_HOUR_TICK_INTERVAL_SECONDS = 3600;
+// Only used to estimate on-screen tick spacing for the day-tick thinning below —
+// actual tick positions still come from buildRoundDayTickBuckets, which steps by
+// calendar day (not a flat 86400s) so DST doesn't drift them off local midnight.
+const ROUND_DAY_TICK_INTERVAL_SECONDS = 86400;
+
+// Canvas text can't be measured without a real render, so tick label width is
+// estimated instead of measured: both "HH:MM" and "DD.MM" are 4 digits plus one
+// separator, so one estimate covers both. Gap is the minimum breathing room
+// wanted between two adjacent labels before they start to crowd.
+const TICK_LABEL_WIDTH_PX = 33;
+const TICK_LABEL_GAP_PX = 13;
+const TICK_LABEL_SLOT_PX = TICK_LABEL_WIDTH_PX + TICK_LABEL_GAP_PX;
+
 // Shown while hovering when no point falls within the capture window above.
 const HOVER_NO_VALUE_PLACEHOLDER = '—';
 
@@ -67,7 +96,7 @@ const HOVER_NO_VALUE_PLACEHOLDER = '—';
   imports: [VCard, VCheckbox, VIcon, VInput, VTooltip],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class MetricChartCard implements OnDestroy {
+export class MetricChartCard implements OnInit, OnDestroy {
   public readonly labelInput = input.required<string>();
   public readonly technicalNameInput = input<string>('');
   public readonly valueInput = input<number>(0);
@@ -80,6 +109,7 @@ export class MetricChartCard implements OnDestroy {
   public readonly windowStartInput = input<number>(0);
   public readonly windowEndInput = input<number>(0);
   public readonly displayStepSecondsInput = input<number>(60);
+  public readonly isFullWidthInput = input<boolean>(false);
   public readonly syncCrosshairEnabledInput = input<boolean>(false);
   public readonly forceZeroBaselineInput = input<boolean>(false);
   public readonly tooltipModeInput = input<TooltipMode>(TooltipMode.Nearest);
@@ -137,6 +167,13 @@ export class MetricChartCard implements OnDestroy {
   private chart: Chart | null = null;
   private chartSignature = '';
 
+  // The card's own rendered width — not the grid's — decides whether round ticks
+  // need thinning, so it's tracked directly on this component's host rather than
+  // derived from the grid's column-fitting math.
+  private readonly hostElement: HTMLElement;
+  private readonly cardWidthPx$$ = signal(0);
+  private resizeObserver: ResizeObserver | null = null;
+
   private readonly chartUpdateEffect = effect(() => {
     const canvasElem = this.chartCanvasElem();
     const chartMode = this.chartModeInput();
@@ -148,6 +185,8 @@ export class MetricChartCard implements OnDestroy {
     this.windowStartInput();
     this.windowEndInput();
     this.displayStepSecondsInput();
+    this.isFullWidthInput();
+    this.cardWidthPx$$();
     this.syncCrosshairEnabledInput();
     this.forceZeroBaselineInput();
     if (!canvasElem) return;
@@ -155,7 +194,20 @@ export class MetricChartCard implements OnDestroy {
     this.updateChart(series);
   });
 
+  public constructor(elementRef: ElementRef<HTMLElement>) {
+    this.hostElement = elementRef.nativeElement;
+  }
+
+  public ngOnInit(): void {
+    this.resizeObserver = new ResizeObserver(([entry]) => {
+      this.cardWidthPx$$.set(entry.contentRect.width);
+    });
+    this.resizeObserver.observe(this.hostElement);
+  }
+
   public ngOnDestroy(): void {
+    this.resizeObserver?.disconnect();
+    this.resizeObserver = null;
     this.chart?.destroy();
     this.chart = null;
     this.chartSignature = '';
@@ -208,10 +260,39 @@ export class MetricChartCard implements OnDestroy {
     this.chart.update('none');
   }
 
+  private buildTickBuckets(windowStart: number, windowEnd: number): number[] {
+    if (!this.isFullWidthInput()) {
+      return buildPaddedTickBuckets(windowStart, windowEnd);
+    }
+    if (this.granularityInput() === 'minute') {
+      const ticks = buildRoundTickBuckets(windowStart, windowEnd, ROUND_HOUR_TICK_INTERVAL_SECONDS);
+      return this.thinTicksToFit(ticks, ROUND_HOUR_TICK_INTERVAL_SECONDS, windowStart, windowEnd);
+    }
+    const ticks = buildRoundDayTickBuckets(windowStart, windowEnd);
+    return this.thinTicksToFit(ticks, ROUND_DAY_TICK_INTERVAL_SECONDS, windowStart, windowEnd);
+  }
+
+  // Full-density ticks are evenly spaced by `intervalSeconds`, so their on-screen
+  // spacing is derivable from the card's own rendered width without ever touching
+  // the canvas: pixels-per-tick = cardWidthPx * intervalSeconds / windowSpanSeconds.
+  // The smallest stride whose spacing still clears TICK_LABEL_SLOT_PX is kept —
+  // 1 (every tick) when there's room, rising only as far as actually needed.
+  private thinTicksToFit(ticks: number[], intervalSeconds: number, windowStart: number, windowEnd: number): number[] {
+    const cardWidthPx = this.cardWidthPx$$();
+    const windowSpanSeconds = windowEnd - windowStart;
+    if (cardWidthPx <= 0 || windowSpanSeconds <= 0) {
+      return ticks;
+    }
+
+    const fullDensitySpacingPx = (cardWidthPx * intervalSeconds) / windowSpanSeconds;
+    const stride = Math.max(1, Math.ceil(TICK_LABEL_SLOT_PX / fullDensitySpacingPx));
+    return ticks.filter((_, index) => index % stride === 0);
+  }
+
   private updateSparseChart(series: MetricSeriesPoint[]): void {
     const windowStart = this.windowStartInput();
     const windowEnd = this.windowEndInput();
-    const tickBuckets = buildPaddedTickBuckets(windowStart, windowEnd);
+    const tickBuckets = this.buildTickBuckets(windowStart, windowEnd);
 
     this.chart!.data.datasets[0].data = series.map((point) => ({
       x: point.bucket,

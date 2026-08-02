@@ -198,14 +198,38 @@ export function formatMetricTickLabel(bucketSeconds: number, granularity: Metric
   return formatMetricBucketLabel(bucketSeconds, granularity);
 }
 
-export function buildRoundTickIndices(buckets: number[], intervalSeconds: number): number[] {
-  const indices: number[] = [];
-  buckets.forEach((bucket, index) => {
-    if (bucket % intervalSeconds === 0) {
-      indices.push(index);
-    }
-  });
-  return indices;
+// Every bucket in [windowStartBucket, windowEndBucket] that lands exactly on an
+// interval boundary (e.g. 3600 for round hours) — unlike buildPaddedTickBuckets,
+// tick count varies with window length instead of being fixed.
+export function buildRoundTickBuckets(
+  windowStartBucket: number,
+  windowEndBucket: number,
+  intervalSeconds: number,
+): number[] {
+  const firstTick = Math.ceil(windowStartBucket / intervalSeconds) * intervalSeconds;
+  const buckets: number[] = [];
+  for (let bucket = firstTick; bucket <= windowEndBucket; bucket += intervalSeconds) {
+    buckets.push(bucket);
+  }
+  return buckets;
+}
+
+// Every local midnight (00:00) in [windowStartBucket, windowEndBucket] — steps by
+// calendar day via Date instead of a flat 86400s stride, so a DST transition inside
+// the window can't drift a later tick off local midnight.
+export function buildRoundDayTickBuckets(windowStartBucket: number, windowEndBucket: number): number[] {
+  const cursor = new Date(windowStartBucket * 1000);
+  cursor.setHours(0, 0, 0, 0);
+  if (cursor.getTime() < windowStartBucket * 1000) {
+    cursor.setDate(cursor.getDate() + 1);
+  }
+
+  const buckets: number[] = [];
+  while (cursor.getTime() <= windowEndBucket * 1000) {
+    buckets.push(Math.floor(cursor.getTime() / 1000));
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return buckets;
 }
 
 // `segments + 1` buckets, evenly spaced from start to end (both included).
