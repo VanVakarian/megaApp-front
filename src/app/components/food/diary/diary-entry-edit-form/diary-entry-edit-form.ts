@@ -1,4 +1,16 @@
-import { Component, computed, effect, EventEmitter, inject, Input, OnChanges, Output, viewChild } from '@angular/core';
+import {
+  Component,
+  computed,
+  effect,
+  EventEmitter,
+  inject,
+  Input,
+  OnChanges,
+  Output,
+  signal,
+  viewChild,
+  WritableSignal,
+} from '@angular/core';
 import {
   AbstractControl,
   FormControl,
@@ -13,6 +25,7 @@ import { FoodCatalogueService } from '@app/services/food/food-catalogue.service'
 import { FoodDiaryService } from '@app/services/food/food-diary.service';
 import { FoodPersonalKcalsService } from '@app/services/food/food-personal-kcals.service';
 import { DiaryEntry, HistoryEntry, HistoryEntryAction } from '@app/shared/types';
+import { projectDaysConsumedPercent } from '@app/shared/utils';
 import { VButton } from '@ui-kit/components/v-button/v-button';
 import { VExpand } from '@ui-kit/components/v-expand/v-expand';
 import { IconName, VIcon } from '@ui-kit/components/v-icon/v-icon';
@@ -63,14 +76,31 @@ export class DiaryEntryEditForm implements OnChanges {
   protected disablePanelsAnimationTemporarily = false;
   private historyAction: HistoryEntryAction = HistoryEntryAction.SET;
 
-  private selectedDaysTargerKcals = 0;
-  private selectedDaysConsumedPercent = 0;
-  private selectedFoodPersonalKcalsPer100g = 0;
-  protected projectedSelectedDaysConsumedPercentNum = 0;
-  protected projectedSelectedDaysConsumedPercentPadded = '0';
+  // Base data from the server — legitimately refreshed by any background reload, in-progress
+  // draft below is never touched by it, only by the user's own input/reset/submit.
+  private readonly foodWeightInitial$$: WritableSignal<number> = signal(0);
+  private readonly selectedDaysTargetKcals$$: WritableSignal<number> = signal(0);
+  private readonly selectedDaysConsumedPercent$$: WritableSignal<number> = signal(0);
+  private readonly selectedFoodPersonalKcalsPer100g$$: WritableSignal<number> = signal(0);
 
-  protected foodWeightInitial: number = 0;
-  protected foodWeightFinal: number = 0;
+  // The user's in-progress, unsubmitted draft — set only from onNewWeightInput/onChangeWeightInput
+  // and the reset handlers below, mutually exclusive (setting one clears the other).
+  private readonly foodWeightDraftNew$$: WritableSignal<number | null> = signal(null);
+  private readonly foodWeightDraftChangeRaw$$: WritableSignal<string | null> = signal(null);
+
+  protected readonly foodWeightFinal$$ = computed(() => this.computeFoodWeightFinal());
+
+  protected readonly projectedSelectedDaysConsumedPercentNum$$ = computed(() =>
+    projectDaysConsumedPercent(
+      this.foodWeightFinal$$() - this.foodWeightInitial$$(),
+      this.selectedFoodPersonalKcalsPer100g$$(),
+      this.selectedDaysTargetKcals$$(),
+      this.selectedDaysConsumedPercent$$(),
+    ),
+  );
+  protected readonly projectedSelectedDaysConsumedPercentPadded$$ = computed(() =>
+    this.projectedSelectedDaysConsumedPercentNum$$().toFixed(1),
+  );
 
   protected readonly Icon = IconName;
 
@@ -94,7 +124,7 @@ export class DiaryEntryEditForm implements OnChanges {
       const changeValue = parseInt(rawValue);
       if (!Number.isFinite(changeValue)) return null;
 
-      const newWeight = this.foodWeightInitial + changeValue;
+      const newWeight = this.foodWeightInitial$$() + changeValue;
       return newWeight > 0 ? null : { negativeResult: true };
     };
   }
@@ -136,13 +166,13 @@ export class DiaryEntryEditForm implements OnChanges {
 
   private totalsUpdateEffect$$ = effect(() => {
     const totals = this.foodDiaryService.selectedDayTotals$$();
-    this.selectedDaysConsumedPercent = totals.kcalsPercent;
-    this.selectedDaysTargerKcals = totals.targetKcals;
-    this.selectedFoodPersonalKcalsPer100g =
+    this.selectedDaysConsumedPercent$$.set(totals.kcalsPercent);
+    this.selectedDaysTargetKcals$$.set(totals.targetKcals);
+    this.selectedFoodPersonalKcalsPer100g$$.set(
       this.foodPersonalKcalsService.personalKcals$$()?.[this.diaryEntry.foodCatalogueId] ??
-      this.foodCatalogueService.catalogue$$()?.[this.diaryEntry.foodCatalogueId]?.kcals ??
-      0;
-    this.updateProjectedDaysConsumedPercent();
+        this.foodCatalogueService.catalogue$$()?.[this.diaryEntry.foodCatalogueId]?.kcals ??
+        0,
+    );
   });
 
   protected get selectedFoodName() {
@@ -159,12 +189,7 @@ export class DiaryEntryEditForm implements OnChanges {
       this.diaryEntryForm.patchValue({
         id: this.diaryEntry.id,
       });
-      this.foodWeightInitial = this.diaryEntry.foodWeight;
-      this.foodWeightFinal = this.diaryEntry.foodWeight;
-
-      setTimeout(() => {
-        this.updateProjectedDaysConsumedPercent();
-      }, 0);
+      this.foodWeightInitial$$.set(this.diaryEntry.foodWeight);
     }
   }
 
@@ -180,74 +205,36 @@ export class DiaryEntryEditForm implements OnChanges {
     const nextWeightIfChange = weightIfChange !== null ? parseInt(weightIfChange) : null;
 
     const hasValidChange =
-      (nextWeightIfNew !== null && Number.isFinite(nextWeightIfNew) && this.foodWeightInitial !== nextWeightIfNew) ||
+      (nextWeightIfNew !== null &&
+        Number.isFinite(nextWeightIfNew) &&
+        this.foodWeightInitial$$() !== nextWeightIfNew) ||
       (nextWeightIfChange !== null && Number.isFinite(nextWeightIfChange) && nextWeightIfChange !== 0);
 
-    return hasValidChange && this.foodWeightFinal > 0;
+    return hasValidChange && this.foodWeightFinal$$() > 0;
   }
 
   protected onNewWeightInput() {
     this.foodWeightChangeControl.setValue(null);
+    this.foodWeightDraftChangeRaw$$.set(null);
+
     const newWeight = this.diaryEntryForm.controls.foodWeightNew.value;
-
-    if (this.newWeightPattern.test(String(newWeight))) {
-      this.foodWeightFinal = parseInt(String(newWeight));
-    } else {
-      this.foodWeightFinal = this.foodWeightInitial;
-    }
-
-    this.updateProjectedDaysConsumedPercent();
+    this.foodWeightDraftNew$$.set(this.newWeightPattern.test(String(newWeight)) ? parseInt(String(newWeight)) : null);
   }
 
   protected onWeightNewResetClick(): void {
     this.foodWeightNewControl.setValue(null);
-    this.foodWeightFinal = this.foodWeightInitial;
-    this.updateProjectedDaysConsumedPercent();
+    this.foodWeightDraftNew$$.set(null);
   }
 
   protected onChangeWeightInput() {
     this.diaryEntryForm.controls.foodWeightNew.setValue(null);
-    const foodWeightChangeStr = String(this.foodWeightChangeControl.value);
-    if (
-      foodWeightChangeStr === 'null' ||
-      foodWeightChangeStr === '' ||
-      foodWeightChangeStr === '-' ||
-      foodWeightChangeStr === '+'
-    ) {
-      // Intermediate input state: reset projection to avoid showing stale calculated result.
-      this.foodWeightFinal = this.foodWeightInitial;
-      this.updateProjectedDaysConsumedPercent();
-      return;
-    }
-
-    const foodWeightChangeInt = parseInt(foodWeightChangeStr);
-    if (!Number.isFinite(foodWeightChangeInt)) {
-      // Invalid numeric input: fall back to initial weight to keep UI consistent.
-      this.foodWeightFinal = this.foodWeightInitial;
-      this.updateProjectedDaysConsumedPercent();
-      return;
-    }
-
-    if (this.editWeightPattern.test(foodWeightChangeStr)) {
-      const newWeight = this.foodWeightInitial + foodWeightChangeInt;
-      if (newWeight > 0) {
-        this.foodWeightFinal = newWeight;
-      } else {
-        // Prevent non-positive result.
-        this.foodWeightFinal = 0;
-      }
-    } else {
-      // Pattern mismatch: do not apply delta.
-      this.foodWeightFinal = this.foodWeightInitial;
-    }
-
-    this.updateProjectedDaysConsumedPercent();
+    this.foodWeightDraftNew$$.set(null);
+    this.foodWeightDraftChangeRaw$$.set(this.foodWeightChangeControl.value);
   }
 
   protected onWeightChangeResetClick(): void {
     this.foodWeightChangeControl.setValue(null);
-    this.foodWeightFinal = this.foodWeightInitial;
-    this.updateProjectedDaysConsumedPercent();
+    this.foodWeightDraftChangeRaw$$.set(null);
   }
 
   public async onSubmit(): Promise<void> {
@@ -261,7 +248,7 @@ export class DiaryEntryEditForm implements OnChanges {
       weightIfChangeParsed !== null && Number.isFinite(weightIfChangeParsed) ? weightIfChangeParsed : null;
     const weightIfSet = weightIfSetParsed !== null && Number.isFinite(weightIfSetParsed) ? weightIfSetParsed : null;
 
-    const foodWeight = weightIfChange ?? (weightIfSet !== null ? weightIfSet - this.foodWeightInitial : 0);
+    const foodWeight = weightIfChange ?? (weightIfSet !== null ? weightIfSet - this.foodWeightInitial$$() : 0);
 
     const historyValue = weightIfChange !== null ? Math.abs(foodWeight) : (weightIfSet ?? 0);
 
@@ -280,7 +267,7 @@ export class DiaryEntryEditForm implements OnChanges {
       id: this.diaryEntryForm.getRawValue().id,
       dateISO: this.foodDiaryService.selectedDayIso$$(),
       foodCatalogueId: this.diaryEntry.foodCatalogueId,
-      foodWeight: this.foodWeightFinal,
+      foodWeight: this.foodWeightFinal$$(),
       kcals: 0,
       history: [history],
     };
@@ -371,25 +358,33 @@ export class DiaryEntryEditForm implements OnChanges {
     this.onServerSuccessfullEditResponse.emit();
   }
 
-  private updateProjectedDaysConsumedPercent(): void {
-    const weightDelta = this.foodWeightFinal - this.foodWeightInitial;
+  private computeFoodWeightFinal(): number {
+    const draftNew = this.foodWeightDraftNew$$();
+    if (draftNew !== null) return draftNew;
 
-    if (this.selectedFoodPersonalKcalsPer100g && this.selectedDaysTargerKcals) {
-      const weightKcalsTotal = (weightDelta / 100) * this.selectedFoodPersonalKcalsPer100g;
+    const base = this.foodWeightInitial$$();
+    const draftChangeRaw = this.foodWeightDraftChangeRaw$$();
 
-      const deltaInPercent = (weightKcalsTotal / this.selectedDaysTargerKcals) * 100;
-      const totalPercent = this.selectedDaysConsumedPercent + deltaInPercent;
-
-      this.projectedSelectedDaysConsumedPercentNum = totalPercent;
-      this.projectedSelectedDaysConsumedPercentPadded = totalPercent.toFixed(1);
+    if (draftChangeRaw === null || draftChangeRaw === '' || draftChangeRaw === '-' || draftChangeRaw === '+') {
+      // Intermediate input state: fall back to the base weight to keep UI consistent.
+      return base;
     }
+
+    const changeValue = parseInt(draftChangeRaw);
+    if (!Number.isFinite(changeValue) || !this.editWeightPattern.test(draftChangeRaw)) {
+      // Invalid or pattern-mismatched input: fall back to the base weight.
+      return base;
+    }
+
+    const newWeight = base + changeValue;
+    return newWeight > 0 ? newWeight : 0; // Prevent non-positive result.
   }
 
   private resetForm(): void {
     this.foodWeightNewControl.setValue(null);
     this.foodWeightChangeControl.setValue(null);
-    this.foodWeightFinal = this.foodWeightInitial;
-    this.updateProjectedDaysConsumedPercent();
+    this.foodWeightDraftNew$$.set(null);
+    this.foodWeightDraftChangeRaw$$.set(null);
   }
 
   private closePanels(): void {

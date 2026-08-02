@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, effect, inject, viewChild } from '@angular/core';
+import { AfterViewInit, Component, computed, effect, inject, signal, viewChild, WritableSignal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { FoodAddModalService } from '@app/services/food/food-add-modal.service';
 import { FoodCatalogueService } from '@app/services/food/food-catalogue.service';
@@ -6,6 +6,7 @@ import { FoodDiaryService } from '@app/services/food/food-diary.service';
 import { FoodPersonalKcalsService } from '@app/services/food/food-personal-kcals.service';
 import { FoodStatsService } from '@app/services/food/food-stats.service';
 import { DiaryEntry, HistoryEntryAction } from '@app/shared/types';
+import { projectDaysConsumedPercent } from '@app/shared/utils';
 import { VButton } from '@ui-kit/components/v-button/v-button';
 import { IconName, VIcon } from '@ui-kit/components/v-icon/v-icon';
 import { VInput } from '@ui-kit/components/v-input/v-input';
@@ -19,11 +20,26 @@ import { UiProgressIcon } from '@ui-kit/progress-icon/progress-icon.component';
 export class DiaryEntryAddForm implements AfterViewInit {
   protected readonly Icon = IconName;
 
-  private selectedDaysTargerKcals = 0;
-  private selectedDaysConsumedPercent = 0;
-  private selectedFoodPersonalKcalsPer100g = 0;
-  protected projectedSelectedDaysConsumedPercentNum = 0;
-  protected projectedSelectedDaysConsumedPercentPadded = '0';
+  // Base data from the server — legitimately refreshed by any background reload, in-progress
+  // draft below is never touched by it, only by the user's own input.
+  private readonly selectedDaysTargetKcals$$: WritableSignal<number> = signal(0);
+  private readonly selectedDaysConsumedPercent$$: WritableSignal<number> = signal(0);
+  private readonly selectedFoodPersonalKcalsPer100g$$: WritableSignal<number> = signal(0);
+
+  // The user's in-progress, unsubmitted draft — set only from onFoodWeightInput.
+  private readonly draftFoodWeight$$: WritableSignal<number> = signal(0);
+
+  protected readonly projectedSelectedDaysConsumedPercentNum$$ = computed(() =>
+    projectDaysConsumedPercent(
+      this.draftFoodWeight$$(),
+      this.selectedFoodPersonalKcalsPer100g$$(),
+      this.selectedDaysTargetKcals$$(),
+      this.selectedDaysConsumedPercent$$(),
+    ),
+  );
+  protected readonly projectedSelectedDaysConsumedPercentPadded$$ = computed(() =>
+    this.projectedSelectedDaysConsumedPercentNum$$().toFixed(1),
+  );
 
   protected readonly foodWeightInput = viewChild.required(VInput);
 
@@ -35,18 +51,17 @@ export class DiaryEntryAddForm implements AfterViewInit {
 
   private readonly selectedDayTotalsEffect$$ = effect(() => {
     const totals = this.foodDiaryService.selectedDayTotals$$();
-    this.selectedDaysTargerKcals = totals.targetKcals;
-    this.selectedDaysConsumedPercent = totals.kcalsPercent;
-    this.updateProjectedDaysConsumedPercent(0);
+    this.selectedDaysTargetKcals$$.set(totals.targetKcals);
+    this.selectedDaysConsumedPercent$$.set(totals.kcalsPercent);
   });
 
   private readonly selectedProductEffect$$ = effect(() => {
     const product = this.foodAddModalService.selectedProduct$$();
     if (!product) return;
 
-    this.selectedFoodPersonalKcalsPer100g =
-      this.foodPersonalKcalsService.personalKcals$$()?.[product.id] ?? product.kcals;
-    this.updateProjectedDaysConsumedPercent(this.foodWeightControl.value || 0);
+    this.selectedFoodPersonalKcalsPer100g$$.set(
+      this.foodPersonalKcalsService.personalKcals$$()?.[product.id] ?? product.kcals,
+    );
   });
 
   protected diaryEntryForm: FormGroup = new FormGroup({
@@ -68,26 +83,7 @@ export class DiaryEntryAddForm implements AfterViewInit {
   }
 
   protected onFoodWeightInput(): void {
-    const weightValue = Number(this.foodWeightControl.value) || 0;
-    this.updateProjectedDaysConsumedPercent(weightValue);
-  }
-
-  private updateProjectedDaysConsumedPercent(weightValue: number): void {
-    if (!this.selectedFoodPersonalKcalsPer100g) {
-      this.projectedSelectedDaysConsumedPercentNum = this.selectedDaysConsumedPercent;
-      this.projectedSelectedDaysConsumedPercentPadded = this.selectedDaysConsumedPercent.toFixed(1);
-      return;
-    }
-
-    if (this.selectedDaysTargerKcals) {
-      const weightKcalsTotal = (weightValue / 100) * this.selectedFoodPersonalKcalsPer100g;
-
-      const deltaInPercent = (weightKcalsTotal / this.selectedDaysTargerKcals) * 100;
-      const totalPercent = this.selectedDaysConsumedPercent + deltaInPercent;
-
-      this.projectedSelectedDaysConsumedPercentNum = totalPercent;
-      this.projectedSelectedDaysConsumedPercentPadded = totalPercent.toFixed(1);
-    }
+    this.draftFoodWeight$$.set(Number(this.foodWeightControl.value) || 0);
   }
 
   protected async submitForm(): Promise<void> {
