@@ -391,7 +391,7 @@ export class MetricsDashboard implements OnInit, OnDestroy {
         return {
           key,
           label: `Σ ${metricLabel(definition.serviceA, definition.metricName)}`,
-          technicalName: definition.id,
+          technicalName: definition.metricName,
           value: rawValue,
           displayValue: formatMetricUnitValue(unit, rawValue),
           unit,

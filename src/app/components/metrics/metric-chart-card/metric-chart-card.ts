@@ -34,7 +34,6 @@ import {
 import { MetricGranularity } from '@app/shared/types';
 import { VCard } from '@ui-kit/components/v-card/v-card';
 import { VCheckbox } from '@ui-kit/components/v-checkbox/v-checkbox';
-import { IconName, VIcon } from '@ui-kit/components/v-icon/v-icon';
 import { VInput } from '@ui-kit/components/v-input/v-input';
 import { VTooltip } from '@ui-kit/components/v-tooltip/v-tooltip';
 import {
@@ -93,7 +92,7 @@ const HOVER_NO_VALUE_PLACEHOLDER = '—';
 @Component({
   selector: 'metric-chart-card',
   templateUrl: './metric-chart-card.html',
-  imports: [VCard, VCheckbox, VIcon, VInput, VTooltip],
+  imports: [VCard, VCheckbox, VInput, VTooltip],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class MetricChartCard implements OnInit, OnDestroy {
@@ -127,7 +126,9 @@ export class MetricChartCard implements OnInit, OnDestroy {
   public readonly dashboardEnabledChangeOutput = output<boolean>();
   public readonly dashboardOrderChangeOutput = output<number>();
 
-  protected readonly Icon = IconName;
+  // Combined into one hint instead of a separate hover icon: technical name
+  // (Prometheus-style key) on its own line, then the human-language description.
+  protected readonly labelTooltipText$$ = computed(() => `${this.technicalNameInput()}\n${this.descriptionInput()}`);
 
   // While the synced crosshair is active, the header number tracks the highlighted
   // time instead of the series' last value — a dash when nothing falls within the
@@ -146,6 +147,20 @@ export class MetricChartCard implements OnInit, OnDestroy {
     }
 
     return formatMetricUnitValue(this.unitInput(), nearest.value);
+  });
+
+  // Min/max across the currently visible series — seriesInput is already scoped
+  // to [windowStartInput, windowEndInput] by the parent, for every granularity.
+  protected readonly headerMinMaxDisplay$$ = computed(() => {
+    const values = this.seriesInput()
+      .map((point) => point.value)
+      .filter((value): value is number => value !== null);
+    if (values.length === 0) return null;
+
+    const unit = this.unitInput();
+    const min = formatMetricUnitValue(unit, Math.min(...values));
+    const max = formatMetricUnitValue(unit, Math.max(...values));
+    return `${min} – ${max}`;
   });
 
   protected onCardClick(): void {

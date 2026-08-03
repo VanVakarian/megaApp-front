@@ -362,9 +362,12 @@
         <v-card class="mb-4"
                 [borderRadius]="2"
                 [padding]="0">
-          <div class="flex flex-col gap-4 p-3">
-            <div>
-              <div class="opacity-70 mb-2 font-semibold">{{ row.label }}</div>
+          <div class="flex flex-col gap-4 py-3 pl-2 pr-3">
+            <div class="grid grid-cols-[auto_minmax(0,1fr)] gap-2">
+              <div
+                   class="self-start [writing-mode:vertical-rl] rotate-180 whitespace-nowrap font-semibold opacity-70 leading-none mt-0">
+                {{ row.label }}
+              </div>
               <metric-card-grid [cardsInput]="row.cards"
                                 [targetWidthPxInput]="targetWidthPx$$()"
                                 [heightPxInput]="heightPx$$()"
@@ -387,42 +390,15 @@
 
     @for (service of visibleServiceOptions$$(); track service.service) {
       @if (isServiceExpanded(service.service)) {
-        <v-card class="mb-4"
-                [borderRadius]="2"
-                [padding]="0">
-          <div class="flex flex-col gap-4 p-3">
-            @for (group of serviceMetricsData$$().get(service.service)?.groups ?? []; track group.id) {
-              <div>
-                <div class="opacity-70 mb-2 font-semibold">{{ group.label }}</div>
-                <metric-card-grid [cardsInput]="group.cards"
-                                  [targetWidthPxInput]="targetWidthPx$$()"
-                                  [heightPxInput]="heightPx$$()"
-                                  [expandedHeightPxInput]="expandedHeightPx$$()"
-                                  [layoutModeInput]="cardLayoutMode$$()"
-                                  [syncCrosshairEnabledInput]="syncCrosshairEnabled$$()"
-                                  [forceZeroBaselineInput]="forceZeroBaselineEnabled$$()"
-                                  [tooltipModeInput]="activeTooltipMode$$()"
-                                  [isEditModeInput]="isCardEditMode$$()"
-                                  [isSelectionDisabledInput]="isSavingSettings$$()"
-                                  (cardDashboardEnabledChangeOutput)="toggleDashboardMetric(service.service, $event.technicalName, $event.enabled)"
-                                  (cardDashboardOrderChangeOutput)="setDashboardMetricOrder(service.service, $event.technicalName, $event.order)" />
+        @for (group of serviceMetricsData$$().get(service.service)?.groups ?? []; track group.id) {
+          <v-card class="mb-4"
+                  [borderRadius]="2"
+                  [padding]="0">
+            <div class="grid grid-cols-[auto_minmax(0,1fr)] gap-2 py-3 pl-2 pr-3">
+              <div
+                   class="self-start [writing-mode:vertical-rl] rotate-180 whitespace-nowrap font-semibold opacity-70 leading-none">
+                {{ group.label }}
               </div>
-            } @empty {
-              <div class="opacity-60 text-sm">Нет метрик</div>
-            }
-          </div>
-        </v-card>
-      }
-    }
-
-    @if (isServiceExpanded(compositeServiceKey)) {
-      <v-card class="mb-4"
-              [borderRadius]="2"
-              [padding]="0">
-        <div class="flex flex-col gap-4 p-3">
-          @for (group of serviceMetricsData$$().get(compositeServiceKey)?.groups ?? []; track group.id) {
-            <div>
-              <div class="opacity-70 mb-2 font-semibold">{{ group.label }}</div>
               <metric-card-grid [cardsInput]="group.cards"
                                 [targetWidthPxInput]="targetWidthPx$$()"
                                 [heightPxInput]="heightPx$$()"
@@ -432,14 +408,43 @@
                                 [forceZeroBaselineInput]="forceZeroBaselineEnabled$$()"
                                 [tooltipModeInput]="activeTooltipMode$$()"
                                 [isEditModeInput]="isCardEditMode$$()"
-                                [hideDashboardControlsInput]="true"
-                                [isSelectionDisabledInput]="isSavingSettings$$()" />
+                                [isSelectionDisabledInput]="isSavingSettings$$()"
+                                (cardDashboardEnabledChangeOutput)="toggleDashboardMetric(service.service, $event.technicalName, $event.enabled)"
+                                (cardDashboardOrderChangeOutput)="setDashboardMetricOrder(service.service, $event.technicalName, $event.order)" />
             </div>
-          } @empty {
-            <div class="opacity-60 text-sm">Нет составных метрик. Настройте в Settings.</div>
-          }
-        </div>
-      </v-card>
+          </v-card>
+        } @empty {
+          <div class="opacity-60 mb-4 text-sm">Нет метрик</div>
+        }
+      }
+    }
+
+    @if (isServiceExpanded(compositeServiceKey)) {
+      @for (group of serviceMetricsData$$().get(compositeServiceKey)?.groups ?? []; track group.id) {
+        <v-card class="mb-4"
+                [borderRadius]="2"
+                [padding]="0">
+          <div class="grid grid-cols-[auto_minmax(0,1fr)] gap-2 py-3 pl-2 pr-3">
+            <div
+                 class="self-start [writing-mode:vertical-rl] rotate-180 whitespace-nowrap font-semibold opacity-70 leading-none">
+              {{ group.label }}
+            </div>
+            <metric-card-grid [cardsInput]="group.cards"
+                              [targetWidthPxInput]="targetWidthPx$$()"
+                              [heightPxInput]="heightPx$$()"
+                              [expandedHeightPxInput]="expandedHeightPx$$()"
+                              [layoutModeInput]="cardLayoutMode$$()"
+                              [syncCrosshairEnabledInput]="syncCrosshairEnabled$$()"
+                              [forceZeroBaselineInput]="forceZeroBaselineEnabled$$()"
+                              [tooltipModeInput]="activeTooltipMode$$()"
+                              [isEditModeInput]="isCardEditMode$$()"
+                              [hideDashboardControlsInput]="true"
+                              [isSelectionDisabledInput]="isSavingSettings$$()" />
+          </div>
+        </v-card>
+      } @empty {
+        <div class="opacity-60 mb-4 text-sm">Нет составных метрик. Настройте в Settings.</div>
+      }
     }
   </div>
 </div>
