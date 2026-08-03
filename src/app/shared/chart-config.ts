@@ -1,18 +1,7 @@
 import { formatMetricUnitValue, MetricUnit } from '@app/shared/metric-units';
-import { formatMetricBucketLabel, formatMetricTickLabel } from '@app/shared/metrics-series';
+import { formatMetricTickLabel } from '@app/shared/metrics-series';
 import { MetricGranularity } from '@app/shared/types';
-import { ChartConfiguration, ChartType, Tooltip, TooltipPositionerFunction } from 'chart.js';
-
-declare module 'chart.js' {
-  interface TooltipPositionerMap {
-    followCursor: TooltipPositionerFunction<ChartType>;
-  }
-}
-
-// A spiky metric line makes the default 'nearest'/'average' positioner (which anchors to the
-// active data point's own pixel position) bounce the tooltip box up and down with the data.
-// Anchoring to the raw cursor position instead keeps it moving smoothly with the mouse.
-Tooltip.positioners.followCursor = (_items, eventPosition) => eventPosition;
+import { ChartConfiguration } from 'chart.js';
 
 interface ChartColors {
   main: string;
@@ -453,17 +442,10 @@ export function createMetricSparklineConfig(color: string): ChartConfiguration<'
 // already use for their (multi-series) tooltips.
 export type MetricTooltipInteractionMode = 'nearest' | 'index';
 
-function metricSparseTooltipOptions(granularity: MetricGranularity, tooltipMode: MetricTooltipInteractionMode) {
-  return {
-    mode: tooltipMode,
-    intersect: false,
-    // 'index' (Vertical mode) tracks the cursor smoothly along the line; 'nearest' (Nearest
-    // mode) snaps to whichever sample is currently active, same as the point marker below.
-    position: tooltipMode === 'index' ? ('followCursor' as const) : ('nearest' as const),
-    callbacks: {
-      title: (items: { parsed: { x: number } }[]) => formatMetricBucketLabel(items[0].parsed.x, granularity),
-    },
-  };
+// The header value in metric-chart-card already shows the hovered value and time,
+// so the chart's own popup tooltip is redundant and just disabled here.
+function metricSparseTooltipOptions() {
+  return { enabled: false };
 }
 
 export function createMetricSparseLineConfig(
@@ -498,7 +480,7 @@ export function createMetricSparseLineConfig(
       elements: { line: { tension: 0.3 } },
       plugins: {
         legend: { display: false },
-        tooltip: metricSparseTooltipOptions(granularity, tooltipMode),
+        tooltip: metricSparseTooltipOptions(),
       },
       scales: {
         x: {
@@ -543,7 +525,7 @@ export function createMetricBarConfig(
       maintainAspectRatio: false,
       plugins: {
         legend: { display: false },
-        tooltip: metricSparseTooltipOptions(granularity, tooltipMode),
+        tooltip: metricSparseTooltipOptions(),
       },
       scales: {
         x: {

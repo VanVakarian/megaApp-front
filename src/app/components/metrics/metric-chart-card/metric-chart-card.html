@@ -29,17 +29,23 @@
         }
       </div>
     } @else {
-      <v-tooltip [text]="labelTooltipText$$()">
+      <v-tooltip class="flex-1 min-w-0"
+                 [text]="labelTooltipText$$()">
         <span class="opacity-70 min-w-0 leading-none truncate">{{ labelInput() }}</span>
       </v-tooltip>
-      @if (headerOhlcDisplay$$(); as ohlc) {
-        <v-tooltip [text]="ohlc"
-                   [noWrap]="true">
-          <span class="shrink-0 text-sm font-semibold leading-none">{{ headerDisplayValue$$() }}</span>
-        </v-tooltip>
-      } @else {
-        <span class="shrink-0 text-sm font-semibold leading-none">{{ headerDisplayValue$$() }}</span>
-      }
+      <div class="shrink-0 flex items-baseline gap-2">
+        @if (headerDisplayTime$$(); as time) {
+          <span class="opacity-70 font-mono leading-none">{{ time }}</span>
+        }
+        @if (headerOhlcDisplay$$(); as ohlc) {
+          <v-tooltip [text]="ohlc"
+                     [noWrap]="true">
+            <span class="font-mono text-sm font-semibold leading-none">{{ headerDisplayValue$$() }}</span>
+          </v-tooltip>
+        } @else {
+          <span class="font-mono text-sm font-semibold leading-none">{{ headerDisplayValue$$() }}</span>
+        }
+      </div>
     }
   </div>
   <div class="mt-0"

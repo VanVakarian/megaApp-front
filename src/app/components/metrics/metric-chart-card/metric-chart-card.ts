@@ -24,6 +24,7 @@ import {
   buildRoundDayTickBuckets,
   buildRoundTickBuckets,
   findNearestSeriesPoint,
+  formatMetricBucketLabel,
   MetricSeriesPoint,
 } from '@app/shared/metrics-series';
 import {
@@ -130,23 +131,61 @@ export class MetricChartCard implements OnInit, OnDestroy {
   // (Prometheus-style key) on its own line, then the human-language description.
   protected readonly labelTooltipText$$ = computed(() => `${this.technicalNameInput()}\n${this.descriptionInput()}`);
 
-  // While the synced crosshair is active, the header number tracks the highlighted
-  // time instead of the series' last value — a dash when nothing falls within the
+  // Widest formatted value across the currently visible window (whatever unit —
+  // money, count, ratio, durations all vary wildly in digit count). Padding every
+  // header value out to this width up front means scrubbing across a card whose
+  // series spans e.g. "20" through "24480" never reflows the header (or the time
+  // label and title next to it) as the digit count changes underfoot.
+  private readonly headerValuePadWidth$$ = computed(() => {
+    const unit = this.unitInput();
+    let maxLength = (this.displayValueInput() || String(this.valueInput())).length;
+    for (const point of this.seriesInput()) {
+      if (point.value === null) continue;
+      maxLength = Math.max(maxLength, formatMetricUnitValue(unit, point.value).length);
+    }
+    return maxLength;
+  });
+
+  // While the synced crosshair is active, the header tracks the highlighted time
+  // instead of the series' last value — a dash when nothing falls within the
   // capture window, back to the static value the instant the crosshair clears
   // (hoverBucket$$ going null), for every card at once, since it's one shared signal.
+  // Left-padded with non-breaking spaces (plain spaces would collapse in the DOM)
+  // to headerValuePadWidth$$ so the monospace value column never resizes.
   protected readonly headerDisplayValue$$ = computed(() => {
+    const padWidth = this.headerValuePadWidth$$();
     const hoverBucket = hoverBucket$$();
     if (hoverBucket === null || !this.syncCrosshairEnabledInput()) {
-      return this.displayValueInput() || String(this.valueInput());
+      return (this.displayValueInput() || String(this.valueInput())).padStart(padWidth, ' ');
     }
 
     const nearest = findNearestSeriesPoint(this.seriesInput(), hoverBucket);
     const captureWindowSeconds = CROSSHAIR_CAPTURE_STEP_MULTIPLIER * this.displayStepSecondsInput();
     if (!nearest || nearest.value === null || Math.abs(nearest.bucket - hoverBucket) > captureWindowSeconds) {
-      return HOVER_NO_VALUE_PLACEHOLDER;
+      return HOVER_NO_VALUE_PLACEHOLDER.padStart(padWidth, ' ');
     }
 
-    return formatMetricUnitValue(this.unitInput(), nearest.value);
+    return formatMetricUnitValue(this.unitInput(), nearest.value).padStart(padWidth, ' ');
+  });
+
+  // Bucket the header value above corresponds to, formatted per granularity
+  // (time for minute, date+time for hour, date for day) — replaces the chart's
+  // own popup tooltip, which showed the same label on hover. Empty (and hidden
+  // in the template) outside a hover, since "this is the current value" needs
+  // no timestamp to be understood.
+  protected readonly headerDisplayTime$$ = computed(() => {
+    const hoverBucket = hoverBucket$$();
+    if (hoverBucket === null || !this.syncCrosshairEnabledInput()) {
+      return '';
+    }
+
+    const nearest = findNearestSeriesPoint(this.seriesInput(), hoverBucket);
+    const captureWindowSeconds = CROSSHAIR_CAPTURE_STEP_MULTIPLIER * this.displayStepSecondsInput();
+    if (!nearest || nearest.value === null || Math.abs(nearest.bucket - hoverBucket) > captureWindowSeconds) {
+      return '';
+    }
+
+    return formatMetricBucketLabel(nearest.bucket, this.granularityInput());
   });
 
   // OHLC across the currently visible series — seriesInput is already scoped
