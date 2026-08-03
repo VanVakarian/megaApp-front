@@ -214,20 +214,41 @@ export function buildRoundTickBuckets(
   return buckets;
 }
 
-// Every local midnight (00:00) in [windowStartBucket, windowEndBucket] — steps by
-// calendar day via Date instead of a flat 86400s stride, so a DST transition inside
-// the window can't drift a later tick off local midnight.
+// LOAD-BEARING: the backend aggregates "day" buckets strictly at UTC midnight
+// ((t/86400)*86400 — see flatline's rollup job), and that can't be changed to the
+// user's local midnight without re-aggregating history, which is only possible for the
+// last ~60 days (hourly source data, which day buckets are built from, isn't kept
+// longer). This flag only controls how the CHART RENDERS that already-fixed UTC day
+// boundary — it does not change what a "day" actually means on the backend.
+//   true  -> tick is drawn at UTC midnight, exactly where each day's data point sits.
+//            Tick and point line up pixel-perfect, but the tick no longer sits on the
+//            viewer's own local midnight.
+//   false -> tick is drawn at the viewer's local midnight. Matches the viewer's own
+//            wall clock, but visibly drifts away from the data point by the viewer's
+//            UTC offset (e.g. ~5-6h for Asia/Almaty) — the two draw as separate lines.
+const ALIGN_DAY_TICKS_TO_UTC_BUCKET = true;
+
+// LOAD-BEARING: Every midnight (00:00, UTC or local per ALIGN_DAY_TICKS_TO_UTC_BUCKET above) in
+// [windowStartBucket, windowEndBucket] — steps by calendar day via Date instead of a
+// flat 86400s stride, so a DST transition inside the window can't drift a later tick.
 export function buildRoundDayTickBuckets(windowStartBucket: number, windowEndBucket: number): number[] {
   const cursor = new Date(windowStartBucket * 1000);
-  cursor.setHours(0, 0, 0, 0);
+  const setMidnight = ALIGN_DAY_TICKS_TO_UTC_BUCKET
+    ? () => cursor.setUTCHours(0, 0, 0, 0)
+    : () => cursor.setHours(0, 0, 0, 0);
+  const stepDay = ALIGN_DAY_TICKS_TO_UTC_BUCKET
+    ? () => cursor.setUTCDate(cursor.getUTCDate() + 1)
+    : () => cursor.setDate(cursor.getDate() + 1);
+
+  setMidnight();
   if (cursor.getTime() < windowStartBucket * 1000) {
-    cursor.setDate(cursor.getDate() + 1);
+    stepDay();
   }
 
   const buckets: number[] = [];
   while (cursor.getTime() <= windowEndBucket * 1000) {
     buckets.push(Math.floor(cursor.getTime() / 1000));
-    cursor.setDate(cursor.getDate() + 1);
+    stepDay();
   }
   return buckets;
 }
