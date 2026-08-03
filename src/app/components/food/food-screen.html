@@ -1,20 +1,14 @@
 @if (totalColumnCount$$() === 1) {
-  <div class="flex w-full max-w-[394px] gap-2 px-1">
-    <v-button class="flex-auto"
-              [surface]="mobileTab$$() === MobileTab.Stats ? 'raised' : 'flat'"
-              (onClick)="selectMobileTab(MobileTab.Stats)">Статистика</v-button>
-    <v-button class="flex-auto"
-              [surface]="mobileTab$$() === MobileTab.Diary ? 'raised' : 'flat'"
-              (onClick)="selectMobileTab(MobileTab.Diary)">Дневник калорий</v-button>
-  </div>
-
-  @if (mobileTab$$() === MobileTab.Diary) {
-    <food-diary class="w-full max-w-[394px] px-1" />
+  @if (foodScreenModeService.mobileTab$$() === Tab.Diary) {
+    <food-diary class="px-1" />
   } @else {
-    <food-stats-accordion class="w-full max-w-[394px] px-1" />
+    <food-stats-accordion class="px-1" />
   }
 } @else {
-  <food-diary class="w-full max-w-[394px] flex-1 px-1" />
-  <food-stats-columns class="min-w-0 flex-1 px-1"
+  <food-diary class="min-w-0 px-1" />
+  <food-stats-columns class="min-w-0 px-1"
+                       [style.grid-column]="'2 / -1'"
                        [columnCountInput]="statsColumnCount$$()" />
 }
+
+<food-mode-toggle-fab />

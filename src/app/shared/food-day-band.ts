@@ -7,16 +7,16 @@ export const FoodDayBand = {
 
 export type FoodDayBand = (typeof FoodDayBand)[keyof typeof FoodDayBand];
 
-const UNDER_MAX_PERCENT = 85;
-const NORMAL_MAX_PERCENT = 105;
-const SLIGHT_OVER_MAX_PERCENT = 120;
+const UNDER_MAX_PERCENT = 50;
+const NORMAL_MAX_PERCENT = 101;
+const OVER_MIN_PERCENT = 125;
 
 export function resolveFoodDayBand(consumedKcal: number, targetKcal: number): FoodDayBand {
   if (!targetKcal) return FoodDayBand.Normal;
   const percent = (consumedKcal / targetKcal) * 100;
   if (percent < UNDER_MAX_PERCENT) return FoodDayBand.Under;
   if (percent <= NORMAL_MAX_PERCENT) return FoodDayBand.Normal;
-  if (percent <= SLIGHT_OVER_MAX_PERCENT) return FoodDayBand.SlightOver;
+  if (percent < OVER_MIN_PERCENT) return FoodDayBand.SlightOver;
   return FoodDayBand.Over;
 }
 

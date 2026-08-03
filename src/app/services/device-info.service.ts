@@ -28,6 +28,10 @@ export class DeviceInfoService {
 
   public readonly isKeyboardOpen$$ = signal(false);
 
+  // Shared by every fixed-position mobile FAB (nav hamburger, food add/toggle buttons) — keyboard
+  // opening pushes the viewport up, so FABs slide off-screen rather than floating over the keyboard.
+  public readonly shouldHideFabButtons$$ = computed(() => !this.isDesktopScreen$$() && this.isKeyboardOpen$$());
+
   private deviceInfo: DeviceInfo | null = null;
   private initialViewportHeight: number = 0;
   private keyboardCloseTimeout: ReturnType<typeof setTimeout> | null = null;
