@@ -149,18 +149,21 @@ export class MetricChartCard implements OnInit, OnDestroy {
     return formatMetricUnitValue(this.unitInput(), nearest.value);
   });
 
-  // Min/max across the currently visible series — seriesInput is already scoped
-  // to [windowStartInput, windowEndInput] by the parent, for every granularity.
-  protected readonly headerMinMaxDisplay$$ = computed(() => {
+  // OHLC across the currently visible series — seriesInput is already scoped
+  // to [windowStartInput, windowEndInput] by the parent, sorted by bucket ascending,
+  // so the first/last non-null values double as open/close.
+  protected readonly headerOhlcDisplay$$ = computed(() => {
     const values = this.seriesInput()
       .map((point) => point.value)
       .filter((value): value is number => value !== null);
     if (values.length === 0) return null;
 
     const unit = this.unitInput();
-    const min = formatMetricUnitValue(unit, Math.min(...values));
-    const max = formatMetricUnitValue(unit, Math.max(...values));
-    return `${min} – ${max}`;
+    const open = formatMetricUnitValue(unit, values[0]);
+    const high = formatMetricUnitValue(unit, Math.max(...values));
+    const low = formatMetricUnitValue(unit, Math.min(...values));
+    const close = formatMetricUnitValue(unit, values[values.length - 1]);
+    return `O: ${open} — H: ${high} — L: ${low} — C: ${close}`;
   });
 
   protected onCardClick(): void {

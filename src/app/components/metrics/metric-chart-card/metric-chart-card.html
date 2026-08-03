@@ -5,7 +5,7 @@
         [padding]="2"
         [style.padding-bottom]="'5px'"
         (click)="onCardClick()">
-  <div class="min-h-6 flex items-start justify-between gap-2 text-xs">
+  <div class="flex items-start justify-between gap-2 text-xs">
     @if (isEditModeInput() && !hideDashboardControlsInput()) {
       <div class="flex items-center flex-1 min-w-0 gap-2"
            (click)="$event.stopPropagation()">
@@ -32,12 +32,14 @@
       <v-tooltip [text]="labelTooltipText$$()">
         <span class="opacity-70 min-w-0 leading-none truncate">{{ labelInput() }}</span>
       </v-tooltip>
-      <span class="shrink-0 flex flex-col items-end">
-        <span class="text-sm font-semibold leading-none">{{ headerDisplayValue$$() }}</span>
-        @if (headerMinMaxDisplay$$(); as minMax) {
-          <span class="opacity-60 text-xs leading-none">{{ minMax }}</span>
-        }
-      </span>
+      @if (headerOhlcDisplay$$(); as ohlc) {
+        <v-tooltip [text]="ohlc"
+                   [noWrap]="true">
+          <span class="shrink-0 text-sm font-semibold leading-none">{{ headerDisplayValue$$() }}</span>
+        </v-tooltip>
+      } @else {
+        <span class="shrink-0 text-sm font-semibold leading-none">{{ headerDisplayValue$$() }}</span>
+      }
     }
   </div>
   <div class="mt-0"
