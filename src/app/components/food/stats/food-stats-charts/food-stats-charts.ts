@@ -63,11 +63,11 @@ Chart.register(
  * - Charts are created once and then kept in sync through reactive updates.
  */
 @Component({
-  selector: 'food-stats',
-  templateUrl: './food-stats.html',
+  selector: 'food-stats-charts',
+  templateUrl: './food-stats-charts.html',
   imports: [VButton, VCard, VSlider],
 })
-export class FoodStats implements OnInit, AfterViewInit {
+export class FoodStatsCharts implements OnInit, AfterViewInit {
   protected readonly weightChartCanvas = viewChild.required<ElementRef<HTMLCanvasElement>>('weightChartCanvas');
   protected readonly kcalsChartCanvas = viewChild.required<ElementRef<HTMLCanvasElement>>('kcalsChartCanvas');
 

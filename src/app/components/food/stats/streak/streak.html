@@ -1,0 +1,19 @@
+<div class="grid grid-cols-2 gap-2">
+  <v-card [borderRadius]="2"
+          [padding]="2">
+    <div class="text-center">
+      <div class="text-xs text-[color:var(--v-color-text-muted)]">Текущая серия</div>
+      <div class="text-2xl font-bold">{{ streak$$().current }}</div>
+      <div class="text-xs text-[color:var(--v-color-text-muted)]">{{ daysLabel(streak$$().current) }}</div>
+    </div>
+  </v-card>
+
+  <v-card [borderRadius]="2"
+          [padding]="2">
+    <div class="text-center">
+      <div class="text-xs text-[color:var(--v-color-text-muted)]">Рекорд за всё время</div>
+      <div class="text-2xl font-bold">{{ streak$$().record }}</div>
+      <div class="text-xs text-[color:var(--v-color-text-muted)]">{{ daysLabel(streak$$().record) }}</div>
+    </div>
+  </v-card>
+</div>

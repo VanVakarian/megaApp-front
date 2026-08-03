@@ -495,6 +495,18 @@ export interface Stats {
   [id: string]: DayStats;
 }
 
+export interface FoodStatsTopProduct {
+  catalogueId: number;
+  name: string;
+  kcal: number;
+}
+
+export interface FoodStatsResponse {
+  days: Stats;
+  topProducts: FoodStatsTopProduct[];
+  totalEntries: number;
+}
+
 export interface StatsChartData {
   dates: string[];
   weights: number[];

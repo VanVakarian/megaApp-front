@@ -1,0 +1,16 @@
+<v-card [borderRadius]="2"
+        [padding]="2">
+  <div class="mb-2 text-sm font-semibold">Последние 30 дней</div>
+
+  @if (days$$().length === 0) {
+    <div class="text-sm text-[color:var(--v-color-text-muted)]">Пока недостаточно данных</div>
+  } @else {
+    <div class="flex gap-[3px]">
+      @for (day of days$$(); track day.dateIso) {
+        <div class="h-6 flex-1 rounded-[4px]"
+             [style.background]="cellColor(day)"
+             [title]="cellTitle(day)"></div>
+      }
+    </div>
+  }
+</v-card>

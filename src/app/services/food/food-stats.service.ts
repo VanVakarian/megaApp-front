@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { computed, effect, inject, Injectable, Signal, signal, WritableSignal } from '@angular/core';
 import { AuthService, AuthSessionState } from '@app/services/auth.service';
 import { exhaustRequest } from '@app/shared/decorators/exhaust-request.decorator';
-import { DayStats, Stats, StatsChartData } from '@app/shared/types';
+import { DayStats, FoodStatsResponse, FoodStatsTopProduct, Stats, StatsChartData } from '@app/shared/types';
 import { firstValueFrom } from 'rxjs';
 import { dateToIsoNoTimeNoTZ, formatDateTicks } from '../../shared/utils';
 import { LocalStorageService } from '../local-storage.service';
@@ -27,6 +27,10 @@ export class FoodStatsService {
   private readonly SLIDER_KEY = 'food_stats_slider';
 
   private readonly stats$$: WritableSignal<Stats> = signal({});
+  private readonly topProductsSignal$$: WritableSignal<FoodStatsTopProduct[]> = signal([]);
+  private readonly totalEntriesSignal$$: WritableSignal<number> = signal(0);
+  public readonly topProducts$$: Signal<FoodStatsTopProduct[]> = computed(() => this.topProductsSignal$$());
+  public readonly totalEntries$$: Signal<number> = computed(() => this.totalEntriesSignal$$());
   public readonly statsChartData$$: Signal<StatsChartData> = computed(() => this.prepareChartData());
   public readonly statsChartDataClipped$$: Signal<StatsChartData> = computed(() => this.prepareChartDataClipped());
 
@@ -57,28 +61,36 @@ export class FoodStatsService {
 
   public reset(): void {
     this.stats$$.set({});
+    this.topProductsSignal$$.set([]);
+    this.totalEntriesSignal$$.set(0);
     this.selectedDateIdxStart$$.set(0);
     this.selectedDateIdxEnd$$.set(0);
   }
 
   @exhaustRequest()
   public async getStats(): Promise<void> {
-    const cachedStats = this.loadStatsFromLocalStorage();
-    if (cachedStats && Object.keys(cachedStats).length > 0) {
-      this.stats$$.set(cachedStats);
+    const cachedResponse = this.loadStatsFromLocalStorage();
+    if (cachedResponse && Object.keys(cachedResponse.days).length > 0) {
+      this.applyResponse(cachedResponse);
     }
 
     try {
-      const serverStats = await firstValueFrom(this.http.get<Stats>('/api/food/stats'));
+      const serverResponse = await firstValueFrom(this.http.get<FoodStatsResponse>('/api/food/stats'));
       const isLocalStatsEmpty = Object.keys(this.stats$$()).length === 0;
 
-      this.stats$$.set(serverStats);
+      this.applyResponse(serverResponse);
       this.saveStatsToLocalStorage();
 
       this.applyDateRangeOnLoad(isLocalStatsEmpty);
     } catch (error) {
       console.error('Failed fetching stats from server:', error);
     }
+  }
+
+  private applyResponse(response: FoodStatsResponse): void {
+    this.stats$$.set(response.days);
+    this.topProductsSignal$$.set(response.topProducts);
+    this.totalEntriesSignal$$.set(response.totalEntries);
   }
 
   public updateStats(dateIso: string, newWeight: number | null, kcalsDelta: number) {
@@ -455,17 +467,26 @@ export class FoodStatsService {
   }
 
   private saveStatsToLocalStorage(): void {
-    this.localStorageService.setUserScoped(this.STATS_STORAGE_KEY, this.stats$$());
+    const response: FoodStatsResponse = {
+      days: this.stats$$(),
+      topProducts: this.topProductsSignal$$(),
+      totalEntries: this.totalEntriesSignal$$(),
+    };
+    this.localStorageService.setUserScoped(this.STATS_STORAGE_KEY, response);
   }
 
-  private loadStatsFromLocalStorage(): Stats | null {
-    return this.localStorageService.getUserScoped<Stats>(this.STATS_STORAGE_KEY);
+  private loadStatsFromLocalStorage(): FoodStatsResponse | null {
+    const saved = this.localStorageService.getUserScoped<FoodStatsResponse>(this.STATS_STORAGE_KEY);
+    // Stale cache from before the {days, topProducts, totalEntries} envelope was introduced —
+    // saved.days would be undefined and crash Object.keys() downstream. Treat as no cache.
+    if (!saved || typeof saved.days !== 'object' || saved.days === null) return null;
+    return saved;
   }
 
   private loadStatsFromLocalStorageOnInit(): void {
-    const savedStats = this.loadStatsFromLocalStorage();
-    if (savedStats && Object.keys(savedStats).length > 0) {
-      this.stats$$.set(savedStats);
+    const savedResponse = this.loadStatsFromLocalStorage();
+    if (savedResponse && Object.keys(savedResponse.days).length > 0) {
+      this.applyResponse(savedResponse);
       this.applyDateRangeOnLoad(true);
     }
   }
