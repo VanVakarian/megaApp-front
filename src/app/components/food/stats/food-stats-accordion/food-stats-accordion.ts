@@ -1,40 +1,43 @@
-import { ChangeDetectionStrategy, Component, computed, Signal, signal, WritableSignal } from '@angular/core';
-import { FOOD_STATS_BLOCK_ORDER, FoodStatsBlock } from '@app/components/food/stats/food-stats-block';
+import { ChangeDetectionStrategy, Component, inject, signal, WritableSignal } from '@angular/core';
+import { FoodStatsBlock, getFoodStatsBlockOrder } from '@app/components/food/stats/food-stats-block';
 import { FoodStatsCharts } from '@app/components/food/stats/food-stats-charts/food-stats-charts';
-import { HeatmapStrip } from '@app/components/food/stats/heatmap-strip/heatmap-strip';
 import { Milestones } from '@app/components/food/stats/milestones/milestones';
 import { Streak } from '@app/components/food/stats/streak/streak';
 import { TopProducts } from '@app/components/food/stats/top-products/top-products';
+import { LocalStorageService } from '@app/services/local-storage.service';
 import { VButton } from '@ui-kit/components/v-button/v-button';
+import { IconName, VIcon } from '@ui-kit/components/v-icon/v-icon';
 
 interface BlockToggle {
   block: FoodStatsBlock;
-  label: string;
+  icon: IconName;
 }
 
-const BLOCK_LABELS: Record<FoodStatsBlock, string> = {
-  [FoodStatsBlock.Ribbon]: 'Лента',
-  [FoodStatsBlock.Streak]: 'Серия',
-  [FoodStatsBlock.TopProducts]: 'Топ продуктов',
-  [FoodStatsBlock.Milestones]: 'Вехи',
-  [FoodStatsBlock.Charts]: 'Графики',
+const BLOCK_ICONS: Record<FoodStatsBlock, IconName> = {
+  [FoodStatsBlock.Streak]: IconName.LocalFireDepartment,
+  [FoodStatsBlock.Milestones]: IconName.Verified,
+  [FoodStatsBlock.Charts]: IconName.BarChart,
+  [FoodStatsBlock.TopProducts]: IconName.ForkChart,
 };
 
-const BLOCK_TOGGLES: BlockToggle[] = FOOD_STATS_BLOCK_ORDER.map((block) => ({ block, label: BLOCK_LABELS[block] }));
+// Accordion always renders as a single stacked column.
+const BLOCK_TOGGLES: BlockToggle[] = getFoodStatsBlockOrder().map((block) => ({ block, icon: BLOCK_ICONS[block] }));
+
+const OPEN_BLOCKS_STORAGE_KEY = 'food-stats-accordion-open-blocks';
 
 @Component({
   selector: 'food-stats-accordion',
   templateUrl: './food-stats-accordion.html',
-  imports: [VButton, HeatmapStrip, Streak, TopProducts, Milestones, FoodStatsCharts],
+  imports: [VButton, VIcon, Streak, TopProducts, Milestones, FoodStatsCharts],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class FoodStatsAccordion {
   protected readonly Block = FoodStatsBlock;
   protected readonly toggles: BlockToggle[] = BLOCK_TOGGLES;
 
-  private readonly openBlocks$$: WritableSignal<ReadonlySet<FoodStatsBlock>> = signal(new Set());
+  private readonly localStorageService = inject(LocalStorageService);
 
-  protected readonly isAllOpen$$: Signal<boolean> = computed(() => this.openBlocks$$().size === this.toggles.length);
+  private readonly openBlocks$$: WritableSignal<ReadonlySet<FoodStatsBlock>> = signal(this.loadOpenBlocks());
 
   protected isOpen(block: FoodStatsBlock): boolean {
     return this.openBlocks$$().has(block);
@@ -47,9 +50,11 @@ export class FoodStatsAccordion {
       else next.add(block);
       return next;
     });
+    this.localStorageService.setUserScoped(OPEN_BLOCKS_STORAGE_KEY, [...this.openBlocks$$()]);
   }
 
-  protected toggleAll(): void {
-    this.openBlocks$$.set(this.isAllOpen$$() ? new Set() : new Set(this.toggles.map((toggle) => toggle.block)));
+  private loadOpenBlocks(): ReadonlySet<FoodStatsBlock> {
+    const stored = this.localStorageService.getUserScoped<FoodStatsBlock[]>(OPEN_BLOCKS_STORAGE_KEY);
+    return new Set(stored ?? []);
   }
 }

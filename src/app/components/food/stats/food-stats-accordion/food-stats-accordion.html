@@ -1,24 +1,20 @@
-<div class="flex flex-wrap gap-2">
+<div class="flex flex-wrap justify-end gap-2 mr-1">
   @for (toggle of toggles; track toggle.block) {
-    <v-button [surface]="isOpen(toggle.block) ? 'raised' : 'flat'"
-              [paddingX]="3"
-              (onClick)="toggleBlock(toggle.block)">{{ toggle.label }}</v-button>
+    <v-button [surface]="isOpen(toggle.block) ? 'inset' : 'raised'"
+              [isLabelHidden]="true"
+              [borderRadius]="7"
+              [padding]="3"
+              (onClick)="toggleBlock(toggle.block)">
+      <v-icon v-prefix
+              [name]="toggle.icon"
+              [size]="6" />
+    </v-button>
   }
-
-  <v-button [surface]="isAllOpen$$() ? 'raised' : 'flat'"
-            [paddingX]="3"
-            (onClick)="toggleAll()">{{ isAllOpen$$() ? 'Свернуть всё' : 'Развернуть всё' }}</v-button>
 </div>
 
-<div class="mt-3 flex flex-col gap-3">
-  @if (isOpen(Block.Ribbon)) {
-    <food-stats-heatmap-strip />
-  }
+<div class="flex flex-col gap-4 mt-3">
   @if (isOpen(Block.Streak)) {
     <food-stats-streak />
-  }
-  @if (isOpen(Block.TopProducts)) {
-    <food-stats-top-products />
   }
   @if (isOpen(Block.Milestones)) {
     <food-stats-milestones />
@@ -26,4 +22,9 @@
   @if (isOpen(Block.Charts)) {
     <food-stats-charts />
   }
+  @if (isOpen(Block.TopProducts)) {
+    <food-stats-top-products />
+  }
 </div>
+
+<div class="h-[150px]"></div>

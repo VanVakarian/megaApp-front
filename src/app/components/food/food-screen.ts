@@ -57,6 +57,22 @@ export class FoodScreen implements OnInit, OnDestroy {
 
   protected readonly statsColumnCount$$: Signal<number> = computed(() => this.totalColumnCount$$() - 1);
 
+  // Diary sits in the 2nd grid column once there's room for it plus stats on both sides (3+ total
+  // columns); with only 2 columns there's no room left of the diary, so it stays first.
+  protected readonly diaryColumnIndex$$: Signal<number> = computed(() => (this.totalColumnCount$$() >= 3 ? 2 : 1));
+
+  // Grid column (1-based) for each of the statsColumnCount stats columns, in order — every grid
+  // column except the diary's.
+  protected readonly statsGridColumns$$: Signal<number[]> = computed(() => {
+    const total = this.totalColumnCount$$();
+    const diaryColumn = this.diaryColumnIndex$$();
+    const columns: number[] = [];
+    for (let column = 1; column <= total; column++) {
+      if (column !== diaryColumn) columns.push(column);
+    }
+    return columns;
+  });
+
   // Columns sized as equal fractions of the container, so each lands close to TARGET_COLUMN_WIDTH_PX
   // without ever being pinned to a fixed pixel width.
   protected readonly gridTemplateColumns$$: Signal<string> = computed(

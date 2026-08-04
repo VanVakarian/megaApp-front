@@ -1,22 +1,24 @@
 <v-card [borderRadius]="2"
         [padding]="2">
+  <div class="mb-2 text-base font-semibold">Вехи</div>
+
   @let m = milestones$$();
 
   @if (m.yearAgo) {
     <div class="mb-1 text-xs font-bold uppercase text-[color:var(--v-color-text-muted)]">
       Год назад — {{ formatDate(m.yearAgo.dateIso) }}
     </div>
-    <div class="mb-3 flex gap-2">
-      <div class="flex-1">
-        <div class="text-lg font-bold">{{ m.yearAgo.weightThen }} кг</div>
+    <div class="mb-3 grid grid-cols-3 gap-2">
+      <div class="rounded-[8px] bg-[color:var(--v-color-surface-accent)] p-2 text-center">
+        <div class="text-base font-bold">{{ m.yearAgo.weightThen }} кг</div>
         <div class="text-[10px] text-[color:var(--v-color-text-muted)]">тогда</div>
       </div>
-      <div class="flex-1">
-        <div class="text-lg font-bold">{{ m.yearAgo.weightNow }} кг</div>
+      <div class="rounded-[8px] bg-[color:var(--v-color-surface-accent)] p-2 text-center">
+        <div class="text-base font-bold">{{ m.yearAgo.weightNow }} кг</div>
         <div class="text-[10px] text-[color:var(--v-color-text-muted)]">сегодня</div>
       </div>
-      <div class="flex-1">
-        <div class="text-lg font-bold"
+      <div class="rounded-[8px] bg-[color:var(--v-color-surface-accent)] p-2 text-center">
+        <div class="text-base font-bold"
              [style.color]="deltaColor(m.yearAgo.deltaKg)">
           {{ m.yearAgo.deltaKg > 0 ? '+' : '' }}{{ m.yearAgo.deltaKg }} кг
         </div>
@@ -26,11 +28,11 @@
     <hr class="mb-3 border-[color:var(--v-color-surface-accent)]" />
   }
 
-  @if (m.minWeight || m.maxWeight || m.mostCaloricDay || m.bestStreak) {
+  @if (m.minWeight || m.maxWeight || m.mostCaloricDay || m.leastCaloricDay) {
     <div class="mb-1 text-xs font-bold uppercase text-[color:var(--v-color-text-muted)]">Рекорды за всё время</div>
     <div class="mb-3 flex flex-col text-sm">
       @if (m.minWeight) {
-        <div class="flex justify-between border-b border-dashed border-[color:var(--v-color-surface-accent)] py-1">
+        <div class="flex justify-between border-b border-dashed border-[color:var(--v-color-surface-accent)] py-1 last:border-b-0">
           <span class="text-[color:var(--v-color-text-muted)]">Минимальный вес</span>
           <span class="font-semibold">
             {{ m.minWeight.weight }} кг
@@ -41,7 +43,7 @@
         </div>
       }
       @if (m.maxWeight) {
-        <div class="flex justify-between border-b border-dashed border-[color:var(--v-color-surface-accent)] py-1">
+        <div class="flex justify-between border-b border-dashed border-[color:var(--v-color-surface-accent)] py-1 last:border-b-0">
           <span class="text-[color:var(--v-color-text-muted)]">Максимальный вес</span>
           <span class="font-semibold">
             {{ m.maxWeight.weight }} кг
@@ -52,23 +54,23 @@
         </div>
       }
       @if (m.mostCaloricDay) {
-        <div class="flex justify-between border-b border-dashed border-[color:var(--v-color-surface-accent)] py-1">
+        <div class="flex justify-between border-b border-dashed border-[color:var(--v-color-surface-accent)] py-1 last:border-b-0">
           <span class="text-[color:var(--v-color-text-muted)]">Самый калорийный день</span>
           <span class="font-semibold">
-            {{ m.mostCaloricDay.kcal }} ккал
+            {{ m.mostCaloricDay.percent }}%
             <span class="text-[10px] font-normal text-[color:var(--v-color-text-muted)]">{{
               formatDate(m.mostCaloricDay.dateIso)
             }}</span>
           </span>
         </div>
       }
-      @if (m.bestStreak) {
-        <div class="flex justify-between py-1 last:border-b-0">
-          <span class="text-[color:var(--v-color-text-muted)]">Лучшая серия в норме</span>
+      @if (m.leastCaloricDay) {
+        <div class="flex justify-between border-b border-dashed border-[color:var(--v-color-surface-accent)] py-1 last:border-b-0">
+          <span class="text-[color:var(--v-color-text-muted)]">Самый низкокалорийный день</span>
           <span class="font-semibold">
-            {{ m.bestStreak.length }} {{ daysLabel(m.bestStreak.length) }}
+            {{ m.leastCaloricDay.percent }}%
             <span class="text-[10px] font-normal text-[color:var(--v-color-text-muted)]">{{
-              formatDate(m.bestStreak.dateIso)
+              formatDate(m.leastCaloricDay.dateIso)
             }}</span>
           </span>
         </div>

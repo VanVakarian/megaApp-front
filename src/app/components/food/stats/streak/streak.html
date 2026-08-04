@@ -1,19 +1,41 @@
-<div class="grid grid-cols-2 gap-2">
-  <v-card [borderRadius]="2"
-          [padding]="2">
-    <div class="text-center">
-      <div class="text-xs text-[color:var(--v-color-text-muted)]">Текущая серия</div>
-      <div class="text-2xl font-bold">{{ streak$$().current }}</div>
-      <div class="text-xs text-[color:var(--v-color-text-muted)]">{{ daysLabel(streak$$().current) }}</div>
-    </div>
-  </v-card>
+<v-card [borderRadius]="2"
+        [padding]="2">
+  <div class="mb-2 text-base font-semibold">Серия</div>
 
-  <v-card [borderRadius]="2"
-          [padding]="2">
-    <div class="text-center">
-      <div class="text-xs text-[color:var(--v-color-text-muted)]">Рекорд за всё время</div>
-      <div class="text-2xl font-bold">{{ streak$$().record }}</div>
-      <div class="text-xs text-[color:var(--v-color-text-muted)]">{{ daysLabel(streak$$().record) }}</div>
+  <div class="flex gap-2">
+    <div class="flex flex-1 items-center justify-center rounded-[8px] bg-[color:var(--v-color-surface-accent)] p-2">
+      <div class="grid grid-cols-7 justify-items-center gap-1">
+        @for (cell of calendarCells$$(); track $index) {
+          @if (!cell) {
+            <div class="h-[18px] w-[18px]"></div>
+          } @else if (cell.isToday) {
+            <div class="flex h-[18px] w-[18px] items-center justify-center rounded-full border border-dashed border-[color:var(--v-color-text-muted)] bg-transparent text-[8px] font-semibold text-[color:var(--v-color-text-muted)]"
+                 [title]="cellTitle(cell)">{{ dayNumber(cell.dateIso) }}</div>
+          } @else {
+            <div class="flex h-[18px] w-[18px] items-center justify-center rounded-full text-[8px] font-semibold text-white"
+                 [style.background]="cellColor(cell.band!)"
+                 [title]="cellTitle(cell)">{{ dayNumber(cell.dateIso) }}</div>
+          }
+        }
+      </div>
     </div>
-  </v-card>
-</div>
+
+    <div class="flex max-w-[190px] flex-1 flex-col gap-2">
+      <div class="flex flex-1 flex-col justify-center rounded-[8px] bg-[color:var(--v-color-surface-accent)] p-2 text-center">
+        <div class="text-xs text-[color:var(--v-color-text-muted)]">Текущая серия</div>
+        <div class="flex items-baseline justify-center gap-1">
+          <span class="text-2xl font-bold">{{ streak$$().current }}</span>
+          <span class="text-xs text-[color:var(--v-color-text-muted)]">{{ daysLabel(streak$$().current) }}</span>
+        </div>
+      </div>
+
+      <div class="flex flex-1 flex-col justify-center rounded-[8px] bg-[color:var(--v-color-surface-accent)] p-2 text-center">
+        <div class="text-xs text-[color:var(--v-color-text-muted)]">Рекорд за всё время</div>
+        <div class="flex items-baseline justify-center gap-1">
+          <span class="text-2xl font-bold">{{ streak$$().record }}</span>
+          <span class="text-xs text-[color:var(--v-color-text-muted)]">{{ daysLabel(streak$$().record) }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</v-card>

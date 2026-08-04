@@ -5,10 +5,11 @@
     <food-stats-accordion class="px-1" />
   }
 } @else {
-  <food-diary class="min-w-0 px-1" />
-  <food-stats-columns class="min-w-0 px-1"
-                       [style.grid-column]="'2 / -1'"
-                       [columnCountInput]="statsColumnCount$$()" />
+  <food-diary class="min-w-0 px-1"
+              style="grid-row: 1"
+              [style.grid-column]="diaryColumnIndex$$()" />
+  <food-stats-columns [columnCountInput]="statsColumnCount$$()"
+                       [gridColumnsInput]="statsGridColumns$$()" />
 }
 
 <food-mode-toggle-fab />

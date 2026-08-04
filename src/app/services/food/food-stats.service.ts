@@ -18,7 +18,7 @@ interface AggregatedPeriodData {
 })
 export class FoodStatsService {
   private static readonly DAYS_IN_YEAR = 365;
-  private static readonly GRANULARITY_WEEK_SWITCH_DAYS = 365;
+  private static readonly GRANULARITY_WEEK_SWITCH_DAYS = 370;
   private static readonly GRANULARITY_MONTH_SWITCH_YEARS = 4;
   private static readonly GRANULARITY_MONTH_SWITCH_DAYS =
     FoodStatsService.GRANULARITY_MONTH_SWITCH_YEARS * FoodStatsService.DAYS_IN_YEAR;

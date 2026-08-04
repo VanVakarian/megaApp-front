@@ -20,12 +20,7 @@ export interface FoodStatsWeightRecord {
 }
 
 export interface FoodStatsCaloricDayRecord {
-  kcal: number;
-  dateIso: string;
-}
-
-export interface FoodStatsStreakRecord {
-  length: number;
+  percent: number;
   dateIso: string;
 }
 
@@ -45,7 +40,7 @@ export interface FoodStatsMilestones {
   minWeight: FoodStatsWeightRecord | null;
   maxWeight: FoodStatsWeightRecord | null;
   mostCaloricDay: FoodStatsCaloricDayRecord | null;
-  bestStreak: FoodStatsStreakRecord | null;
+  leastCaloricDay: FoodStatsCaloricDayRecord | null;
   daysInDiary: number;
   totalEntries: number;
   weightChangeSinceStartKg: number | null;
@@ -61,7 +56,6 @@ interface DayPoint {
 interface StreakStats {
   current: number;
   record: number;
-  recordEndDateIso: string | null;
 }
 
 const RIBBON_WINDOW_DAYS = 30;
@@ -121,9 +115,8 @@ export class FoodStatsInsightsService {
 
   public readonly milestones$$: Signal<FoodStatsMilestones> = computed(() => {
     const allDays = this.allDays$$();
-    const streakStats = this.streakStats$$();
     const weightedDays = allDays.filter((day) => day.weight > 0);
-    const caloricDays = allDays.filter((day) => day.consumedKcal > 0);
+    const caloricDays = allDays.filter((day) => day.consumedKcal > 0 && day.targetKcal > 0);
     const today = allDays.length > 0 ? allDays[allDays.length - 1] : null;
     const firstWeightedDay = weightedDays.length > 0 ? weightedDays[0] : null;
 
@@ -131,11 +124,8 @@ export class FoodStatsInsightsService {
       yearAgo: this.computeYearAgo(allDays, today),
       minWeight: this.pickWeightRecord(weightedDays, (a, b) => (b.weight < a.weight ? b : a)),
       maxWeight: this.pickWeightRecord(weightedDays, (a, b) => (b.weight > a.weight ? b : a)),
-      mostCaloricDay: this.pickCaloricRecord(caloricDays),
-      bestStreak:
-        streakStats.record > 0 && streakStats.recordEndDateIso
-          ? { length: streakStats.record, dateIso: streakStats.recordEndDateIso }
-          : null,
+      mostCaloricDay: this.pickCaloricRecord(caloricDays, (a, b) => (this.kcalPercent(b) > this.kcalPercent(a) ? b : a)),
+      leastCaloricDay: this.pickCaloricRecord(caloricDays, (a, b) => (this.kcalPercent(b) < this.kcalPercent(a) ? b : a)),
       daysInDiary: allDays.length,
       totalEntries: this.foodStatsService.totalEntries$$(),
       weightChangeSinceStartKg:
@@ -151,7 +141,6 @@ export class FoodStatsInsightsService {
     }
 
     let record = 0;
-    let recordEndDateIso: string | null = null;
     let running = 0;
     for (const day of days) {
       if (resolveFoodDayBand(day.consumedKcal, day.targetKcal) !== FOOD_STREAK_SUCCESS_BAND) {
@@ -159,13 +148,10 @@ export class FoodStatsInsightsService {
         continue;
       }
       running++;
-      if (running > record) {
-        record = running;
-        recordEndDateIso = day.dateIso;
-      }
+      record = Math.max(record, running);
     }
 
-    return { current, record, recordEndDateIso };
+    return { current, record };
   }
 
   private computeYearAgo(allDays: DayPoint[], today: DayPoint | null): FoodStatsYearAgo | null {
@@ -188,10 +174,17 @@ export class FoodStatsInsightsService {
     return { weight: day.weight, dateIso: day.dateIso };
   }
 
-  private pickCaloricRecord(days: DayPoint[]): FoodStatsCaloricDayRecord | null {
+  private pickCaloricRecord(
+    days: DayPoint[],
+    pick: (a: DayPoint, b: DayPoint) => DayPoint,
+  ): FoodStatsCaloricDayRecord | null {
     if (days.length === 0) return null;
-    const day = days.reduce((a, b) => (b.consumedKcal > a.consumedKcal ? b : a));
-    return { kcal: day.consumedKcal, dateIso: day.dateIso };
+    const day = days.reduce(pick);
+    return { percent: this.roundTo(this.kcalPercent(day), 0), dateIso: day.dateIso };
+  }
+
+  private kcalPercent(day: DayPoint): number {
+    return (day.consumedKcal / day.targetKcal) * 100;
   }
 
   private isoMinusYears(dateIso: string, years: number): string {
