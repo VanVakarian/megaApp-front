@@ -5,6 +5,7 @@ import {
   FOOD_DAY_BAND_COLOR_VAR,
   FOOD_DAY_BAND_LABEL,
   FOOD_DAY_BAND_RANGE_LABEL,
+  FOOD_DAY_BAND_TEXT_COLOR_VAR,
   FoodDayBand,
 } from '@app/shared/food-day-band';
 import { calculateTodayIsoWithUserTimeShift, formatDateTicks, getRuDeclension } from '@app/shared/utils';
@@ -56,6 +57,10 @@ export class Streak {
 
   protected cellColor(band: FoodDayBand): string {
     return FOOD_DAY_BAND_COLOR_VAR[band];
+  }
+
+  protected cellTextColor(band: FoodDayBand): string {
+    return FOOD_DAY_BAND_TEXT_COLOR_VAR[band];
   }
 
   protected dayNumber(dateIso: string): number {

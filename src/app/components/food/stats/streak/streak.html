@@ -44,8 +44,9 @@
             <div class="flex h-[18px] w-[18px] items-center justify-center rounded-full border border-solid border-[color:var(--v-color-text-muted)] bg-transparent text-[8px] font-semibold text-[color:var(--v-color-text-muted)]"
                  [title]="cellTitle(cell)">{{ dayNumber(cell.dateIso) }}</div>
           } @else {
-            <div class="flex h-[18px] w-[18px] items-center justify-center rounded-full text-[8px] font-semibold text-white"
+            <div class="flex h-[18px] w-[18px] items-center justify-center rounded-full text-[8px] font-semibold"
                  [style.background]="cellColor(cell.band!)"
+                 [style.color]="cellTextColor(cell.band!)"
                  [title]="cellTitle(cell)">{{ dayNumber(cell.dateIso) }}</div>
           }
         }

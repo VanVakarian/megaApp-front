@@ -27,6 +27,13 @@ export const FOOD_DAY_BAND_COLOR_VAR: Record<FoodDayBand, string> = {
   [FoodDayBand.Over]: 'var(--v-color-danger)',
 };
 
+export const FOOD_DAY_BAND_TEXT_COLOR_VAR: Record<FoodDayBand, string> = {
+  [FoodDayBand.Under]: 'var(--v-color-text-on-accent)',
+  [FoodDayBand.Normal]: 'var(--v-color-text-on-success)',
+  [FoodDayBand.SlightOver]: 'var(--v-color-text-on-warning)',
+  [FoodDayBand.Over]: 'var(--v-color-text-on-accent)',
+};
+
 export const FOOD_DAY_BAND_LABEL: Record<FoodDayBand, string> = {
   [FoodDayBand.Under]: 'Недобор',
   [FoodDayBand.Normal]: 'В норме',

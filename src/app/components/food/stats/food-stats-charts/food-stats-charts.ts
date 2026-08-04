@@ -2,6 +2,7 @@ import {
   AfterViewInit,
   Component,
   ElementRef,
+  OnDestroy,
   OnInit,
   computed,
   effect,
@@ -12,13 +13,17 @@ import {
 import { StatsHelpIcon } from '@app/components/food/stats/stats-help-icon/stats-help-icon';
 import { DeviceInfoService } from '@app/services/device-info.service';
 import { FoodStatsService } from '@app/services/food/food-stats.service';
+import { SettingsService } from '@app/services/settings.service';
 import { ANIMATION_DURATION_MS } from '@app/shared/animations';
 import {
+  ChartColors,
+  CHART_COLORS_DARK,
+  CHART_COLORS_LIGHT,
+  createKcalsChartConfig,
+  createWeightChartConfig,
   FOOD_STATS_MONTH_LABELS_OPTIONS,
   FOOD_STATS_MONTH_LABELS_PADDING,
-  KCALS_CHART_SETTINGS,
   MonthLabelsPluginOptions,
-  WEIGHT_CHART_SETTINGS,
 } from '@app/shared/chart-config';
 import { StatsChartData } from '@app/shared/types';
 import { formatDateTicks, getRuDeclension } from '@app/shared/utils';
@@ -68,7 +73,7 @@ Chart.register(
   templateUrl: './food-stats-charts.html',
   imports: [VButton, VCard, VSlider, StatsHelpIcon],
 })
-export class FoodStatsCharts implements OnInit, AfterViewInit {
+export class FoodStatsCharts implements OnInit, AfterViewInit, OnDestroy {
   protected readonly weightChartCanvas = viewChild.required<ElementRef<HTMLCanvasElement>>('weightChartCanvas');
   protected readonly kcalsChartCanvas = viewChild.required<ElementRef<HTMLCanvasElement>>('kcalsChartCanvas');
 
@@ -204,19 +209,37 @@ export class FoodStatsCharts implements OnInit, AfterViewInit {
 
   protected readonly deviceInfoService = inject(DeviceInfoService);
   private readonly foodStatsService = inject(FoodStatsService);
+  private readonly settingsService = inject(SettingsService);
   private readonly rangeAnimationDurationMs = ANIMATION_DURATION_MS.MEDIUM;
   private rangeAnimationFrameId: number | null = null;
 
+  private readonly chartColors$$ = computed(() =>
+    this.settingsService.settings$$().darkTheme ? CHART_COLORS_DARK : CHART_COLORS_LIGHT,
+  );
+
+  // Chart.js doesn't reliably repaint an existing chart's colors from an in-place
+  // dataset.borderColor/backgroundColor mutation + update('none') — the data model
+  // updates but the canvas keeps the old colors until the chart is rebuilt. Colors only
+  // change on a theme toggle (rare), so recreating both charts on that transition is cheap
+  // and sidesteps the stale-repaint issue entirely; plain data updates stay a cheap mutation.
+  private lastChartColors: ChartColors | null = null;
+
   private readonly chartsUpdateEffect = effect(() => {
     const data = this.foodStatsService.statsChartDataClipped$$();
-    this.updateWeightChart(data);
-    this.updateKcalsChart(data);
+    const colors = this.chartColors$$();
+    if (colors !== this.lastChartColors) {
+      this.lastChartColors = colors;
+      this.recreateCharts(colors);
+    }
+    this.updateWeightChart(data, colors);
+    this.updateKcalsChart(data, colors);
   });
 
   public async ngOnInit(): Promise<void> {
     this.foodStatsService.getStats();
 
-    this.initializeCharts();
+    this.lastChartColors = this.chartColors$$();
+    this.initializeCharts(this.lastChartColors);
   }
 
   public ngAfterViewInit(): void {
@@ -229,6 +252,11 @@ export class FoodStatsCharts implements OnInit, AfterViewInit {
     if (kcalsContext) {
       kcalsContext.canvas.height = 250;
     }
+  }
+
+  public ngOnDestroy(): void {
+    this.weightChart$$()?.destroy();
+    this.kcalsChart$$()?.destroy();
   }
 
   protected onRangeChange(range: VSliderRangeValue): void {
@@ -252,23 +280,33 @@ export class FoodStatsCharts implements OnInit, AfterViewInit {
     this.animateRangeTo(targetRange);
   }
 
-  private updateWeightChart(data: StatsChartData) {
+  private updateWeightChart(data: StatsChartData, colors: ChartColors) {
     const chart = this.weightChart$$();
     if (chart?.data) {
       chart.data.labels = data.dates;
       chart.data.datasets[0].data = data.weights;
+      chart.data.datasets[0].borderColor = colors.main;
+      chart.data.datasets[0].backgroundColor = colors.main;
       chart.data.datasets[1].data = data.weightsAvg;
+      chart.data.datasets[1].borderColor = colors.secondary;
+      chart.data.datasets[1].backgroundColor = colors.secondary;
       chart.update('none');
     }
   }
 
-  private updateKcalsChart(data: StatsChartData) {
+  private updateKcalsChart(data: StatsChartData, colors: ChartColors) {
     const chart = this.kcalsChart$$();
     if (chart?.data) {
       chart.data.labels = data.dates;
       chart.data.datasets[0].data = data.kcalsFactual;
+      chart.data.datasets[0].borderColor = colors.main;
+      chart.data.datasets[0].backgroundColor = colors.main;
       chart.data.datasets[1].data = data.kcalsVirtual;
+      chart.data.datasets[1].borderColor = colors.virtual;
+      chart.data.datasets[1].backgroundColor = colors.virtual;
       chart.data.datasets[2].data = data.kcalsTarget;
+      chart.data.datasets[2].borderColor = colors.secondary;
+      chart.data.datasets[2].backgroundColor = colors.secondary;
 
       chart.update('none');
     }
@@ -481,9 +519,15 @@ export class FoodStatsCharts implements OnInit, AfterViewInit {
     return parts.join(' ');
   }
 
-  private initializeCharts(): void {
-    this.weightChart$$.set(new Chart('WeightChart', this.createChartConfig(WEIGHT_CHART_SETTINGS)));
-    this.kcalsChart$$.set(new Chart('KcalsChart', this.createChartConfig(KCALS_CHART_SETTINGS)));
+  private initializeCharts(colors: ChartColors): void {
+    this.weightChart$$.set(new Chart('WeightChart', this.createChartConfig(createWeightChartConfig(colors))));
+    this.kcalsChart$$.set(new Chart('KcalsChart', this.createChartConfig(createKcalsChartConfig(colors))));
+  }
+
+  private recreateCharts(colors: ChartColors): void {
+    this.weightChart$$()?.destroy();
+    this.kcalsChart$$()?.destroy();
+    this.initializeCharts(colors);
   }
 
   private animateRangeTo(targetRange: VSliderRangeValue): void {

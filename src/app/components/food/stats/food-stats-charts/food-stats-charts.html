@@ -3,9 +3,15 @@
   <div class="flex items-center justify-between gap-2 mb-2">
     <div class="text-lg font-semibold">Графики</div>
     <food-stats-help-icon>
-      Два графика за выбранный период. Верхний — вес: точки — вес по дням, линия — усреднённый тренд. Нижний — калории:
-      столбики — сколько съедено за день, линия — ваша дневная норма. Период показа можно менять ползунком или кнопками
-      внизу.
+      <div class="flex flex-col gap-2">
+        <div>Два графика за выбранный период.</div>
+        <div class="flex flex-col gap-1">
+          <div><span class="font-semibold">Вес</span> — точки: вес по дням, линия: усреднённый тренд.</div>
+          <div><span class="font-semibold">Калории</span> — столбики: сколько съедено за день, линия: ваша дневная
+            норма.</div>
+        </div>
+        <div class="text-[color:var(--v-color-text-muted)]">Период показа можно менять ползунком или кнопками внизу.</div>
+      </div>
     </food-stats-help-icon>
   </div>
 

@@ -3,6 +3,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   ElementRef,
+  inject,
   OnDestroy,
   computed,
   effect,
@@ -11,10 +12,13 @@ import {
   untracked,
   viewChild,
 } from '@angular/core';
+import { SettingsService } from '@app/services/settings.service';
 import {
   BALANCE_ACCOUNT_PALETTE,
   BALANCE_CHART_CONFIG,
-  CHART_COLORS,
+  ChartColors,
+  CHART_COLORS_DARK,
+  CHART_COLORS_LIGHT,
   formatMonthYearLabel,
 } from '@app/shared/chart-config';
 import { BalanceChartAccountSeries, BalanceChartData } from '@app/shared/types';
@@ -53,6 +57,11 @@ export class BalancesChart implements AfterViewInit, OnDestroy {
   protected readonly showByAccount$$ = signal(false);
   protected readonly suspensionFilter$$ = signal<'all' | 'exclude' | 'only'>('all');
   protected readonly enabledAccountIds$$ = signal<Set<number>>(new Set());
+
+  private readonly settingsService = inject(SettingsService);
+  private readonly chartColors$$ = computed(() =>
+    this.settingsService.settings$$().darkTheme ? CHART_COLORS_DARK : CHART_COLORS_LIGHT,
+  );
 
   private yearBoundaries: { year: string; startIdx: number; endIdx: number }[] = [];
 
@@ -142,9 +151,10 @@ export class BalancesChart implements AfterViewInit, OnDestroy {
     const showByAccount = this.showByAccount$$();
     const activeSeries = this.activeAccountSeries$$();
     const suspensionFilter = this.suspensionFilter$$();
+    const colors = this.chartColors$$();
     const chart = this.chart$$();
     if (!chart) return;
-    this.rebuildChartDatasets(chart, data, showByAccount, activeSeries, suspensionFilter);
+    this.rebuildChartDatasets(chart, data, showByAccount, activeSeries, suspensionFilter, colors);
   });
 
   public ngAfterViewInit(): void {
@@ -247,6 +257,7 @@ export class BalancesChart implements AfterViewInit, OnDestroy {
     showByAccount: boolean,
     activeSeries: BalanceChartAccountSeries[],
     suspensionFilter: 'all' | 'exclude' | 'only',
+    colors: ChartColors,
   ): void {
     const labels = data.dates.map((d) => formatMonthYearLabel(d));
 
@@ -279,8 +290,8 @@ export class BalancesChart implements AfterViewInit, OnDestroy {
           label: 'Баланс',
           data: filteredTotals,
           fill: true,
-          borderColor: CHART_COLORS.main,
-          backgroundColor: CHART_COLORS.mainAlpha,
+          borderColor: colors.main,
+          backgroundColor: colors.mainAlpha,
         },
       ];
       chart.update('none');
