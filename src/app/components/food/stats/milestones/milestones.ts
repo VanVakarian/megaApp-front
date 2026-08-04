@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, inject, Signal } from '@angular/core';
+import { StatsHelpIcon } from '@app/components/food/stats/stats-help-icon/stats-help-icon';
 import { FoodStatsInsightsService, FoodStatsMilestones } from '@app/services/food/food-stats-insights.service';
 import { formatDateTicks, getRuDeclension } from '@app/shared/utils';
 import { VCard } from '@ui-kit/components/v-card/v-card';
@@ -6,7 +7,7 @@ import { VCard } from '@ui-kit/components/v-card/v-card';
 @Component({
   selector: 'food-stats-milestones',
   templateUrl: './milestones.html',
-  imports: [VCard],
+  imports: [VCard, StatsHelpIcon],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class Milestones {

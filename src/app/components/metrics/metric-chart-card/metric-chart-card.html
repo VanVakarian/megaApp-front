@@ -29,13 +29,18 @@
         }
       </div>
     } @else {
-      <v-tooltip [text]="labelTooltipText$$()">
+      <v-tooltip>
         <span class="opacity-70 min-w-0 leading-none truncate">{{ labelInput() }}</span>
+        <div v-panel
+             class="flex flex-col gap-0.5">
+          <div>{{ technicalNameInput() }}</div>
+          <div>{{ descriptionInput() }}</div>
+        </div>
       </v-tooltip>
       @if (headerOhlcDisplay$$(); as ohlc) {
-        <v-tooltip [text]="ohlc"
-                   [noWrap]="true">
+        <v-tooltip [noWrap]="true">
           <span class="shrink-0 text-sm font-semibold leading-none">{{ headerDisplayValue$$() }}</span>
+          <span v-panel>{{ ohlc }}</span>
         </v-tooltip>
       } @else {
         <span class="shrink-0 text-sm font-semibold leading-none">{{ headerDisplayValue$$() }}</span>

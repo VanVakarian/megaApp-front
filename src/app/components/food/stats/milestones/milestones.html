@@ -1,6 +1,14 @@
 <v-card [borderRadius]="2"
         [padding]="2">
-  <div class="mb-2 text-base font-semibold">Вехи</div>
+  <div class="flex items-center justify-between gap-2 mb-2">
+    <div class="text-lg font-semibold">Вехи</div>
+    <food-stats-help-icon>
+      Интересные факты о вашей истории. «Год назад» — вес в этот же день год назад и разница с сегодняшним. «Рекорды» —
+      самый маленький и самый большой вес, самый калорийный и самый низкокалорийный день (в % от дневной нормы) за всё
+      время. Внизу — сколько дней вы ведёте дневник, сколько всего записей о еде добавили и на сколько изменился вес с
+      первой записи.
+    </food-stats-help-icon>
+  </div>
 
   @let m = milestones$$();
 
@@ -8,7 +16,7 @@
     <div class="mb-1 text-xs font-bold uppercase text-[color:var(--v-color-text-muted)]">
       Год назад — {{ formatDate(m.yearAgo.dateIso) }}
     </div>
-    <div class="mb-3 grid grid-cols-3 gap-2">
+    <div class="grid grid-cols-3 gap-2 mb-3">
       <div class="rounded-[8px] bg-[color:var(--v-color-surface-accent)] p-2 text-center">
         <div class="text-base font-bold">{{ m.yearAgo.weightThen }} кг</div>
         <div class="text-[10px] text-[color:var(--v-color-text-muted)]">тогда</div>
@@ -30,9 +38,10 @@
 
   @if (m.minWeight || m.maxWeight || m.mostCaloricDay || m.leastCaloricDay) {
     <div class="mb-1 text-xs font-bold uppercase text-[color:var(--v-color-text-muted)]">Рекорды за всё время</div>
-    <div class="mb-3 flex flex-col text-sm">
+    <div class="flex flex-col mb-3 text-sm">
       @if (m.minWeight) {
-        <div class="flex justify-between border-b border-dashed border-[color:var(--v-color-surface-accent)] py-1 last:border-b-0">
+        <div
+             class="flex justify-between border-b border-dashed border-[color:var(--v-color-surface-accent)] py-1 last:border-b-0">
           <span class="text-[color:var(--v-color-text-muted)]">Минимальный вес</span>
           <span class="font-semibold">
             {{ m.minWeight.weight }} кг
@@ -43,7 +52,8 @@
         </div>
       }
       @if (m.maxWeight) {
-        <div class="flex justify-between border-b border-dashed border-[color:var(--v-color-surface-accent)] py-1 last:border-b-0">
+        <div
+             class="flex justify-between border-b border-dashed border-[color:var(--v-color-surface-accent)] py-1 last:border-b-0">
           <span class="text-[color:var(--v-color-text-muted)]">Максимальный вес</span>
           <span class="font-semibold">
             {{ m.maxWeight.weight }} кг
@@ -54,7 +64,8 @@
         </div>
       }
       @if (m.mostCaloricDay) {
-        <div class="flex justify-between border-b border-dashed border-[color:var(--v-color-surface-accent)] py-1 last:border-b-0">
+        <div
+             class="flex justify-between border-b border-dashed border-[color:var(--v-color-surface-accent)] py-1 last:border-b-0">
           <span class="text-[color:var(--v-color-text-muted)]">Самый калорийный день</span>
           <span class="font-semibold">
             {{ m.mostCaloricDay.percent }}%
@@ -65,7 +76,8 @@
         </div>
       }
       @if (m.leastCaloricDay) {
-        <div class="flex justify-between border-b border-dashed border-[color:var(--v-color-surface-accent)] py-1 last:border-b-0">
+        <div
+             class="flex justify-between border-b border-dashed border-[color:var(--v-color-surface-accent)] py-1 last:border-b-0">
           <span class="text-[color:var(--v-color-text-muted)]">Самый низкокалорийный день</span>
           <span class="font-semibold">
             {{ m.leastCaloricDay.percent }}%

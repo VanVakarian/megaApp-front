@@ -9,6 +9,7 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
+import { StatsHelpIcon } from '@app/components/food/stats/stats-help-icon/stats-help-icon';
 import { DeviceInfoService } from '@app/services/device-info.service';
 import { FoodStatsService } from '@app/services/food/food-stats.service';
 import { ANIMATION_DURATION_MS } from '@app/shared/animations';
@@ -65,7 +66,7 @@ Chart.register(
 @Component({
   selector: 'food-stats-charts',
   templateUrl: './food-stats-charts.html',
-  imports: [VButton, VCard, VSlider],
+  imports: [VButton, VCard, VSlider, StatsHelpIcon],
 })
 export class FoodStatsCharts implements OnInit, AfterViewInit {
   protected readonly weightChartCanvas = viewChild.required<ElementRef<HTMLCanvasElement>>('weightChartCanvas');

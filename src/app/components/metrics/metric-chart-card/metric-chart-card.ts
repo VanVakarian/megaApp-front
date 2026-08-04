@@ -126,10 +126,6 @@ export class MetricChartCard implements OnInit, OnDestroy {
   public readonly dashboardEnabledChangeOutput = output<boolean>();
   public readonly dashboardOrderChangeOutput = output<number>();
 
-  // Combined into one hint instead of a separate hover icon: technical name
-  // (Prometheus-style key) on its own line, then the human-language description.
-  protected readonly labelTooltipText$$ = computed(() => `${this.technicalNameInput()}\n${this.descriptionInput()}`);
-
   // While the synced crosshair is active, the header number tracks the highlighted
   // time instead of the series' last value — a dash when nothing falls within the
   // capture window, back to the static value the instant the crosshair clears

@@ -1,6 +1,19 @@
 <v-card [borderRadius]="2"
         [padding]="2">
-  <div class="mb-2 text-base font-semibold">Топ продуктов за 30 дней</div>
+  <div class="flex items-center justify-between gap-2 mb-2">
+    <div class="text-lg font-semibold">Топ продуктов за 30 дней</div>
+    <food-stats-help-icon>
+      Продукты, которые чаще всего попадали в ваш рацион за последние 30 дней — по доле от всех съеденных за этот
+      период калорий (режим «По калориям») или от всего съеденного за этот период веса в граммах (режим «По весу»).
+    </food-stats-help-icon>
+  </div>
+
+  <div class="flex justify-end mb-2">
+    <v-toggle [fitContent]="true"
+              [items]="metricToggleItems"
+              [value]="metricToggleValue()"
+              (valueChange)="onMetricToggleChange($event)"></v-toggle>
+  </div>
 
   @if (products$$().length === 0) {
     <div class="text-sm text-[color:var(--v-color-text-muted)]">Пока недостаточно данных</div>

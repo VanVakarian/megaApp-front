@@ -1,4 +1,16 @@
-import { ChangeDetectionStrategy, Component, computed, effect, ElementRef, inject, OnDestroy, OnInit, Signal, signal, WritableSignal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  ElementRef,
+  inject,
+  OnDestroy,
+  OnInit,
+  Signal,
+  signal,
+  WritableSignal,
+} from '@angular/core';
 import { FoodDiary } from '@app/components/food/diary/food-diary';
 import { FoodModeToggleFab } from '@app/components/food/food-mode-toggle-fab/food-mode-toggle-fab';
 import { FoodStatsAccordion } from '@app/components/food/stats/food-stats-accordion/food-stats-accordion';
@@ -17,7 +29,7 @@ const COLUMN_GAP_PX = 8;
   imports: [FoodDiary, FoodStatsAccordion, FoodStatsColumns, FoodModeToggleFab],
   providers: [FoodScreenModeService],
   host: {
-    class: 'mt-2 w-full items-stretch gap-2',
+    class: 'mt-2 px-2 w-full items-stretch gap-3',
     '[class.flex]': 'totalColumnCount$$() === 1',
     '[class.flex-col]': 'totalColumnCount$$() === 1',
     '[class.grid]': 'totalColumnCount$$() >= 2',

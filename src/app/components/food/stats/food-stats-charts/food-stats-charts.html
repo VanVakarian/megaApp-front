@@ -1,6 +1,13 @@
 <v-card [borderRadius]="2"
         [padding]="2">
-  <div class="mb-2 text-base font-semibold">Графики</div>
+  <div class="flex items-center justify-between gap-2 mb-2">
+    <div class="text-lg font-semibold">Графики</div>
+    <food-stats-help-icon>
+      Два графика за выбранный период. Верхний — вес: точки — вес по дням, линия — усреднённый тренд. Нижний — калории:
+      столбики — сколько съедено за день, линия — ваша дневная норма. Период показа можно менять ползунком или кнопками
+      внизу.
+    </food-stats-help-icon>
+  </div>
 
   <div class="flex flex-col gap-2">
 

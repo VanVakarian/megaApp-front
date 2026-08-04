@@ -1,11 +1,11 @@
 @if (totalColumnCount$$() === 1) {
   @if (foodScreenModeService.mobileTab$$() === Tab.Diary) {
-    <food-diary class="px-1" />
+    <food-diary />
   } @else {
-    <food-stats-accordion class="px-1" />
+    <food-stats-accordion />
   }
 } @else {
-  <food-diary class="min-w-0 px-1"
+  <food-diary class="min-w-0"
               style="grid-row: 1"
               [style.grid-column]="diaryColumnIndex$$()" />
   <food-stats-columns [columnCountInput]="statsColumnCount$$()"

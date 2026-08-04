@@ -27,10 +27,16 @@ export class FoodStatsService {
   private readonly SLIDER_KEY = 'food_stats_slider';
 
   private readonly stats$$: WritableSignal<Stats> = signal({});
-  private readonly topProductsSignal$$: WritableSignal<FoodStatsTopProduct[]> = signal([]);
+  private readonly topProductsByKcalSignal$$: WritableSignal<FoodStatsTopProduct[]> = signal([]);
+  private readonly topProductsByWeightSignal$$: WritableSignal<FoodStatsTopProduct[]> = signal([]);
+  private readonly topProductsWindowTotalKcalSignal$$: WritableSignal<number> = signal(0);
+  private readonly topProductsWindowTotalWeightSignal$$: WritableSignal<number> = signal(0);
   private readonly totalEntriesSignal$$: WritableSignal<number> = signal(0);
-  public readonly topProducts$$: Signal<FoodStatsTopProduct[]> = computed(() => this.topProductsSignal$$());
-  public readonly totalEntries$$: Signal<number> = computed(() => this.totalEntriesSignal$$());
+  public readonly topProductsByKcal$$: Signal<FoodStatsTopProduct[]> = this.topProductsByKcalSignal$$.asReadonly();
+  public readonly topProductsByWeight$$: Signal<FoodStatsTopProduct[]> = this.topProductsByWeightSignal$$.asReadonly();
+  public readonly topProductsWindowTotalKcal$$: Signal<number> = this.topProductsWindowTotalKcalSignal$$.asReadonly();
+  public readonly topProductsWindowTotalWeight$$: Signal<number> = this.topProductsWindowTotalWeightSignal$$.asReadonly();
+  public readonly totalEntries$$: Signal<number> = this.totalEntriesSignal$$.asReadonly();
   public readonly statsChartData$$: Signal<StatsChartData> = computed(() => this.prepareChartData());
   public readonly statsChartDataClipped$$: Signal<StatsChartData> = computed(() => this.prepareChartDataClipped());
 
@@ -61,7 +67,10 @@ export class FoodStatsService {
 
   public reset(): void {
     this.stats$$.set({});
-    this.topProductsSignal$$.set([]);
+    this.topProductsByKcalSignal$$.set([]);
+    this.topProductsByWeightSignal$$.set([]);
+    this.topProductsWindowTotalKcalSignal$$.set(0);
+    this.topProductsWindowTotalWeightSignal$$.set(0);
     this.totalEntriesSignal$$.set(0);
     this.selectedDateIdxStart$$.set(0);
     this.selectedDateIdxEnd$$.set(0);
@@ -87,9 +96,14 @@ export class FoodStatsService {
     }
   }
 
+  // response.topProducts* may be missing on a stale pre-migration localStorage cache — the ?? [] /
+  // ?? 0 fallbacks keep loadStatsFromLocalStorageOnInit() from setting signals to undefined.
   private applyResponse(response: FoodStatsResponse): void {
     this.stats$$.set(response.days);
-    this.topProductsSignal$$.set(response.topProducts);
+    this.topProductsByKcalSignal$$.set(response.topProductsByKcal ?? []);
+    this.topProductsByWeightSignal$$.set(response.topProductsByWeight ?? []);
+    this.topProductsWindowTotalKcalSignal$$.set(response.topProductsWindowTotalKcal ?? 0);
+    this.topProductsWindowTotalWeightSignal$$.set(response.topProductsWindowTotalWeight ?? 0);
     this.totalEntriesSignal$$.set(response.totalEntries);
   }
 
@@ -105,6 +119,7 @@ export class FoodStatsService {
         ...dateStats,
         weight: newWeight === null ? dateStats.weight : newWeight,
         consumedKcal: dateStats.consumedKcal + kcalsDelta,
+        hasNoData: kcalsDelta !== 0 ? false : dateStats.hasNoData,
       },
     });
   }
@@ -126,7 +141,7 @@ export class FoodStatsService {
       weightAvg: nearestKnown?.weightAvg ?? Number.NaN,
       consumedKcal: 0,
       targetKcal: nearestKnown?.targetKcal ?? Number.NaN,
-      isVirtualKcalDay: nearestKnown?.isVirtualKcalDay ?? false,
+      hasNoData: true,
     };
   }
 
@@ -174,19 +189,20 @@ export class FoodStatsService {
       kcalsFactual: [],
       kcalsVirtual: [],
       kcalsTarget: [],
+      hasNoData: [],
     };
 
     Object.entries(stats).forEach(([date, dayStats]) => {
-      const { weight, weightAvg, consumedKcal, targetKcal, isVirtualKcalDay } = dayStats;
+      const { weight, weightAvg, consumedKcal, targetKcal, hasNoData } = dayStats;
       const hasKcal = consumedKcal !== undefined && consumedKcal !== null;
-      const factualKcal = !hasKcal ? Number.NaN : isVirtualKcalDay ? 0 : consumedKcal;
-      const virtualKcal = !hasKcal ? Number.NaN : isVirtualKcalDay ? consumedKcal : 0;
       result.dates.push(date);
       result.weights.push(weight);
       result.weightsAvg.push(weightAvg);
-      result.kcalsFactual.push(factualKcal);
-      result.kcalsVirtual.push(virtualKcal);
+      result.kcalsFactual.push(!hasKcal ? Number.NaN : consumedKcal);
+      // No imputation is done for missing days — this series is currently always zero.
+      result.kcalsVirtual.push(!hasKcal ? Number.NaN : 0);
       result.kcalsTarget.push(targetKcal);
+      result.hasNoData.push(hasNoData);
     });
 
     return result;
@@ -203,6 +219,7 @@ export class FoodStatsService {
     const kcalsFactual = data.kcalsFactual.slice(start, end + 1);
     const kcalsVirtual = data.kcalsVirtual.slice(start, end + 1);
     const kcalsTarget = data.kcalsTarget.slice(start, end + 1);
+    const hasNoData = data.hasNoData.slice(start, end + 1);
 
     const daysCount = dates.length;
     const granularity = this.resolveGranularity(daysCount);
@@ -222,6 +239,7 @@ export class FoodStatsService {
       kcalsFactual,
       kcalsVirtual,
       kcalsTarget,
+      hasNoData,
     };
   }
 
@@ -326,6 +344,8 @@ export class FoodStatsService {
       aggregated.kcalsFactual.push(kcalsComplete ? kcalsFactualSum[i] / kcalsCount[i] : Number.NaN);
       aggregated.kcalsVirtual.push(kcalsComplete ? kcalsVirtualSum[i] / kcalsCount[i] : Number.NaN);
       aggregated.kcalsTarget.push(kcalsTargetComplete ? kcalsTargetSum[i] / kcalsTargetCount[i] : Number.NaN);
+      // Not meaningful at week/month granularity — only the daily series feeds the streak calendar.
+      aggregated.hasNoData.push(false);
       aggregatedStartIdx.push(periodStartIdx[i]);
       aggregatedEndIdx.push(periodEndIdx[i]);
     }
@@ -355,6 +375,7 @@ export class FoodStatsService {
       kcalsFactual: aggregated.data.kcalsFactual.slice(startPeriodIdx, endPeriodIdx + 1),
       kcalsVirtual: aggregated.data.kcalsVirtual.slice(startPeriodIdx, endPeriodIdx + 1),
       kcalsTarget: aggregated.data.kcalsTarget.slice(startPeriodIdx, endPeriodIdx + 1),
+      hasNoData: aggregated.data.hasNoData.slice(startPeriodIdx, endPeriodIdx + 1),
     };
 
     if (!hideWeights) return sliced;
@@ -429,6 +450,7 @@ export class FoodStatsService {
       kcalsFactual: [],
       kcalsVirtual: [],
       kcalsTarget: [],
+      hasNoData: [],
     };
   }
 
@@ -469,7 +491,10 @@ export class FoodStatsService {
   private saveStatsToLocalStorage(): void {
     const response: FoodStatsResponse = {
       days: this.stats$$(),
-      topProducts: this.topProductsSignal$$(),
+      topProductsByKcal: this.topProductsByKcalSignal$$(),
+      topProductsByWeight: this.topProductsByWeightSignal$$(),
+      topProductsWindowTotalKcal: this.topProductsWindowTotalKcalSignal$$(),
+      topProductsWindowTotalWeight: this.topProductsWindowTotalWeightSignal$$(),
       totalEntries: this.totalEntriesSignal$$(),
     };
     this.localStorageService.setUserScoped(this.STATS_STORAGE_KEY, response);

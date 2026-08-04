@@ -34,4 +34,15 @@ export const FOOD_DAY_BAND_LABEL: Record<FoodDayBand, string> = {
   [FoodDayBand.Over]: 'Сильный перебор',
 };
 
-export const FOOD_STREAK_SUCCESS_BAND = FoodDayBand.Normal;
+export const FOOD_DAY_BAND_RANGE_LABEL: Record<FoodDayBand, string> = {
+  [FoodDayBand.Under]: `меньше ${UNDER_MAX_PERCENT}%`,
+  [FoodDayBand.Normal]: `${UNDER_MAX_PERCENT}–${NORMAL_MAX_PERCENT}%`,
+  [FoodDayBand.SlightOver]: `${NORMAL_MAX_PERCENT}–${OVER_MIN_PERCENT}%`,
+  [FoodDayBand.Over]: `от ${OVER_MIN_PERCENT}%`,
+};
+
+const FOOD_STREAK_SUCCESS_BANDS: ReadonlySet<FoodDayBand> = new Set([FoodDayBand.Under, FoodDayBand.Normal]);
+
+export function isFoodStreakSuccessBand(band: FoodDayBand): boolean {
+  return FOOD_STREAK_SUCCESS_BANDS.has(band);
+}

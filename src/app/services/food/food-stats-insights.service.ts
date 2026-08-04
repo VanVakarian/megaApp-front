@@ -1,12 +1,12 @@
 import { computed, inject, Injectable, Signal } from '@angular/core';
 import { FoodStatsService } from '@app/services/food/food-stats.service';
-import { FOOD_STREAK_SUCCESS_BAND, FoodDayBand, resolveFoodDayBand } from '@app/shared/food-day-band';
+import { FoodDayBand, isFoodStreakSuccessBand, resolveFoodDayBand } from '@app/shared/food-day-band';
 import { FoodStatsTopProduct } from '@app/shared/types';
-import { dateToIsoNoTimeNoTZ } from '@app/shared/utils';
 
 export interface FoodStatsRibbonDay {
   dateIso: string;
   band: FoodDayBand;
+  hasNoData: boolean;
 }
 
 export interface FoodStatsStreak {
@@ -51,6 +51,7 @@ interface DayPoint {
   weight: number;
   consumedKcal: number;
   targetKcal: number;
+  hasNoData: boolean;
 }
 
 interface StreakStats {
@@ -76,6 +77,7 @@ export class FoodStatsInsightsService {
       weight: data.weights[index],
       consumedKcal: data.kcalsFactual[index],
       targetKcal: data.kcalsTarget[index],
+      hasNoData: data.hasNoData[index],
     }));
   });
 
@@ -90,21 +92,40 @@ export class FoodStatsInsightsService {
     this.ribbonWindowDays$$().map((day) => ({
       dateIso: day.dateIso,
       band: resolveFoodDayBand(day.consumedKcal, day.targetKcal),
+      hasNoData: day.hasNoData,
     })),
   );
 
-  // Same trailing-30-completed-days window the backend used to compute topProducts' absolute
-  // kcal — the share percent is a client-side division against that window's total, not against
-  // all-time consumption, so it always sums close to 100% across the returned top-5.
-  public readonly topProductsWithShare$$: Signal<FoodStatsTopProductShare[]> = computed(() => {
-    const products = this.foodStatsService.topProducts$$();
-    const windowKcalTotal = this.ribbonWindowDays$$().reduce((sum, day) => sum + day.consumedKcal, 0);
-    if (windowKcalTotal <= 0) return products.map((product) => ({ ...product, sharePercent: 0 }));
+  // Share percent divides each product's absolute kcal/weight by the matching window total the
+  // backend computed over the same trailing-30-completed-days window (not an all-time total), so
+  // it always sums close to 100% across the returned top-10 for whichever metric is active.
+  public readonly topProductsByKcalWithShare$$: Signal<FoodStatsTopProductShare[]> = computed(() =>
+    this.withSharePercent(
+      this.foodStatsService.topProductsByKcal$$(),
+      this.foodStatsService.topProductsWindowTotalKcal$$(),
+      (product) => product.kcal,
+    ),
+  );
+
+  public readonly topProductsByWeightWithShare$$: Signal<FoodStatsTopProductShare[]> = computed(() =>
+    this.withSharePercent(
+      this.foodStatsService.topProductsByWeight$$(),
+      this.foodStatsService.topProductsWindowTotalWeight$$(),
+      (product) => product.weight,
+    ),
+  );
+
+  private withSharePercent(
+    products: FoodStatsTopProduct[],
+    windowTotal: number,
+    valueOf: (product: FoodStatsTopProduct) => number,
+  ): FoodStatsTopProductShare[] {
+    if (windowTotal <= 0) return products.map((product) => ({ ...product, sharePercent: 0 }));
     return products.map((product) => ({
       ...product,
-      sharePercent: this.roundTo((product.kcal / windowKcalTotal) * 100, 0),
+      sharePercent: this.roundTo((valueOf(product) / windowTotal) * 100, 0),
     }));
-  });
+  }
 
   private readonly streakStats$$: Signal<StreakStats> = computed(() => this.computeStreakStats(this.completedDays$$()));
 
@@ -133,17 +154,23 @@ export class FoodStatsInsightsService {
     };
   });
 
+  // A day keeps the streak alive unless it was skipped entirely (no diary entries logged) or the
+  // user went over target — being under target still counts, since undereating isn't a failure.
+  private isStreakSuccessDay(day: DayPoint): boolean {
+    return !day.hasNoData && isFoodStreakSuccessBand(resolveFoodDayBand(day.consumedKcal, day.targetKcal));
+  }
+
   private computeStreakStats(days: DayPoint[]): StreakStats {
     let current = 0;
     for (let i = days.length - 1; i >= 0; i--) {
-      if (resolveFoodDayBand(days[i].consumedKcal, days[i].targetKcal) !== FOOD_STREAK_SUCCESS_BAND) break;
+      if (!this.isStreakSuccessDay(days[i])) break;
       current++;
     }
 
     let record = 0;
     let running = 0;
     for (const day of days) {
-      if (resolveFoodDayBand(day.consumedKcal, day.targetKcal) !== FOOD_STREAK_SUCCESS_BAND) {
+      if (!this.isStreakSuccessDay(day)) {
         running = 0;
         continue;
       }
@@ -187,10 +214,12 @@ export class FoodStatsInsightsService {
     return (day.consumedKcal / day.targetKcal) * 100;
   }
 
+  // Plain string arithmetic on the "YYYY-MM-DD" key — deliberately avoids new Date(dateIso), which
+  // parses date-only strings as UTC midnight and would shift the result by a day for any user
+  // whose local timezone is behind UTC once read back through local getters.
   private isoMinusYears(dateIso: string, years: number): string {
-    const date = new Date(dateIso);
-    date.setFullYear(date.getFullYear() - years);
-    return dateToIsoNoTimeNoTZ(date);
+    const year = Number(dateIso.slice(0, 4)) - years;
+    return `${year}${dateIso.slice(4)}`;
   }
 
   private roundTo(value: number, places: number): number {
