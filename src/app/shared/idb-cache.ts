@@ -81,27 +81,18 @@ export async function idbPutDiaryDay<T>(dateISO: string, value: T): Promise<void
   }
 }
 
-export async function idbGetDiaryDayRange<T>(startISO: string, endISO: string): Promise<Record<string, T>> {
+export async function idbGetDiaryDay<T>(dateISO: string): Promise<T | null> {
   try {
     const db = await openDb();
-    return await new Promise<Record<string, T>>((resolve, reject) => {
+    return await new Promise<T | null>((resolve, reject) => {
       const tx = db.transaction(DIARY_DAYS_STORE_NAME, 'readonly');
-      const request = tx.objectStore(DIARY_DAYS_STORE_NAME).openCursor(IDBKeyRange.bound(startISO, endISO));
-      const result: Record<string, T> = {};
-      request.onsuccess = () => {
-        const cursor = request.result;
-        if (!cursor) {
-          resolve(result);
-          return;
-        }
-        result[cursor.key as string] = cursor.value as T;
-        cursor.continue();
-      };
+      const request = tx.objectStore(DIARY_DAYS_STORE_NAME).get(dateISO);
+      request.onsuccess = () => resolve((request.result as T) ?? null);
       request.onerror = () => reject(request.error);
     });
   } catch (error) {
-    console.error(`Error reading diary day range "${startISO}..${endISO}" from IndexedDB:`, error);
-    return {};
+    console.error(`Error reading diary day "${dateISO}" from IndexedDB:`, error);
+    return null;
   }
 }
 

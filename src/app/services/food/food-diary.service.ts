@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { computed, effect, inject, Injectable, signal, Signal, WritableSignal } from '@angular/core';
 import { AuthService, AuthSessionState } from '@app/services/auth.service';
-import { idbClearDiaryDays, idbGetDiaryDayRange, idbPutDiaryDay } from '@app/shared/idb-cache';
+import { idbClearDiaryDays, idbGetDiaryDay, idbPutDiaryDay } from '@app/shared/idb-cache';
 import {
   BodyWeightInterface,
   BodyWeightToUpdate,
@@ -92,7 +92,13 @@ export class FoodDiaryService extends BaseFoodService {
   // fetched-and-confirmed for this session (even if it has zero entries); a date outside all of
   // them hasn't been asked about yet and triggers a new segment fetch.
   private segments: DiarySegment[] = [];
-  private readonly pendingSegmentFetches = new Map<string, Promise<void>>();
+
+  // Windows currently in flight (request sent, response not back yet). Coverage checks treat
+  // these the same as confirmed segments — otherwise a date selected while a fetch is still
+  // pending reads as "not covered" and fires another, overlapping request on every navigation
+  // step until the first one finally lands (request-chain bug on slow networks). Moved into
+  // `segments` on success; dropped (not confirmed) on failure so the date is retried later.
+  private pendingSegments: DiarySegment[] = [];
 
   private lastSyncTs = 0;
 
@@ -114,7 +120,9 @@ export class FoodDiaryService extends BaseFoodService {
 
   private readonly ensureDiarySegmentEffect$$ = effect(() => {
     if (this.authService.sessionState$$() !== AuthSessionState.Authenticated) return;
-    this.ensureSegmentCoverage(this.selectedDayIso$$());
+    const dateISO = this.selectedDayIso$$();
+    this.hydrateDayFromIndexedDb(dateISO);
+    this.ensureSegmentCoverage(dateISO);
   });
 
   private readonly resetOnAuthLossEffect$$ = effect(() => {
@@ -131,7 +139,6 @@ export class FoodDiaryService extends BaseFoodService {
     syncEngine: SyncEngineService,
   ) {
     super(http, localStorageService, networkService, syncEngine);
-    this.hydrateDiaryFromIndexedDb();
     this.loadDeletedDaySnapshotFromLocalStorage();
     this.subscribe();
   }
@@ -143,7 +150,7 @@ export class FoodDiaryService extends BaseFoodService {
     this.diaryEntryFocusId$$.set(null);
     this.diaryEntryResetId$$.set(null);
     this.segments = [];
-    this.pendingSegmentFetches.clear();
+    this.pendingSegments = [];
     this.lastSyncTs = 0;
     this.pendingDiaryEntryIds.clear();
   }
@@ -173,16 +180,11 @@ export class FoodDiaryService extends BaseFoodService {
     const date = dateIso ?? calculateTodayIsoWithUserTimeShift();
     const paramsStr = `date=${date}&offset=${offset ?? this.FIRST_SEGMENT_OFFSET_DAYS}`;
 
-    try {
-      const response = await firstValueFrom(this.http.get<Diary>(`/api/food/diary-full-update?${paramsStr}`));
+    const response = await firstValueFrom(this.http.get<Diary>(`/api/food/diary-full-update?${paramsStr}`));
 
-      this.diaryRaw$$.update((diary) => this.mergeServerDiaryResponse(diary, response));
-      Object.keys(response).forEach((responseDateIso) => this.persistDay(responseDateIso));
-      return response;
-    } catch (error) {
-      console.error('Failed getting diary range:', error);
-      return {};
-    }
+    this.diaryRaw$$.update((diary) => this.mergeServerDiaryResponse(diary, response));
+    Object.keys(response).forEach((responseDateIso) => this.persistDay(responseDateIso));
+    return response;
   }
 
   public async createDiaryEntry(diaryEntry: DiaryEntry): Promise<{ result: boolean; diaryId: number }> {
@@ -945,12 +947,18 @@ export class FoodDiaryService extends BaseFoodService {
     return Math.round((new Date(toIso).getTime() - new Date(fromIso).getTime()) / (1000 * 60 * 60 * 24));
   }
 
+  // Confirmed segments plus windows still being fetched — see field comment on pendingSegments
+  // for why an in-flight window counts as covered too.
+  private allKnownSegments(): DiarySegment[] {
+    return [...this.segments, ...this.pendingSegments];
+  }
+
   private isDateCovered(dateISO: string): boolean {
-    return this.segments.some((segment) => dateISO >= segment.start && dateISO <= segment.end);
+    return this.allKnownSegments().some((segment) => dateISO >= segment.start && dateISO <= segment.end);
   }
 
   private findContainingSegment(dateISO: string): DiarySegment | undefined {
-    return this.segments.find((segment) => dateISO >= segment.start && dateISO <= segment.end);
+    return this.allKnownSegments().find((segment) => dateISO >= segment.start && dateISO <= segment.end);
   }
 
   // Segments touch or overlap once neither one's start is more than a day past the other's end.
@@ -1004,22 +1012,27 @@ export class FoodDiaryService extends BaseFoodService {
 
   // First segment of the session is small (the common case), every subsequent one is large (see
   // field comment on NEXT_SEGMENT_OFFSET_DAYS) — sized off "is this the first segment", not off
-  // distance from today.
+  // distance from today. "First" means first fetch kicked off this session, confirmed or still
+  // pending — a second navigation landing while the first fetch is still in flight is not a
+  // first segment either.
   private fetchSegmentAround(centerDate: string): void {
-    const offsetDays = this.segments.length === 0 ? this.FIRST_SEGMENT_OFFSET_DAYS : this.NEXT_SEGMENT_OFFSET_DAYS;
+    if (this.isDateCovered(centerDate)) return;
+
+    const isFirstFetchOfSession = this.segments.length === 0 && this.pendingSegments.length === 0;
+    const offsetDays = isFirstFetchOfSession ? this.FIRST_SEGMENT_OFFSET_DAYS : this.NEXT_SEGMENT_OFFSET_DAYS;
     const window: DiarySegment = {
       start: this.addDaysToIso(centerDate, -offsetDays),
       end: this.addDaysToIso(centerDate, offsetDays),
     };
-    const requestKey = `${window.start}_${window.end}`;
 
-    if (this.pendingSegmentFetches.has(requestKey)) return;
+    this.pendingSegments.push(window);
 
-    const fetchPromise = this.getFoodDiaryFullUpdateRange(centerDate, offsetDays)
+    this.getFoodDiaryFullUpdateRange(centerDate, offsetDays)
       .then(() => this.addSegment(window))
-      .finally(() => this.pendingSegmentFetches.delete(requestKey));
-
-    this.pendingSegmentFetches.set(requestKey, fetchPromise);
+      .catch((error) => console.error('Failed fetching diary segment:', error))
+      .finally(() => {
+        this.pendingSegments = this.pendingSegments.filter((segment) => segment !== window);
+      });
   }
 
   private persistDay(dateISO: string): void {
@@ -1056,16 +1069,18 @@ export class FoodDiaryService extends BaseFoodService {
     return merged;
   }
 
-  // Local-only, no network — for the instant first paint. The segment-coverage effect (which
-  // does hit the network) runs independently and blindly overwrites this once the server answers.
-  private hydrateDiaryFromIndexedDb(): void {
-    const selectedDay = this.selectedDayIso$$();
-    const start = this.addDaysToIso(selectedDay, -this.FIRST_SEGMENT_OFFSET_DAYS);
-    const end = this.addDaysToIso(selectedDay, this.FIRST_SEGMENT_OFFSET_DAYS);
+  // Local-only, no network — instant paint for whichever day was just selected, from a prior
+  // session's cache if any. Runs before ensureSegmentCoverage (which does hit the network) on
+  // every selectedDayIso$$ change, not just at startup. Skipped if the day is already in memory
+  // — either from an earlier hydration or because a segment fetch already resolved it, in which
+  // case that data is at least as fresh as IndexedDB's, so touching it here would only risk
+  // clobbering it with a stale copy the moment the async read completes.
+  private hydrateDayFromIndexedDb(dateISO: string): void {
+    if (this.diaryRaw$$()[dateISO]) return;
 
-    idbGetDiaryDayRange<DiaryDay>(start, end).then((days) => {
-      if (Object.keys(days).length === 0) return;
-      this.diaryRaw$$.update((diary) => ({ ...diary, ...days }));
+    idbGetDiaryDay<DiaryDay>(dateISO).then((day) => {
+      if (!day) return;
+      this.diaryRaw$$.update((diary) => (diary[dateISO] ? diary : { ...diary, [dateISO]: day }));
     });
   }
 
