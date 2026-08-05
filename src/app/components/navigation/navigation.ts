@@ -26,7 +26,7 @@ export class Navigation implements OnInit {
 
   protected readonly navigationService = inject(NavigationService);
   protected readonly authService = inject(AuthService);
-  private readonly deviceInfoService = inject(DeviceInfoService);
+  protected readonly deviceInfoService = inject(DeviceInfoService);
   private readonly router = inject(Router);
 
   private resizeObserver: ResizeObserver | null = null;
@@ -63,10 +63,6 @@ export class Navigation implements OnInit {
   });
 
   protected readonly isDesktop$$ = computed(() => this.deviceInfoService.isDesktopScreen$$());
-
-  protected readonly shouldHideFabButtons$$ = computed(
-    () => !this.isDesktop$$() && this.deviceInfoService.isKeyboardOpen$$(),
-  );
 
   protected readonly visibleButtons$$ = computed(() => {
     const place = this.isDesktop$$() ? 'desktop' : 'mobile';

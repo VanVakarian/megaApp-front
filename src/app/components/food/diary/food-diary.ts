@@ -25,7 +25,6 @@ import { FoodCatalogueService } from '@app/services/food/food-catalogue.service'
 import { FoodDiaryService } from '@app/services/food/food-diary.service';
 import { KeyboardService } from '@app/services/keyboard.service';
 import { VButton } from '@ui-kit/components/v-button/v-button';
-import { VCard } from '@ui-kit/components/v-card/v-card';
 import { VAccordion } from '@ui-kit/components/v-expand/v-accordion';
 import { VExpand } from '@ui-kit/components/v-expand/v-expand';
 import { IconName, VIcon } from '@ui-kit/components/v-icon/v-icon';
@@ -53,7 +52,6 @@ import { NutritionSummary } from './nutrition-summary/nutrition-summary';
     VModal,
     VAccordion,
     VExpand,
-    VCard,
     VIcon,
   ],
 })

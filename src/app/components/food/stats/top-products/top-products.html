@@ -1,0 +1,39 @@
+<v-card [borderRadius]="2"
+        [padding]="2">
+  <div class="flex items-center justify-between gap-2 mb-2">
+    <div class="text-lg font-semibold">Топ продуктов за 30 дней</div>
+    <food-stats-help-icon>
+      <div class="flex flex-col gap-2">
+        <div>Продукты, которые чаще всего попадали в ваш рацион за последние 30 дней.</div>
+        <div class="flex flex-col gap-1">
+          <div><span class="font-semibold">По калориям</span> — доля от всех съеденных за этот период калорий.</div>
+          <div><span class="font-semibold">По весу</span> — доля от всего съеденного за этот период веса в граммах.</div>
+        </div>
+      </div>
+    </food-stats-help-icon>
+  </div>
+
+  <div class="flex justify-end mb-2">
+    <v-toggle [fitContent]="true"
+              [items]="metricToggleItems"
+              [value]="metricToggleValue()"
+              (valueChange)="onMetricToggleChange($event)"></v-toggle>
+  </div>
+
+  @if (products$$().length === 0) {
+    <div class="text-sm text-[color:var(--v-color-text-muted)]">Пока недостаточно данных</div>
+  } @else {
+    @for (product of products$$(); track product.catalogueId) {
+      <div class="mb-2 flex flex-col gap-[3px] last:mb-0">
+        <div class="flex justify-between text-xs">
+          <span class="font-medium">{{ product.name }}</span>
+          <span class="text-[color:var(--v-color-text-muted)]">{{ product.sharePercent }}%</span>
+        </div>
+        <div class="h-2 rounded-full bg-[color:var(--v-color-surface-accent)]">
+          <div class="h-full rounded-full bg-[color:var(--v-color-primary)]"
+               [style.width.%]="barWidthPercent(product)"></div>
+        </div>
+      </div>
+    }
+  }
+</v-card>

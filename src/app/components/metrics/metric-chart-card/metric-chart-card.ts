@@ -127,10 +127,6 @@ export class MetricChartCard implements OnInit, OnDestroy {
   public readonly dashboardEnabledChangeOutput = output<boolean>();
   public readonly dashboardOrderChangeOutput = output<number>();
 
-  // Combined into one hint instead of a separate hover icon: technical name
-  // (Prometheus-style key) on its own line, then the human-language description.
-  protected readonly labelTooltipText$$ = computed(() => `${this.technicalNameInput()}\n${this.descriptionInput()}`);
-
   // Widest formatted value across the currently visible window (whatever unit —
   // money, count, ratio, durations all vary wildly in digit count). Padding every
   // header value out to this width up front means scrubbing across a card whose

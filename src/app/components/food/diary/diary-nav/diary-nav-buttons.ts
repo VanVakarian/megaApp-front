@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, computed, ElementRef, inject, Signal, viewChild } from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
+import { FOOD_FAB_ROW_RIGHT_INSET_PX, FoodFabLayer, foodFabStackBottomPx } from '@app/components/food/food-fab-layout';
 import { AuthService } from '@app/services/auth.service';
 import { DeviceInfoService } from '@app/services/device-info.service';
 import { FoodAddModalService } from '@app/services/food/food-add-modal.service';
@@ -58,9 +59,8 @@ export class DiaryNavButtons {
   private readonly foodDiaryService = inject(FoodDiaryService);
   private readonly foodAddModalService = inject(FoodAddModalService);
 
-  protected readonly shouldHideFabButtons$$ = computed(
-    () => !this.deviceInfoService.isDesktopScreen$$() && this.deviceInfoService.isKeyboardOpen$$(),
-  );
+  protected readonly addFabBottomPx: string = foodFabStackBottomPx(FoodFabLayer.AddFood);
+  protected readonly dateNavRowRightPx: string = `${FOOD_FAB_ROW_RIGHT_INSET_PX}px`;
 
   protected formatWeekday(dateIso: string, weekdayStyle: 'long' | 'short'): string {
     const date = new Date(dateIso);

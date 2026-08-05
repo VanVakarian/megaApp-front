@@ -1,0 +1,10 @@
+<v-tooltip>
+  <div class="flex h-4 w-4 items-center justify-center rounded-full border border-dashed border-[color:var(--v-color-border-subtle)]">
+    <v-icon [name]="Icon.QuestionMark"
+            [size]="3"
+            color="var(--v-color-border-subtle)" />
+  </div>
+  <div v-panel>
+    <ng-content />
+  </div>
+</v-tooltip>

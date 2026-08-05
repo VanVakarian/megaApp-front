@@ -3,7 +3,7 @@ import { formatMetricTickLabel } from '@app/shared/metrics-series';
 import { MetricGranularity } from '@app/shared/types';
 import { ChartConfiguration } from 'chart.js';
 
-interface ChartColors {
+export interface ChartColors {
   main: string;
   mainAlpha: string;
   secondary: string;
@@ -30,123 +30,160 @@ export interface MonthLabelsPluginOptions {
   yearSwitchMonths: number;
 }
 
-export const CHART_COLORS: ChartColors = {
-  main: '#578f92',
-  mainAlpha: '#578f9250',
-  secondary: '#345b5b',
-  secondaryAlpha: '#345b5b50',
-  virtual: '#9fc9cb',
-  virtualAlpha: '#9fc9cb80',
+// Previous palette (cool teal, ~183°), kept in case we go back to it:
+// export const CHART_COLORS_LIGHT: ChartColors = {
+//   main: '#578f92',
+//   mainAlpha: '#578f9250',
+//   secondary: '#345b5b',
+//   secondaryAlpha: '#345b5b50',
+//   virtual: '#9fc9cb',
+//   virtualAlpha: '#9fc9cb80',
+// };
+//
+// export const CHART_COLORS_DARK: ChartColors = {
+//   main: '#5a8487',
+//   mainAlpha: '#5a848750',
+//   secondary: '#89b1b3',
+//   secondaryAlpha: '#89b1b350',
+//   virtual: '#496365',
+//   virtualAlpha: '#49636580',
+// };
+
+// Same blue hue (~225°, matching --v-color-primary) in both palettes, but lightness ranking
+// is flipped: on a white surface a darker tone reads as the more prominent one, so light mode
+// goes secondary(darkest) > main > virtual(lightest); on a dark surface it's the opposite — a
+// lighter tone pops more — so dark mode goes secondary(lightest) > main > virtual(darkest),
+// keeping the same relative emphasis order in both themes instead of reusing light values as-is.
+export const CHART_COLORS_LIGHT: ChartColors = {
+  main: '#6278bc',
+  mainAlpha: '#6278bc50',
+  secondary: '#2d3f76',
+  secondaryAlpha: '#2d3f7650',
+  virtual: '#a1acce',
+  virtualAlpha: '#a1acce80',
 };
 
-export const WEIGHT_CHART_SETTINGS: ChartConfiguration = {
-  type: 'line',
-  data: {
-    labels: [],
-    datasets: [
-      {
-        label: 'Вес',
-        data: [],
-        order: 2,
-        fill: false,
-        borderColor: CHART_COLORS.main,
-        backgroundColor: CHART_COLORS.main,
-        pointRadius: 2,
-        pointHitRadius: 20,
-      },
-      {
-        label: 'Средний вес за 7 дней',
-        data: [],
-        order: 1,
-        borderColor: CHART_COLORS.secondary,
-        backgroundColor: CHART_COLORS.secondary,
-        pointRadius: 2,
-        pointHitRadius: 20,
-      },
-    ],
-  },
-  options: {
-    animation: false,
-    elements: { line: { tension: 0.5 } },
-    maintainAspectRatio: false,
-    scales: {
-      x: {
-        ticks: {},
-      },
-      y: {
-        ticks: { stepSize: 1 },
-      },
-    },
-  },
+export const CHART_COLORS_DARK: ChartColors = {
+  main: '#545f83',
+  mainAlpha: '#545f8350',
+  secondary: '#8d98b9',
+  secondaryAlpha: '#8d98b950',
+  virtual: '#3f465a',
+  virtualAlpha: '#3f465a80',
 };
 
-export const KCALS_CHART_SETTINGS: ChartConfiguration = {
-  type: 'bar',
-  data: {
-    labels: [],
-    datasets: [
-      {
-        label: 'Ккал за день',
-        data: [],
-        order: 2,
-        stack: 'kcals',
-        borderColor: CHART_COLORS.main,
-        backgroundColor: CHART_COLORS.main,
-        borderWidth: 1,
-        barThickness: 'flex',
-        maxBarThickness: 30,
-      },
-      {
-        label: 'Виртуальные ккал',
-        data: [],
-        order: 2,
-        stack: 'kcals',
-        borderColor: CHART_COLORS.virtual,
-        backgroundColor: CHART_COLORS.virtual,
-        borderWidth: 1,
-        barThickness: 'flex',
-        maxBarThickness: 30,
-      },
-      {
-        label: 'Целевое значение',
-        data: [],
-        order: 1,
-        type: 'line',
-        borderColor: CHART_COLORS.secondary,
-        backgroundColor: CHART_COLORS.secondary,
-        pointRadius: 2,
-        pointHitRadius: 20,
-      },
-    ],
-  },
-  options: {
-    animation: false,
-    maintainAspectRatio: false,
-    events: [],
-    plugins: {
-      tooltip: {
-        enabled: false,
-      },
-      legend: {
-        display: false,
-      },
+export function createWeightChartConfig(colors: ChartColors): ChartConfiguration {
+  return {
+    type: 'line',
+    data: {
+      labels: [],
+      datasets: [
+        {
+          label: 'Вес',
+          data: [],
+          order: 2,
+          fill: false,
+          borderColor: colors.main,
+          backgroundColor: colors.main,
+          pointRadius: 2,
+          pointHitRadius: 20,
+        },
+        {
+          label: 'Средний вес за 7 дней',
+          data: [],
+          order: 1,
+          borderColor: colors.secondary,
+          backgroundColor: colors.secondary,
+          pointRadius: 2,
+          pointHitRadius: 20,
+        },
+      ],
     },
-    scales: {
-      x: {
-        stacked: true,
-        ticks: {},
-      },
-      y: {
-        stacked: true,
-        display: false,
-        ticks: {
-          display: false,
-          stepSize: 500,
+    options: {
+      animation: false,
+      elements: { line: { tension: 0.5 } },
+      maintainAspectRatio: false,
+      scales: {
+        x: {
+          ticks: {},
+        },
+        y: {
+          ticks: { stepSize: 1 },
         },
       },
     },
-  },
-};
+  };
+}
+
+export function createKcalsChartConfig(colors: ChartColors): ChartConfiguration {
+  return {
+    type: 'bar',
+    data: {
+      labels: [],
+      datasets: [
+        {
+          label: 'Ккал за день',
+          data: [],
+          order: 2,
+          stack: 'kcals',
+          borderColor: colors.main,
+          backgroundColor: colors.main,
+          borderWidth: 1,
+          barThickness: 'flex',
+          maxBarThickness: 30,
+        },
+        {
+          label: 'Виртуальные ккал',
+          data: [],
+          order: 2,
+          stack: 'kcals',
+          borderColor: colors.virtual,
+          backgroundColor: colors.virtual,
+          borderWidth: 1,
+          barThickness: 'flex',
+          maxBarThickness: 30,
+        },
+        {
+          label: 'Целевое значение',
+          data: [],
+          order: 1,
+          type: 'line',
+          borderColor: colors.secondary,
+          backgroundColor: colors.secondary,
+          pointRadius: 2,
+          pointHitRadius: 20,
+        },
+      ],
+    },
+    options: {
+      animation: false,
+      maintainAspectRatio: false,
+      events: [],
+      plugins: {
+        tooltip: {
+          enabled: false,
+        },
+        legend: {
+          display: false,
+        },
+      },
+      scales: {
+        x: {
+          stacked: true,
+          ticks: {},
+        },
+        y: {
+          stacked: true,
+          display: false,
+          ticks: {
+            display: false,
+            stepSize: 500,
+          },
+        },
+      },
+    },
+  };
+}
 
 export const FOOD_STATS_MONTH_LABELS_PADDING = 24;
 

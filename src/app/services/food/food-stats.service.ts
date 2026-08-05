@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { computed, effect, inject, Injectable, Signal, signal, WritableSignal } from '@angular/core';
 import { AuthService, AuthSessionState } from '@app/services/auth.service';
 import { exhaustRequest } from '@app/shared/decorators/exhaust-request.decorator';
-import { DayStats, Stats, StatsChartData } from '@app/shared/types';
+import { DayStats, FoodStatsResponse, FoodStatsTopProduct, Stats, StatsChartData } from '@app/shared/types';
 import { firstValueFrom } from 'rxjs';
 import { dateToIsoNoTimeNoTZ, formatDateTicks } from '../../shared/utils';
 import { LocalStorageService } from '../local-storage.service';
@@ -18,7 +18,7 @@ interface AggregatedPeriodData {
 })
 export class FoodStatsService {
   private static readonly DAYS_IN_YEAR = 365;
-  private static readonly GRANULARITY_WEEK_SWITCH_DAYS = 365;
+  private static readonly GRANULARITY_WEEK_SWITCH_DAYS = 370;
   private static readonly GRANULARITY_MONTH_SWITCH_YEARS = 4;
   private static readonly GRANULARITY_MONTH_SWITCH_DAYS =
     FoodStatsService.GRANULARITY_MONTH_SWITCH_YEARS * FoodStatsService.DAYS_IN_YEAR;
@@ -27,6 +27,16 @@ export class FoodStatsService {
   private readonly SLIDER_KEY = 'food_stats_slider';
 
   private readonly stats$$: WritableSignal<Stats> = signal({});
+  private readonly topProductsByKcalSignal$$: WritableSignal<FoodStatsTopProduct[]> = signal([]);
+  private readonly topProductsByWeightSignal$$: WritableSignal<FoodStatsTopProduct[]> = signal([]);
+  private readonly topProductsWindowTotalKcalSignal$$: WritableSignal<number> = signal(0);
+  private readonly topProductsWindowTotalWeightSignal$$: WritableSignal<number> = signal(0);
+  private readonly totalEntriesSignal$$: WritableSignal<number> = signal(0);
+  public readonly topProductsByKcal$$: Signal<FoodStatsTopProduct[]> = this.topProductsByKcalSignal$$.asReadonly();
+  public readonly topProductsByWeight$$: Signal<FoodStatsTopProduct[]> = this.topProductsByWeightSignal$$.asReadonly();
+  public readonly topProductsWindowTotalKcal$$: Signal<number> = this.topProductsWindowTotalKcalSignal$$.asReadonly();
+  public readonly topProductsWindowTotalWeight$$: Signal<number> = this.topProductsWindowTotalWeightSignal$$.asReadonly();
+  public readonly totalEntries$$: Signal<number> = this.totalEntriesSignal$$.asReadonly();
   public readonly statsChartData$$: Signal<StatsChartData> = computed(() => this.prepareChartData());
   public readonly statsChartDataClipped$$: Signal<StatsChartData> = computed(() => this.prepareChartDataClipped());
 
@@ -57,28 +67,44 @@ export class FoodStatsService {
 
   public reset(): void {
     this.stats$$.set({});
+    this.topProductsByKcalSignal$$.set([]);
+    this.topProductsByWeightSignal$$.set([]);
+    this.topProductsWindowTotalKcalSignal$$.set(0);
+    this.topProductsWindowTotalWeightSignal$$.set(0);
+    this.totalEntriesSignal$$.set(0);
     this.selectedDateIdxStart$$.set(0);
     this.selectedDateIdxEnd$$.set(0);
   }
 
   @exhaustRequest()
   public async getStats(): Promise<void> {
-    const cachedStats = this.loadStatsFromLocalStorage();
-    if (cachedStats && Object.keys(cachedStats).length > 0) {
-      this.stats$$.set(cachedStats);
+    const cachedResponse = this.loadStatsFromLocalStorage();
+    if (cachedResponse && Object.keys(cachedResponse.days).length > 0) {
+      this.applyResponse(cachedResponse);
     }
 
     try {
-      const serverStats = await firstValueFrom(this.http.get<Stats>('/api/food/stats'));
+      const serverResponse = await firstValueFrom(this.http.get<FoodStatsResponse>('/api/food/stats'));
       const isLocalStatsEmpty = Object.keys(this.stats$$()).length === 0;
 
-      this.stats$$.set(serverStats);
+      this.applyResponse(serverResponse);
       this.saveStatsToLocalStorage();
 
       this.applyDateRangeOnLoad(isLocalStatsEmpty);
     } catch (error) {
       console.error('Failed fetching stats from server:', error);
     }
+  }
+
+  // response.topProducts* may be missing on a stale pre-migration localStorage cache — the ?? [] /
+  // ?? 0 fallbacks keep loadStatsFromLocalStorageOnInit() from setting signals to undefined.
+  private applyResponse(response: FoodStatsResponse): void {
+    this.stats$$.set(response.days);
+    this.topProductsByKcalSignal$$.set(response.topProductsByKcal ?? []);
+    this.topProductsByWeightSignal$$.set(response.topProductsByWeight ?? []);
+    this.topProductsWindowTotalKcalSignal$$.set(response.topProductsWindowTotalKcal ?? 0);
+    this.topProductsWindowTotalWeightSignal$$.set(response.topProductsWindowTotalWeight ?? 0);
+    this.totalEntriesSignal$$.set(response.totalEntries);
   }
 
   public updateStats(dateIso: string, newWeight: number | null, kcalsDelta: number) {
@@ -93,6 +119,7 @@ export class FoodStatsService {
         ...dateStats,
         weight: newWeight === null ? dateStats.weight : newWeight,
         consumedKcal: dateStats.consumedKcal + kcalsDelta,
+        hasNoData: kcalsDelta !== 0 ? false : dateStats.hasNoData,
       },
     });
   }
@@ -114,7 +141,7 @@ export class FoodStatsService {
       weightAvg: nearestKnown?.weightAvg ?? Number.NaN,
       consumedKcal: 0,
       targetKcal: nearestKnown?.targetKcal ?? Number.NaN,
-      isVirtualKcalDay: nearestKnown?.isVirtualKcalDay ?? false,
+      hasNoData: true,
     };
   }
 
@@ -162,19 +189,20 @@ export class FoodStatsService {
       kcalsFactual: [],
       kcalsVirtual: [],
       kcalsTarget: [],
+      hasNoData: [],
     };
 
     Object.entries(stats).forEach(([date, dayStats]) => {
-      const { weight, weightAvg, consumedKcal, targetKcal, isVirtualKcalDay } = dayStats;
+      const { weight, weightAvg, consumedKcal, targetKcal, hasNoData } = dayStats;
       const hasKcal = consumedKcal !== undefined && consumedKcal !== null;
-      const factualKcal = !hasKcal ? Number.NaN : isVirtualKcalDay ? 0 : consumedKcal;
-      const virtualKcal = !hasKcal ? Number.NaN : isVirtualKcalDay ? consumedKcal : 0;
       result.dates.push(date);
       result.weights.push(weight);
       result.weightsAvg.push(weightAvg);
-      result.kcalsFactual.push(factualKcal);
-      result.kcalsVirtual.push(virtualKcal);
+      result.kcalsFactual.push(!hasKcal ? Number.NaN : consumedKcal);
+      // No imputation is done for missing days — this series is currently always zero.
+      result.kcalsVirtual.push(!hasKcal ? Number.NaN : 0);
       result.kcalsTarget.push(targetKcal);
+      result.hasNoData.push(hasNoData);
     });
 
     return result;
@@ -191,6 +219,7 @@ export class FoodStatsService {
     const kcalsFactual = data.kcalsFactual.slice(start, end + 1);
     const kcalsVirtual = data.kcalsVirtual.slice(start, end + 1);
     const kcalsTarget = data.kcalsTarget.slice(start, end + 1);
+    const hasNoData = data.hasNoData.slice(start, end + 1);
 
     const daysCount = dates.length;
     const granularity = this.resolveGranularity(daysCount);
@@ -210,6 +239,7 @@ export class FoodStatsService {
       kcalsFactual,
       kcalsVirtual,
       kcalsTarget,
+      hasNoData,
     };
   }
 
@@ -314,6 +344,8 @@ export class FoodStatsService {
       aggregated.kcalsFactual.push(kcalsComplete ? kcalsFactualSum[i] / kcalsCount[i] : Number.NaN);
       aggregated.kcalsVirtual.push(kcalsComplete ? kcalsVirtualSum[i] / kcalsCount[i] : Number.NaN);
       aggregated.kcalsTarget.push(kcalsTargetComplete ? kcalsTargetSum[i] / kcalsTargetCount[i] : Number.NaN);
+      // Not meaningful at week/month granularity — only the daily series feeds the streak calendar.
+      aggregated.hasNoData.push(false);
       aggregatedStartIdx.push(periodStartIdx[i]);
       aggregatedEndIdx.push(periodEndIdx[i]);
     }
@@ -343,6 +375,7 @@ export class FoodStatsService {
       kcalsFactual: aggregated.data.kcalsFactual.slice(startPeriodIdx, endPeriodIdx + 1),
       kcalsVirtual: aggregated.data.kcalsVirtual.slice(startPeriodIdx, endPeriodIdx + 1),
       kcalsTarget: aggregated.data.kcalsTarget.slice(startPeriodIdx, endPeriodIdx + 1),
+      hasNoData: aggregated.data.hasNoData.slice(startPeriodIdx, endPeriodIdx + 1),
     };
 
     if (!hideWeights) return sliced;
@@ -417,6 +450,7 @@ export class FoodStatsService {
       kcalsFactual: [],
       kcalsVirtual: [],
       kcalsTarget: [],
+      hasNoData: [],
     };
   }
 
@@ -455,17 +489,29 @@ export class FoodStatsService {
   }
 
   private saveStatsToLocalStorage(): void {
-    this.localStorageService.setUserScoped(this.STATS_STORAGE_KEY, this.stats$$());
+    const response: FoodStatsResponse = {
+      days: this.stats$$(),
+      topProductsByKcal: this.topProductsByKcalSignal$$(),
+      topProductsByWeight: this.topProductsByWeightSignal$$(),
+      topProductsWindowTotalKcal: this.topProductsWindowTotalKcalSignal$$(),
+      topProductsWindowTotalWeight: this.topProductsWindowTotalWeightSignal$$(),
+      totalEntries: this.totalEntriesSignal$$(),
+    };
+    this.localStorageService.setUserScoped(this.STATS_STORAGE_KEY, response);
   }
 
-  private loadStatsFromLocalStorage(): Stats | null {
-    return this.localStorageService.getUserScoped<Stats>(this.STATS_STORAGE_KEY);
+  private loadStatsFromLocalStorage(): FoodStatsResponse | null {
+    const saved = this.localStorageService.getUserScoped<FoodStatsResponse>(this.STATS_STORAGE_KEY);
+    // Stale cache from before the {days, topProducts, totalEntries} envelope was introduced —
+    // saved.days would be undefined and crash Object.keys() downstream. Treat as no cache.
+    if (!saved || typeof saved.days !== 'object' || saved.days === null) return null;
+    return saved;
   }
 
   private loadStatsFromLocalStorageOnInit(): void {
-    const savedStats = this.loadStatsFromLocalStorage();
-    if (savedStats && Object.keys(savedStats).length > 0) {
-      this.stats$$.set(savedStats);
+    const savedResponse = this.loadStatsFromLocalStorage();
+    if (savedResponse && Object.keys(savedResponse.days).length > 0) {
+      this.applyResponse(savedResponse);
       this.applyDateRangeOnLoad(true);
     }
   }

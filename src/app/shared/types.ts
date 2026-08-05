@@ -488,11 +488,27 @@ export interface DayStats {
   weightAvg: number;
   consumedKcal: number;
   targetKcal: number;
-  isVirtualKcalDay: boolean;
+  hasNoData: boolean;
 }
 
 export interface Stats {
   [id: string]: DayStats;
+}
+
+export interface FoodStatsTopProduct {
+  catalogueId: number;
+  name: string;
+  kcal: number;
+  weight: number;
+}
+
+export interface FoodStatsResponse {
+  days: Stats;
+  topProductsByKcal: FoodStatsTopProduct[];
+  topProductsByWeight: FoodStatsTopProduct[];
+  topProductsWindowTotalKcal: number;
+  topProductsWindowTotalWeight: number;
+  totalEntries: number;
 }
 
 export interface StatsChartData {
@@ -502,6 +518,7 @@ export interface StatsChartData {
   kcalsFactual: number[];
   kcalsVirtual: number[];
   kcalsTarget: number[];
+  hasNoData: boolean[];
 }
 
 //                                                                         MONEY

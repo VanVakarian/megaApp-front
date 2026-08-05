@@ -29,18 +29,22 @@
         }
       </div>
     } @else {
-      <v-tooltip class="flex-1 min-w-0"
-                 [text]="labelTooltipText$$()">
+      <v-tooltip class="flex-1 min-w-0">
         <span class="opacity-70 min-w-0 leading-none truncate">{{ labelInput() }}</span>
+        <div v-panel
+             class="flex flex-col gap-0.5">
+          <div>{{ technicalNameInput() }}</div>
+          <div>{{ descriptionInput() }}</div>
+        </div>
       </v-tooltip>
       <div class="shrink-0 flex items-baseline gap-2">
         @if (headerDisplayTime$$(); as time) {
           <span class="opacity-70 font-mono leading-none">{{ time }}</span>
         }
         @if (headerOhlcDisplay$$(); as ohlc) {
-          <v-tooltip [text]="ohlc"
-                     [noWrap]="true">
+          <v-tooltip [noWrap]="true">
             <span class="font-mono text-sm font-semibold leading-none">{{ headerDisplayValue$$() }}</span>
+            <span v-panel>{{ ohlc }}</span>
           </v-tooltip>
         } @else {
           <span class="font-mono text-sm font-semibold leading-none">{{ headerDisplayValue$$() }}</span>
