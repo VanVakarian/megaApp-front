@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, ElementRef, inject, Signal, viewChild } from '@angular/core';
+import { Component, computed, effect, ElementRef, inject, Signal, viewChild } from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { FOOD_FAB_ROW_RIGHT_INSET_PX, FoodFabLayer, foodFabStackBottomPx } from '@app/components/food/food-fab-layout';
 import { AuthService } from '@app/services/auth.service';
@@ -52,12 +52,21 @@ export class DiaryNavButtons {
   });
 
   protected readonly Icon = IconName;
-  private selectedDateMsWithUserHourShift: number = this.initDateTodayWithUserHourShift.getTime();
 
   protected readonly authService = inject(AuthService);
   protected readonly deviceInfoService = inject(DeviceInfoService);
   private readonly foodDiaryService = inject(FoodDiaryService);
   private readonly foodAddModalService = inject(FoodAddModalService);
+
+  // selectedDayIso$$ is the single source of truth (can change from outside this component, e.g.
+  // a milestone "jump to date" button) — keep the native date input's control in sync with it
+  // instead of tracking a parallel copy of the selected date here.
+  private readonly syncCalendarInputEffect$$ = effect(() => {
+    const selectedDayIso = this.foodDiaryService.selectedDayIso$$();
+    if (this.formCalendarSelectedDay.value !== selectedDayIso) {
+      this.formCalendarSelectedDay.setValue(selectedDayIso);
+    }
+  });
 
   protected readonly addFabBottomPx: string = foodFabStackBottomPx(FoodFabLayer.AddFood);
   protected readonly dateNavRowRightPx: string = `${FOOD_FAB_ROW_RIGHT_INSET_PX}px`;
@@ -71,7 +80,10 @@ export class DiaryNavButtons {
   protected formatDayMonth(dateIso: string): string {
     const date = new Date(dateIso);
     const result = date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
-    return result;
+
+    const year = dateIso.slice(0, 4);
+    const currentYear = calculateTodayIsoWithUserTimeShift().slice(0, 4);
+    return year === currentYear ? result : `${result} ${year}`;
   }
 
   protected onDatePicked(event: Event): void {
@@ -79,8 +91,6 @@ export class DiaryNavButtons {
     const dateIso = input?.value;
     if (!dateIso) return;
 
-    const date = this.isoToDate(dateIso);
-    this.selectedDateMsWithUserHourShift = date.getTime();
     this.foodDiaryService.selectedDayIso$$.set(dateIso);
   }
 
@@ -105,9 +115,6 @@ export class DiaryNavButtons {
   protected goToToday(): void {
     const todayDate = this.refreshTodayReference();
     const todayIso = dateToIsoNoTimeNoTZ(todayDate);
-    this.formCalendarSelectedDay.setValue(todayIso);
-
-    this.selectedDateMsWithUserHourShift = todayDate.getTime();
     this.foodDiaryService.selectedDayIso$$.set(todayIso);
   }
 
@@ -119,12 +126,10 @@ export class DiaryNavButtons {
   }
 
   private switchCurrentDay(dayShift: number): void {
-    const oldDate = new Date(this.selectedDateMsWithUserHourShift);
+    const oldDate = this.isoToDate(this.foodDiaryService.selectedDayIso$$());
     const newDate = new Date(oldDate);
     newDate.setDate(newDate.getDate() + dayShift);
-    this.selectedDateMsWithUserHourShift = newDate.getTime();
     const newDateIso = dateToIsoNoTimeNoTZ(newDate);
-    this.formCalendarSelectedDay.setValue(newDateIso);
     this.foodDiaryService.selectedDayIso$$.set(newDateIso);
   }
 

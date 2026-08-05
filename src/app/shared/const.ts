@@ -57,7 +57,7 @@ export const BACKGROUND_SYNC_RETRIES_MAX: number = 3;
 
 export const BACKGROUND_SYNC_TIMEOUT_MS: number = 8000;
 
-export const CACHE_SCHEMA_VERSION: number = 3;
+export const CACHE_SCHEMA_VERSION: number = 4;
 
 export const USER_SCOPED_CACHE_BASE_KEYS: string[] = [
   'settings',

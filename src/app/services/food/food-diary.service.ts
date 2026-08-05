@@ -1,13 +1,14 @@
 import { HttpClient } from '@angular/common/http';
 import { computed, effect, inject, Injectable, signal, Signal, WritableSignal } from '@angular/core';
 import { AuthService, AuthSessionState } from '@app/services/auth.service';
-import { exhaustRequest } from '@app/shared/decorators/exhaust-request.decorator';
+import { idbClearDiaryDays, idbGetDiaryDayRange, idbPutDiaryDay } from '@app/shared/idb-cache';
 import {
   BodyWeightInterface,
   BodyWeightToUpdate,
   DayTotals,
   DeletedDiaryDaySnapshot,
   Diary,
+  DiaryDay,
   DiaryDayRestoreRequest,
   DiaryDayToDelete,
   DiaryEntry,
@@ -17,6 +18,7 @@ import {
   DiaryEntryToRestore,
   DiaryEntryToUpdate,
   DiaryEntryWithFullData,
+  DiarySegment,
   HistoryEntry,
   IncomingWsMessage,
   NutrientDelta,
@@ -26,8 +28,8 @@ import {
   UserDataLastModifiedTs,
   WebSocketMessageType,
 } from '@app/shared/types';
-import { calculateTodayIsoWithUserTimeShift } from '@app/shared/utils';
-import { firstValueFrom, Subject } from 'rxjs';
+import { calculateTodayIsoWithUserTimeShift, dateToIsoNoTimeNoTZ } from '@app/shared/utils';
+import { firstValueFrom } from 'rxjs';
 import { LocalStorageService } from '../local-storage.service';
 import { NetworkService } from '../network.service';
 import { NotificationService } from '../notification.service';
@@ -77,10 +79,20 @@ export class FoodDiaryService extends BaseFoodService {
 
   private readonly DIARY_STORAGE_KEY = 'food_diary';
   private readonly DELETED_DAY_SNAPSHOT_STORAGE_KEY = 'food_diary_deleted_day_snapshot';
-  private readonly FETCH_OFFSET = 7;
-  private readonly FETCH_THRESHOLD = 3;
-  private readonly loadedRange$$: WritableSignal<{ start: string; end: string } | null> = signal(null);
-  private readonly fetchMoreDiaryTrigger$ = new Subject<void>();
+
+  // Batch size for a segment (a contiguous range of dates confirmed with the server this
+  // session): the very first segment of the session is small (the common case — just today's
+  // neighbourhood), every subsequent one (paging further out or a calendar jump) is large, so a
+  // long run of day-to-day navigation away from today doesn't need a request per step.
+  private readonly FIRST_SEGMENT_OFFSET_DAYS = 7;
+  private readonly NEXT_SEGMENT_OFFSET_DAYS = 30;
+  private readonly EDGE_THRESHOLD_DAYS = 3;
+
+  // In-memory only — reset on every page load. A date inside one of these ranges is trusted as
+  // fetched-and-confirmed for this session (even if it has zero entries); a date outside all of
+  // them hasn't been asked about yet and triggers a new segment fetch.
+  private segments: DiarySegment[] = [];
+  private readonly pendingSegmentFetches = new Map<string, Promise<void>>();
 
   private lastSyncTs = 0;
 
@@ -100,14 +112,15 @@ export class FoodDiaryService extends BaseFoodService {
   private readonly authService = inject(AuthService);
   private readonly notificationService = inject(NotificationService);
 
-  private readonly loadMoreDiaryEffect$$ = effect(() => {
+  private readonly ensureDiarySegmentEffect$$ = effect(() => {
     if (this.authService.sessionState$$() !== AuthSessionState.Authenticated) return;
-    if (this.shouldLoadMore()) this.fetchMoreDiaryTrigger$.next();
+    this.ensureSegmentCoverage(this.selectedDayIso$$());
   });
 
   private readonly resetOnAuthLossEffect$$ = effect(() => {
     if (this.authService.sessionState$$() === AuthSessionState.Guest) {
       this.reset();
+      void idbClearDiaryDays();
     }
   });
 
@@ -118,7 +131,7 @@ export class FoodDiaryService extends BaseFoodService {
     syncEngine: SyncEngineService,
   ) {
     super(http, localStorageService, networkService, syncEngine);
-    this.loadDiaryFromLocalStorage();
+    this.hydrateDiaryFromIndexedDb();
     this.loadDeletedDaySnapshotFromLocalStorage();
     this.subscribe();
   }
@@ -129,7 +142,8 @@ export class FoodDiaryService extends BaseFoodService {
     this.selectedDayIso$$.set(calculateTodayIsoWithUserTimeShift());
     this.diaryEntryFocusId$$.set(null);
     this.diaryEntryResetId$$.set(null);
-    this.loadedRange$$.set(null);
+    this.segments = [];
+    this.pendingSegmentFetches.clear();
     this.lastSyncTs = 0;
     this.pendingDiaryEntryIds.clear();
   }
@@ -155,17 +169,15 @@ export class FoodDiaryService extends BaseFoodService {
     setTimeout(() => this.diaryEntryResetId$$.set(null), 100); // clearing the signal after a short delay
   }
 
-  @exhaustRequest()
   public async getFoodDiaryFullUpdateRange(dateIso?: string, offset?: number): Promise<Diary> {
     const date = dateIso ?? calculateTodayIsoWithUserTimeShift();
-    const paramsStr = `date=${date}&offset=${offset ?? this.FETCH_OFFSET}`;
+    const paramsStr = `date=${date}&offset=${offset ?? this.FIRST_SEGMENT_OFFSET_DAYS}`;
 
     try {
       const response = await firstValueFrom(this.http.get<Diary>(`/api/food/diary-full-update?${paramsStr}`));
 
       this.diaryRaw$$.update((diary) => this.mergeServerDiaryResponse(diary, response));
-      this.saveToLocalStorage(this.diaryRaw$$());
-      this.updateLoadedRange(date);
+      Object.keys(response).forEach((responseDateIso) => this.persistDay(responseDateIso));
       return response;
     } catch (error) {
       console.error('Failed getting diary range:', error);
@@ -193,7 +205,7 @@ export class FoodDiaryService extends BaseFoodService {
 
     this.updateDiaryEntryWithNewValues(entryWithTempId);
     this.updateNutrientsOptimistically(selectedDay, nutrientsDelta, kcalsDelta);
-    this.saveToLocalStorage(this.diaryRaw$$());
+    this.persistDay(selectedDay);
 
     this.foodStatsService.updateStatsOptimistically(selectedDay, null, kcalsDelta);
 
@@ -205,7 +217,7 @@ export class FoodDiaryService extends BaseFoodService {
 
     const rollbackFunction = () => {
       this.diaryRaw$$.set(originalDiary);
-      this.saveToLocalStorage(originalDiary);
+      this.persistDay(selectedDay);
       statsRollback();
     };
 
@@ -262,7 +274,7 @@ export class FoodDiaryService extends BaseFoodService {
 
     this.updateDiaryEntryWithNewValues({ ...diaryEntry, kcals: newKcals });
     this.updateNutrientsOptimistically(selectedDay, nutrientsDelta, kcalsDelta);
-    this.saveToLocalStorage(this.diaryRaw$$());
+    this.persistDay(selectedDay);
 
     if (kcalsDelta !== 0) {
       this.foodStatsService.updateStatsOptimistically(selectedDay, null, kcalsDelta);
@@ -273,7 +285,7 @@ export class FoodDiaryService extends BaseFoodService {
     const rollbackFunction = () => {
       this.pendingDiaryEntryIds.delete(diaryEntry.id);
       this.diaryRaw$$.set(originalDiary);
-      this.saveToLocalStorage(originalDiary);
+      this.persistDay(selectedDay);
       if (kcalsDelta !== 0) {
         statsRollback();
       }
@@ -347,7 +359,7 @@ export class FoodDiaryService extends BaseFoodService {
 
     this.removeDiaryEntry(diaryEntryId);
     this.updateNutrientsOptimistically(selectedDay, nutrientsDelta, kcalsDelta);
-    this.saveToLocalStorage(this.diaryRaw$$());
+    this.persistDay(selectedDay);
 
     this.foodStatsService.updateStatsOptimistically(selectedDay, null, kcalsDelta);
 
@@ -356,7 +368,7 @@ export class FoodDiaryService extends BaseFoodService {
     const rollbackFunction = () => {
       this.pendingDiaryEntryIds.delete(diaryEntryId);
       this.diaryRaw$$.set(originalDiary);
-      this.saveToLocalStorage(originalDiary);
+      this.persistDay(selectedDay);
       statsRollback();
     };
 
@@ -400,13 +412,13 @@ export class FoodDiaryService extends BaseFoodService {
     this.saveDeletedDaySnapshot(deletedDaySnapshot);
     this.clearDiaryEntriesForDay(selectedDay);
     this.updateNutrientsOptimistically(selectedDay, nutrientsDelta, kcalsDelta);
-    this.saveToLocalStorage(this.diaryRaw$$());
+    this.persistDay(selectedDay);
 
     this.foodStatsService.updateStatsOptimistically(selectedDay, null, kcalsDelta);
 
     const rollbackFunction = () => {
       this.diaryRaw$$.set(originalDiary);
-      this.saveToLocalStorage(originalDiary);
+      this.persistDay(selectedDay);
       this.clearDeletedDaySnapshot();
       statsRollback();
     };
@@ -454,7 +466,7 @@ export class FoodDiaryService extends BaseFoodService {
     this.clearDeletedDaySnapshot();
     this.addDiaryEntriesForDay(snapshot.dateISO, tempEntries);
     this.updateNutrientsOptimistically(snapshot.dateISO, nutrientsDelta, kcalsDelta);
-    this.saveToLocalStorage(this.diaryRaw$$());
+    this.persistDay(snapshot.dateISO);
     this.foodStatsService.updateStatsOptimistically(snapshot.dateISO, null, kcalsDelta);
 
     const successCallback = (response: ServerResponseWithDiaryEntries) => {
@@ -465,7 +477,7 @@ export class FoodDiaryService extends BaseFoodService {
 
     const rollbackFunction = () => {
       this.diaryRaw$$.set(originalDiary);
-      this.saveToLocalStorage(originalDiary);
+      this.persistDay(snapshot.dateISO);
       this.saveDeletedDaySnapshot(snapshot);
       statsRollback();
     };
@@ -522,13 +534,13 @@ export class FoodDiaryService extends BaseFoodService {
         },
       };
     });
-    this.saveToLocalStorage(this.diaryRaw$$());
+    this.persistDay(dateISO);
 
     this.foodStatsService.updateStatsOptimistically(dateISO, newWeight, 0);
 
     const rollbackFunction = () => {
       this.diaryRaw$$.set(originalDiary);
-      this.saveToLocalStorage(originalDiary);
+      this.persistDay(dateISO);
       statsRollback();
     };
 
@@ -550,10 +562,6 @@ export class FoodDiaryService extends BaseFoodService {
 
   private subscribe(): void {
     this.subscribeToRealtimeUpdates();
-
-    this.fetchMoreDiaryTrigger$.subscribe(() => {
-      this.loadMoreData();
-    });
   }
 
   private prepUnifiedDiary(): UnifiedDiary {
@@ -808,7 +816,7 @@ export class FoodDiaryService extends BaseFoodService {
       return updatedDiary;
     });
 
-    this.saveToLocalStorage(this.diaryRaw$$());
+    this.persistDay(dateISO);
   }
 
   private clearDiaryEntriesForDay(dateISO: string): void {
@@ -846,7 +854,7 @@ export class FoodDiaryService extends BaseFoodService {
       updatedDiary[selectedDay] = updatedDay;
       return updatedDiary;
     });
-    this.saveToLocalStorage(this.diaryRaw$$());
+    this.persistDay(this.selectedDayIso$$());
   }
 
   private reconcileEditedDiaryEntry(
@@ -878,7 +886,7 @@ export class FoodDiaryService extends BaseFoodService {
       updatedDiary[selectedDay] = updatedDay;
       return updatedDiary;
     });
-    this.saveToLocalStorage(this.diaryRaw$$());
+    this.persistDay(this.selectedDayIso$$());
   }
 
   private loadDeletedDaySnapshotFromLocalStorage(): void {
@@ -927,71 +935,96 @@ export class FoodDiaryService extends BaseFoodService {
     }));
   }
 
-  private shouldLoadMore(): boolean {
-    const selectedDay = this.selectedDayIso$$();
-    const range = this.loadedRange$$();
-    if (!range) return true;
-
-    const start = new Date(range.start);
-    const end = new Date(range.end);
-    const selected = new Date(selectedDay);
-
-    const daysToStart = Math.floor((selected.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
-    const daysToEnd = Math.floor((end.getTime() - selected.getTime()) / (1000 * 60 * 60 * 24));
-
-    return daysToStart <= this.FETCH_THRESHOLD || daysToEnd <= this.FETCH_THRESHOLD;
+  private addDaysToIso(dateISO: string, days: number): string {
+    const date = new Date(dateISO);
+    date.setDate(date.getDate() + days);
+    return dateToIsoNoTimeNoTZ(date);
   }
 
-  private async loadMoreData(): Promise<void> {
-    const selectedDay = this.selectedDayIso$$();
-    const loadedRange = this.loadedRange$$();
+  private daysBetween(fromIso: string, toIso: string): number {
+    return Math.round((new Date(toIso).getTime() - new Date(fromIso).getTime()) / (1000 * 60 * 60 * 24));
+  }
 
-    let dateToLoad = selectedDay;
-    if (loadedRange) {
-      const selected = new Date(selectedDay);
-      const start = new Date(loadedRange.start);
-      const end = new Date(loadedRange.end);
+  private isDateCovered(dateISO: string): boolean {
+    return this.segments.some((segment) => dateISO >= segment.start && dateISO <= segment.end);
+  }
 
-      if (Math.abs(selected.getTime() - start.getTime()) < Math.abs(selected.getTime() - end.getTime())) {
-        const newStart = new Date(start);
-        newStart.setDate(start.getDate() - this.FETCH_OFFSET);
-        dateToLoad = newStart.toISOString().split('T')[0];
+  private findContainingSegment(dateISO: string): DiarySegment | undefined {
+    return this.segments.find((segment) => dateISO >= segment.start && dateISO <= segment.end);
+  }
+
+  // Segments touch or overlap once neither one's start is more than a day past the other's end.
+  private segmentsTouch(a: DiarySegment, b: DiarySegment): boolean {
+    return a.start <= this.addDaysToIso(b.end, 1) && b.start <= this.addDaysToIso(a.end, 1);
+  }
+
+  private addSegment(newSegment: DiarySegment): void {
+    const merged: DiarySegment[] = [];
+    let current = { ...newSegment };
+
+    for (const segment of this.segments) {
+      if (this.segmentsTouch(current, segment)) {
+        current = {
+          start: current.start < segment.start ? current.start : segment.start,
+          end: current.end > segment.end ? current.end : segment.end,
+        };
       } else {
-        const newEnd = new Date(end);
-        newEnd.setDate(end.getDate() + this.FETCH_OFFSET);
-        dateToLoad = newEnd.toISOString().split('T')[0];
+        merged.push(segment);
       }
     }
 
-    await this.getFoodDiaryFullUpdateRange(dateToLoad);
+    merged.push(current);
+    this.segments = merged;
   }
 
-  private updateLoadedRange(centerDate: string): void {
-    const center = new Date(centerDate);
-    const start = new Date(center);
-    const end = new Date(center);
+  // Single entry point for both "just landed on a date nowhere near anything loaded" (calendar
+  // jump) and "walking day by day, approaching the edge of what's already loaded" — both reduce
+  // to the same question: is this date, or the next one just past it, covered by a segment yet.
+  private ensureSegmentCoverage(dateISO: string): void {
+    const containingSegment = this.findContainingSegment(dateISO);
 
-    start.setDate(center.getDate() - this.FETCH_OFFSET);
-    end.setDate(center.getDate() + this.FETCH_OFFSET);
-
-    const newRange = {
-      start: start.toISOString().split('T')[0],
-      end: end.toISOString().split('T')[0],
-    };
-
-    const currentRange = this.loadedRange$$();
-    if (!currentRange) {
-      this.loadedRange$$.set(newRange);
+    if (!containingSegment) {
+      this.fetchSegmentAround(dateISO);
       return;
     }
 
-    const newStart = new Date(Math.min(new Date(currentRange.start).getTime(), start.getTime()));
-    const newEnd = new Date(Math.max(new Date(currentRange.end).getTime(), end.getTime()));
+    const daysToStart = this.daysBetween(containingSegment.start, dateISO);
+    const daysToEnd = this.daysBetween(dateISO, containingSegment.end);
 
-    this.loadedRange$$.set({
-      start: newStart.toISOString().split('T')[0],
-      end: newEnd.toISOString().split('T')[0],
-    });
+    if (daysToStart <= this.EDGE_THRESHOLD_DAYS) {
+      const beyondStart = this.addDaysToIso(containingSegment.start, -1);
+      if (!this.isDateCovered(beyondStart)) this.fetchSegmentAround(beyondStart);
+    }
+
+    if (daysToEnd <= this.EDGE_THRESHOLD_DAYS) {
+      const beyondEnd = this.addDaysToIso(containingSegment.end, 1);
+      if (!this.isDateCovered(beyondEnd)) this.fetchSegmentAround(beyondEnd);
+    }
+  }
+
+  // First segment of the session is small (the common case), every subsequent one is large (see
+  // field comment on NEXT_SEGMENT_OFFSET_DAYS) — sized off "is this the first segment", not off
+  // distance from today.
+  private fetchSegmentAround(centerDate: string): void {
+    const offsetDays = this.segments.length === 0 ? this.FIRST_SEGMENT_OFFSET_DAYS : this.NEXT_SEGMENT_OFFSET_DAYS;
+    const window: DiarySegment = {
+      start: this.addDaysToIso(centerDate, -offsetDays),
+      end: this.addDaysToIso(centerDate, offsetDays),
+    };
+    const requestKey = `${window.start}_${window.end}`;
+
+    if (this.pendingSegmentFetches.has(requestKey)) return;
+
+    const fetchPromise = this.getFoodDiaryFullUpdateRange(centerDate, offsetDays)
+      .then(() => this.addSegment(window))
+      .finally(() => this.pendingSegmentFetches.delete(requestKey));
+
+    this.pendingSegmentFetches.set(requestKey, fetchPromise);
+  }
+
+  private persistDay(dateISO: string): void {
+    const day = this.diaryRaw$$()[dateISO];
+    if (day) void idbPutDiaryDay(dateISO, day);
   }
 
   // A full-reload response can legitimately reflect not-yet-committed server state for an
@@ -1023,11 +1056,17 @@ export class FoodDiaryService extends BaseFoodService {
     return merged;
   }
 
-  private loadDiaryFromLocalStorage(): void {
-    const savedDiary = this.loadFromLocalStorage<Diary>();
-    if (savedDiary) {
-      this.diaryRaw$$.set(savedDiary);
-    }
+  // Local-only, no network — for the instant first paint. The segment-coverage effect (which
+  // does hit the network) runs independently and blindly overwrites this once the server answers.
+  private hydrateDiaryFromIndexedDb(): void {
+    const selectedDay = this.selectedDayIso$$();
+    const start = this.addDaysToIso(selectedDay, -this.FIRST_SEGMENT_OFFSET_DAYS);
+    const end = this.addDaysToIso(selectedDay, this.FIRST_SEGMENT_OFFSET_DAYS);
+
+    idbGetDiaryDayRange<DiaryDay>(start, end).then((days) => {
+      if (Object.keys(days).length === 0) return;
+      this.diaryRaw$$.update((diary) => ({ ...diary, ...days }));
+    });
   }
 
   private subscribeToRealtimeUpdates(): void {
@@ -1091,9 +1130,10 @@ export class FoodDiaryService extends BaseFoodService {
     }
   }
 
+  // Diary itself isn't triggered here — ensureDiarySegmentEffect$$ already covers it reactively
+  // for whatever day is currently selected, independent of when/whether this is called.
   public async loadAllFoodData(): Promise<void> {
     await Promise.all([
-      this.getFoodDiaryFullUpdateRange(),
       this.catalogueService.getCatalogueEntries(),
       this.personalKcalsService.getPersonalKcals(),
       this.foodStatsService.getStats(),
@@ -1134,7 +1174,7 @@ export class FoodDiaryService extends BaseFoodService {
       return updatedDiary;
     });
 
-    this.saveToLocalStorage(this.diaryRaw$$());
+    this.persistDay(dateISO);
 
     const kcalsDelta = diaryEntry.kcals;
     const nutrientsDelta = this.calculateEntryNutrients(diaryEntry);
@@ -1212,7 +1252,7 @@ export class FoodDiaryService extends BaseFoodService {
       return updatedDiary;
     });
 
-    this.saveToLocalStorage(this.diaryRaw$$());
+    this.persistDay(dateISO);
 
     const newKcals = updatedDiaryEntry.newKcals;
     const kcalsDelta = newKcals - originalKcals;
@@ -1277,7 +1317,7 @@ export class FoodDiaryService extends BaseFoodService {
       return updatedDiary;
     });
 
-    this.saveToLocalStorage(this.diaryRaw$$());
+    this.persistDay(dateISO);
     this.updateNutrientsOptimistically(dateISO, nutrientsDelta, kcalsDelta);
     this.foodStatsService.updateStatsOptimistically(dateISO, null, kcalsDelta);
   }
@@ -1293,7 +1333,7 @@ export class FoodDiaryService extends BaseFoodService {
 
     this.clearDiaryEntriesForDay(dateISO);
     this.updateNutrientsOptimistically(dateISO, nutrientsDelta, kcalsDelta);
-    this.saveToLocalStorage(this.diaryRaw$$());
+    this.persistDay(dateISO);
     this.foodStatsService.updateStatsOptimistically(dateISO, null, kcalsDelta);
   }
 
@@ -1318,7 +1358,7 @@ export class FoodDiaryService extends BaseFoodService {
       return updatedDiary;
     });
 
-    this.saveToLocalStorage(this.diaryRaw$$());
+    this.persistDay(bodyWeightToUpdate.dateISO);
     this.foodStatsService.updateStatsOptimistically(bodyWeightToUpdate.dateISO, bodyWeightToUpdate.newBodyWeight, 0);
   }
 }

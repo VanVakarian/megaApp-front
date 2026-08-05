@@ -6,7 +6,8 @@
       <div class="flex flex-col gap-2">
         <div>Интересные факты о вашей истории с дневником.</div>
         <div class="flex flex-col gap-1">
-          <div><span class="font-semibold">«Год назад»</span> — вес в этот же день год назад и разница с сегодняшним.</div>
+          <div><span class="font-semibold">«Год назад»</span> — вес в этот же день год назад и разница с сегодняшним.
+          </div>
           <div><span class="font-semibold">«Рекорды»</span> — самый маленький и самый большой вес, самый калорийный и
             самый низкокалорийный день (в % от дневной нормы) за всё время.</div>
           <div><span class="font-semibold">Внизу</span> — сколько дней вы ведёте дневник, сколько всего записей о еде
@@ -47,49 +48,97 @@
     <div class="flex flex-col mb-3 text-sm">
       @if (m.minWeight) {
         <div
-             class="flex justify-between border-b border-dashed border-[color:var(--v-color-surface-accent)] py-1 last:border-b-0">
+             class="flex justify-between items-center border-b border-dashed border-[color:var(--v-color-surface-accent)] py-1 last:border-b-0">
           <span class="text-[color:var(--v-color-text-muted)]">Минимальный вес</span>
-          <span class="font-semibold">
+          <span class="flex items-center gap-1 font-semibold">
             {{ m.minWeight.weight }} кг
             <span class="text-[10px] font-normal text-[color:var(--v-color-text-muted)]">{{
               formatDate(m.minWeight.dateIso)
             }}</span>
+            <v-button surface="link"
+                      class="rotate-45"
+                      [isLinkStatic]="true"
+                      [isLabelHidden]="true"
+                      [paddingX]="1"
+                      [paddingY]="0"
+                      [bgOpacity]="0"
+                      (onClick)="goToDate(m.minWeight.dateIso)">
+              <v-icon v-prefix
+                      [name]="Icon.SwitchAccessShortcut"
+                      [size]="4" />
+            </v-button>
           </span>
         </div>
       }
       @if (m.maxWeight) {
         <div
-             class="flex justify-between border-b border-dashed border-[color:var(--v-color-surface-accent)] py-1 last:border-b-0">
+             class="flex justify-between items-center border-b border-dashed border-[color:var(--v-color-surface-accent)] py-1 last:border-b-0">
           <span class="text-[color:var(--v-color-text-muted)]">Максимальный вес</span>
-          <span class="font-semibold">
+          <span class="flex items-center gap-1 font-semibold">
             {{ m.maxWeight.weight }} кг
             <span class="text-[10px] font-normal text-[color:var(--v-color-text-muted)]">{{
               formatDate(m.maxWeight.dateIso)
             }}</span>
+            <v-button surface="link"
+                      class="rotate-45"
+                      [isLinkStatic]="true"
+                      [isLabelHidden]="true"
+                      [paddingX]="1"
+                      [paddingY]="0"
+                      [bgOpacity]="0"
+                      (onClick)="goToDate(m.maxWeight.dateIso)">
+              <v-icon v-prefix
+                      [name]="Icon.SwitchAccessShortcut"
+                      [size]="4" />
+            </v-button>
           </span>
         </div>
       }
       @if (m.mostCaloricDay) {
         <div
-             class="flex justify-between border-b border-dashed border-[color:var(--v-color-surface-accent)] py-1 last:border-b-0">
+             class="flex justify-between items-center border-b border-dashed border-[color:var(--v-color-surface-accent)] py-1 last:border-b-0">
           <span class="text-[color:var(--v-color-text-muted)]">Самый калорийный день</span>
-          <span class="font-semibold">
+          <span class="flex items-center gap-1 font-semibold">
             {{ m.mostCaloricDay.percent }}%
             <span class="text-[10px] font-normal text-[color:var(--v-color-text-muted)]">{{
               formatDate(m.mostCaloricDay.dateIso)
             }}</span>
+            <v-button surface="link"
+                      class="rotate-45"
+                      [isLinkStatic]="true"
+                      [isLabelHidden]="true"
+                      [paddingX]="1"
+                      [paddingY]="0"
+                      [bgOpacity]="0"
+                      (onClick)="goToDate(m.mostCaloricDay.dateIso)">
+              <v-icon v-prefix
+                      [name]="Icon.SwitchAccessShortcut"
+                      [size]="4" />
+            </v-button>
           </span>
         </div>
       }
       @if (m.leastCaloricDay) {
         <div
-             class="flex justify-between border-b border-dashed border-[color:var(--v-color-surface-accent)] py-1 last:border-b-0">
+             class="flex justify-between items-center border-b border-dashed border-[color:var(--v-color-surface-accent)] py-1 last:border-b-0">
           <span class="text-[color:var(--v-color-text-muted)]">Самый низкокалорийный день</span>
-          <span class="font-semibold">
+          <span class="flex items-center gap-1 font-semibold">
             {{ m.leastCaloricDay.percent }}%
             <span class="text-[10px] font-normal text-[color:var(--v-color-text-muted)]">{{
               formatDate(m.leastCaloricDay.dateIso)
             }}</span>
+            <v-button surface="link"
+                      class="rotate-45"
+                      [isLinkStatic]="true"
+                      [isLabelHidden]="true"
+                      [paddingX]="1"
+                      [paddingY]="0"
+                      [bgOpacity]="0"
+                      (onClick)="goToDate(m.leastCaloricDay.dateIso)">
+              <v-icon v-prefix
+                      [name]="Icon.SwitchAccessShortcut"
+                      [size]="4" />
+            </v-button>
           </span>
         </div>
       }

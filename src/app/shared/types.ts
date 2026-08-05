@@ -380,26 +380,33 @@ export interface DiaryEntry {
   version?: number;
 }
 
-export interface Diary {
-  [dateISO: string]: {
-    ['food']: {
-      [id: number]: DiaryEntry;
-    };
-    ['bodyWeight']: number | null; // TODO[116]: Extract to a separate interface/signal
-    ['nutrients']: {
-      // TODO[116]: This too? 🤔
-      targetKcals: number;
-      targetProtein: number;
-      targetFat: number;
-      targetCarbs: number;
-      targetFiber: number;
-      consumedKcals: number;
-      consumedProtein: number;
-      consumedFat: number;
-      consumedCarbs: number;
-      consumedFiber: number;
-    };
+export interface DiaryDay {
+  ['food']: {
+    [id: number]: DiaryEntry;
   };
+  ['bodyWeight']: number | null; // TODO[116]: Extract to a separate interface/signal
+  ['nutrients']: {
+    // TODO[116]: This too? 🤔
+    targetKcals: number;
+    targetProtein: number;
+    targetFat: number;
+    targetCarbs: number;
+    targetFiber: number;
+    consumedKcals: number;
+    consumedProtein: number;
+    consumedFat: number;
+    consumedCarbs: number;
+    consumedFiber: number;
+  };
+}
+
+export interface Diary {
+  [dateISO: string]: DiaryDay;
+}
+
+export interface DiarySegment {
+  start: string;
+  end: string;
 }
 
 export interface DiaryEntryWithFullData extends DiaryEntry {
