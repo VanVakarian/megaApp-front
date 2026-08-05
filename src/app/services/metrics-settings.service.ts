@@ -2,6 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { computed, inject, Injectable, signal, WritableSignal } from '@angular/core';
 import { LocalStorageService } from '@app/services/local-storage.service';
 import { NotificationService } from '@app/services/notification.service';
+import { AnomalyFilterParams } from '@app/shared/metrics-series';
 import { SeverityThresholds } from '@app/shared/metrics-severity';
 import { CompositeMetricDefinition, MetricGranularity } from '@app/shared/types';
 import { firstValueFrom } from 'rxjs';
@@ -39,6 +40,7 @@ interface StoredMetricsSettings {
   serviceHeaderVisibility: ServiceHeaderVisibility;
   serviceCustomLabels: ServiceCustomLabels;
   compositeMetrics: CompositeMetricDefinition[];
+  anomalyFilterParams: AnomalyFilterParams;
 }
 
 const STORAGE_KEY = 'metrics_settings';
@@ -50,6 +52,13 @@ const ACTIVE_TOOLTIP_MODE_STORAGE_KEY = 'metrics_active_tooltip_mode';
 const DEFAULT_ACTIVE_TOOLTIP_MODE: TooltipMode = TooltipMode.Nearest;
 const FORCE_ZERO_BASELINE_ENABLED_STORAGE_KEY = 'metrics_force_zero_baseline_enabled';
 const DEFAULT_FORCE_ZERO_BASELINE_ENABLED = false;
+const ANOMALY_FILTER_ENABLED_STORAGE_KEY = 'metrics_anomaly_filter_enabled';
+const DEFAULT_ANOMALY_FILTER_ENABLED = false;
+const DEFAULT_ANOMALY_FILTER_PARAMS: AnomalyFilterParams = {
+  windowRadius: 4,
+  sensitivity: 4,
+  minRelativeJumpPercent: 10,
+};
 const SETTINGS_ENDPOINT = '/api/metrics-settings/';
 const DEFAULT_CARD_WIDTH_PX = 304;
 const DEFAULT_CARD_HEIGHT_PX = 112;
@@ -70,19 +79,23 @@ const DEFAULTS: StoredMetricsSettings = {
   serviceHeaderVisibility: {},
   serviceCustomLabels: {},
   compositeMetrics: [],
+  anomalyFilterParams: DEFAULT_ANOMALY_FILTER_PARAMS,
 };
 
 // Old per-field keys from before settings were combined into STORAGE_KEY — deleted once, never read.
 // metrics_selected_service/metrics_settings_expanded are here too: which panel was expanded is no
 // longer persisted anywhere — every page load opens on the Dashboard panel, collapsed Settings.
 // metrics_granularity/metrics_active_card_layout_mode/metrics_force_zero_baseline_enabled/
-// metrics_active_tooltip_mode are NOT here — they're the live *_STORAGE_KEY constants above,
-// kept local-only on purpose.
+// metrics_active_tooltip_mode/metrics_anomaly_filter_enabled are NOT here — they're the live
+// *_STORAGE_KEY constants above, kept local-only on purpose.
 // composite_metrics_definitions is here too: composite metrics used to have their own local-only
 // storage key before joining the rest of this service's server-synced fields.
 // metrics_active_card_size_mode is here too: the old Small/Large split (each with its own width
 // and height) was replaced by one flat card size plus a Compact/Wide layout mode — the old
 // per-mode signal has no equivalent to migrate into, it's simply gone.
+// metrics_anomaly_filter_settings is here too: the anomaly filter's enabled flag and its numeric
+// params used to live combined under one local-only key, before the flag stayed local-only and the
+// params joined the server-synced fields — never released beyond this, so no migration, just cleanup.
 const OBSOLETE_KEYS = [
   'metrics_expanded_services',
   'metrics_selected_service',
@@ -95,6 +108,7 @@ const OBSOLETE_KEYS = [
   'metrics_severity_thresholds',
   'composite_metrics_definitions',
   'metrics_active_card_size_mode',
+  'metrics_anomaly_filter_settings',
 ];
 
 function isFiniteNumber(value: unknown): value is number {
@@ -145,6 +159,28 @@ function resolveForceZeroBaselineEnabled(value: unknown): boolean {
   return typeof value === 'boolean' ? value : DEFAULT_FORCE_ZERO_BASELINE_ENABLED;
 }
 
+function resolveAnomalyFilterEnabled(value: unknown): boolean {
+  return typeof value === 'boolean' ? value : DEFAULT_ANOMALY_FILTER_ENABLED;
+}
+
+function isValidAnomalyFilterParams(value: unknown): value is AnomalyFilterParams {
+  if (typeof value !== 'object' || value === null) return false;
+  const candidate = value as Partial<AnomalyFilterParams>;
+  return (
+    isFiniteNumber(candidate.windowRadius) &&
+    Number.isInteger(candidate.windowRadius) &&
+    candidate.windowRadius > 0 &&
+    isFiniteNumber(candidate.sensitivity) &&
+    candidate.sensitivity > 0 &&
+    isFiniteNumber(candidate.minRelativeJumpPercent) &&
+    candidate.minRelativeJumpPercent >= 0
+  );
+}
+
+function resolveAnomalyFilterParams(raw: Partial<StoredMetricsSettings>): AnomalyFilterParams {
+  return isValidAnomalyFilterParams(raw.anomalyFilterParams) ? raw.anomalyFilterParams : DEFAULT_ANOMALY_FILTER_PARAMS;
+}
+
 function isValidCompositeMetricDefinition(value: unknown): value is CompositeMetricDefinition {
   if (typeof value !== 'object' || value === null) return false;
   const candidate = value as Partial<CompositeMetricDefinition>;
@@ -181,6 +217,8 @@ export class MetricsSettingsService {
   public readonly granularity$$: WritableSignal<MetricGranularity>;
   public readonly syncCrosshairEnabled$$: WritableSignal<boolean>;
   public readonly forceZeroBaselineEnabled$$: WritableSignal<boolean>;
+  public readonly anomalyFilterEnabled$$: WritableSignal<boolean>;
+  public readonly anomalyFilterParams$$: WritableSignal<AnomalyFilterParams>;
   public readonly dashboardSelection$$: WritableSignal<DashboardMetricSelection>;
   public readonly dashboardServiceSelection$$: WritableSignal<DashboardServiceSelection>;
   public readonly severityThresholdOverrides$$: WritableSignal<SeverityThresholdsOverrides>;
@@ -206,6 +244,7 @@ export class MetricsSettingsService {
       ...stored,
       cardSize: resolveCardSize(stored),
       compositeMetrics: resolveCompositeMetrics(stored),
+      anomalyFilterParams: resolveAnomalyFilterParams(stored),
     };
 
     const storedGranularity = this.localStorageService.getUserScoped<MetricGranularity>(GRANULARITY_STORAGE_KEY);
@@ -218,6 +257,9 @@ export class MetricsSettingsService {
     const storedForceZeroBaselineEnabled = this.localStorageService.getUserScoped<boolean>(
       FORCE_ZERO_BASELINE_ENABLED_STORAGE_KEY,
     );
+    const storedAnomalyFilterEnabled = this.localStorageService.getUserScoped<boolean>(
+      ANOMALY_FILTER_ENABLED_STORAGE_KEY,
+    );
 
     this.cardSize$$ = signal(initial.cardSize);
     this.cardLayoutMode$$ = signal(resolveCardLayoutMode(storedCardLayoutMode));
@@ -225,6 +267,8 @@ export class MetricsSettingsService {
     this.granularity$$ = signal(storedGranularity ?? DEFAULT_GRANULARITY);
     this.syncCrosshairEnabled$$ = signal(initial.syncCrosshairEnabled);
     this.forceZeroBaselineEnabled$$ = signal(resolveForceZeroBaselineEnabled(storedForceZeroBaselineEnabled));
+    this.anomalyFilterEnabled$$ = signal(resolveAnomalyFilterEnabled(storedAnomalyFilterEnabled));
+    this.anomalyFilterParams$$ = signal(initial.anomalyFilterParams);
     this.dashboardSelection$$ = signal(initial.dashboardSelection);
     this.dashboardServiceSelection$$ = signal(initial.dashboardServiceSelection);
     this.severityThresholdOverrides$$ = signal(initial.severityThresholds);
@@ -284,6 +328,23 @@ export class MetricsSettingsService {
     this.localStorageService.setUserScoped(FORCE_ZERO_BASELINE_ENABLED_STORAGE_KEY, value);
   }
 
+  public setAnomalyFilterEnabled(value: boolean): void {
+    this.anomalyFilterEnabled$$.set(value);
+    this.localStorageService.setUserScoped(ANOMALY_FILTER_ENABLED_STORAGE_KEY, value);
+  }
+
+  public setAnomalyFilterWindowRadius(value: number): void {
+    this.updateAnomalyFilterParams({ windowRadius: value });
+  }
+
+  public setAnomalyFilterSensitivity(value: number): void {
+    this.updateAnomalyFilterParams({ sensitivity: value });
+  }
+
+  public setAnomalyFilterMinRelativeJumpPercent(value: number): void {
+    this.updateAnomalyFilterParams({ minRelativeJumpPercent: value });
+  }
+
   public setDashboardSelection(value: DashboardMetricSelection): void {
     this.dashboardSelection$$.set(value);
   }
@@ -312,6 +373,10 @@ export class MetricsSettingsService {
     this.cardSize$$.set({ ...this.cardSize$$(), ...patch });
   }
 
+  private updateAnomalyFilterParams(patch: Partial<AnomalyFilterParams>): void {
+    this.anomalyFilterParams$$.set({ ...this.anomalyFilterParams$$(), ...patch });
+  }
+
   private snapshot(): StoredMetricsSettings {
     return {
       cardSize: this.cardSize$$(),
@@ -322,6 +387,7 @@ export class MetricsSettingsService {
       serviceHeaderVisibility: this.serviceHeaderVisibility$$(),
       serviceCustomLabels: this.serviceCustomLabels$$(),
       compositeMetrics: this.compositeMetrics$$(),
+      anomalyFilterParams: this.anomalyFilterParams$$(),
     };
   }
 
@@ -334,6 +400,7 @@ export class MetricsSettingsService {
     this.serviceHeaderVisibility$$.set(value.serviceHeaderVisibility);
     this.serviceCustomLabels$$.set(value.serviceCustomLabels);
     this.compositeMetrics$$.set(value.compositeMetrics);
+    this.anomalyFilterParams$$.set(value.anomalyFilterParams);
     this.localStorageService.setUserScoped(STORAGE_KEY, value);
     this.lastConfirmed$$.set(value);
   }
@@ -362,6 +429,7 @@ export class MetricsSettingsService {
         ...response,
         cardSize: resolveCardSize(response),
         compositeMetrics: resolveCompositeMetrics(response),
+        anomalyFilterParams: resolveAnomalyFilterParams(response),
       };
       this.applySnapshot(merged);
     } catch (error) {

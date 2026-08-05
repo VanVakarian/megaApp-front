@@ -64,6 +64,16 @@
                 [size]="6" />
       </v-button>
 
+      <v-button [class.v-primary]="anomalyFilterEnabled$$()"
+                [surface]="anomalyFilterEnabled$$() ? 'raised' : 'flat'"
+                [isLabelHidden]="true"
+                [padding]="2"
+                (onClick)="toggleAnomalyFilterEnabled()">
+        <v-icon v-prefix
+                [name]="Icon.DataThresholding"
+                [size]="6" />
+      </v-button>
+
       <v-button surface="flat"
                 [isLabelHidden]="true"
                 [padding]="2"
@@ -134,6 +144,70 @@
                      label="Высота развёрнутой, px"
                      [isDisabled]="isSavingSettings$$()"
                      textAlign="right" />
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-3">
+          <div class="opacity-70 font-semibold">
+            Фильтр аномальных выбросов (вкл/выкл — кнопка с иконкой порога данных на верхней панели)
+          </div>
+          <div class="flex flex-wrap items-end gap-3 pl-2">
+            <div class="flex flex-col gap-1">
+              <v-tooltip>
+                <span class="opacity-70 text-sm">Радиус окна, точек</span>
+                <span v-panel>
+                  Сколько соседних точек слева и справа берётся в расчёт при поиске выброса.
+                  Больше — фильтр смотрит на более широкий контекст вокруг точки и надёжнее отличает
+                  короткий всплеск от начала настоящего тренда, но может пропустить совсем короткие
+                  выбросы. Меньше — реагирует резче, но легче путает обычный шум с аномалией.
+                </span>
+              </v-tooltip>
+              <v-input class="w-32"
+                       [value]="anomalyFilterParams$$().windowRadius.toString()"
+                       (valueChange)="onAnomalyFilterWindowRadiusChange($event)"
+                       type="number"
+                       inputmode="numeric"
+                       [isDisabled]="isSavingSettings$$()"
+                       textAlign="right" />
+            </div>
+            <div class="flex flex-col gap-1">
+              <v-tooltip>
+                <span class="opacity-70 text-sm">Чувствительность, × MAD</span>
+                <span v-panel>
+                  Во сколько раз отклонение точки от локальной медианы должно превышать типичный
+                  локальный разброс, чтобы точка считалась выбросом. Больше значение — фильтр
+                  терпимее, вычищает только самые резкие скачки. Меньше значение — строже, исправляет
+                  даже небольшие отклонения от соседей.
+                </span>
+              </v-tooltip>
+              <v-input class="w-32"
+                       [value]="anomalyFilterParams$$().sensitivity.toString()"
+                       (valueChange)="onAnomalyFilterSensitivityChange($event)"
+                       type="number"
+                       inputmode="numeric"
+                       [isDisabled]="isSavingSettings$$()"
+                       textAlign="right" />
+            </div>
+            <div class="flex flex-col gap-1">
+              <v-tooltip>
+                <span class="opacity-70 text-sm">Мин. скачок, % от медианы</span>
+                <span v-panel>
+                  Минимальный размер скачка в процентах от локального типичного значения (не в
+                  единицах самой метрики!) — защищает ровные участки (где обычный разброс близок к
+                  нулю) от того, чтобы фильтр стирал мелкие настоящие изменения. Считается в
+                  процентах именно затем, чтобы одна и та же настройка одинаково работала и на
+                  метрике с миллиардами, и на метрике с десятыми долями. Больше значение — пропускает
+                  как норму более крупные (в процентах) скачки. Меньше — ловит и небольшие отклонения.
+                </span>
+              </v-tooltip>
+              <v-input class="w-32"
+                       [value]="anomalyFilterParams$$().minRelativeJumpPercent.toString()"
+                       (valueChange)="onAnomalyFilterMinRelativeJumpPercentChange($event)"
+                       type="number"
+                       inputmode="numeric"
+                       [isDisabled]="isSavingSettings$$()"
+                       textAlign="right" />
+            </div>
           </div>
         </div>
 

@@ -26,6 +26,7 @@ import {
   buildServiceMetricWindow,
   buildSparseBarSeriesFromPoints,
   buildSparseLineSeriesFromPoints,
+  filterAnomalousMetricPoints,
   filterMetricPointsByWindow,
   metricPointsIndexKey,
   MetricWindow,
@@ -42,6 +43,7 @@ import { VExpand } from '@ui-kit/components/v-expand/v-expand';
 import { IconName, VIcon } from '@ui-kit/components/v-icon/v-icon';
 import { VInput } from '@ui-kit/components/v-input/v-input';
 import { VToggle, VToggleItem } from '@ui-kit/components/v-toggle/v-toggle';
+import { VTooltip } from '@ui-kit/components/v-tooltip/v-tooltip';
 import {
   MetricCardGrid,
   MetricChartCardData,
@@ -73,7 +75,7 @@ interface MetricsServiceOption {
 @Component({
   selector: 'metrics-dashboard',
   templateUrl: './metrics-dashboard.html',
-  imports: [VButton, VCard, VCheckbox, VExpand, VInput, VIcon, VToggle, MetricCardGrid],
+  imports: [VButton, VCard, VCheckbox, VExpand, VInput, VIcon, VToggle, VTooltip, MetricCardGrid],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class MetricsDashboard implements OnInit, OnDestroy {
@@ -104,6 +106,8 @@ export class MetricsDashboard implements OnInit, OnDestroy {
   protected readonly selectedGranularity$$ = this.metricsSettingsService.granularity$$;
   protected readonly syncCrosshairEnabled$$ = this.metricsSettingsService.syncCrosshairEnabled$$;
   protected readonly forceZeroBaselineEnabled$$ = this.metricsSettingsService.forceZeroBaselineEnabled$$;
+  protected readonly anomalyFilterEnabled$$ = this.metricsSettingsService.anomalyFilterEnabled$$;
+  protected readonly anomalyFilterParams$$ = this.metricsSettingsService.anomalyFilterParams$$;
   protected readonly dashboardSelection$$ = this.metricsSettingsService.dashboardSelection$$;
   protected readonly dashboardServiceSelection$$ = this.metricsSettingsService.dashboardServiceSelection$$;
   protected readonly isSavingSettings$$ = this.metricsSettingsService.isSaving$$;
@@ -199,6 +203,8 @@ export class MetricsDashboard implements OnInit, OnDestroy {
     // sum metric looks like it dips right before it — only fully elapsed buckets
     // are safe to compare against each other.
     const lastClosedCollapsedBucket = previousCompletedBucket(this.now$$(), COLLAPSED_MINUTE_STEP_SECONDS);
+    const anomalyFilterEnabled = this.anomalyFilterEnabled$$();
+    const anomalyFilterParams = this.anomalyFilterParams$$();
     const dashboardSelection = this.dashboardSelection$$();
     const fallbackWindow = buildMetricWindow(
       previousCompletedBucket(this.now$$(), stepSeconds),
@@ -215,6 +221,9 @@ export class MetricsDashboard implements OnInit, OnDestroy {
       }
       pointsByService.set(point.service, [point]);
     }
+
+    const applyAnomalyFilter = (metricPoints: MetricPoint[]): MetricPoint[] =>
+      anomalyFilterEnabled ? filterAnomalousMetricPoints(metricPoints, anomalyFilterParams) : metricPoints;
 
     const buildSeriesDisplay = (
       key: string,
@@ -262,7 +271,7 @@ export class MetricsDashboard implements OnInit, OnDestroy {
 
       const buildCard = (name: string): MetricChartCardData => {
         const key = metricPointsIndexKey(option.service, name);
-        const metricPoints = pointsIndex.get(key) ?? [];
+        const metricPoints = applyAnomalyFilter(pointsIndex.get(key) ?? []);
         const aggregation = metricAggregation(option.service, name);
         const chartMode = metricChartMode(option.service, name);
         const display = buildSeriesDisplay(
@@ -370,10 +379,8 @@ export class MetricsDashboard implements OnInit, OnDestroy {
         // (windowed at index-build time) — composite metricPoints are assembled
         // straight from the full retained history above, so without this they'd leak
         // off-window historical values into the raw (non-collapsed) display's min/max.
-        const windowedMetricPoints = filterMetricPointsByWindow(
-          metricPoints,
-          compositeWindow.startBucket,
-          compositeWindow.endBucket,
+        const windowedMetricPoints = applyAnomalyFilter(
+          filterMetricPointsByWindow(metricPoints, compositeWindow.startBucket, compositeWindow.endBucket),
         );
         const display = buildSeriesDisplay(
           key,
@@ -575,6 +582,28 @@ export class MetricsDashboard implements OnInit, OnDestroy {
 
   protected toggleForceZeroBaseline(): void {
     this.metricsSettingsService.setForceZeroBaselineEnabled(!this.forceZeroBaselineEnabled$$());
+  }
+
+  protected toggleAnomalyFilterEnabled(): void {
+    this.metricsSettingsService.setAnomalyFilterEnabled(!this.anomalyFilterEnabled$$());
+  }
+
+  protected onAnomalyFilterWindowRadiusChange(rawValue: string): void {
+    const value = Math.round(Number(rawValue));
+    if (!Number.isFinite(value) || value <= 0) return;
+    this.metricsSettingsService.setAnomalyFilterWindowRadius(value);
+  }
+
+  protected onAnomalyFilterSensitivityChange(rawValue: string): void {
+    const value = Number(rawValue);
+    if (!Number.isFinite(value) || value <= 0) return;
+    this.metricsSettingsService.setAnomalyFilterSensitivity(value);
+  }
+
+  protected onAnomalyFilterMinRelativeJumpPercentChange(rawValue: string): void {
+    const value = Number(rawValue);
+    if (!Number.isFinite(value) || value < 0) return;
+    this.metricsSettingsService.setAnomalyFilterMinRelativeJumpPercent(value);
   }
 
   protected saveSettings(): void {
