@@ -8,8 +8,10 @@ import { AuthInterceptor } from '@app/services/auth.interceptor';
 import { NotificationService } from '@app/services/notification.service';
 import { purgeStaleCacheVersions } from '@app/shared/cache';
 import { isChunkLoadError } from '@app/shared/chunk-load-error';
+import { idbPurgeStaleKvEntries } from '@app/shared/idb-cache';
 
 purgeStaleCacheVersions();
+void idbPurgeStaleKvEntries();
 
 function handleNavigationError(error: NavigationError): void {
   console.error('🧭 Navigation failed:', error.url, error.error);

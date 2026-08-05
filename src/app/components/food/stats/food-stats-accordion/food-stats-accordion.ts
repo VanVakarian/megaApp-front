@@ -23,7 +23,7 @@ const BLOCK_ICONS: Record<FoodStatsBlock, IconName> = {
 // Accordion always renders as a single stacked column.
 const BLOCK_TOGGLES: BlockToggle[] = getFoodStatsBlockOrder().map((block) => ({ block, icon: BLOCK_ICONS[block] }));
 
-const OPEN_BLOCKS_STORAGE_KEY = 'food-stats-accordion-open-blocks';
+const OPEN_BLOCKS_STORAGE_KEY = 'food_stats_accordion_open_blocks';
 
 @Component({
   selector: 'food-stats-accordion',
@@ -55,6 +55,6 @@ export class FoodStatsAccordion {
 
   private loadOpenBlocks(): ReadonlySet<FoodStatsBlock> {
     const stored = this.localStorageService.getUserScoped<FoodStatsBlock[]>(OPEN_BLOCKS_STORAGE_KEY);
-    return new Set(stored ?? []);
+    return new Set(stored ?? getFoodStatsBlockOrder());
   }
 }

@@ -1,8 +1,10 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
 
 import { AuthService } from '@app/services/auth.service';
+import { LocalStorageService } from '@app/services/local-storage.service';
 import { RouterService } from '@app/services/router.service';
 import { SettingsService } from '@app/services/settings.service';
+import { buildDeviceCacheKey } from '@app/shared/cache';
 import { SettingsChapterNames } from '@app/shared/types';
 import { IconName } from '@ui-kit/components/v-icon/v-icon';
 
@@ -29,7 +31,9 @@ export interface MenuButton {
   providedIn: 'root',
 })
 export class NavigationService {
-  private readonly COLLAPSE_STORAGE_KEY = 'navbar-collapsed';
+  private readonly COLLAPSE_STORAGE_KEY = 'navbar_collapsed';
+
+  private readonly localStorageService = inject(LocalStorageService);
 
   private readonly isNavbarCollapsed$$ = signal(true);
   private readonly currentRoute$signal = signal('');
@@ -98,7 +102,7 @@ export class NavigationService {
 
   public toggleCollapse(): void {
     this.isNavbarCollapsed$$.set(!this.isNavbarCollapsed$$());
-    localStorage.setItem(this.COLLAPSE_STORAGE_KEY, String(this.isNavbarCollapsed$$()));
+    this.localStorageService.set(buildDeviceCacheKey(this.COLLAPSE_STORAGE_KEY), this.isNavbarCollapsed$$());
   }
 
   public setNavbarWidthPx(width: number): void {
@@ -106,8 +110,8 @@ export class NavigationService {
   }
 
   private initCollapseState(): void {
-    const saved = localStorage.getItem(this.COLLAPSE_STORAGE_KEY);
-    this.isNavbarCollapsed$$.set(saved === null ? true : saved === 'true');
+    const saved = this.localStorageService.get<boolean>(buildDeviceCacheKey(this.COLLAPSE_STORAGE_KEY));
+    this.isNavbarCollapsed$$.set(saved === null ? true : saved);
   }
 
   public prepButtons(place: 'mobile' | 'desktop'): MenuButton[] {

@@ -1,18 +1,27 @@
+import { isStaleCacheKey, isUserScopedCacheKey } from '@app/shared/cache';
+import { DIARY_DAYS_STORE_NAME, IDB_STORE_SCHEMA_CHECKPOINTS } from '@app/shared/const';
+
 const DB_NAME = 'megaapp-idb-cache';
 const DB_VERSION = 2;
 const STORE_NAME = 'kv';
-const DIARY_DAYS_STORE_NAME = 'foodDiaryDays';
 
 function openDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
-    request.onupgradeneeded = () => {
+    request.onupgradeneeded = (event) => {
       const db = request.result;
+      const oldVersion = event.oldVersion;
+
       if (!db.objectStoreNames.contains(STORE_NAME)) {
         db.createObjectStore(STORE_NAME);
       }
-      if (!db.objectStoreNames.contains(DIARY_DAYS_STORE_NAME)) {
-        db.createObjectStore(DIARY_DAYS_STORE_NAME);
+
+      for (const [storeName, checkpoint] of Object.entries(IDB_STORE_SCHEMA_CHECKPOINTS)) {
+        if (oldVersion >= checkpoint) continue;
+        if (db.objectStoreNames.contains(storeName)) {
+          db.deleteObjectStore(storeName);
+        }
+        db.createObjectStore(storeName);
       }
     };
     request.onsuccess = () => resolve(request.result);
@@ -63,11 +72,56 @@ export async function idbRemove(key: string): Promise<void> {
   }
 }
 
+async function collectKvKeys(): Promise<string[]> {
+  try {
+    const db = await openDb();
+    return await new Promise<string[]>((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, 'readonly');
+      const request = tx.objectStore(STORE_NAME).getAllKeys();
+      request.onsuccess = () => resolve(request.result as string[]);
+      request.onerror = () => reject(request.error);
+    });
+  } catch (error) {
+    console.error('Error listing IndexedDB kv keys:', error);
+    return [];
+  }
+}
+
+async function removeKvKeys(keys: string[]): Promise<void> {
+  if (keys.length === 0) return;
+
+  try {
+    const db = await openDb();
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, 'readwrite');
+      const store = tx.objectStore(STORE_NAME);
+      for (const key of keys) store.delete(key);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  } catch (error) {
+    console.error('Error removing IndexedDB kv keys:', error);
+  }
+}
+
+// Mirrors purgeStaleCacheVersions() (cache.ts) for the kv store — same registry, same staleness
+// rule, just scanned via a key cursor instead of Object.keys(localStorage).
+export async function idbPurgeStaleKvEntries(): Promise<void> {
+  const keys = await collectKvKeys();
+  await removeKvKeys(keys.filter(isStaleCacheKey));
+}
+
+// Mirrors clearAllUserScopedCaches() (cache.ts) for the kv store — called on logout.
+export async function idbClearAllUserScopedKvEntries(): Promise<void> {
+  const keys = await collectKvKeys();
+  await removeKvKeys(keys.filter(isUserScopedCacheKey));
+}
+
 // Separate store, keyed directly by dateISO (lexicographically sortable) — unlike the single
 // blob per key in `kv`, one row per day, so a single day's write never touches any other day,
 // and a date range can be read with a native IDBKeyRange.bound cursor scan.
 
-export async function idbPutDiaryDay<T>(dateISO: string, value: T): Promise<void> {
+export async function idbSetDay<T>(dateISO: string, value: T): Promise<void> {
   try {
     const db = await openDb();
     await new Promise<void>((resolve, reject) => {
@@ -81,7 +135,7 @@ export async function idbPutDiaryDay<T>(dateISO: string, value: T): Promise<void
   }
 }
 
-export async function idbGetDiaryDay<T>(dateISO: string): Promise<T | null> {
+export async function idbGetDay<T>(dateISO: string): Promise<T | null> {
   try {
     const db = await openDb();
     return await new Promise<T | null>((resolve, reject) => {
@@ -96,7 +150,7 @@ export async function idbGetDiaryDay<T>(dateISO: string): Promise<T | null> {
   }
 }
 
-export async function idbClearDiaryDays(): Promise<void> {
+export async function idbClearDays(): Promise<void> {
   try {
     const db = await openDb();
     await new Promise<void>((resolve, reject) => {

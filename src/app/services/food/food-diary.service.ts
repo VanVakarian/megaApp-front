@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { computed, effect, inject, Injectable, signal, Signal, WritableSignal } from '@angular/core';
 import { AuthService, AuthSessionState } from '@app/services/auth.service';
-import { idbClearDiaryDays, idbGetDiaryDay, idbPutDiaryDay } from '@app/shared/idb-cache';
+import { IndexedDbCacheService } from '@app/services/indexed-db-cache.service';
 import {
   BodyWeightInterface,
   BodyWeightToUpdate,
@@ -108,6 +108,9 @@ export class FoodDiaryService extends BaseFoodService {
   // keep our own optimistic state for them instead of letting the refetch response win.
   private readonly pendingDiaryEntryIds = new Set<number>();
 
+  // Vestigial: diary data moved to IndexedDB (per-day records), saveToLocalStorage/
+  // loadFromLocalStorage are no longer called. Kept only to satisfy BaseFoodService's abstract
+  // contract.
   protected getStorageKey(): string {
     return this.DIARY_STORAGE_KEY;
   }
@@ -117,6 +120,7 @@ export class FoodDiaryService extends BaseFoodService {
   private readonly foodStatsService = inject(FoodStatsService);
   private readonly authService = inject(AuthService);
   private readonly notificationService = inject(NotificationService);
+  private readonly indexedDbCache = inject(IndexedDbCacheService);
 
   private readonly ensureDiarySegmentEffect$$ = effect(() => {
     if (this.authService.sessionState$$() !== AuthSessionState.Authenticated) return;
@@ -128,7 +132,7 @@ export class FoodDiaryService extends BaseFoodService {
   private readonly resetOnAuthLossEffect$$ = effect(() => {
     if (this.authService.sessionState$$() === AuthSessionState.Guest) {
       this.reset();
-      void idbClearDiaryDays();
+      void this.indexedDbCache.clearDays();
     }
   });
 
@@ -1037,7 +1041,7 @@ export class FoodDiaryService extends BaseFoodService {
 
   private persistDay(dateISO: string): void {
     const day = this.diaryRaw$$()[dateISO];
-    if (day) void idbPutDiaryDay(dateISO, day);
+    if (day) void this.indexedDbCache.setDay(dateISO, day);
   }
 
   // A full-reload response can legitimately reflect not-yet-committed server state for an
@@ -1078,7 +1082,7 @@ export class FoodDiaryService extends BaseFoodService {
   private hydrateDayFromIndexedDb(dateISO: string): void {
     if (this.diaryRaw$$()[dateISO]) return;
 
-    idbGetDiaryDay<DiaryDay>(dateISO).then((day) => {
+    this.indexedDbCache.getDay<DiaryDay>(dateISO).then((day) => {
       if (!day) return;
       this.diaryRaw$$.update((diary) => (diary[dateISO] ? diary : { ...diary, [dateISO]: day }));
     });

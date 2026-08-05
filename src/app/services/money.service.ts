@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { computed, effect, inject, Injectable, Signal, signal, WritableSignal } from '@angular/core';
 import { AuthService, AuthSessionState } from '@app/services/auth.service';
-import { buildCacheKey } from '@app/shared/cache';
+import { LocalStorageService } from '@app/services/local-storage.service';
 import { Observable, of, Subject } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import {
@@ -62,14 +62,7 @@ interface MoneySettings {
 }
 
 const SETTINGS_KEY = 'money_settings';
-
-function readSettings(): MoneySettings {
-  try {
-    const raw = localStorage.getItem(buildCacheKey(SETTINGS_KEY));
-    if (raw) return { ...defaultSettings(), ...JSON.parse(raw) };
-  } catch {}
-  return defaultSettings();
-}
+const SNAPSHOT_KEY = 'money_snapshot';
 
 function defaultSettings(): MoneySettings {
   return {
@@ -99,6 +92,8 @@ interface BasicResponse extends MessageResponse {}
   providedIn: 'root',
 })
 export class MoneyService {
+  private readonly localStorageService = inject(LocalStorageService);
+
   public readonly currencies$$: WritableSignal<Currency[]> = signal([]);
   public readonly categories$$: WritableSignal<Category[]> = signal([]);
   public readonly organizations$$: WritableSignal<Organization[]> = signal([]);
@@ -115,13 +110,15 @@ export class MoneyService {
       return { dateISO: item.dateISO, rates: accumulated };
     });
   });
-  public readonly displayCurrency$$: WritableSignal<string> = signal(readSettings().displayCurrency);
-  public readonly chartRangeStart$$: WritableSignal<string | null> = signal(readSettings().chartRangeStart);
-  public readonly chartRangeEnd$$: WritableSignal<string | null> = signal(readSettings().chartRangeEnd);
+  public readonly displayCurrency$$: WritableSignal<string> = signal(this.readSettings().displayCurrency);
+  public readonly chartRangeStart$$: WritableSignal<string | null> = signal(this.readSettings().chartRangeStart);
+  public readonly chartRangeEnd$$: WritableSignal<string | null> = signal(this.readSettings().chartRangeEnd);
   public readonly expenseChartYMax$$: WritableSignal<ExpenseChartYMaxSetting | null> = signal(
-    readSettings().expenseChartYMax,
+    this.readSettings().expenseChartYMax,
   );
-  public readonly keepTransactionCurrency$$: WritableSignal<boolean> = signal(readSettings().keepTransactionCurrency);
+  public readonly keepTransactionCurrency$$: WritableSignal<boolean> = signal(
+    this.readSettings().keepTransactionCurrency,
+  );
 
   // Transaction ids with an edit/delete sitting in the sync queue, not yet confirmed or rolled
   // back. Re-navigating to the money screen re-triggers fetchSnapshot(), which can legitimately
@@ -163,11 +160,14 @@ export class MoneyService {
     this.saveSettings({ keepTransactionCurrency: value });
   }
 
+  private readSettings(): MoneySettings {
+    const stored = this.localStorageService.getUserScoped<Partial<MoneySettings>>(SETTINGS_KEY);
+    return stored ? { ...defaultSettings(), ...stored } : defaultSettings();
+  }
+
   private saveSettings(patch: Partial<MoneySettings>): void {
-    try {
-      const current = readSettings();
-      localStorage.setItem(buildCacheKey(SETTINGS_KEY), JSON.stringify({ ...current, ...patch }));
-    } catch {}
+    const current = this.readSettings();
+    this.localStorageService.setUserScoped(SETTINGS_KEY, { ...current, ...patch });
   }
 
   constructor(
@@ -204,15 +204,9 @@ export class MoneyService {
   //                                                            ~~~ BOOTSTRAP ~~~
 
   public loadData(): void {
-    localStorage.removeItem('money_snapshot_v1');
-
-    const cached = localStorage.getItem(buildCacheKey('money_snapshot'));
+    const cached = this.localStorageService.getUserScoped<MoneySnapshot>(SNAPSHOT_KEY);
     if (cached) {
-      try {
-        this.applySnapshot(JSON.parse(cached), true);
-      } catch {
-        // ignore corrupted cache
-      }
+      this.applySnapshot(cached, true);
     }
 
     this.fetchSnapshot();
@@ -272,21 +266,17 @@ export class MoneyService {
   }
 
   private writeCacheSnapshot(): void {
-    try {
-      const snapshot = {
-        currencies: this.currencies$$(),
-        categories: this.categories$$(),
-        organizations: this.organizations$$(),
-        accounts: this.accounts$$(),
-        assets: this.assets$$(),
-        investAssetTrades: this.investAssetTrades$$(),
-        transactions: this.transactions$$(),
-        rateHistory: this.rateHistory$$(),
-      };
-      localStorage.setItem(buildCacheKey('money_snapshot'), JSON.stringify(snapshot));
-    } catch {
-      // storage quota exceeded or unavailable
-    }
+    const snapshot: MoneySnapshot = {
+      currencies: this.currencies$$(),
+      categories: this.categories$$(),
+      organizations: this.organizations$$(),
+      accounts: this.accounts$$(),
+      assets: this.assets$$(),
+      investAssetTrades: this.investAssetTrades$$(),
+      transactions: this.transactions$$(),
+      rateHistory: this.rateHistory$$(),
+    };
+    this.localStorageService.setUserScoped(SNAPSHOT_KEY, snapshot);
   }
 
   private parseRatesJson(ratesJson: Record<string, number> | string): Record<string, number> {

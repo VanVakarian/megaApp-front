@@ -2,6 +2,7 @@ import { HttpErrorResponse, HttpEvent, HttpHandler, HttpInterceptor, HttpRequest
 import { Injectable, inject } from '@angular/core';
 import { AuthService } from '@app/services/auth.service';
 import { NetworkService } from '@app/services/network.service';
+import { ACCESS_TOKEN_STORAGE_KEY, REFRESH_TOKEN_STORAGE_KEY } from '@app/shared/const';
 import { Observable, throwError } from 'rxjs';
 import { catchError, finalize, map, shareReplay, switchMap } from 'rxjs/operators';
 
@@ -19,14 +20,14 @@ export class AuthInterceptor implements HttpInterceptor {
 
     let preparedRequest = this.addClientId(request);
 
-    const accessToken = localStorage.getItem('access_token');
+    const accessToken = localStorage.getItem(ACCESS_TOKEN_STORAGE_KEY);
     if (accessToken && !isAuthEndpoint) {
       preparedRequest = this.addToken(preparedRequest, accessToken);
     }
 
     return next.handle(preparedRequest).pipe(
       catchError((error) => {
-        const canAttemptRefresh = !isAuthEndpoint && !!localStorage.getItem('refresh_token');
+        const canAttemptRefresh = !isAuthEndpoint && !!localStorage.getItem(REFRESH_TOKEN_STORAGE_KEY);
 
         if (error instanceof HttpErrorResponse && error.status === 401 && canAttemptRefresh) {
           return this.handle401Error(preparedRequest, next);

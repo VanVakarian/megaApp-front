@@ -1,13 +1,13 @@
 import { HttpClient, HttpErrorResponse, HttpResponse } from '@angular/common/http';
 import { computed, inject, Injectable, signal } from '@angular/core';
 import { Router } from '@angular/router';
+import { IndexedDbCacheService } from '@app/services/indexed-db-cache.service';
 import { NetworkService } from '@app/services/network.service';
 import { NotificationService } from '@app/services/notification.service';
 import { SettingsService } from '@app/services/settings.service';
 import { SyncEngineService } from '@app/services/sync-engine.service';
-import { buildCacheKey, clearAllUserScopedCaches } from '@app/shared/cache';
-import { SESSION_BOOTSTRAP_TIMEOUT_MS } from '@app/shared/const';
-import { idbRemove } from '@app/shared/idb-cache';
+import { clearAllUserScopedCaches } from '@app/shared/cache';
+import { ACCESS_TOKEN_STORAGE_KEY, REFRESH_TOKEN_STORAGE_KEY, SESSION_BOOTSTRAP_TIMEOUT_MS } from '@app/shared/const';
 import { AuthResponse, UserCreds, VerifyResponse } from '@app/shared/types';
 import { firstValueFrom, Observable, throwError } from 'rxjs';
 import { catchError, map, tap, timeout } from 'rxjs/operators';
@@ -29,9 +29,6 @@ export class AuthService {
   public readonly bootstrapError$$ = signal(false);
   public readonly isAdmin$$ = signal(false);
 
-  private readonly ACCESS_TOKEN_KEY = 'access_token';
-  private readonly REFRESH_TOKEN_KEY = 'refresh_token';
-
   private bootstrapPromise: Promise<void> | null = null;
 
   private readonly networkService = inject(NetworkService);
@@ -40,6 +37,7 @@ export class AuthService {
   private readonly syncEngine = inject(SyncEngineService);
   private readonly settingsService = inject(SettingsService);
   private readonly notificationService = inject(NotificationService);
+  private readonly indexedDbCache = inject(IndexedDbCacheService);
 
   public ensureBootstrapped(): Promise<void> {
     if (!this.bootstrapPromise) {
@@ -86,7 +84,7 @@ export class AuthService {
   }
 
   public refreshToken(): Observable<AuthResponse> {
-    const refreshToken = localStorage.getItem(this.REFRESH_TOKEN_KEY);
+    const refreshToken = localStorage.getItem(REFRESH_TOKEN_STORAGE_KEY);
     if (!refreshToken) {
       this.terminateSession();
       return throwError(() => new Error('No refresh token available'));
@@ -107,7 +105,8 @@ export class AuthService {
   }
 
   private async bootstrap(): Promise<void> {
-    const hasSession = !!localStorage.getItem(this.ACCESS_TOKEN_KEY) || !!localStorage.getItem(this.REFRESH_TOKEN_KEY);
+    const hasSession =
+      !!localStorage.getItem(ACCESS_TOKEN_STORAGE_KEY) || !!localStorage.getItem(REFRESH_TOKEN_STORAGE_KEY);
     if (!hasSession) {
       this.sessionState$$.set(AuthSessionState.Guest);
       return;
@@ -140,21 +139,21 @@ export class AuthService {
     this.settingsService.reset();
     this.notificationService.clearAll();
     clearAllUserScopedCaches();
-    void idbRemove(buildCacheKey('metrics_detail'));
+    void this.indexedDbCache.clearAllUserScoped();
     this.sessionState$$.set(AuthSessionState.Guest);
     this.isAdmin$$.set(false);
     void this.router.navigateByUrl('/auth');
   }
 
   private setTokens(response: AuthResponse): void {
-    localStorage.setItem(this.ACCESS_TOKEN_KEY, response.accessToken);
-    localStorage.setItem(this.REFRESH_TOKEN_KEY, response.refreshToken);
+    localStorage.setItem(ACCESS_TOKEN_STORAGE_KEY, response.accessToken);
+    localStorage.setItem(REFRESH_TOKEN_STORAGE_KEY, response.refreshToken);
   }
 
   private removeTokens(): void {
-    localStorage.removeItem(this.ACCESS_TOKEN_KEY);
-    localStorage.removeItem(this.REFRESH_TOKEN_KEY);
+    localStorage.removeItem(ACCESS_TOKEN_STORAGE_KEY);
+    localStorage.removeItem(REFRESH_TOKEN_STORAGE_KEY);
   }
 }
 
-export const tokenGetter = () => localStorage.getItem('access_token');
+export const tokenGetter = () => localStorage.getItem(ACCESS_TOKEN_STORAGE_KEY);

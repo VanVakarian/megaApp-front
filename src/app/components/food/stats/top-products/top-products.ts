@@ -11,7 +11,7 @@ export const TopProductsMetric = {
 } as const;
 export type TopProductsMetric = (typeof TopProductsMetric)[keyof typeof TopProductsMetric];
 
-const METRIC_STORAGE_KEY = 'food-stats-top-products-metric';
+const METRIC_STORAGE_KEY = 'food_stats_top_products_metric';
 
 @Component({
   selector: 'food-stats-top-products',

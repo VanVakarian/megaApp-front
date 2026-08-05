@@ -82,35 +82,6 @@ const DEFAULTS: StoredMetricsSettings = {
   anomalyFilterParams: DEFAULT_ANOMALY_FILTER_PARAMS,
 };
 
-// Old per-field keys from before settings were combined into STORAGE_KEY — deleted once, never read.
-// metrics_selected_service/metrics_settings_expanded are here too: which panel was expanded is no
-// longer persisted anywhere — every page load opens on the Dashboard panel, collapsed Settings.
-// metrics_granularity/metrics_active_card_layout_mode/metrics_force_zero_baseline_enabled/
-// metrics_active_tooltip_mode/metrics_anomaly_filter_enabled are NOT here — they're the live
-// *_STORAGE_KEY constants above, kept local-only on purpose.
-// composite_metrics_definitions is here too: composite metrics used to have their own local-only
-// storage key before joining the rest of this service's server-synced fields.
-// metrics_active_card_size_mode is here too: the old Small/Large split (each with its own width
-// and height) was replaced by one flat card size plus a Compact/Wide layout mode — the old
-// per-mode signal has no equivalent to migrate into, it's simply gone.
-// metrics_anomaly_filter_settings is here too: the anomaly filter's enabled flag and its numeric
-// params used to live combined under one local-only key, before the flag stayed local-only and the
-// params joined the server-synced fields — never released beyond this, so no migration, just cleanup.
-const OBSOLETE_KEYS = [
-  'metrics_expanded_services',
-  'metrics_selected_service',
-  'metrics_settings_expanded',
-  'metrics_card_width_px',
-  'metrics_card_height_px',
-  'metrics_sync_crosshair_enabled',
-  'metrics_dashboard_selection',
-  'metrics_dashboard_service_selection',
-  'metrics_severity_thresholds',
-  'composite_metrics_definitions',
-  'metrics_active_card_size_mode',
-  'metrics_anomaly_filter_settings',
-];
-
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value);
 }
@@ -234,10 +205,6 @@ export class MetricsSettingsService {
   private readonly lastConfirmed$$: WritableSignal<StoredMetricsSettings>;
 
   constructor() {
-    for (const key of OBSOLETE_KEYS) {
-      this.localStorageService.removeUserScoped(key);
-    }
-
     const stored = this.localStorageService.getUserScoped<Partial<StoredMetricsSettings>>(STORAGE_KEY) ?? {};
     const initial: StoredMetricsSettings = {
       ...DEFAULTS,

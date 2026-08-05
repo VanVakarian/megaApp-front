@@ -1,9 +1,8 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, effect, inject, signal, untracked } from '@angular/core';
+import { IndexedDbCacheService } from '@app/services/indexed-db-cache.service';
 import { NetworkService } from '@app/services/network.service';
 import { NotificationService } from '@app/services/notification.service';
-import { buildCacheKey } from '@app/shared/cache';
-import { idbGet, idbRemove, idbSet } from '@app/shared/idb-cache';
 import { metricsServiceDefinitions } from '@app/shared/metrics-catalog';
 import {
   METRIC_GRANULARITIES,
@@ -48,6 +47,7 @@ export class MetricsService {
   private readonly networkService = inject(NetworkService);
   private readonly notificationService = inject(NotificationService);
   private readonly http = inject(HttpClient);
+  private readonly indexedDbCache = inject(IndexedDbCacheService);
   private readonly pointsByKey = new Map<string, MetricPoint>();
   private readonly bucketCounts: Record<MetricGranularity, Map<number, number>> = {
     minute: new Map(),
@@ -74,7 +74,7 @@ export class MetricsService {
   });
 
   constructor() {
-    void idbGet<MetricsCacheState | MetricPoint[]>(buildCacheKey(STORAGE_KEY)).then((cached) => {
+    void this.indexedDbCache.get<MetricsCacheState | MetricPoint[]>(STORAGE_KEY).then((cached) => {
       if (Array.isArray(cached)) {
         this.mergePoints(cached, false, false);
       } else if (cached) {
@@ -136,7 +136,7 @@ export class MetricsService {
       clearTimeout(this.cacheWriteTimeoutId);
       this.cacheWriteTimeoutId = null;
     }
-    void idbRemove(buildCacheKey(STORAGE_KEY));
+    void this.indexedDbCache.remove(STORAGE_KEY);
     this.scheduleRefreshCheck();
   }
 
@@ -288,9 +288,7 @@ export class MetricsService {
 
   private buildHistoryRequest(force: boolean): MetricsHistoryRequest | null {
     const latestMinuteBucket =
-      this.latestRealtimeMinuteBucket > 0
-        ? this.latestRealtimeMinuteBucket
-        : Math.floor(Date.now() / 60_000) * 60 - 60;
+      this.latestRealtimeMinuteBucket > 0 ? this.latestRealtimeMinuteBucket : Math.floor(Date.now() / 60_000) * 60 - 60;
 
     let fullRefresh = force || this.refreshedServices.size === 0;
     for (const service of this.knownServices) {
@@ -334,7 +332,7 @@ export class MetricsService {
     if (this.cacheWriteTimeoutId !== null) return;
     this.cacheWriteTimeoutId = setTimeout(() => {
       this.cacheWriteTimeoutId = null;
-      void idbSet<MetricsCacheState>(buildCacheKey(STORAGE_KEY), {
+      void this.indexedDbCache.set<MetricsCacheState>(STORAGE_KEY, {
         points: this.points$$(),
         historyCheckedThrough: { ...this.historyCheckedThrough },
         historyServices: Array.from(this.refreshedServices).sort(),
