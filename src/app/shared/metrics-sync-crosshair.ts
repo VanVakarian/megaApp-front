@@ -68,14 +68,19 @@ function readMetricSyncCrosshairOptions(options: unknown): MetricSyncCrosshairOp
 }
 
 function resolveHoverBucket(chart: Chart, options: MetricSyncCrosshairOptions, eventX: number): number | null {
-  const tooltipBucket = chart.tooltip?.dataPoints?.[0]?.parsed?.x;
-  if (Number.isFinite(tooltipBucket)) {
-    return tooltipBucket as number;
-  }
-
   const xScale = chart.scales['x'];
   if (!xScale) {
     return null;
+  }
+
+  if (chart.options.interaction?.mode === 'nearest') {
+    const activeElement = chart.getActiveElements()[0]?.element;
+    if (!activeElement) {
+      return null;
+    }
+
+    const activeBucket = xScale.getValueForPixel(activeElement.x);
+    return typeof activeBucket === 'number' && Number.isFinite(activeBucket) ? activeBucket : null;
   }
 
   const rawBucket = xScale.getValueForPixel(eventX);

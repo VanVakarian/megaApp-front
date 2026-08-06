@@ -576,6 +576,7 @@ export function createMetricSparseLineConfig(
     options: {
       animation: false,
       maintainAspectRatio: false,
+      interaction: { mode: tooltipMode, intersect: false },
       elements: { line: { tension: 0.3 } },
       plugins: {
         legend: { display: false },
@@ -627,6 +628,7 @@ export function createMetricBarConfig(
     options: {
       animation: false,
       maintainAspectRatio: false,
+      interaction: { mode: tooltipMode, intersect: false },
       plugins: {
         legend: { display: false },
         tooltip: metricSparseTooltipOptions(),
