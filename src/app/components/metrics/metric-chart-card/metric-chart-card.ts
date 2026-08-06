@@ -4,6 +4,7 @@ import {
   computed,
   effect,
   ElementRef,
+  inject,
   input,
   OnDestroy,
   OnInit,
@@ -11,8 +12,10 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
+import { ChartThemeService } from '@app/services/chart-theme.service';
 import { TooltipMode } from '@app/services/metrics-settings.service';
 import {
+  ChartColors,
   createMetricBarConfig,
   createMetricSparseLineConfig,
   MetricTooltipInteractionMode,
@@ -226,6 +229,7 @@ export class MetricChartCard implements OnInit, OnDestroy {
   private readonly hostElement: HTMLElement;
   private readonly cardWidthPx$$ = signal(0);
   private resizeObserver: ResizeObserver | null = null;
+  private readonly chartThemeService = inject(ChartThemeService);
 
   private readonly chartUpdateEffect = effect(() => {
     const canvasElem = this.chartCanvasElem();
@@ -242,8 +246,13 @@ export class MetricChartCard implements OnInit, OnDestroy {
     this.cardWidthPx$$();
     this.syncCrosshairEnabledInput();
     this.forceZeroBaselineInput();
+    // This chart's own dataset color comes from colorInput, not the theme — colors$$ is only
+    // needed to detect a theme switch and recreate the chart so its grid/tick colors repaint
+    // (see createChartConfig/ensureChart: Chart.js doesn't reliably repaint a scale's cached
+    // resolved color from an in-place chart.update() alone).
+    const colors = this.chartThemeService.colors$$();
     if (!canvasElem) return;
-    this.ensureChart(canvasElem.nativeElement, chartMode, color, unit, granularity, tooltipMode);
+    this.ensureChart(canvasElem.nativeElement, chartMode, color, unit, granularity, tooltipMode, colors);
     this.updateChart(series);
   });
 
@@ -272,13 +281,14 @@ export class MetricChartCard implements OnInit, OnDestroy {
     unit: MetricUnit,
     granularity: MetricGranularity,
     tooltipMode: TooltipMode,
+    colors: ChartColors,
   ): ChartConfiguration {
     const tooltipInteractionMode: MetricTooltipInteractionMode =
       tooltipMode === TooltipMode.Vertical ? 'index' : 'nearest';
     if (chartMode === 'bar') {
-      return createMetricBarConfig(color, unit, granularity, tooltipInteractionMode);
+      return createMetricBarConfig(color, unit, granularity, tooltipInteractionMode, colors);
     }
-    return createMetricSparseLineConfig(color, unit, granularity, tooltipInteractionMode);
+    return createMetricSparseLineConfig(color, unit, granularity, tooltipInteractionMode, colors);
   }
 
   private ensureChart(
@@ -288,8 +298,12 @@ export class MetricChartCard implements OnInit, OnDestroy {
     unit: MetricUnit,
     granularity: MetricGranularity,
     tooltipMode: TooltipMode,
+    colors: ChartColors,
   ): void {
-    const signature = `${chartMode}:${color}:${unit}:${granularity}:${tooltipMode}`;
+    // colors.grid alone uniquely identifies the theme (CHART_COLORS_LIGHT vs _DARK) — included
+    // so a theme toggle is treated the same as any other config change: destroy and rebuild,
+    // rather than an in-place chart.update() that wouldn't reliably repaint the scale colors.
+    const signature = `${chartMode}:${color}:${unit}:${granularity}:${tooltipMode}:${colors.grid}`;
     if (this.chart && this.chartSignature === signature) {
       return;
     }
@@ -303,7 +317,7 @@ export class MetricChartCard implements OnInit, OnDestroy {
       return;
     }
 
-    this.chart = new Chart(ctx, this.createChartConfig(chartMode, color, unit, granularity, tooltipMode));
+    this.chart = new Chart(ctx, this.createChartConfig(chartMode, color, unit, granularity, tooltipMode, colors));
     this.chartSignature = signature;
   }
 

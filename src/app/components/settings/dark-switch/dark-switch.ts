@@ -18,9 +18,9 @@ export class DarkSwitch {
 
   protected async switchTheme(): Promise<void> {
     const setting = { darkTheme: !this.settingsService.settings$$().darkTheme };
-    this.settingsService.applyTheme(setting.darkTheme);
+    this.settingsService.applyThemeAnimated(setting.darkTheme);
     const requestIsSuccess = await this.settingsService.saveSetting(setting);
 
-    if (!requestIsSuccess) this.settingsService.applyTheme(!setting.darkTheme);
+    if (!requestIsSuccess) this.settingsService.applyThemeAnimated(!setting.darkTheme);
   }
 }

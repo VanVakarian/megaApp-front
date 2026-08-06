@@ -18,26 +18,26 @@ export class BMI implements OnInit {
 
   protected readonly bmiSegments: BmiSegment[] = [
     {
-      twSegmentClasses: 'relative h-2 rounded-l-md bg-yellow-300',
+      twSegmentClasses: 'relative h-2 rounded-l-md bg-yellow-300 dark:bg-amber-500',
     },
     {
-      twSegmentClasses: 'relative h-2 bg-green-400',
+      twSegmentClasses: 'relative h-2 bg-green-400 dark:bg-green-500',
       twLabelClasses: 'absolute left-0 top-[10px] text-sm -translate-x-1/2',
     },
     {
-      twSegmentClasses: 'relative h-2 bg-yellow-300',
+      twSegmentClasses: 'relative h-2 bg-yellow-300 dark:bg-amber-500',
       twLabelClasses: 'absolute left-0 top-[10px] text-sm -translate-x-1/2',
     },
     {
-      twSegmentClasses: 'relative h-2 bg-red-300',
+      twSegmentClasses: 'relative h-2 bg-red-300 dark:bg-red-500',
       twLabelClasses: 'absolute left-0 top-[10px] text-sm -translate-x-1/2',
     },
     {
-      twSegmentClasses: 'relative h-2 bg-red-500',
+      twSegmentClasses: 'relative h-2 bg-red-500 dark:bg-red-700',
       twLabelClasses: 'absolute left-0 top-[10px] text-sm -translate-x-1/2',
     },
     {
-      twSegmentClasses: 'relative h-2 rounded-r-md bg-red-700',
+      twSegmentClasses: 'relative h-2 rounded-r-md bg-red-700 dark:bg-red-900',
       twLabelClasses: 'absolute left-0 top-[10px] text-sm -translate-x-1/2',
     },
   ];

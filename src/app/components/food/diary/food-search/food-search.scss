@@ -8,6 +8,7 @@
   background: color-mix(in srgb, var(--v-color-surface) 80%, transparent);
   border-radius: 4px;
   box-decoration-break: clone;
+  transition: background var(--v-theme-transition-duration, 0s);
 }
 
 .catalogue-entry-weight {
@@ -15,6 +16,7 @@
   background: color-mix(in srgb, var(--v-color-surface) 80%, transparent);
   border-radius: 4px;
   font-size: 0.75rem;
+  transition: background var(--v-theme-transition-duration, 0s);
 }
 
 .add-catalogue-entry {}

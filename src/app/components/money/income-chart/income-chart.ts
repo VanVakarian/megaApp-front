@@ -2,16 +2,23 @@ import {
   AfterViewInit,
   ChangeDetectionStrategy,
   Component,
-  ElementRef,
-  OnDestroy,
   computed,
   effect,
+  ElementRef,
+  inject,
   input,
+  OnDestroy,
   signal,
   untracked,
   viewChild,
 } from '@angular/core';
-import { formatMonthYearLabel, INCOME_CHART_CONFIG, INCOME_SERIES_PALETTE } from '@app/shared/chart-config';
+import { ChartThemeService } from '@app/services/chart-theme.service';
+import {
+  ChartColors,
+  createIncomeChartConfig,
+  formatMonthYearLabel,
+  INCOME_SERIES_PALETTE,
+} from '@app/shared/chart-config';
 import { IncomeChartCategorySeries, IncomeChartData } from '@app/shared/types';
 import { VButton } from '@ui-kit/components/v-button/v-button';
 import { VCheckbox } from '@ui-kit/components/v-checkbox/v-checkbox';
@@ -46,6 +53,13 @@ export class IncomeChart implements AfterViewInit, OnDestroy {
   protected readonly enabledCategoryIds$$ = signal<Set<number | null>>(new Set());
   protected readonly yearlyMode$$ = signal(false);
 
+  private readonly chartThemeService = inject(ChartThemeService);
+  // Chart.js caches a scale's resolved grid/border/ticks color internally — mutating
+  // chart.data and calling chart.update('none') doesn't reliably repaint it after a theme
+  // toggle (see the identical comment/fix in food-stats-charts.ts). Recreating the chart
+  // whenever the ChartColors reference changes sidesteps it; plain data updates stay a
+  // cheap in-place mutation.
+  private lastColors: ChartColors | null = null;
   private yearBoundaries: { year: string; startIdx: number; endIdx: number }[] = [];
 
   protected readonly viewToggleItems: VToggleItem[] = [
@@ -75,16 +89,28 @@ export class IncomeChart implements AfterViewInit, OnDestroy {
   private readonly chartUpdateEffect = effect(() => {
     const data = this.dataInput();
     const activeSeries = this.activeCategorySeries$$();
-    const chart = this.chart$$();
     const yearly = this.yearlyMode$$();
     const monthRange = this.monthRangeInput();
+    // Dataset colors here are category-identity colors, not theme colors — colors$$ is only
+    // needed to detect a theme switch and recreate the chart so its grid/tick colors repaint.
+    const colors = this.chartThemeService.colors$$();
+    let chart = this.chart$$();
+    if (chart && colors !== this.lastColors) {
+      chart.destroy();
+      chart = this.createChart(colors);
+      this.chart$$.set(chart);
+    }
+    this.lastColors = colors;
     if (!chart) return;
     this.rebuildChartDatasets(chart, data, activeSeries, yearly, monthRange);
   });
 
   private readonly yearSeparatorPlugin: Plugin = {
     id: 'incomeYearSeparator',
-    afterDraw: (chart) => {
+    // Drawn before the dataset (not afterDraw) so the separator sits under the data line,
+    // the same layering the built-in grid uses — the year label text stays in afterDraw
+    // below, since it's positioned under the plot area and never overlaps the line anyway.
+    beforeDatasetsDraw: (chart) => {
       if (this.yearlyMode$$()) return;
       if (!this.yearBoundaries.length) return;
       const xScale = chart.scales['x'];
@@ -92,7 +118,11 @@ export class IncomeChart implements AfterViewInit, OnDestroy {
       const { ctx, chartArea } = chart;
       ctx.save();
 
-      ctx.strokeStyle = 'rgba(0, 0, 0, 0.15)';
+      // Was a hardcoded 'rgba(0, 0, 0, 0.15)' — always-black, so on dark theme it barely
+      // showed up at all. Chart.defaults.borderColor is the same theme grid color every
+      // scale's own gridlines use, read live on every draw (no stale-cache concern here —
+      // unlike Chart.js's own scale rendering, this plugin paints the canvas directly).
+      ctx.strokeStyle = Chart.defaults.borderColor as string;
       ctx.lineWidth = 1;
       for (let i = 1; i < this.yearBoundaries.length; i++) {
         const x =
@@ -106,6 +136,16 @@ export class IncomeChart implements AfterViewInit, OnDestroy {
         ctx.lineTo(x, chartArea.bottom);
         ctx.stroke();
       }
+
+      ctx.restore();
+    },
+    afterDraw: (chart) => {
+      if (this.yearlyMode$$()) return;
+      if (!this.yearBoundaries.length) return;
+      const xScale = chart.scales['x'];
+      if (!xScale) return;
+      const { ctx, chartArea } = chart;
+      ctx.save();
 
       const labelY = Math.round((chartArea.bottom + xScale.bottom) / 2);
       const font = Chart.defaults.font;
@@ -122,10 +162,10 @@ export class IncomeChart implements AfterViewInit, OnDestroy {
     },
   };
 
-  public ngAfterViewInit(): void {
+  private createChart(colors: ChartColors): Chart | null {
     const ctx = this.chartCanvas().nativeElement.getContext('2d');
-    if (!ctx) return;
-    const chart = new Chart(ctx, { ...INCOME_CHART_CONFIG, plugins: [this.yearSeparatorPlugin] });
+    if (!ctx) return null;
+    const chart = new Chart(ctx, { ...createIncomeChartConfig(colors), plugins: [this.yearSeparatorPlugin] });
     if (chart.options.plugins?.tooltip?.callbacks) {
       chart.options.plugins.tooltip.callbacks.label = (ctx) => {
         if (ctx.parsed.y === 0) return '';
@@ -137,7 +177,13 @@ export class IncomeChart implements AfterViewInit, OnDestroy {
         return `${new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(sum)} ${this.currencySymbolInput()}`;
       };
     }
-    this.chart$$.set(chart);
+    return chart;
+  }
+
+  public ngAfterViewInit(): void {
+    this.lastColors = this.chartThemeService.colors$$();
+    const chart = this.createChart(this.lastColors);
+    if (chart) this.chart$$.set(chart);
   }
 
   public ngOnDestroy(): void {

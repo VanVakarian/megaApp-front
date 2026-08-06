@@ -90,7 +90,7 @@
                 }
               </div>
 
-              <div class="dark:border-gray-700 self-stretch w-px border-l border-gray-200"></div>
+              <div class="v-theme-transition self-stretch w-px border-l border-[var(--v-color-border-subtle)]"></div>
 
               <v-button surface="flat"
                         [class.v-primary]="!keepNativeCurrency$$()"
@@ -104,12 +104,13 @@
             </div>
           </div>
           @if (!isChartDataReady$$()) {
-            <div class="dark:border-gray-700 pt-2 border-t border-gray-200 h-[61px] flex items-center justify-center">
+            <div
+                 class="v-theme-transition pt-2 border-t border-[var(--v-color-border-subtle)] h-[61px] flex items-center justify-center">
               <div class="animate-spin w-4 h-4 border-2 rounded-full"
                    style="border-color: var(--v-color-primary); border-top-color: transparent;"></div>
             </div>
           } @else if (allChartMonths$$().length > 1) {
-            <div class="dark:border-gray-700 pt-2 border-t border-gray-200">
+            <div class="v-theme-transition pt-2 border-t border-[var(--v-color-border-subtle)]">
               <div class="flex justify-between mb-2 text-xs text-gray-400">
                 <span>{{ sliderStartLabel$$() }}</span>
                 <span>Selected: {{ sliderRangeLabel$$() }}</span>

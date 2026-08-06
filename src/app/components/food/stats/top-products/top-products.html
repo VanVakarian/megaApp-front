@@ -1,4 +1,5 @@
-<v-card [borderRadius]="2"
+<v-card class="v-theme-transition"
+        [borderRadius]="2"
         [padding]="2">
   <div class="flex items-center justify-between gap-2 mb-2">
     <div class="text-lg font-semibold">Топ продуктов за 30 дней</div>
@@ -24,16 +25,15 @@
     <div class="text-sm text-[color:var(--v-color-text-muted)]">Пока недостаточно данных</div>
   } @else {
     @for (product of products$$(); track product.catalogueId) {
-      <div class="mb-2 flex flex-col gap-[3px] last:mb-0">
-        <div class="flex justify-between text-xs">
+      <v-progress class="mb-2 last:mb-0"
+                  [value]="barWidthPercent(product)"
+                  [height]="2">
+        <div v-label
+             class="flex justify-between gap-2 text-sm">
           <span class="font-medium">{{ product.name }}</span>
-          <span class="text-[color:var(--v-color-text-muted)]">{{ product.sharePercent }}%</span>
+          <span>{{ product.sharePercent }}%</span>
         </div>
-        <div class="h-2 rounded-full bg-[color:var(--v-color-surface-accent)]">
-          <div class="h-full rounded-full bg-[color:var(--v-color-primary)]"
-               [style.width.%]="barWidthPercent(product)"></div>
-        </div>
-      </div>
+      </v-progress>
     }
   }
 </v-card>

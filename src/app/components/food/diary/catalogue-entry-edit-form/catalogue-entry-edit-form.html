@@ -17,7 +17,7 @@
     </div> -->
 
     @if (error$$()) {
-      <div class="dark:bg-red-900 dark:text-red-200 p-3 text-sm text-red-800 bg-red-100 rounded-lg">
+      <div class="v-theme-transition p-3 text-sm rounded-lg text-[var(--v-color-danger)] bg-[color-mix(in_oklch,var(--v-color-danger)_14%,var(--v-color-surface)_86%)]">
         {{ error$$() }}
       </div>
     }

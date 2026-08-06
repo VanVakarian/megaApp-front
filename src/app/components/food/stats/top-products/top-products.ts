@@ -3,6 +3,7 @@ import { StatsHelpIcon } from '@app/components/food/stats/stats-help-icon/stats-
 import { FoodStatsInsightsService, FoodStatsTopProductShare } from '@app/services/food/food-stats-insights.service';
 import { LocalStorageService } from '@app/services/local-storage.service';
 import { VCard } from '@ui-kit/components/v-card/v-card';
+import { VProgress } from '@ui-kit/components/v-progress/v-progress';
 import { VToggle, VToggleItem } from '@ui-kit/components/v-toggle/v-toggle';
 
 export const TopProductsMetric = {
@@ -16,7 +17,7 @@ const METRIC_STORAGE_KEY = 'food_stats_top_products_metric';
 @Component({
   selector: 'food-stats-top-products',
   templateUrl: './top-products.html',
-  imports: [VCard, StatsHelpIcon, VToggle],
+  imports: [VCard, StatsHelpIcon, VToggle, VProgress],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class TopProducts {

@@ -10,6 +10,8 @@ export interface ChartColors {
   secondaryAlpha: string;
   virtual: string;
   virtualAlpha: string;
+  text: string;
+  grid: string;
 }
 
 export interface MonthLabelsPluginOptions {
@@ -54,6 +56,9 @@ export interface MonthLabelsPluginOptions {
 // goes secondary(darkest) > main > virtual(lightest); on a dark surface it's the opposite — a
 // lighter tone pops more — so dark mode goes secondary(lightest) > main > virtual(darkest),
 // keeping the same relative emphasis order in both themes instead of reusing light values as-is.
+// text/grid match --v-color-text-muted / --v-color-border-subtle from flat-blue.css, so
+// axis labels and gridlines read like the rest of the app's chrome instead of Chart.js's
+// own default gray.
 export const CHART_COLORS_LIGHT: ChartColors = {
   main: '#6278bc',
   mainAlpha: '#6278bc50',
@@ -61,6 +66,8 @@ export const CHART_COLORS_LIGHT: ChartColors = {
   secondaryAlpha: '#2d3f7650',
   virtual: '#a1acce',
   virtualAlpha: '#a1acce80',
+  text: '#64748b',
+  grid: '#e2e8f0',
 };
 
 export const CHART_COLORS_DARK: ChartColors = {
@@ -70,6 +77,8 @@ export const CHART_COLORS_DARK: ChartColors = {
   secondaryAlpha: '#8d98b950',
   virtual: '#3f465a',
   virtualAlpha: '#3f465a80',
+  text: '#94a3b8',
+  grid: '#334155',
 };
 
 export function createWeightChartConfig(colors: ChartColors): ChartConfiguration {
@@ -103,12 +112,21 @@ export function createWeightChartConfig(colors: ChartColors): ChartConfiguration
       animation: false,
       elements: { line: { tension: 0.5 } },
       maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          labels: { color: colors.text },
+        },
+      },
       scales: {
         x: {
-          ticks: {},
+          ticks: { color: colors.text },
+          grid: { color: colors.grid },
+          border: { color: colors.grid },
         },
         y: {
-          ticks: { stepSize: 1 },
+          ticks: { color: colors.text, stepSize: 1 },
+          grid: { color: colors.grid },
+          border: { color: colors.grid },
         },
       },
     },
@@ -187,7 +205,7 @@ export function createKcalsChartConfig(colors: ChartColors): ChartConfiguration 
 
 export const FOOD_STATS_MONTH_LABELS_PADDING = 24;
 
-export const FOOD_STATS_MONTH_LABELS_OPTIONS: MonthLabelsPluginOptions = {
+export const FOOD_STATS_MONTH_LABELS_OPTIONS_LIGHT: MonthLabelsPluginOptions = {
   lineColor: 'rgba(0, 0, 0, 0.2)',
   lineWidth: 1,
   segmentColor: 'rgba(0, 0, 0, 0.35)',
@@ -203,6 +221,19 @@ export const FOOD_STATS_MONTH_LABELS_OPTIONS: MonthLabelsPluginOptions = {
   labelOffset: 3,
   shortMonthSwitchMonths: 6,
   yearSwitchMonths: 8,
+};
+
+// Same structure as the light variant, but every color anchors to white instead
+// of black — on a dark surface, black-based rgba lines/labels just read as a
+// dirty smudge instead of a clean divider, so opacity blends toward white and
+// labelColor moves to --v-color-text-muted (dark) from flat-blue.css.
+export const FOOD_STATS_MONTH_LABELS_OPTIONS_DARK: MonthLabelsPluginOptions = {
+  ...FOOD_STATS_MONTH_LABELS_OPTIONS_LIGHT,
+  lineColor: 'rgba(255, 255, 255, 0.2)',
+  segmentColor: 'rgba(255, 255, 255, 0.35)',
+  separatorColorChart: 'rgba(255, 255, 255, 0.12)',
+  separatorColorLegend: 'rgba(255, 255, 255, 0.45)',
+  labelColor: '#94a3b8',
 };
 
 export const BALANCE_ACCOUNT_PALETTE = [
@@ -224,57 +255,72 @@ export const BALANCE_ACCOUNT_PALETTE = [
   'rgb(241, 206, 99)',
 ];
 
-export const BALANCE_CHART_CONFIG: ChartConfiguration<'line'> = {
-  type: 'line',
-  data: { labels: [], datasets: [] },
-  options: {
-    animation: false,
-    elements: { line: { tension: 0.3 }, point: { radius: 0, hitRadius: 20 } },
-    maintainAspectRatio: false,
-    plugins: {
-      legend: { display: false },
-      tooltip: {
-        mode: 'index',
-        intersect: false,
-        footerAlign: 'right',
-        filter: (item) => {
-          const raw = (item.dataset as any)['_rawValues'];
-          const value = raw ? raw[item.dataIndex] : item.parsed.y;
-          return Math.abs(value) >= 1;
-        },
-        callbacks: {
-          label: (ctx) => {
-            const raw = (ctx.dataset as any)['_rawValues'];
-            const value = raw ? raw[ctx.dataIndex] : ctx.parsed.y;
-            return ` ${ctx.dataset.label}: ${new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(value)} ₽`;
+// Same grid/border/ticks treatment as createWeightChartConfig (the reference look for the
+// whole app): subtle grid.color/border.color, muted ticks.color, both from the same
+// ChartColors the theme is currently resolved to. Money/metrics charts used to leave these
+// unset and rely on Chart.defaults alone — harmless while nothing else changes them, but
+// Chart.js caches a scale's resolved color internally and chart.update() alone doesn't
+// reliably repaint it (see the recreate-on-color-change comment in food-stats-charts.ts),
+// so a stale (often light-theme) color could stick after a theme toggle. Setting it
+// explicitly at chart-(re)creation time, the same way the canonical chart always has,
+// removes that ambiguity — see rebuildBalanceChart in balances-chart.ts for the recreation.
+export function createBalanceChartConfig(colors: ChartColors): ChartConfiguration<'line'> {
+  return {
+    type: 'line',
+    data: { labels: [], datasets: [] },
+    options: {
+      animation: false,
+      elements: { line: { tension: 0.3 }, point: { radius: 0, hitRadius: 20 } },
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          mode: 'index',
+          intersect: false,
+          footerAlign: 'right',
+          filter: (item) => {
+            const raw = (item.dataset as any)['_rawValues'];
+            const value = raw ? raw[item.dataIndex] : item.parsed.y;
+            return Math.abs(value) >= 1;
           },
-          footer: (items) => {
-            if (items.length < 2) return [];
-            const sum = items.reduce((acc, item) => {
-              const raw = (item.dataset as any)['_rawValues'];
-              const value = raw ? raw[item.dataIndex] : item.parsed.y;
-              return acc + value;
-            }, 0);
-            return `${new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(sum)} ₽`;
+          callbacks: {
+            label: (ctx) => {
+              const raw = (ctx.dataset as any)['_rawValues'];
+              const value = raw ? raw[ctx.dataIndex] : ctx.parsed.y;
+              return ` ${ctx.dataset.label}: ${new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(value)} ₽`;
+            },
+            footer: (items) => {
+              if (items.length < 2) return [];
+              const sum = items.reduce((acc, item) => {
+                const raw = (item.dataset as any)['_rawValues'];
+                const value = raw ? raw[item.dataIndex] : item.parsed.y;
+                return acc + value;
+              }, 0);
+              return `${new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(sum)} ₽`;
+            },
+          },
+        },
+      },
+      scales: {
+        x: {
+          grid: { display: false, color: colors.grid },
+          border: { color: colors.grid },
+          ticks: { color: colors.text, maxRotation: 0, autoSkip: true, maxTicksLimit: 12, callback: () => '' },
+        },
+        y: {
+          min: 0,
+          grid: { color: colors.grid },
+          border: { color: colors.grid },
+          ticks: {
+            color: colors.text,
+            callback: (value) =>
+              new Intl.NumberFormat('ru-RU', { notation: 'compact', maximumFractionDigits: 1 }).format(value as number),
           },
         },
       },
     },
-    scales: {
-      x: {
-        grid: { display: false },
-        ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 12, callback: () => '' },
-      },
-      y: {
-        min: 0,
-        ticks: {
-          callback: (value) =>
-            new Intl.NumberFormat('ru-RU', { notation: 'compact', maximumFractionDigits: 1 }).format(value as number),
-        },
-      },
-    },
-  },
-};
+  };
+}
 
 export const INCOME_CHART_ALLOWED_CATEGORIES: ReadonlySet<string> = new Set(['Зарплата', 'Проекты', 'Проценты']);
 
@@ -303,42 +349,49 @@ export const INCOME_VIRTUAL_SERIES = {
   CRYPTO_OPEN_PNL: -5,
 } as const;
 
-export const INCOME_CHART_CONFIG: ChartConfiguration<'bar'> = {
-  type: 'bar',
-  data: { labels: [], datasets: [] },
-  options: {
-    animation: false,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: { display: false },
-      tooltip: {
-        mode: 'index',
-        intersect: false,
-        footerAlign: 'right',
-        callbacks: {
-          label: (ctx) => {
-            if (ctx.parsed.y === 0) return '';
-            return ` ${ctx.dataset.label}: ${new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(ctx.parsed.y)} ₽`;
+// Same explicit-color rationale as createBalanceChartConfig above.
+export function createIncomeChartConfig(colors: ChartColors): ChartConfiguration<'bar'> {
+  return {
+    type: 'bar',
+    data: { labels: [], datasets: [] },
+    options: {
+      animation: false,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          mode: 'index',
+          intersect: false,
+          footerAlign: 'right',
+          callbacks: {
+            label: (ctx) => {
+              if (ctx.parsed.y === 0) return '';
+              return ` ${ctx.dataset.label}: ${new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(ctx.parsed.y)} ₽`;
+            },
+          },
+        },
+      },
+      scales: {
+        x: {
+          stacked: true,
+          grid: { display: false, color: colors.grid },
+          border: { color: colors.grid },
+          ticks: { color: colors.text, maxRotation: 0, autoSkip: true, maxTicksLimit: 12 },
+        },
+        y: {
+          stacked: true,
+          grid: { color: colors.grid },
+          border: { color: colors.grid },
+          ticks: {
+            color: colors.text,
+            callback: (value) =>
+              new Intl.NumberFormat('ru-RU', { notation: 'compact', maximumFractionDigits: 1 }).format(value as number),
           },
         },
       },
     },
-    scales: {
-      x: {
-        stacked: true,
-        grid: { display: false },
-        ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 12 },
-      },
-      y: {
-        stacked: true,
-        ticks: {
-          callback: (value) =>
-            new Intl.NumberFormat('ru-RU', { notation: 'compact', maximumFractionDigits: 1 }).format(value as number),
-        },
-      },
-    },
-  },
-};
+  };
+}
 
 export interface ExpenseCategoryConfig {
   name: string;
@@ -381,43 +434,50 @@ export function getExpenseCategoryColor(categoryName: string, fallbackIndex: num
   return rgbToRgba(entry ? entry.color : EXPENSE_FALLBACK_COLOR, EXPENSE_COLOR_ALPHA);
 }
 
-export const EXPENSE_CHART_CONFIG: ChartConfiguration<'bar'> = {
-  type: 'bar',
-  data: { labels: [], datasets: [] },
-  options: {
-    animation: false,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: { display: false },
-      tooltip: {
-        itemSort: (a, b) => b.datasetIndex - a.datasetIndex,
-        mode: 'index',
-        intersect: false,
-        footerAlign: 'right',
-        callbacks: {
-          label: (ctx) => {
-            if (ctx.parsed.y === 0) return '';
-            return ` ${ctx.dataset.label}: ${new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(ctx.parsed.y)} ₽`;
+// Same explicit-color rationale as createBalanceChartConfig above.
+export function createExpenseChartConfig(colors: ChartColors): ChartConfiguration<'bar'> {
+  return {
+    type: 'bar',
+    data: { labels: [], datasets: [] },
+    options: {
+      animation: false,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          itemSort: (a, b) => b.datasetIndex - a.datasetIndex,
+          mode: 'index',
+          intersect: false,
+          footerAlign: 'right',
+          callbacks: {
+            label: (ctx) => {
+              if (ctx.parsed.y === 0) return '';
+              return ` ${ctx.dataset.label}: ${new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(ctx.parsed.y)} ₽`;
+            },
+          },
+        },
+      },
+      scales: {
+        x: {
+          stacked: true,
+          grid: { display: false, color: colors.grid },
+          border: { color: colors.grid },
+          ticks: { color: colors.text, maxRotation: 0, autoSkip: true, maxTicksLimit: 12 },
+        },
+        y: {
+          stacked: true,
+          grid: { color: colors.grid },
+          border: { color: colors.grid },
+          ticks: {
+            color: colors.text,
+            callback: (value) =>
+              new Intl.NumberFormat('ru-RU', { notation: 'compact', maximumFractionDigits: 1 }).format(value as number),
           },
         },
       },
     },
-    scales: {
-      x: {
-        stacked: true,
-        grid: { display: false },
-        ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 12 },
-      },
-      y: {
-        stacked: true,
-        ticks: {
-          callback: (value) =>
-            new Intl.NumberFormat('ru-RU', { notation: 'compact', maximumFractionDigits: 1 }).format(value as number),
-        },
-      },
-    },
-  },
-};
+  };
+}
 
 export const METRICS_GRANULARITY_STEP_SECONDS: Record<MetricGranularity, number> = {
   minute: 60,
@@ -432,7 +492,7 @@ export const METRICS_GRANULARITY_WINDOW_PERIODS: Record<MetricGranularity, numbe
   day: 365,
 };
 
-export function createMetricSparklineConfig(color: string): ChartConfiguration<'line'> {
+export function createMetricSparklineConfig(color: string, colors: ChartColors): ChartConfiguration<'line'> {
   return {
     type: 'line',
     data: {
@@ -459,8 +519,9 @@ export function createMetricSparklineConfig(color: string): ChartConfiguration<'
       },
       scales: {
         x: {
-          grid: { color: 'rgba(0, 0, 0, 0.06)' },
-          ticks: { maxRotation: 0, autoSkip: false },
+          grid: { color: colors.grid },
+          border: { color: colors.grid },
+          ticks: { color: colors.text, maxRotation: 0, autoSkip: false },
         },
         y: {
           min: 0,
@@ -490,6 +551,7 @@ export function createMetricSparseLineConfig(
   unit: MetricUnit,
   granularity: MetricGranularity,
   tooltipMode: MetricTooltipInteractionMode,
+  colors: ChartColors,
 ): ChartConfiguration<'line'> {
   return {
     type: 'line',
@@ -522,8 +584,10 @@ export function createMetricSparseLineConfig(
       scales: {
         x: {
           type: 'linear',
-          grid: { color: 'rgba(0, 0, 0, 0.06)' },
+          grid: { color: colors.grid },
+          border: { color: colors.grid },
           ticks: {
+            color: colors.text,
             maxRotation: 0,
             autoSkip: false,
             callback: (value) => formatMetricTickLabel(value as number, granularity),
@@ -531,7 +595,9 @@ export function createMetricSparseLineConfig(
         },
         y: {
           display: true,
-          ticks: { callback: (value) => formatMetricUnitValue(unit, value as number) },
+          grid: { color: colors.grid },
+          border: { color: colors.grid },
+          ticks: { color: colors.text, callback: (value) => formatMetricUnitValue(unit, value as number) },
         },
       },
     },
@@ -543,6 +609,7 @@ export function createMetricBarConfig(
   unit: MetricUnit,
   granularity: MetricGranularity,
   tooltipMode: MetricTooltipInteractionMode,
+  colors: ChartColors,
 ): ChartConfiguration<'bar'> {
   return {
     type: 'bar',
@@ -572,8 +639,10 @@ export function createMetricBarConfig(
           // spacing — shifting the whole plot away from the sparse-line chart's
           // edge-to-edge range. Disable both so the two share the same canvas.
           offset: false,
-          grid: { color: 'rgba(0, 0, 0, 0.06)', offset: false },
+          grid: { offset: false, color: colors.grid },
+          border: { color: colors.grid },
           ticks: {
+            color: colors.text,
             maxRotation: 0,
             autoSkip: false,
             callback: (value) => formatMetricTickLabel(value as number, granularity),
@@ -582,7 +651,9 @@ export function createMetricBarConfig(
         y: {
           min: 0,
           display: true,
-          ticks: { callback: (value) => formatMetricUnitValue(unit, value as number) },
+          grid: { color: colors.grid },
+          border: { color: colors.grid },
+          ticks: { color: colors.text, callback: (value) => formatMetricUnitValue(unit, value as number) },
         },
       },
     },

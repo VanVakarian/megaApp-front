@@ -3,22 +3,20 @@ import {
   ChangeDetectionStrategy,
   Component,
   ElementRef,
-  inject,
   OnDestroy,
   computed,
   effect,
+  inject,
   input,
   signal,
   untracked,
   viewChild,
 } from '@angular/core';
-import { SettingsService } from '@app/services/settings.service';
+import { ChartThemeService } from '@app/services/chart-theme.service';
 import {
   BALANCE_ACCOUNT_PALETTE,
-  BALANCE_CHART_CONFIG,
   ChartColors,
-  CHART_COLORS_DARK,
-  CHART_COLORS_LIGHT,
+  createBalanceChartConfig,
   formatMonthYearLabel,
 } from '@app/shared/chart-config';
 import { BalanceChartAccountSeries, BalanceChartData } from '@app/shared/types';
@@ -58,16 +56,23 @@ export class BalancesChart implements AfterViewInit, OnDestroy {
   protected readonly suspensionFilter$$ = signal<'all' | 'exclude' | 'only'>('all');
   protected readonly enabledAccountIds$$ = signal<Set<number>>(new Set());
 
-  private readonly settingsService = inject(SettingsService);
-  private readonly chartColors$$ = computed(() =>
-    this.settingsService.settings$$().darkTheme ? CHART_COLORS_DARK : CHART_COLORS_LIGHT,
-  );
+  private readonly chartThemeService = inject(ChartThemeService);
+
+  // Chart.js caches a scale's resolved grid/border/ticks color internally — mutating
+  // chart.data and calling chart.update('none') doesn't reliably repaint it after a theme
+  // toggle (see the identical comment/fix in food-stats-charts.ts). Recreating the chart
+  // whenever the ChartColors reference changes sidesteps it; plain data updates stay a
+  // cheap in-place mutation.
+  private lastColors: ChartColors | null = null;
 
   private yearBoundaries: { year: string; startIdx: number; endIdx: number }[] = [];
 
   private readonly crosshairPlugin: Plugin = {
     id: 'balanceCrosshair',
-    afterDraw: (chart) => {
+    // beforeDatasetsDraw (not afterDraw) so the crosshair sits under the data line, the
+    // same layering the built-in grid uses — active-element state is already known by
+    // this point in the draw cycle (set by the hover handler, not computed during draw).
+    beforeDatasetsDraw: (chart) => {
       const active = chart.tooltip?.getActiveElements();
       if (!active?.length) return;
 
@@ -81,7 +86,9 @@ export class BalancesChart implements AfterViewInit, OnDestroy {
       ctx.moveTo(x, top);
       ctx.lineTo(x, bottom);
       ctx.lineWidth = 1;
-      ctx.strokeStyle = 'rgba(0, 0, 0, 0.25)';
+      // Reads the live theme color instead of a hardcoded one — same mechanism the
+      // label fillStyle below already uses via Chart.defaults.
+      ctx.strokeStyle = Chart.defaults.color as string;
       ctx.setLineDash([4, 4]);
       ctx.stroke();
       ctx.restore();
@@ -90,14 +97,21 @@ export class BalancesChart implements AfterViewInit, OnDestroy {
 
   private readonly yearSeparatorPlugin: Plugin = {
     id: 'balanceYearSeparator',
-    afterDraw: (chart) => {
+    // Drawn before the dataset (not afterDraw) so the separator sits under the data line,
+    // the same layering the built-in grid uses — the year label text stays in afterDraw
+    // below, since it's positioned under the plot area and never overlaps the line anyway.
+    beforeDatasetsDraw: (chart) => {
       if (!this.yearBoundaries.length) return;
       const xScale = chart.scales['x'];
       if (!xScale) return;
       const { ctx, chartArea } = chart;
       ctx.save();
 
-      ctx.strokeStyle = 'rgba(0, 0, 0, 0.15)';
+      // Was a hardcoded 'rgba(0, 0, 0, 0.15)' — always-black, so on dark theme it barely
+      // showed up at all. Chart.defaults.borderColor is the same theme grid color every
+      // scale's own gridlines use, read live on every draw (no stale-cache concern here —
+      // unlike Chart.js's own scale rendering, this plugin paints the canvas directly).
+      ctx.strokeStyle = Chart.defaults.borderColor as string;
       ctx.lineWidth = 1;
       for (let i = 1; i < this.yearBoundaries.length; i++) {
         const x =
@@ -111,6 +125,15 @@ export class BalancesChart implements AfterViewInit, OnDestroy {
         ctx.lineTo(x, chartArea.bottom);
         ctx.stroke();
       }
+
+      ctx.restore();
+    },
+    afterDraw: (chart) => {
+      if (!this.yearBoundaries.length) return;
+      const xScale = chart.scales['x'];
+      if (!xScale) return;
+      const { ctx, chartArea } = chart;
+      ctx.save();
 
       const labelY = Math.round((chartArea.bottom + xScale.bottom) / 2);
       const font = Chart.defaults.font;
@@ -151,17 +174,23 @@ export class BalancesChart implements AfterViewInit, OnDestroy {
     const showByAccount = this.showByAccount$$();
     const activeSeries = this.activeAccountSeries$$();
     const suspensionFilter = this.suspensionFilter$$();
-    const colors = this.chartColors$$();
-    const chart = this.chart$$();
+    const colors = this.chartThemeService.colors$$();
+    let chart = this.chart$$();
+    if (chart && colors !== this.lastColors) {
+      chart.destroy();
+      chart = this.createChart(colors);
+      this.chart$$.set(chart);
+    }
+    this.lastColors = colors;
     if (!chart) return;
     this.rebuildChartDatasets(chart, data, showByAccount, activeSeries, suspensionFilter, colors);
   });
 
-  public ngAfterViewInit(): void {
+  private createChart(colors: ChartColors): Chart | null {
     const ctx = this.chartCanvas().nativeElement.getContext('2d');
-    if (!ctx) return;
+    if (!ctx) return null;
     const chart = new Chart(ctx, {
-      ...BALANCE_CHART_CONFIG,
+      ...createBalanceChartConfig(colors),
       plugins: [this.yearSeparatorPlugin, this.crosshairPlugin],
     });
     if (chart.options.plugins?.tooltip?.callbacks) {
@@ -180,7 +209,13 @@ export class BalancesChart implements AfterViewInit, OnDestroy {
         return `${new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(sum)} ${this.currencySymbolInput()}`;
       };
     }
-    this.chart$$.set(chart);
+    return chart;
+  }
+
+  public ngAfterViewInit(): void {
+    this.lastColors = this.chartThemeService.colors$$();
+    const chart = this.createChart(this.lastColors);
+    if (chart) this.chart$$.set(chart);
   }
 
   public ngOnDestroy(): void {

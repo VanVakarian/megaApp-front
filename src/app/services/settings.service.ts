@@ -1,5 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Injectable, signal, WritableSignal } from '@angular/core';
+import { ANIMATION_DURATION_MS, ANIMATION_DURATION_MS_STRING } from '@app/shared/animations';
 import { DEFAULT_SETTINGS } from '@app/shared/const';
 import { UserSettings } from '@app/shared/types';
 import { firstValueFrom } from 'rxjs';
@@ -20,6 +21,7 @@ export class SettingsService {
   public readonly status$$: WritableSignal<SettingsStatus> = signal('idle');
 
   private readyPromise: Promise<void> | null = null;
+  private themeTransitionTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
   private readonly http = inject(HttpClient);
   private readonly localStorage = inject(LocalStorageService);
@@ -58,7 +60,7 @@ export class SettingsService {
     this.localStorage.setUserScoped(this.SETTINGS_STORAGE_KEY, newSettings);
 
     if (key === 'darkTheme') {
-      this.applyTheme(value as boolean);
+      this.applyThemeAnimated(value as boolean);
     }
 
     this.syncEngine.addOperation({
@@ -83,7 +85,7 @@ export class SettingsService {
     this.localStorage.setUserScoped(this.SETTINGS_STORAGE_KEY, rolledBackSettings);
 
     if (key === 'darkTheme') {
-      this.applyTheme(previousValue as boolean);
+      this.applyThemeAnimated(previousValue as boolean);
     }
   }
 
@@ -93,6 +95,22 @@ export class SettingsService {
     } else {
       document.documentElement.classList.remove('dark');
     }
+  }
+
+  // Used for user-triggered theme switches only: loadSettings/reset apply the initial
+  // theme via the plain applyTheme so the first paint never animates from the wrong theme.
+  public applyThemeAnimated(isDarkTheme: boolean): void {
+    if (this.themeTransitionTimeoutId !== null) {
+      clearTimeout(this.themeTransitionTimeoutId);
+    }
+
+    document.documentElement.style.setProperty('--v-theme-transition-duration', ANIMATION_DURATION_MS_STRING.THEME);
+    this.applyTheme(isDarkTheme);
+
+    this.themeTransitionTimeoutId = setTimeout(() => {
+      document.documentElement.style.removeProperty('--v-theme-transition-duration');
+      this.themeTransitionTimeoutId = null;
+    }, ANIMATION_DURATION_MS.THEME);
   }
 
   async saveSetting(setting: Partial<UserSettings>): Promise<boolean> {

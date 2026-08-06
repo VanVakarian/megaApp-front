@@ -1,6 +1,6 @@
 <div class="flex flex-col"
      style="--v-color-primary-muted: color-mix(in oklab, var(--v-color-primary) 45%, var(--v-color-text-muted) 55%)">
-  <div class="flex flex-wrap items-start gap-2 px-4 pt-2 pb-2 transition-shadow duration-300 ease-out"
+  <div class="flex flex-wrap items-start gap-2 px-4 pt-2 pb-2 [transition:box-shadow_300ms_ease-out,background-color_var(--v-theme-transition-duration,0s)]"
        [class]="stickyBarClasses$$()"
        [style.background-color]="deviceInfoService.isDesktopScreen$$() ? 'var(--v-color-bg)' : null">
     <div class="flex flex-wrap flex-initial min-w-0 gap-2">

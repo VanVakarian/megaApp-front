@@ -12,16 +12,13 @@ import {
 } from '@angular/core';
 import { StatsHelpIcon } from '@app/components/food/stats/stats-help-icon/stats-help-icon';
 import { DeviceInfoService } from '@app/services/device-info.service';
+import { ChartThemeService } from '@app/services/chart-theme.service';
 import { FoodStatsService } from '@app/services/food/food-stats.service';
-import { SettingsService } from '@app/services/settings.service';
 import { ANIMATION_DURATION_MS } from '@app/shared/animations';
 import {
   ChartColors,
-  CHART_COLORS_DARK,
-  CHART_COLORS_LIGHT,
   createKcalsChartConfig,
   createWeightChartConfig,
-  FOOD_STATS_MONTH_LABELS_OPTIONS,
   FOOD_STATS_MONTH_LABELS_PADDING,
   MonthLabelsPluginOptions,
 } from '@app/shared/chart-config';
@@ -85,10 +82,49 @@ export class FoodStatsCharts implements OnInit, AfterViewInit, OnDestroy {
   private readonly monthLabelsFormatter = new Intl.DateTimeFormat('ru-RU', { month: 'long' });
   private readonly shortMonthLabelsFormatter = new Intl.DateTimeFormat('ru-RU', { month: 'short' });
   private readonly yearLabelsFormatter = new Intl.DateTimeFormat('ru-RU', { year: 'numeric' });
-  private readonly monthLabelsOptions: MonthLabelsPluginOptions = FOOD_STATS_MONTH_LABELS_OPTIONS;
+  private readonly chartThemeService = inject(ChartThemeService);
+  private monthLabelsOptions: MonthLabelsPluginOptions = this.chartThemeService.monthLabelsOptions$$();
 
   private readonly monthLabelsPlugin: Plugin = {
     id: 'foodStatsMonthLabels',
+    // The month/year separator runs the full chart-area height, so — unlike the rest of
+    // this plugin, which lives below the plot area near the axis labels — it visually
+    // crosses the data line. Drawn here, before the dataset, it sits under the line the
+    // same way the built-in grid does; the matching legend-tick + everything else stays
+    // in afterDraw below, since none of that overlaps the line regardless of draw order.
+    beforeDatasetsDraw: (chart: Chart, _args: unknown, options: unknown) => {
+      const labels = chart.data.labels;
+      if (!labels || labels.length === 0) return;
+      if (!labels.every((label) => typeof label === 'string')) return;
+
+      const xScale = chart.scales['x'];
+      if (!xScale) return;
+
+      const { ctx, chartArea } = chart;
+      const pluginOptions = (options as MonthLabelsPluginOptions | undefined) ?? this.monthLabelsOptions;
+      const groups = this.buildTimeGroups(
+        labels as string[],
+        pluginOptions.shortMonthSwitchMonths,
+        pluginOptions.yearSwitchMonths,
+      );
+      if (groups.length < 2) return;
+
+      ctx.save();
+      ctx.strokeStyle = pluginOptions.separatorColorChart;
+      ctx.lineWidth = pluginOptions.separatorWidth;
+      for (let i = 0; i < groups.length - 1; i += 1) {
+        const current = groups[i];
+        const next = groups[i + 1];
+        const currentEnd = xScale.getPixelForTick(current.endIndex);
+        const nextStart = xScale.getPixelForTick(next.startIndex);
+        const separatorX = Math.round((currentEnd + nextStart) / 2) + 0.5;
+        ctx.beginPath();
+        ctx.moveTo(separatorX, chartArea.top);
+        ctx.lineTo(separatorX, chartArea.bottom);
+        ctx.stroke();
+      }
+      ctx.restore();
+    },
     afterDraw: (chart: Chart, _args: unknown, options: unknown) => {
       const labels = chart.data.labels;
       if (!labels || labels.length === 0) return;
@@ -127,6 +163,7 @@ export class FoodStatsCharts implements OnInit, AfterViewInit, OnDestroy {
       });
 
       if (groups.length > 1) {
+        ctx.strokeStyle = pluginOptions.separatorColorLegend;
         ctx.lineWidth = pluginOptions.separatorWidth;
         for (let i = 0; i < groups.length - 1; i += 1) {
           const current = groups[i];
@@ -134,12 +171,6 @@ export class FoodStatsCharts implements OnInit, AfterViewInit, OnDestroy {
           const currentEnd = xScale.getPixelForTick(current.endIndex);
           const nextStart = xScale.getPixelForTick(next.startIndex);
           const separatorX = Math.round((currentEnd + nextStart) / 2) + 0.5;
-          ctx.strokeStyle = pluginOptions.separatorColorChart;
-          ctx.beginPath();
-          ctx.moveTo(separatorX, chartArea.top);
-          ctx.lineTo(separatorX, chartArea.bottom);
-          ctx.stroke();
-          ctx.strokeStyle = pluginOptions.separatorColorLegend;
           ctx.beginPath();
           ctx.moveTo(separatorX, lineY - pluginOptions.separatorHeight / 2);
           ctx.lineTo(separatorX, lineY + pluginOptions.separatorHeight / 2);
@@ -209,13 +240,8 @@ export class FoodStatsCharts implements OnInit, AfterViewInit, OnDestroy {
 
   protected readonly deviceInfoService = inject(DeviceInfoService);
   private readonly foodStatsService = inject(FoodStatsService);
-  private readonly settingsService = inject(SettingsService);
   private readonly rangeAnimationDurationMs = ANIMATION_DURATION_MS.MEDIUM;
   private rangeAnimationFrameId: number | null = null;
-
-  private readonly chartColors$$ = computed(() =>
-    this.settingsService.settings$$().darkTheme ? CHART_COLORS_DARK : CHART_COLORS_LIGHT,
-  );
 
   // Chart.js doesn't reliably repaint an existing chart's colors from an in-place
   // dataset.borderColor/backgroundColor mutation + update('none') — the data model
@@ -226,7 +252,7 @@ export class FoodStatsCharts implements OnInit, AfterViewInit, OnDestroy {
 
   private readonly chartsUpdateEffect = effect(() => {
     const data = this.foodStatsService.statsChartDataClipped$$();
-    const colors = this.chartColors$$();
+    const colors = this.chartThemeService.colors$$();
     if (colors !== this.lastChartColors) {
       this.lastChartColors = colors;
       this.recreateCharts(colors);
@@ -238,7 +264,7 @@ export class FoodStatsCharts implements OnInit, AfterViewInit, OnDestroy {
   public async ngOnInit(): Promise<void> {
     this.foodStatsService.getStats();
 
-    this.lastChartColors = this.chartColors$$();
+    this.lastChartColors = this.chartThemeService.colors$$();
     this.initializeCharts(this.lastChartColors);
   }
 
@@ -520,6 +546,7 @@ export class FoodStatsCharts implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private initializeCharts(colors: ChartColors): void {
+    this.monthLabelsOptions = this.chartThemeService.monthLabelsOptions$$();
     this.weightChart$$.set(new Chart('WeightChart', this.createChartConfig(createWeightChartConfig(colors))));
     this.kcalsChart$$.set(new Chart('KcalsChart', this.createChartConfig(createKcalsChartConfig(colors))));
   }
