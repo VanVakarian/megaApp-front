@@ -18,7 +18,14 @@ const KEYBOARD_CLOSE_DEBOUNCE_MS = 150; // don't show buttons between food diary
   providedIn: 'root',
 })
 export class DeviceInfoService {
-  public readonly isMobileScreen$$ = signal(false);
+  private readonly viewportIsMobile$$ = signal(false);
+
+  // Lets a screen with its own layout logic (e.g. food diary's column-fit grid) decide
+  // mobile/desktop for the whole app shell instead of the global viewport breakpoint below.
+  // null hands control back to the viewport breakpoint — see setMobileOverride.
+  private readonly mobileOverride$$ = signal<boolean | null>(null);
+
+  public readonly isMobileScreen$$ = computed(() => this.mobileOverride$$() ?? this.viewportIsMobile$$());
   public readonly isDesktopScreen$$ = computed(() => !this.isMobileScreen$$());
 
   public readonly isMobileDevice$$ = computed(() => this.isDeviceMobile());
@@ -49,8 +56,15 @@ export class DeviceInfoService {
         distinctUntilChanged(),
       )
       .subscribe((isMobile) => {
-        this.isMobileScreen$$.set(isMobile);
+        this.viewportIsMobile$$.set(isMobile);
       });
+  }
+
+  // isMobile: force mobile/desktop for the whole app shell. null: hand control back to the
+  // window.innerWidth breakpoint. Callers must clear their override (pass null) when they stop
+  // being relevant (e.g. route leave / ngOnDestroy), or every other screen stays stuck on it.
+  public setMobileOverride(isMobile: boolean | null): void {
+    this.mobileOverride$$.set(isMobile);
   }
 
   private setupKeyboardDetection(): void {

@@ -21,14 +21,18 @@ body {
   height: 8px;
 }
 
+// Same shared window as every other theme-color transition in the app (see vars.css) —
+// 0s outside the toggle window, SettingsService.applyThemeAnimated's duration during it.
 ::-webkit-scrollbar-track {
   border-radius: 2px;
   background-color: var(--slate-200);
+  transition: background-color var(--v-theme-transition-duration, 0s);
 }
 
 ::-webkit-scrollbar-thumb {
   border-radius: 2px;
   background-color: var(--slate-400);
+  transition: background-color var(--v-theme-transition-duration, 0s);
 }
 
 .dark ::-webkit-scrollbar-track {

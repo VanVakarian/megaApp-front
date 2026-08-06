@@ -331,11 +331,11 @@ export class TransactionsList {
     return transaction.kind === TransactionKind.INCOME;
   }
 
-  protected getAmountClass(transaction: Transaction): string {
+  protected getAmountColor(transaction: Transaction): string | null {
     if (transaction.kind === TransactionKind.INCOME || transaction.kind === TransactionKind.INVEST_DIVIDEND)
-      return 'text-green-600';
-    if (transaction.kind === TransactionKind.EXPENSE) return 'text-red-600';
-    return '';
+      return 'var(--v-color-success)';
+    if (transaction.kind === TransactionKind.EXPENSE) return 'var(--v-color-text-danger)';
+    return null;
   }
 
   private isInvestKind(kind: TransactionKind): boolean {

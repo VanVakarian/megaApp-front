@@ -95,6 +95,30 @@ export async function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+// Purely a safety bound against pathological inputs (e.g. an absurdly small target width on a very
+// wide container) — no realistic column-fit layout ever approaches this many columns.
+const FIT_COLUMNS_MAX_SEARCH = 64;
+
+// Finds the column count whose per-column width (container width minus gaps, divided by columns)
+// lands closest to targetWidthPx. Fitted width shrinks monotonically as columns grow, so the first
+// column count that stops improving on the previous one is the answer.
+export function fitColumnsToWidth(containerWidthPx: number, targetWidthPx: number, gapPx: number): number {
+  if (targetWidthPx <= 0 || containerWidthPx <= 0) return 1;
+
+  const fittedWidth = (columns: number) => (containerWidthPx - gapPx * (columns - 1)) / columns;
+  let bestColumns = 1;
+  let bestDelta = Math.abs(fittedWidth(1) - targetWidthPx);
+  for (let columns = 2; columns <= FIT_COLUMNS_MAX_SEARCH; columns++) {
+    const width = fittedWidth(columns);
+    if (width <= 0) break;
+    const delta = Math.abs(width - targetWidthPx);
+    if (delta >= bestDelta) break;
+    bestColumns = columns;
+    bestDelta = delta;
+  }
+  return bestColumns;
+}
+
 export function toKebabCase(str: string): string {
   return str
     .replace(/([a-z])([A-Z])/g, '$1-$2') // Adds hyphen between camelCase parts (e.g. 'camelCase' -> 'camel-Case')

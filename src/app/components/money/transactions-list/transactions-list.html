@@ -99,7 +99,7 @@
                   }
 
                   <span class="shrink-0 font-semibold"
-                        [class]="getAmountClass(transaction)">
+                        [style.color]="getAmountColor(transaction)">
                     @if (transaction.kind === 'transfer') {
                       {{ formatTransferAmounts(transaction) }}
                     } @else {

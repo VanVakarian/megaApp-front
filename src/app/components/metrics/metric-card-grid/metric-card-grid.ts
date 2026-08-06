@@ -15,6 +15,7 @@ import { MetricUnit } from '@app/shared/metric-units';
 import { MetricChartMode } from '@app/shared/metrics-chart-mode';
 import { MetricSeriesPoint } from '@app/shared/metrics-series';
 import { MetricGranularity } from '@app/shared/types';
+import { fitColumnsToWidth } from '@app/shared/utils';
 import { MetricChartCard } from '../metric-chart-card/metric-chart-card';
 
 export interface MetricChartCardSeriesDisplay {
@@ -51,11 +52,6 @@ interface RenderItem {
   isExpanded: boolean;
 }
 
-// Purely a safety bound against pathological inputs (e.g. an absurdly small
-// target width on a very wide container) — no realistic layout of metric cards
-// ever approaches this many columns.
-const MAX_COLUMN_SEARCH = 64;
-
 @Component({
   selector: 'metric-card-grid',
   templateUrl: './metric-card-grid.html',
@@ -88,33 +84,12 @@ export class MetricCardGrid implements OnInit, OnDestroy {
   private readonly gapPx$$ = signal(0);
   private resizeObserver: ResizeObserver | null = null;
 
-  // How many columns fit this container: in Wide mode always 1 (every card gets
-  // its own full-width row, regardless of how much room there is). In Compact
-  // mode, the fitted width for N columns — (available width minus gaps) / N —
-  // shrinks monotonically as N grows, so the column count whose fitted width is
-  // closest to the target is found by walking N upward only while the next step
-  // keeps improving. That walk lands exactly on the symmetric midpoint between
-  // two neighboring column counts' fitted widths, with no separate threshold needed.
+  // How many columns fit this container: in Wide mode always 1 (every card gets its own
+  // full-width row, regardless of how much room there is). In Compact mode, delegates to the
+  // shared fit-N-columns-to-target-width algorithm (also used by food-screen's diary/stats grid).
   protected readonly columnCount$$ = computed(() => {
     if (this.layoutModeInput() === CardLayoutMode.Wide) return 1;
-
-    const target = this.targetWidthPxInput();
-    const containerWidth = this.containerWidthPx$$();
-    const gap = this.gapPx$$();
-    if (target <= 0 || containerWidth <= 0) return 1;
-
-    const fittedWidth = (columns: number) => (containerWidth - gap * (columns - 1)) / columns;
-    let bestColumns = 1;
-    let bestDelta = Math.abs(fittedWidth(1) - target);
-    for (let columns = 2; columns <= MAX_COLUMN_SEARCH; columns++) {
-      const width = fittedWidth(columns);
-      if (width <= 0) break;
-      const delta = Math.abs(width - target);
-      if (delta >= bestDelta) break;
-      bestColumns = columns;
-      bestDelta = delta;
-    }
-    return bestColumns;
+    return fitColumnsToWidth(this.containerWidthPx$$(), this.targetWidthPxInput(), this.gapPx$$());
   });
 
   // Column tracks are rendered as native CSS grid columns rather than a per-card

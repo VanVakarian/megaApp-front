@@ -3,7 +3,6 @@ import {
   Component,
   computed,
   effect,
-  ElementRef,
   inject,
   OnDestroy,
   OnInit,
@@ -15,13 +14,15 @@ import { FoodDiary } from '@app/components/food/diary/food-diary';
 import { FoodModeToggleFab } from '@app/components/food/food-mode-toggle-fab/food-mode-toggle-fab';
 import { FoodStatsAccordion } from '@app/components/food/stats/food-stats-accordion/food-stats-accordion';
 import { FoodStatsColumns } from '@app/components/food/stats/food-stats-columns/food-stats-columns';
+import { DeviceInfoService } from '@app/services/device-info.service';
 import { FoodDiaryService } from '@app/services/food/food-diary.service';
 import { FoodScreenMobileTab, FoodScreenModeService } from '@app/services/food/food-screen-mode.service';
+import { fitColumnsToWidth } from '@app/shared/utils';
 
-// Safety bound against pathological inputs — mirrors metric-card-grid's column-fit algorithm.
-const MAX_COLUMN_SEARCH = 64;
 const TARGET_COLUMN_WIDTH_PX = 400;
 const COLUMN_GAP_PX = 8;
+// Host has `px-2` (16px total horizontal padding).
+const HOST_HORIZONTAL_PADDING_PX = 16;
 
 @Component({
   selector: 'food-screen',
@@ -38,40 +39,37 @@ const COLUMN_GAP_PX = 8;
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class FoodScreen implements OnInit, OnDestroy {
-  private readonly hostElement: HTMLElement;
-  private readonly containerWidthPx$$: WritableSignal<number> = signal(0);
-  private resizeObserver: ResizeObserver | null = null;
-
   private readonly foodDiaryService = inject(FoodDiaryService);
+  private readonly deviceInfoService = inject(DeviceInfoService);
   protected readonly foodScreenModeService = inject(FoodScreenModeService);
   protected readonly Tab = FoodScreenMobileTab;
 
-  // Total columns on screen, diary included — 1 means only the diary fits (stats go into the
-  // accordion below it), 2+ means diary plus (totalColumnCount - 1) stats columns beside it.
-  // Same fit-N-columns-to-target-width algorithm as metric-card-grid's columnCount$$.
-  protected readonly totalColumnCount$$: Signal<number> = computed(() => {
-    const containerWidth = this.containerWidthPx$$();
-    if (containerWidth <= 0) return 1;
+  // Raw window width — deliberately NOT this component's own (sidebar-shrunk) container width.
+  // Deciding column count from the real container would make the sidebar's own visibility depend
+  // on a value the sidebar itself affects: hide sidebar → container widens → more columns →
+  // "desktop" → sidebar reappears → container narrows → back to 1 column → forever. The sidebar is
+  // a few tens of pixels against a 400px-per-column target, so ignoring it here is the deliberate
+  // trade-off that keeps "1 column" and "mobile chrome" a single source of truth with no feedback
+  // loop — see totalColumnCount$$ below, which drives both.
+  private readonly windowWidthPx$$: WritableSignal<number> = signal(window.innerWidth);
+  private readonly onWindowResize = (): void => this.windowWidthPx$$.set(window.innerWidth);
 
-    const fittedWidth = (columns: number) => (containerWidth - COLUMN_GAP_PX * (columns - 1)) / columns;
-    let bestColumns = 1;
-    let bestDelta = Math.abs(fittedWidth(1) - TARGET_COLUMN_WIDTH_PX);
-    for (let columns = 2; columns <= MAX_COLUMN_SEARCH; columns++) {
-      const width = fittedWidth(columns);
-      if (width <= 0) break;
-      const delta = Math.abs(width - TARGET_COLUMN_WIDTH_PX);
-      if (delta >= bestDelta) break;
-      bestColumns = columns;
-      bestDelta = delta;
-    }
-    return bestColumns;
-  });
+  // Total columns on screen, diary included — 1 means only the diary fits (stats go into the
+  // accordion below it), 2+ means diary plus (totalColumnCount - 1) stats columns beside it. Also
+  // the single source of truth for the app-wide mobile/desktop chrome override (see constructor) —
+  // whatever this says the grid renders is exactly what decides sidebar vs. hamburger, so the two
+  // can never disagree.
+  protected readonly totalColumnCount$$: Signal<number> = computed(() =>
+    fitColumnsToWidth(this.windowWidthPx$$() - HOST_HORIZONTAL_PADDING_PX, TARGET_COLUMN_WIDTH_PX, COLUMN_GAP_PX),
+  );
 
   protected readonly statsColumnCount$$: Signal<number> = computed(() => this.totalColumnCount$$() - 1);
 
-  // Diary sits in the 2nd grid column once there's room for it plus stats on both sides (3+ total
-  // columns); with only 2 columns there's no room left of the diary, so it stays first.
-  protected readonly diaryColumnIndex$$: Signal<number> = computed(() => (this.totalColumnCount$$() >= 3 ? 2 : 1));
+  // With exactly 2 total columns, diary trails (2nd/last) so stats sit left of it. With 3+ columns
+  // there's room for stats on both sides, so diary sits in the 2nd column, centered between them.
+  protected readonly diaryColumnIndex$$: Signal<number> = computed(() =>
+    this.totalColumnCount$$() >= 3 ? 2 : this.totalColumnCount$$(),
+  );
 
   // Grid column (1-based) for each of the statsColumnCount stats columns, in order — every grid
   // column except the diary's.
@@ -91,23 +89,18 @@ export class FoodScreen implements OnInit, OnDestroy {
     () => `repeat(${this.totalColumnCount$$()}, minmax(0, 1fr))`,
   );
 
-  public constructor(elementRef: ElementRef<HTMLElement>) {
-    this.hostElement = elementRef.nativeElement;
-
+  public constructor() {
     effect(() => this.foodScreenModeService.isSingleColumnLayout$$.set(this.totalColumnCount$$() === 1));
+    effect(() => this.deviceInfoService.setMobileOverride(this.totalColumnCount$$() === 1));
   }
 
   public ngOnInit(): void {
     this.foodDiaryService.loadAllFoodData();
-
-    this.resizeObserver = new ResizeObserver(([entry]) => {
-      this.containerWidthPx$$.set(entry.contentRect.width);
-    });
-    this.resizeObserver.observe(this.hostElement);
+    window.addEventListener('resize', this.onWindowResize);
   }
 
   public ngOnDestroy(): void {
-    this.resizeObserver?.disconnect();
-    this.resizeObserver = null;
+    window.removeEventListener('resize', this.onWindowResize);
+    this.deviceInfoService.setMobileOverride(null);
   }
 }
