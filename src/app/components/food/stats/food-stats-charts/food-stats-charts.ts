@@ -11,16 +11,17 @@ import {
   viewChild,
 } from '@angular/core';
 import { StatsHelpIcon } from '@app/components/food/stats/stats-help-icon/stats-help-icon';
-import { DeviceInfoService } from '@app/services/device-info.service';
 import { ChartThemeService } from '@app/services/chart-theme.service';
+import { DeviceInfoService } from '@app/services/device-info.service';
 import { FoodStatsService } from '@app/services/food/food-stats.service';
+import { PerformanceMetricsService } from '@app/services/performance-metrics.service';
 import { ANIMATION_DURATION_MS } from '@app/shared/animations';
 import {
   ChartColors,
-  createKcalsChartConfig,
-  createWeightChartConfig,
   FOOD_STATS_MONTH_LABELS_PADDING,
   MonthLabelsPluginOptions,
+  createKcalsChartConfig,
+  createWeightChartConfig,
 } from '@app/shared/chart-config';
 import { StatsChartData } from '@app/shared/types';
 import { formatDateTicks, getRuDeclension } from '@app/shared/utils';
@@ -240,6 +241,7 @@ export class FoodStatsCharts implements OnInit, AfterViewInit, OnDestroy {
 
   protected readonly deviceInfoService = inject(DeviceInfoService);
   private readonly foodStatsService = inject(FoodStatsService);
+  private readonly performanceMetrics = inject(PerformanceMetricsService);
   private readonly rangeAnimationDurationMs = ANIMATION_DURATION_MS.MEDIUM;
   private rangeAnimationFrameId: number | null = null;
 
@@ -253,12 +255,18 @@ export class FoodStatsCharts implements OnInit, AfterViewInit, OnDestroy {
   private readonly chartsUpdateEffect = effect(() => {
     const data = this.foodStatsService.statsChartDataClipped$$();
     const colors = this.chartThemeService.colors$$();
-    if (colors !== this.lastChartColors) {
-      this.lastChartColors = colors;
-      this.recreateCharts(colors);
-    }
-    this.updateWeightChart(data, colors);
-    this.updateKcalsChart(data, colors);
+    this.performanceMetrics.measure(
+      'food.stats_charts_render',
+      () => {
+        if (colors !== this.lastChartColors) {
+          this.lastChartColors = colors;
+          this.recreateCharts(colors);
+        }
+        this.updateWeightChart(data, colors);
+        this.updateKcalsChart(data, colors);
+      },
+      () => ({ points: data.dates.length }),
+    );
   });
 
   public async ngOnInit(): Promise<void> {

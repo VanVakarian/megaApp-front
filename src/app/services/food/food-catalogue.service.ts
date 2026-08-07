@@ -22,6 +22,7 @@ import { firstValueFrom } from 'rxjs';
 import { filter } from 'rxjs/operators';
 import { LocalStorageService } from '../local-storage.service';
 import { NetworkService } from '../network.service';
+import { PerformanceMetricsService } from '../performance-metrics.service';
 import { SyncEngineService, SyncOperationError, SyncOperationMode, SyncOperationType } from '../sync-engine.service';
 import { BaseFoodService } from './food-base.service';
 
@@ -43,12 +44,14 @@ export class FoodCatalogueService extends BaseFoodService {
   private searchCache: Record<string, number[]> = {};
   private searchSequenceNumber: number = 0;
   private lastDisplayedSequenceNumber: number = 0;
+  private searchStartedAt: number | null = null;
 
   protected getStorageKey(): string {
     return this.CATALOGUE_STORAGE_KEY;
   }
 
   private readonly authService = inject(AuthService);
+  private readonly performanceMetrics = inject(PerformanceMetricsService);
 
   private readonly resetOnAuthLossEffect$$ = effect(() => {
     if (this.authService.sessionState$$() === AuthSessionState.Guest) {
@@ -77,27 +80,45 @@ export class FoodCatalogueService extends BaseFoodService {
     this.searchCache = {};
     this.searchSequenceNumber = 0;
     this.lastDisplayedSequenceNumber = 0;
+    this.searchStartedAt = null;
   }
 
   @exhaustRequest()
   public async getCatalogueEntries(): Promise<Catalogue> {
+    const startedAt = performance.now();
     try {
       const response = await firstValueFrom(this.http.get<Catalogue>('/api/food/catalogue'));
 
       this.catalogue$$.set(response);
       this.saveToLocalStorage(response);
+      this.performanceMetrics.record('food.catalogue_load', performance.now() - startedAt, {
+        source: 'server',
+        entries: Object.keys(response).length,
+      });
       return response;
     } catch (error) {
       console.error('Failed getting catalogue entries:', error);
+      this.performanceMetrics.record(
+        'food.catalogue_load',
+        performance.now() - startedAt,
+        { source: 'server' },
+        'error',
+      );
       return {};
     }
   }
 
   private loadCatalogueFromLocalStorage(): void {
+    const startedAt = performance.now();
     const savedCatalogue = this.loadFromLocalStorage<Catalogue>();
     if (savedCatalogue) {
       this.catalogue$$.set(savedCatalogue);
     }
+    this.performanceMetrics.record('food.catalogue_load', performance.now() - startedAt, {
+      source: 'cache',
+      entries: savedCatalogue ? Object.keys(savedCatalogue).length : 0,
+      hit: Boolean(savedCatalogue),
+    });
   }
 
   public searchProducts(query: string): void {
@@ -111,17 +132,24 @@ export class FoodCatalogueService extends BaseFoodService {
     }
 
     this.searchSequenceNumber++;
+    this.searchStartedAt = performance.now();
 
     const cachedIds = this.getSearchCachedResults(query);
     if (cachedIds) {
       this.displaySearchResults(cachedIds);
       this.lastDisplayedSequenceNumber = this.searchSequenceNumber;
+      this.performanceMetrics.record('food.catalogue_search', performance.now() - this.searchStartedAt, {
+        source: 'cache',
+        queryLength: query.length,
+        results: cachedIds.length,
+      });
     }
 
     this.sendSearchQuery(query, this.searchSequenceNumber);
   }
 
   public legacySearchProducts(query: string): void {
+    const startedAt = performance.now();
     this.searchQuery$$.set(query);
 
     if (!query.trim()) {
@@ -151,6 +179,11 @@ export class FoodCatalogueService extends BaseFoodService {
     });
 
     this.legacySearchResults$$.set(results);
+    this.performanceMetrics.record('food.catalogue_search', performance.now() - startedAt, {
+      source: 'legacy',
+      queryLength: query.length,
+      results: results.length,
+    });
   }
 
   private getSearchCachedResults(query: string): number[] | null {
@@ -210,6 +243,16 @@ export class FoodCatalogueService extends BaseFoodService {
         this.displaySearchResults(results);
         this.lastDisplayedSequenceNumber = sequenceFromMessage;
       }
+    }
+
+    if (this.searchStartedAt !== null && queryFromMessage === this.searchQuery$$()) {
+      this.performanceMetrics.record('food.catalogue_search', performance.now() - this.searchStartedAt, {
+        source: 'remote',
+        queryLength: queryFromMessage.length,
+        results: results.length,
+        displayed: sequenceFromMessage === this.lastDisplayedSequenceNumber,
+      });
+      this.searchStartedAt = null;
     }
   }
 

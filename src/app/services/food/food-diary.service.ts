@@ -33,6 +33,7 @@ import { firstValueFrom } from 'rxjs';
 import { LocalStorageService } from '../local-storage.service';
 import { NetworkService } from '../network.service';
 import { NotificationService } from '../notification.service';
+import { PerformanceMetricsService } from '../performance-metrics.service';
 import { SyncEngineService, SyncOperationMode, SyncOperationType } from '../sync-engine.service';
 import { BaseFoodService } from './food-base.service';
 import { FoodCatalogueService } from './food-catalogue.service';
@@ -59,7 +60,16 @@ export class FoodDiaryService extends BaseFoodService {
   private readonly diaryRaw$$: WritableSignal<Diary> = signal({});
   private readonly deletedDaySnapshot$$: WritableSignal<DeletedDiaryDaySnapshot | null> = signal(null);
 
-  public readonly diary$$: Signal<UnifiedDiary> = computed(() => this.prepUnifiedDiary());
+  public readonly diary$$: Signal<UnifiedDiary> = computed(() =>
+    this.performanceMetrics.measure(
+      'food.diary_unified_model',
+      () => this.prepUnifiedDiary(),
+      (result) => ({
+        days: Object.keys(result).length,
+        entries: Object.values(result).reduce((total, day) => total + day.food.length, 0),
+      }),
+    ),
+  );
 
   public readonly selectedDayIso$$: WritableSignal<string> = signal(calculateTodayIsoWithUserTimeShift());
   public readonly selectedDayDeletedSnapshot$$: Signal<DeletedDiaryDaySnapshot | null> = computed(() => {
@@ -120,6 +130,7 @@ export class FoodDiaryService extends BaseFoodService {
   private readonly foodStatsService = inject(FoodStatsService);
   private readonly authService = inject(AuthService);
   private readonly notificationService = inject(NotificationService);
+  private readonly performanceMetrics = inject(PerformanceMetricsService);
   private readonly indexedDbCache = inject(IndexedDbCacheService);
 
   private readonly ensureDiarySegmentEffect$$ = effect(() => {
@@ -181,6 +192,7 @@ export class FoodDiaryService extends BaseFoodService {
   }
 
   public async getFoodDiaryFullUpdateRange(dateIso?: string, offset?: number): Promise<Diary> {
+    const startedAt = performance.now();
     const date = dateIso ?? calculateTodayIsoWithUserTimeShift();
     const paramsStr = `date=${date}&offset=${offset ?? this.FIRST_SEGMENT_OFFSET_DAYS}`;
 
@@ -188,6 +200,11 @@ export class FoodDiaryService extends BaseFoodService {
 
     this.diaryRaw$$.update((diary) => this.mergeServerDiaryResponse(diary, response));
     Object.keys(response).forEach((responseDateIso) => this.persistDay(responseDateIso));
+    void this.performanceMetrics.recordAfterPaint('food.diary_segment_load', startedAt, {
+      offsetDays: offset ?? this.FIRST_SEGMENT_OFFSET_DAYS,
+      days: Object.keys(response).length,
+      entries: Object.values(response).reduce((total, day) => total + Object.keys(day.food).length, 0),
+    });
     return response;
   }
 
@@ -1152,11 +1169,16 @@ export class FoodDiaryService extends BaseFoodService {
   // Diary itself isn't triggered here — ensureDiarySegmentEffect$$ already covers it reactively
   // for whatever day is currently selected, independent of when/whether this is called.
   public async loadAllFoodData(): Promise<void> {
+    const startedAt = performance.now();
     await Promise.all([
       this.catalogueService.getCatalogueEntries(),
       this.personalKcalsService.getPersonalKcals(),
       this.foodStatsService.getStats(),
     ]);
+    void this.performanceMetrics.recordAfterPaint('food.initial_load', startedAt, {
+      catalogueEntries: Object.keys(this.catalogueService.catalogue$$()).length,
+      statsDays: this.foodStatsService.statsChartData$$().dates.length,
+    });
   }
 
   private isValidNewDiaryEntryPayload(payload: DiaryEntryToCreate): payload is DiaryEntryToCreate {

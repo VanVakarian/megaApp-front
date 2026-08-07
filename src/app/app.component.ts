@@ -5,6 +5,7 @@ import { Notifications } from '@app/components/notifications/notifications';
 import { AuthService, AuthSessionState } from '@app/services/auth.service';
 import { NavigationService } from '@app/services/navigation.service';
 import { NetworkMonitor } from '@app/services/network-monitor.service';
+import { PerformanceMetricsService } from '@app/services/performance-metrics.service';
 
 @Component({
   selector: 'app-root',
@@ -17,6 +18,7 @@ export class MainAppComponent implements OnInit {
   protected readonly navigationService = inject(NavigationService);
   protected readonly authService = inject(AuthService);
   private readonly networkMonitorService = inject(NetworkMonitor);
+  private readonly performanceMetricsService = inject(PerformanceMetricsService);
 
   constructor() {
     this.networkMonitorService.initNetworkEvents();

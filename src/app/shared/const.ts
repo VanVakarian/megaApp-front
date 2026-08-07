@@ -84,6 +84,7 @@ export const CACHE_KEY_VERSIONS: Readonly<Record<string, number>> = {
   metrics_active_tooltip_mode: 4,
   metrics_force_zero_baseline_enabled: 4,
   metrics_anomaly_filter_enabled: 4,
+  performance_metrics_queue: 1,
   sync_pending_operation: 4,
   navbar_collapsed: 1,
 };

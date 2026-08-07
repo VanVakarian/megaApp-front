@@ -2,6 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { computed, effect, inject, Injectable, Signal, signal, WritableSignal } from '@angular/core';
 import { AuthService, AuthSessionState } from '@app/services/auth.service';
 import { LocalStorageService } from '@app/services/local-storage.service';
+import { PerformanceMetricsService } from '@app/services/performance-metrics.service';
 import { Observable, of, Subject } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import {
@@ -93,6 +94,7 @@ interface BasicResponse extends MessageResponse {}
 })
 export class MoneyService {
   private readonly localStorageService = inject(LocalStorageService);
+  private readonly performanceMetrics = inject(PerformanceMetricsService);
 
   public readonly currencies$$: WritableSignal<Currency[]> = signal([]);
   public readonly categories$$: WritableSignal<Category[]> = signal([]);
@@ -206,18 +208,31 @@ export class MoneyService {
   public loadData(): void {
     const cached = this.localStorageService.getUserScoped<MoneySnapshot>(SNAPSHOT_KEY);
     if (cached) {
-      this.applySnapshot(cached, true);
+      this.performanceMetrics.measure(
+        'money.snapshot_apply',
+        () => this.applySnapshot(cached, true),
+        () => ({
+          source: 'cache',
+          transactions: cached.transactions?.length ?? 0,
+        }),
+      );
     }
 
     this.fetchSnapshot();
   }
 
   private fetchSnapshot(): void {
+    const startedAt = performance.now();
     this.http.get<SnapshotResponse>('/api/money/snapshot').subscribe({
       next: (response) => {
         if (response.success && response.data) {
           this.applySnapshot(response.data, true);
           this.writeCacheSnapshot();
+          void this.performanceMetrics.recordAfterPaint('money.snapshot_apply', startedAt, {
+            source: 'server',
+            transactions: response.data.transactions?.length ?? 0,
+            accounts: response.data.accounts?.length ?? 0,
+          });
         }
       },
       error: (error) => {

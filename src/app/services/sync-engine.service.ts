@@ -9,6 +9,7 @@ import { sleep } from '@app/shared/utils';
 import { firstValueFrom, timeout } from 'rxjs';
 import { LocalStorageService } from './local-storage.service';
 import { NotificationService } from './notification.service';
+import { PerformanceMetricsService } from './performance-metrics.service';
 
 // Normalized shape of a failed request, passed to rollback/error callbacks instead of the raw
 // caught value — callers don't need to know about HttpErrorResponse/TimeoutError/etc.
@@ -116,6 +117,7 @@ export class SyncEngineService {
   private readonly http = inject(HttpClient);
   private readonly notificationService = inject(NotificationService);
   private readonly localStorageService = inject(LocalStorageService);
+  private readonly performanceMetrics = inject(PerformanceMetricsService);
 
   public reset(): void {
     for (const operation of this.queue) {
@@ -198,49 +200,66 @@ export class SyncEngineService {
   }
 
   private async runOperation(operation: QueuedOperation): Promise<void> {
+    const startedAt = performance.now();
+    let outcome: 'success' | 'error' = 'success';
     // Persisted once, before the first attempt — not re-persisted on each retry, since retries of
     // the same operation share the same type/endpoint/data/operationId anyway.
     this.persistInFlight(operation);
 
-    while (true) {
-      try {
-        const response = await firstValueFrom(this.createRequest(operation).pipe(timeout(BACKGROUND_SYNC_TIMEOUT_MS)));
-
-        this.clearPersistedOperation();
-        this.resolvePendingFeedback(operation);
-        operation.onSuccess?.(response);
-
-        if (operation.feedback) {
-          this.notificationService.addNotification('success', operation.feedback.successMessage);
-        }
-
-        return;
-      } catch (error) {
-        const normalizedError = normalizeSyncError(error);
-        const terminal = !isRetryable(normalizedError);
-        operation.retryCount++;
-
-        if (terminal || operation.retryCount >= BACKGROUND_SYNC_RETRIES_MAX) {
-          if (terminal) {
-            console.error('Operation failed with a non-retryable error:', error);
-          } else {
-            console.error(`Operation failed after ${BACKGROUND_SYNC_RETRIES_MAX} retries:`, error);
-          }
+    try {
+      while (true) {
+        try {
+          const response = await firstValueFrom(
+            this.createRequest(operation).pipe(timeout(BACKGROUND_SYNC_TIMEOUT_MS)),
+          );
 
           this.clearPersistedOperation();
           this.resolvePendingFeedback(operation);
-          operation.onFailure?.(normalizedError);
+          operation.onSuccess?.(response);
 
           if (operation.feedback) {
-            this.notificationService.addNotification('error', operation.feedback.errorMessage);
+            this.notificationService.addNotification('success', operation.feedback.successMessage);
           }
 
           return;
-        }
+        } catch (error) {
+          const normalizedError = normalizeSyncError(error);
+          const terminal = !isRetryable(normalizedError);
+          operation.retryCount++;
 
-        console.warn(`Operation failed, retry ${operation.retryCount}/${BACKGROUND_SYNC_RETRIES_MAX}`);
-        await sleep(1000 * operation.retryCount);
+          if (terminal || operation.retryCount >= BACKGROUND_SYNC_RETRIES_MAX) {
+            outcome = 'error';
+            if (terminal) {
+              console.error('Operation failed with a non-retryable error:', error);
+            } else {
+              console.error(`Operation failed after ${BACKGROUND_SYNC_RETRIES_MAX} retries:`, error);
+            }
+
+            this.clearPersistedOperation();
+            this.resolvePendingFeedback(operation);
+            operation.onFailure?.(normalizedError);
+
+            if (operation.feedback) {
+              this.notificationService.addNotification('error', operation.feedback.errorMessage);
+            }
+
+            return;
+          }
+
+          console.warn(`Operation failed, retry ${operation.retryCount}/${BACKGROUND_SYNC_RETRIES_MAX}`);
+          await sleep(1000 * operation.retryCount);
+        }
       }
+    } finally {
+      this.performanceMetrics.record(
+        'sync.operation',
+        performance.now() - startedAt,
+        {
+          method: operation.type,
+          attempts: operation.retryCount + 1,
+        },
+        outcome,
+      );
     }
   }
 

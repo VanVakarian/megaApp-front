@@ -1,5 +1,6 @@
 import { inject, Injectable, signal } from '@angular/core';
 import { NetworkService } from '@app/services/network.service';
+import { PerformanceMetricsService } from '@app/services/performance-metrics.service';
 import { WebSocketMessageType } from '@app/shared/types';
 
 @Injectable({
@@ -9,12 +10,15 @@ export class VoiceRecordingService {
   private mediaRecorder: MediaRecorder | null = null;
   private audioChunks: Blob[] = [];
   private sequenceNumber = 0;
+  private recordingStartedAt: number | null = null;
 
   public readonly isRecording$$ = signal(false);
 
   private readonly networkService = inject(NetworkService);
+  private readonly performanceMetrics = inject(PerformanceMetricsService);
 
   public async startRecording(): Promise<void> {
+    const startedAt = performance.now();
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
@@ -34,6 +38,13 @@ export class VoiceRecordingService {
       this.mediaRecorder.onstop = () => {
         stream.getTracks().forEach((track) => track.stop());
         this.mediaRecorder = null;
+        if (this.recordingStartedAt !== null) {
+          this.performanceMetrics.record('food.voice_flow', performance.now() - this.recordingStartedAt, {
+            chunks: this.audioChunks.length,
+            audioBytes: this.audioChunks.reduce((total, chunk) => total + chunk.size, 0),
+          });
+          this.recordingStartedAt = null;
+        }
       };
 
       this.networkService.sendMessage({
@@ -42,8 +53,10 @@ export class VoiceRecordingService {
 
       this.mediaRecorder.start(100);
       this.isRecording$$.set(true);
+      this.recordingStartedAt = startedAt;
     } catch (error) {
       console.error('Error starting voice recording:', error);
+      this.performanceMetrics.record('food.voice_start', performance.now() - startedAt, undefined, 'error');
       throw error;
     }
   }

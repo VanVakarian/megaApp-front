@@ -17,6 +17,7 @@ import {
   TransactionKind,
 } from '../shared/types';
 import { MoneyService } from './money.service';
+import { PerformanceMetricsService } from './performance-metrics.service';
 
 interface MonthlyBuckets {
   accountDelta: Record<string, Record<number, number>>;
@@ -30,31 +31,72 @@ interface MonthlyBuckets {
 @Injectable({ providedIn: 'root' })
 export class MoneyComputeService {
   private readonly moneyService = inject(MoneyService);
+  private readonly performanceMetrics = inject(PerformanceMetricsService);
   private readonly fxTickers = new Set(['USD', 'EUR']);
 
   private readonly monthlyBuckets$$: Signal<MonthlyBuckets> = computed(() =>
-    this.buildBuckets(
-      this.moneyService.transactions$$(),
-      this.moneyService.accounts$$(),
-      this.moneyService.currencies$$(),
-      this.moneyService.categories$$(),
+    this.performanceMetrics.measure(
+      'money.monthly_buckets',
+      () =>
+        this.buildBuckets(
+          this.moneyService.transactions$$(),
+          this.moneyService.accounts$$(),
+          this.moneyService.currencies$$(),
+          this.moneyService.categories$$(),
+        ),
+      (result) => ({
+        transactions: this.moneyService.transactions$$().length,
+        months: Object.keys(result.accountDelta).length,
+      }),
     ),
   );
 
   private readonly positionLotRows$$: Signal<PositionLotRow[]> = computed(() =>
-    this.buildPositionLotRows(
-      this.moneyService.investAssetTrades$$(),
-      this.moneyService.accounts$$(),
-      this.moneyService.currencies$$(),
-      this.moneyService.displayCurrency$$(),
+    this.performanceMetrics.measure(
+      'money.position_lots',
+      () =>
+        this.buildPositionLotRows(
+          this.moneyService.investAssetTrades$$(),
+          this.moneyService.accounts$$(),
+          this.moneyService.currencies$$(),
+          this.moneyService.displayCurrency$$(),
+        ),
+      (result) => ({ trades: this.moneyService.investAssetTrades$$().length, lots: result.length }),
     ),
   );
 
-  public readonly balanceChartData$$: Signal<BalanceChartData> = computed(() => this.buildBalanceChartData());
+  public readonly balanceChartData$$: Signal<BalanceChartData> = computed(() =>
+    this.performanceMetrics.measure(
+      'money.balance_model',
+      () => this.buildBalanceChartData(),
+      (result) => ({
+        months: result.dates.length,
+        series: result.accountSeries.length,
+      }),
+    ),
+  );
 
-  public readonly incomeChartData$$: Signal<IncomeChartData> = computed(() => this.buildIncomeChartData());
+  public readonly incomeChartData$$: Signal<IncomeChartData> = computed(() =>
+    this.performanceMetrics.measure(
+      'money.income_model',
+      () => this.buildIncomeChartData(),
+      (result) => ({
+        months: result.months.length,
+        series: result.categorySeries.length,
+      }),
+    ),
+  );
 
-  public readonly expenseChartData$$: Signal<ExpenseChartData> = computed(() => this.buildExpenseChartData());
+  public readonly expenseChartData$$: Signal<ExpenseChartData> = computed(() =>
+    this.performanceMetrics.measure(
+      'money.expense_model',
+      () => this.buildExpenseChartData(),
+      (result) => ({
+        months: result.monthRows.length,
+        categories: result.categories.length,
+      }),
+    ),
+  );
 
   // ── Bucket builder ────────────────────────────────────────────────────────
 

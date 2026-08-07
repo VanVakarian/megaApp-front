@@ -17,6 +17,7 @@ import { FoodStatsColumns } from '@app/components/food/stats/food-stats-columns/
 import { DeviceInfoService } from '@app/services/device-info.service';
 import { FoodDiaryService } from '@app/services/food/food-diary.service';
 import { FoodScreenMobileTab, FoodScreenModeService } from '@app/services/food/food-screen-mode.service';
+import { PerformanceMetricsService } from '@app/services/performance-metrics.service';
 import { fitColumnsToWidth } from '@app/shared/utils';
 
 const TARGET_COLUMN_WIDTH_PX = 400;
@@ -41,6 +42,7 @@ const HOST_HORIZONTAL_PADDING_PX = 16;
 export class FoodScreen implements OnInit, OnDestroy {
   private readonly foodDiaryService = inject(FoodDiaryService);
   private readonly deviceInfoService = inject(DeviceInfoService);
+  private readonly performanceMetrics = inject(PerformanceMetricsService);
   protected readonly foodScreenModeService = inject(FoodScreenModeService);
   protected readonly Tab = FoodScreenMobileTab;
 
@@ -95,7 +97,14 @@ export class FoodScreen implements OnInit, OnDestroy {
   }
 
   public ngOnInit(): void {
-    this.foodDiaryService.loadAllFoodData();
+    const startedAt = performance.now();
+    void this.foodDiaryService
+      .loadAllFoodData()
+      .then(() =>
+        this.performanceMetrics.recordAfterPaint('food.screen_ready', startedAt, {
+          columns: this.totalColumnCount$$(),
+        }),
+      );
     window.addEventListener('resize', this.onWindowResize);
   }
 

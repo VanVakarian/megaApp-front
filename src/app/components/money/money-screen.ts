@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { VButton } from '@ui-kit/components/v-button/v-button';
 import { VCard } from '@ui-kit/components/v-card/v-card';
 import { VExpand } from '@ui-kit/components/v-expand/v-expand';
@@ -7,6 +7,7 @@ import { VSlider, VSliderRangeValue } from '@ui-kit/components/v-slider/v-slider
 import { VToggleItem } from '@ui-kit/components/v-toggle/v-toggle';
 import { MoneyComputeService } from '../../services/money-compute.service';
 import { MoneyService } from '../../services/money.service';
+import { PerformanceMetricsService } from '../../services/performance-metrics.service';
 import { BalanceChartData } from '../../shared/types';
 import { AccountsBalance } from './accounts-balance/accounts-balance';
 import { AccountsList } from './accounts-list/accounts-list';
@@ -57,9 +58,21 @@ export class MoneyScreen implements OnInit {
 
   private readonly moneyService = inject(MoneyService);
   private readonly moneyComputeService = inject(MoneyComputeService);
+  private readonly performanceMetrics = inject(PerformanceMetricsService);
   private readonly sliderMonthFormatter = new Intl.DateTimeFormat('en-US', { month: 'short', year: 'numeric' });
+  private readonly screenStartedAt = performance.now();
+  private screenReadyRecorded = false;
 
   protected readonly isChartDataReady$$ = computed(() => this.moneyService.isChartDataReady$$());
+
+  private readonly screenReadyEffect$$ = effect(() => {
+    if (!this.isChartDataReady$$() || this.screenReadyRecorded) return;
+    this.screenReadyRecorded = true;
+    void this.performanceMetrics.recordAfterPaint('money.screen_ready', this.screenStartedAt, {
+      tab: this.activeTab$$(),
+      transactions: this.moneyService.transactions$$().length,
+    });
+  });
 
   protected readonly displayCurrency$$ = computed(() => this.moneyService.displayCurrency$$());
   protected readonly displayCurrencySymbol$$ = computed(() => {
@@ -166,6 +179,7 @@ export class MoneyScreen implements OnInit {
   });
 
   protected onChartRangeChange(range: VSliderRangeValue): void {
+    const startedAt = performance.now();
     const months = this.allChartMonths$$();
     const [startIdx, endIdx] = range;
     const isFullRange = startIdx === 0 && endIdx === months.length - 1;
@@ -173,11 +187,15 @@ export class MoneyScreen implements OnInit {
       isFullRange ? null : (months[startIdx] ?? null),
       isFullRange ? null : (months[endIdx] ?? null),
     );
+    void this.performanceMetrics.recordAfterPaint('money.range_change', startedAt, { months: endIdx - startIdx + 1 });
   }
 
   protected setDisplayCurrency(id: string): void {
     if (!id || id === this.moneyService.displayCurrency$$()) return;
+    const startedAt = performance.now();
+    const previous = this.moneyService.displayCurrency$$();
     this.moneyService.setDisplayCurrency(id);
+    void this.performanceMetrics.recordAfterPaint('money.currency_change', startedAt, { from: previous, to: id });
   }
 
   protected toggleKeepNativeCurrency(): void {
@@ -189,7 +207,10 @@ export class MoneyScreen implements OnInit {
   }
 
   protected setActiveTab(tab: MoneyTab): void {
+    const startedAt = performance.now();
+    const previous = this.activeTab$$();
     this.activeTab$$.set(tab);
+    void this.performanceMetrics.recordAfterPaint('money.tab_change', startedAt, { from: previous, to: tab });
   }
 
   private formatSliderMonth(ym: string | undefined): string {

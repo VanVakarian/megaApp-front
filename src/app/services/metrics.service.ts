@@ -3,6 +3,7 @@ import { Injectable, effect, inject, signal, untracked } from '@angular/core';
 import { IndexedDbCacheService } from '@app/services/indexed-db-cache.service';
 import { NetworkService } from '@app/services/network.service';
 import { NotificationService } from '@app/services/notification.service';
+import { PerformanceMetricsService } from '@app/services/performance-metrics.service';
 import { metricsServiceDefinitions } from '@app/shared/metrics-catalog';
 import {
   METRIC_GRANULARITIES,
@@ -48,6 +49,7 @@ export class MetricsService {
   private readonly notificationService = inject(NotificationService);
   private readonly http = inject(HttpClient);
   private readonly indexedDbCache = inject(IndexedDbCacheService);
+  private readonly performanceMetrics = inject(PerformanceMetricsService);
   private readonly pointsByKey = new Map<string, MetricPoint>();
   private readonly bucketCounts: Record<MetricGranularity, Map<number, number>> = {
     minute: new Map(),
@@ -74,6 +76,7 @@ export class MetricsService {
   });
 
   constructor() {
+    const cacheStartedAt = performance.now();
     void this.indexedDbCache.get<MetricsCacheState | MetricPoint[]>(STORAGE_KEY).then((cached) => {
       if (Array.isArray(cached)) {
         this.mergePoints(cached, false, false);
@@ -84,11 +87,22 @@ export class MetricsService {
       }
       this.isCacheLoaded = true;
       this.scheduleRefreshCheck();
+      this.performanceMetrics.record('metrics.cache_hydrate', performance.now() - cacheStartedAt, {
+        cache: cached ? 'hit' : 'miss',
+        points: this.pointsByKey.size,
+      });
     });
 
     this.networkService.wsMessages$.subscribe((message) => {
       if (message.type === WebSocketMessageType.METRICS_UPDATE) {
-        this.mergePoints(message.payload.points, true);
+        this.performanceMetrics.measure(
+          'metrics.realtime_batch',
+          () => this.mergePoints(message.payload.points, true),
+          () => ({
+            inputPoints: message.payload.points.length,
+            retainedPoints: this.pointsByKey.size,
+          }),
+        );
         this.scheduleRefreshCheck();
         return;
       }
@@ -156,6 +170,7 @@ export class MetricsService {
       .set('hourSince', request.since.hour)
       .set('daySince', request.since.day);
 
+    const startedAt = performance.now();
     this.http.get<MetricsHistoryResponse>('/api/metrics/history', { params }).subscribe({
       next: (response) => {
         const histories = response.histories ?? [];
@@ -176,6 +191,11 @@ export class MetricsService {
         this.isRefreshing$$.set(false);
         this.scheduleCacheWrite();
         this.scheduleRefreshCheck();
+        void this.performanceMetrics.recordAfterPaint('metrics.history_refresh', startedAt, {
+          trigger: showNotification ? 'manual' : 'automatic',
+          histories: histories.length,
+          retainedPoints: this.pointsByKey.size,
+        });
         if (showNotification) {
           this.notificationService.addNotification('success', 'Metrics refreshed');
         }
@@ -186,6 +206,14 @@ export class MetricsService {
         if (showNotification) {
           this.notificationService.addNotification('error', 'Failed to refresh metrics');
         }
+        this.performanceMetrics.record(
+          'metrics.history_refresh',
+          performance.now() - startedAt,
+          {
+            trigger: showNotification ? 'manual' : 'automatic',
+          },
+          'error',
+        );
       },
     });
   }
@@ -332,11 +360,18 @@ export class MetricsService {
     if (this.cacheWriteTimeoutId !== null) return;
     this.cacheWriteTimeoutId = setTimeout(() => {
       this.cacheWriteTimeoutId = null;
-      void this.indexedDbCache.set<MetricsCacheState>(STORAGE_KEY, {
-        points: this.points$$(),
-        historyCheckedThrough: { ...this.historyCheckedThrough },
-        historyServices: Array.from(this.refreshedServices).sort(),
-      });
+      const startedAt = performance.now();
+      void this.indexedDbCache
+        .set<MetricsCacheState>(STORAGE_KEY, {
+          points: this.points$$(),
+          historyCheckedThrough: { ...this.historyCheckedThrough },
+          historyServices: Array.from(this.refreshedServices).sort(),
+        })
+        .then(() =>
+          this.performanceMetrics.record('metrics.cache_persist', performance.now() - startedAt, {
+            points: this.pointsByKey.size,
+          }),
+        );
     }, CACHE_WRITE_DELAY_MS);
   }
 

@@ -6,6 +6,7 @@ import { DayStats, FoodStatsResponse, FoodStatsTopProduct, Stats, StatsChartData
 import { firstValueFrom } from 'rxjs';
 import { dateToIsoNoTimeNoTZ, formatDateTicks } from '../../shared/utils';
 import { LocalStorageService } from '../local-storage.service';
+import { PerformanceMetricsService } from '../performance-metrics.service';
 
 interface AggregatedPeriodData {
   data: StatsChartData;
@@ -35,22 +36,44 @@ export class FoodStatsService {
   public readonly topProductsByKcal$$: Signal<FoodStatsTopProduct[]> = this.topProductsByKcalSignal$$.asReadonly();
   public readonly topProductsByWeight$$: Signal<FoodStatsTopProduct[]> = this.topProductsByWeightSignal$$.asReadonly();
   public readonly topProductsWindowTotalKcal$$: Signal<number> = this.topProductsWindowTotalKcalSignal$$.asReadonly();
-  public readonly topProductsWindowTotalWeight$$: Signal<number> = this.topProductsWindowTotalWeightSignal$$.asReadonly();
+  public readonly topProductsWindowTotalWeight$$: Signal<number> =
+    this.topProductsWindowTotalWeightSignal$$.asReadonly();
   public readonly totalEntries$$: Signal<number> = this.totalEntriesSignal$$.asReadonly();
-  public readonly statsChartData$$: Signal<StatsChartData> = computed(() => this.prepareChartData());
-  public readonly statsChartDataClipped$$: Signal<StatsChartData> = computed(() => this.prepareChartDataClipped());
+  public readonly statsChartData$$: Signal<StatsChartData> = computed(() =>
+    this.performanceMetrics.measure(
+      'food.stats_base_model',
+      () => this.prepareChartData(),
+      (result) => ({ days: result.dates.length }),
+    ),
+  );
+  public readonly statsChartDataClipped$$: Signal<StatsChartData> = computed(() =>
+    this.performanceMetrics.measure(
+      'food.stats_clipped_model',
+      () => this.prepareChartDataClipped(),
+      (result) => ({ days: result.dates.length }),
+    ),
+  );
 
   private readonly weeklyAggregated$$: Signal<AggregatedPeriodData> = computed(() =>
-    this.prepareAggregatedData('week'),
+    this.performanceMetrics.measure(
+      'food.stats_aggregate_week',
+      () => this.prepareAggregatedData('week'),
+      (result) => ({ periods: result.data.dates.length }),
+    ),
   );
   private readonly monthlyAggregated$$: Signal<AggregatedPeriodData> = computed(() =>
-    this.prepareAggregatedData('month'),
+    this.performanceMetrics.measure(
+      'food.stats_aggregate_month',
+      () => this.prepareAggregatedData('month'),
+      (result) => ({ periods: result.data.dates.length }),
+    ),
   );
 
   public readonly selectedDateIdxStart$$: WritableSignal<number> = signal(0);
   public readonly selectedDateIdxEnd$$: WritableSignal<number> = signal(0);
 
   private readonly authService = inject(AuthService);
+  private readonly performanceMetrics = inject(PerformanceMetricsService);
 
   private readonly resetOnAuthLossEffect$$ = effect(() => {
     if (this.authService.sessionState$$() === AuthSessionState.Guest) {
@@ -78,6 +101,7 @@ export class FoodStatsService {
 
   @exhaustRequest()
   public async getStats(): Promise<void> {
+    const startedAt = performance.now();
     const cachedResponse = this.loadStatsFromLocalStorage();
     if (cachedResponse && Object.keys(cachedResponse.days).length > 0) {
       this.applyResponse(cachedResponse);
@@ -91,8 +115,14 @@ export class FoodStatsService {
       this.saveStatsToLocalStorage();
 
       this.applyDateRangeOnLoad(isLocalStatsEmpty);
+      void this.performanceMetrics.recordAfterPaint('food.stats_response_apply', startedAt, {
+        cache: cachedResponse ? 'hit' : 'miss',
+        days: Object.keys(serverResponse.days).length,
+        topProducts: (serverResponse.topProductsByKcal ?? []).length,
+      });
     } catch (error) {
       console.error('Failed fetching stats from server:', error);
+      this.performanceMetrics.record('food.stats_response_apply', performance.now() - startedAt, undefined, 'error');
     }
   }
 

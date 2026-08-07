@@ -42,6 +42,8 @@ export const WebSocketMessageType = {
   METRICS_UPDATE: 'METRICS_UPDATE',
   METRICS_SUBSCRIBE: 'METRICS_SUBSCRIBE',
   METRICS_UNSUBSCRIBE: 'METRICS_UNSUBSCRIBE',
+  PERFORMANCE_METRICS_BATCH: 'PERFORMANCE_METRICS_BATCH',
+  PERFORMANCE_METRICS_ACK: 'PERFORMANCE_METRICS_ACK',
 } as const;
 
 export type WebSocketMessageType = (typeof WebSocketMessageType)[keyof typeof WebSocketMessageType];
@@ -251,6 +253,52 @@ export interface MetricsUnsubscribeWsMessage {
   type: typeof WebSocketMessageType.METRICS_UNSUBSCRIBE;
 }
 
+export interface PerformanceMetricRecord {
+  eventId: string;
+  timestampMs: number;
+  sessionId: string;
+  operation: string;
+  elapsedMs: number;
+  renderMs?: number;
+  route: string;
+  trigger?: string;
+  outcome: 'success' | 'error';
+  attributes?: Record<string, string | number | boolean>;
+  device: {
+    platform: 'mobile' | 'tablet' | 'desktop';
+    mobileScreen: boolean;
+    viewportWidth: number;
+    viewportHeight: number;
+    screenWidth: number;
+    screenHeight: number;
+    dpr: number;
+    touchPoints: number;
+    hardwareConcurrency?: number;
+    deviceMemory?: number;
+    connectionType?: string;
+    connectionRtt?: number;
+    userAgent: string;
+  };
+}
+
+export interface PerformanceMetricsBatchWsMessage {
+  type: typeof WebSocketMessageType.PERFORMANCE_METRICS_BATCH;
+  payload: {
+    batchId: string;
+    events: PerformanceMetricRecord[];
+    dropped: number;
+  };
+}
+
+export interface PerformanceMetricsAckWsMessage {
+  type: typeof WebSocketMessageType.PERFORMANCE_METRICS_ACK;
+  payload: {
+    batchId: string;
+    eventIds: string[];
+    outcome: 'accepted' | 'discarded';
+  };
+}
+
 export type IncomingWsMessage =
   | PingWsMessage
   | SyncStatusWsMessage
@@ -262,6 +310,7 @@ export type IncomingWsMessage =
   | MetricsHealthWsMessage
   | MetricsLatestWsMessage
   | MetricsUpdateWsMessage
+  | PerformanceMetricsAckWsMessage
   | SearchResultsWsMessage
   | CatalogueEntrySavedWsMessage
   | CatalogueImageGeneratedWsMessage;
@@ -272,7 +321,8 @@ export type OutgoingWsMessage =
   | StopVoiceRecordingWsMessage
   | SearchQueryWsMessage
   | MetricsSubscribeWsMessage
-  | MetricsUnsubscribeWsMessage;
+  | MetricsUnsubscribeWsMessage
+  | PerformanceMetricsBatchWsMessage;
 
 //                                                                        SERVER
 

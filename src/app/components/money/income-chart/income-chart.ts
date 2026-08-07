@@ -13,6 +13,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { ChartThemeService } from '@app/services/chart-theme.service';
+import { PerformanceMetricsService } from '@app/services/performance-metrics.service';
 import {
   ChartColors,
   createIncomeChartConfig,
@@ -54,6 +55,7 @@ export class IncomeChart implements AfterViewInit, OnDestroy {
   protected readonly yearlyMode$$ = signal(false);
 
   private readonly chartThemeService = inject(ChartThemeService);
+  private readonly performanceMetrics = inject(PerformanceMetricsService);
   // Chart.js caches a scale's resolved grid/border/ticks color internally — mutating
   // chart.data and calling chart.update('none') doesn't reliably repaint it after a theme
   // toggle (see the identical comment/fix in food-stats-charts.ts). Recreating the chart
@@ -94,15 +96,21 @@ export class IncomeChart implements AfterViewInit, OnDestroy {
     // Dataset colors here are category-identity colors, not theme colors — colors$$ is only
     // needed to detect a theme switch and recreate the chart so its grid/tick colors repaint.
     const colors = this.chartThemeService.colors$$();
-    let chart = this.chart$$();
-    if (chart && colors !== this.lastColors) {
-      chart.destroy();
-      chart = this.createChart(colors);
-      this.chart$$.set(chart);
-    }
-    this.lastColors = colors;
-    if (!chart) return;
-    this.rebuildChartDatasets(chart, data, activeSeries, yearly, monthRange);
+    this.performanceMetrics.measure(
+      'money.income_chart_render',
+      () => {
+        let chart = this.chart$$();
+        if (chart && colors !== this.lastColors) {
+          chart.destroy();
+          chart = this.createChart(colors);
+          this.chart$$.set(chart);
+        }
+        this.lastColors = colors;
+        if (!chart) return;
+        this.rebuildChartDatasets(chart, data, activeSeries, yearly, monthRange);
+      },
+      () => ({ months: data.months.length, series: activeSeries.length, yearly }),
+    );
   });
 
   private readonly yearSeparatorPlugin: Plugin = {

@@ -14,6 +14,7 @@ import {
 } from '@angular/core';
 import { ChartThemeService } from '@app/services/chart-theme.service';
 import { TooltipMode } from '@app/services/metrics-settings.service';
+import { PerformanceMetricsService } from '@app/services/performance-metrics.service';
 import {
   ChartColors,
   createMetricBarConfig,
@@ -230,6 +231,7 @@ export class MetricChartCard implements OnInit, OnDestroy {
   private readonly cardWidthPx$$ = signal(0);
   private resizeObserver: ResizeObserver | null = null;
   private readonly chartThemeService = inject(ChartThemeService);
+  private readonly performanceMetrics = inject(PerformanceMetricsService);
 
   private readonly chartUpdateEffect = effect(() => {
     const canvasElem = this.chartCanvasElem();
@@ -317,14 +319,34 @@ export class MetricChartCard implements OnInit, OnDestroy {
       return;
     }
 
-    this.chart = new Chart(ctx, this.createChartConfig(chartMode, color, unit, granularity, tooltipMode, colors));
+    this.performanceMetrics.measure(
+      'metrics.chart_create',
+      () => {
+        this.chart = new Chart(ctx, this.createChartConfig(chartMode, color, unit, granularity, tooltipMode, colors));
+      },
+      () => ({
+        mode: chartMode,
+        granularity,
+        width: Math.round(this.cardWidthPx$$()),
+      }),
+    );
     this.chartSignature = signature;
   }
 
   private updateChart(series: MetricSeriesPoint[]): void {
     if (!this.chart) return;
-    this.updateSparseChart(series);
-    this.chart.update('none');
+    this.performanceMetrics.measure(
+      'metrics.chart_update',
+      () => {
+        this.updateSparseChart(series);
+        this.chart!.update('none');
+      },
+      () => ({
+        points: series.length,
+        mode: this.chartModeInput(),
+        width: Math.round(this.cardWidthPx$$()),
+      }),
+    );
   }
 
   private buildTickBuckets(windowStart: number, windowEnd: number): number[] {

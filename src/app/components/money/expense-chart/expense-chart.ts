@@ -14,6 +14,7 @@ import {
 } from '@angular/core';
 import { ChartThemeService } from '@app/services/chart-theme.service';
 import { MoneyService } from '@app/services/money.service';
+import { PerformanceMetricsService } from '@app/services/performance-metrics.service';
 import {
   ChartColors,
   EXPENSE_CATEGORY_CONFIG,
@@ -66,6 +67,7 @@ export class ExpenseChart implements AfterViewInit, OnDestroy {
 
   private readonly moneyService = inject(MoneyService);
   private readonly chartThemeService = inject(ChartThemeService);
+  private readonly performanceMetrics = inject(PerformanceMetricsService);
   private readonly today = new Date().toISOString().substring(0, 10);
   private readonly latestRates$$ = computed(() => this.moneyService.getRatesForDate(this.today) ?? {});
 
@@ -145,15 +147,21 @@ export class ExpenseChart implements AfterViewInit, OnDestroy {
     // Dataset colors here are category-identity colors, not theme colors — colors$$ is only
     // needed to detect a theme switch and recreate the chart so its grid/tick colors repaint.
     const colors = this.chartThemeService.colors$$();
-    let chart = this.chart$$();
-    if (chart && colors !== this.lastColors) {
-      chart.destroy();
-      chart = this.createChart(colors);
-      this.chart$$.set(chart);
-    }
-    this.lastColors = colors;
-    if (!chart) return;
-    this.rebuildChartDatasets(chart, data, activeSeries, allSeries, yearly, ymax, monthRange);
+    this.performanceMetrics.measure(
+      'money.expense_chart_render',
+      () => {
+        let chart = this.chart$$();
+        if (chart && colors !== this.lastColors) {
+          chart.destroy();
+          chart = this.createChart(colors);
+          this.chart$$.set(chart);
+        }
+        this.lastColors = colors;
+        if (!chart) return;
+        this.rebuildChartDatasets(chart, data, activeSeries, allSeries, yearly, ymax, monthRange);
+      },
+      () => ({ months: data.monthRows.length, series: activeSeries.length, yearly }),
+    );
   });
 
   private readonly yearSeparatorPlugin: Plugin = {

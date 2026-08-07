@@ -13,6 +13,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { ChartThemeService } from '@app/services/chart-theme.service';
+import { PerformanceMetricsService } from '@app/services/performance-metrics.service';
 import {
   BALANCE_ACCOUNT_PALETTE,
   ChartColors,
@@ -57,6 +58,7 @@ export class BalancesChart implements AfterViewInit, OnDestroy {
   protected readonly enabledAccountIds$$ = signal<Set<number>>(new Set());
 
   private readonly chartThemeService = inject(ChartThemeService);
+  private readonly performanceMetrics = inject(PerformanceMetricsService);
 
   // Chart.js caches a scale's resolved grid/border/ticks color internally — mutating
   // chart.data and calling chart.update('none') doesn't reliably repaint it after a theme
@@ -175,15 +177,21 @@ export class BalancesChart implements AfterViewInit, OnDestroy {
     const activeSeries = this.activeAccountSeries$$();
     const suspensionFilter = this.suspensionFilter$$();
     const colors = this.chartThemeService.colors$$();
-    let chart = this.chart$$();
-    if (chart && colors !== this.lastColors) {
-      chart.destroy();
-      chart = this.createChart(colors);
-      this.chart$$.set(chart);
-    }
-    this.lastColors = colors;
-    if (!chart) return;
-    this.rebuildChartDatasets(chart, data, showByAccount, activeSeries, suspensionFilter, colors);
+    this.performanceMetrics.measure(
+      'money.balance_chart_render',
+      () => {
+        let chart = this.chart$$();
+        if (chart && colors !== this.lastColors) {
+          chart.destroy();
+          chart = this.createChart(colors);
+          this.chart$$.set(chart);
+        }
+        this.lastColors = colors;
+        if (!chart) return;
+        this.rebuildChartDatasets(chart, data, showByAccount, activeSeries, suspensionFilter, colors);
+      },
+      () => ({ months: data.dates.length, series: activeSeries.length }),
+    );
   });
 
   private createChart(colors: ChartColors): Chart | null {

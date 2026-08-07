@@ -1,9 +1,10 @@
-import { ChangeDetectionStrategy, Component, computed, inject, OnDestroy, OnInit, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, OnDestroy, OnInit, signal } from '@angular/core';
 import { CompositeMetricsSettingsService } from '@app/services/composite-metrics-settings.service';
 import { DeviceInfoService } from '@app/services/device-info.service';
 import { MetricsHealthService } from '@app/services/metrics-health.service';
 import { CardLayoutMode, MetricsSettingsService, TooltipMode } from '@app/services/metrics-settings.service';
 import { MetricsService } from '@app/services/metrics.service';
+import { PerformanceMetricsService } from '@app/services/performance-metrics.service';
 import { METRICS_GRANULARITY_STEP_SECONDS, METRICS_GRANULARITY_WINDOW_PERIODS } from '@app/shared/chart-config';
 import { formatMetricUnitValue } from '@app/shared/metric-units';
 import { MetricAggregation } from '@app/shared/metrics-aggregation';
@@ -91,6 +92,7 @@ export class MetricsDashboard implements OnInit, OnDestroy {
 
   private readonly metricsSettingsService = inject(MetricsSettingsService);
   private readonly compositeMetricsSettingsService = inject(CompositeMetricsSettingsService);
+  private readonly performanceMetrics = inject(PerformanceMetricsService);
 
   private readonly now$$ = signal(Date.now());
   protected readonly targetWidthPx$$ = computed(() => this.metricsSettingsService.cardSize$$().widthPx);
@@ -456,10 +458,28 @@ export class MetricsDashboard implements OnInit, OnDestroy {
     return rows.map(({ id, label, cards }) => ({ id, label, cards }));
   });
 
+  private readonly dashboardModelProbe = effect(() => {
+    const startedAt = performance.now();
+    const data = this.serviceMetricsData$$();
+    let cards = 0;
+    for (const service of data.values()) {
+      cards += service.groups.reduce((total, group) => total + group.cards.length, 0);
+    }
+    this.performanceMetrics.record('metrics.dashboard_model', performance.now() - startedAt, {
+      services: data.size,
+      cards,
+      points: this.metricsService.points$$().length,
+    });
+  });
+
   public ngOnInit(): void {
+    const startedAt = performance.now();
     this.metricsService.subscribe();
     this.nowTickIntervalId = setInterval(() => this.now$$.set(Date.now()), NOW_TICK_INTERVAL_MS);
     window.addEventListener('scroll', this.onWindowScroll, { passive: true });
+    void this.performanceMetrics.recordAfterPaint('metrics.dashboard_ready', startedAt, {
+      granularity: this.selectedGranularity$$(),
+    });
   }
 
   public ngOnDestroy(): void {
@@ -510,8 +530,14 @@ export class MetricsDashboard implements OnInit, OnDestroy {
   }
 
   protected selectGranularity(granularity: MetricGranularity): void {
+    const startedAt = performance.now();
+    const previous = this.selectedGranularity$$();
     clearMetricSyncCrosshair();
     this.metricsSettingsService.setGranularity(granularity);
+    void this.performanceMetrics.recordAfterPaint('metrics.granularity_change', startedAt, {
+      from: previous,
+      to: granularity,
+    });
   }
 
   protected granularityToggleValue(): string[] {
@@ -534,8 +560,10 @@ export class MetricsDashboard implements OnInit, OnDestroy {
   }
 
   protected toggleServiceExpanded(service: string): void {
+    const startedAt = performance.now();
     if (service === SETTINGS_PANEL_KEY) {
       this.isSettingsPanelExpanded$$.update((value) => !value);
+      void this.performanceMetrics.recordAfterPaint('metrics.panel_change', startedAt, { panel: 'settings' });
       return;
     }
 
@@ -545,6 +573,7 @@ export class MetricsDashboard implements OnInit, OnDestroy {
 
     clearMetricSyncCrosshair();
     this.expandedPanel$$.set(service);
+    void this.performanceMetrics.recordAfterPaint('metrics.panel_change', startedAt, { panel: service });
   }
 
   protected onCardWidthChange(value: string): void {
@@ -566,7 +595,9 @@ export class MetricsDashboard implements OnInit, OnDestroy {
   }
 
   protected cycleCardLayoutMode(): void {
+    const startedAt = performance.now();
     this.metricsSettingsService.cycleCardLayoutMode();
+    void this.performanceMetrics.recordAfterPaint('metrics.layout_change', startedAt, { kind: 'card_layout' });
   }
 
   protected cycleTooltipMode(): void {
@@ -585,7 +616,9 @@ export class MetricsDashboard implements OnInit, OnDestroy {
   }
 
   protected toggleAnomalyFilterEnabled(): void {
+    const startedAt = performance.now();
     this.metricsSettingsService.setAnomalyFilterEnabled(!this.anomalyFilterEnabled$$());
+    void this.performanceMetrics.recordAfterPaint('metrics.data_shape_change', startedAt, { kind: 'anomaly_filter' });
   }
 
   protected onAnomalyFilterWindowRadiusChange(rawValue: string): void {
