@@ -142,7 +142,7 @@ export class DeviceInfoService {
 
     const isTouchDevice = this.isTouchDevice();
     const isMobile = this.isDeviceMobile();
-    const platform = this.detectPlatform();
+    const platform = this.getDevicePlatform();
     const { hasRearCamera, hasFrontCamera } = await this.detectCameras();
 
     this.deviceInfo = {
@@ -169,11 +169,11 @@ export class DeviceInfoService {
       isTouchDevice,
       hasMediaDevices,
       shouldShowCameraButton: shouldShow,
-      platform: this.detectPlatform(),
+      platform: this.getDevicePlatform(),
     });
   }
 
-  private detectPlatform(): 'mobile' | 'tablet' | 'desktop' {
+  public getDevicePlatform(): 'mobile' | 'tablet' | 'desktop' {
     const userAgent = navigator.userAgent.toLowerCase();
 
     if (/iphone|android.*mobile/.test(userAgent)) {

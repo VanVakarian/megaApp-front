@@ -268,7 +268,8 @@ export class PerformanceMetricsService {
   private deviceContext(): PerformanceMetricRecord['device'] {
     const connection = (navigator as Navigator & { connection?: ConnectionInformationLike }).connection;
     return {
-      platform: this.resolvePlatform(),
+      platform: this.deviceInfoService.getDevicePlatform(),
+      mobileDevice: this.deviceInfoService.isMobileDevice$$(),
       mobileScreen: this.deviceInfoService.isMobileScreen$$(),
       viewportWidth: window.innerWidth,
       viewportHeight: window.innerHeight,
@@ -290,10 +291,4 @@ export class PerformanceMetricsService {
     return new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
   }
 
-  private resolvePlatform(): 'mobile' | 'tablet' | 'desktop' {
-    const userAgent = navigator.userAgent.toLowerCase();
-    if (/iphone|android.*mobile/.test(userAgent)) return 'mobile';
-    if (/ipad|android(?!.*mobile)|tablet/.test(userAgent)) return 'tablet';
-    return 'desktop';
-  }
 }

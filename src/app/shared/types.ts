@@ -266,6 +266,7 @@ export interface PerformanceMetricRecord {
   attributes?: Record<string, string | number | boolean>;
   device: {
     platform: 'mobile' | 'tablet' | 'desktop';
+    mobileDevice: boolean;
     mobileScreen: boolean;
     viewportWidth: number;
     viewportHeight: number;
