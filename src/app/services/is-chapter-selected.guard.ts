@@ -3,11 +3,12 @@ import { CanActivateFn, Router } from '@angular/router';
 
 import { SettingsService } from '@app/services/settings.service';
 
-export const isChapterSelected: CanActivateFn = (route, state) => {
+export const isChapterSelected: CanActivateFn = async (_route, state) => {
   const url = state.url;
 
   const router = inject(Router);
   const settingsService = inject(SettingsService);
+  await settingsService.ensureReady();
 
   const settings = settingsService.settings$$();
 
