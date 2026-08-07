@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { buildCacheKey } from '@app/shared/cache';
+import { buildCacheKey, hasCacheUser } from '@app/shared/cache';
 import {
   idbClearAllUserScopedKvEntries,
   idbClearDays,
@@ -15,14 +15,17 @@ import {
 })
 export class IndexedDbCacheService {
   public get<T>(baseKey: string): Promise<T | null> {
+    if (!hasCacheUser()) return Promise.resolve(null);
     return idbGet<T>(buildCacheKey(baseKey));
   }
 
   public set<T>(baseKey: string, value: T): Promise<void> {
+    if (!hasCacheUser()) return Promise.resolve();
     return idbSet<T>(buildCacheKey(baseKey), value);
   }
 
   public remove(baseKey: string): Promise<void> {
+    if (!hasCacheUser()) return Promise.resolve();
     return idbRemove(buildCacheKey(baseKey));
   }
 

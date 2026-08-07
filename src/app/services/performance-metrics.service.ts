@@ -1,6 +1,5 @@
 import { Injectable, effect, inject, untracked } from '@angular/core';
 import { NavigationCancel, NavigationEnd, NavigationError, NavigationStart, Router } from '@angular/router';
-import { tokenGetter } from '@app/services/auth.service';
 import { DeviceInfoService } from '@app/services/device-info.service';
 import { LocalStorageService } from '@app/services/local-storage.service';
 import { NetworkService } from '@app/services/network.service';
@@ -26,6 +25,7 @@ const MAX_BATCH_BYTES = 48 * 1024;
 const MAX_BATCH_EVENTS = 100;
 const UPLOAD_INTERVAL_MS = 60 * 1000; // Temporary diagnostic interval.
 const PERSIST_DELAY_MS = 1000;
+const ACK_TIMEOUT_MS = 15_000;
 
 @Injectable({ providedIn: 'root' })
 export class PerformanceMetricsService {
@@ -38,6 +38,7 @@ export class PerformanceMetricsService {
   private readonly sessionId = crypto.randomUUID();
   private persistTimeoutId: ReturnType<typeof setTimeout> | null = null;
   private inFlight: { batchId: string; eventIds: string[]; dropped: number } | null = null;
+  private ackTimeoutId: ReturnType<typeof setTimeout> | null = null;
   private isDrainingQueue = false;
   private routeStarts = new Map<number, number>();
 
@@ -46,6 +47,7 @@ export class PerformanceMetricsService {
       const isConnected = this.networkService.isConnected$$();
       if (!isConnected) {
         this.inFlight = null;
+        this.clearAckTimeout();
         return;
       }
       untracked(() => this.tryUpload());
@@ -98,7 +100,7 @@ export class PerformanceMetricsService {
     outcome: PerformanceMetricRecord['outcome'] = 'success',
     renderMs?: number,
   ): void {
-    if (!tokenGetter()) return;
+    if (!this.networkService.isConnected$$()) return;
 
     const event: PerformanceMetricRecord = {
       eventId: `${this.sessionId}:${this.queue.nextSequence++}`,
@@ -181,7 +183,6 @@ export class PerformanceMetricsService {
   private tryUpload(): void {
     if (
       this.inFlight ||
-      !tokenGetter() ||
       !this.networkService.isConnected$$() ||
       this.queue.events.length === 0 ||
       (!this.isDrainingQueue && Date.now() - this.queue.firstQueuedAtMs < UPLOAD_INTERVAL_MS)
@@ -209,10 +210,19 @@ export class PerformanceMetricsService {
     const batchId = crypto.randomUUID();
     this.inFlight = { batchId, eventIds: events.map((event) => event.eventId), dropped: this.queue.dropped };
     this.isDrainingQueue = true;
-    this.networkService.sendMessage({
+    if (!this.networkService.sendMessage({
       type: WebSocketMessageType.PERFORMANCE_METRICS_BATCH,
       payload: { batchId, events, dropped: this.queue.dropped },
-    });
+    })) {
+      this.inFlight = null;
+      return;
+    }
+    this.ackTimeoutId = setTimeout(() => {
+      this.ackTimeoutId = null;
+      if (!this.inFlight || this.inFlight.batchId !== batchId) return;
+      this.inFlight = null;
+      this.tryUpload();
+    }, ACK_TIMEOUT_MS);
   }
 
   private handleAck(message: PerformanceMetricsAckWsMessage): void {
@@ -221,6 +231,7 @@ export class PerformanceMetricsService {
     this.queue.events = this.queue.events.filter((event) => !acceptedIds.has(event.eventId));
     this.queue.dropped = Math.max(0, this.queue.dropped - this.inFlight.dropped);
     this.inFlight = null;
+    this.clearAckTimeout();
     this.queue.firstQueuedAtMs = this.queue.events.length > 0 ? this.queue.firstQueuedAtMs : 0;
     if (this.queue.events.length === 0) this.isDrainingQueue = false;
     this.flushQueue();
@@ -232,6 +243,12 @@ export class PerformanceMetricsService {
       this.queue.events.shift();
       this.queue.dropped += 1;
     }
+  }
+
+  private clearAckTimeout(): void {
+    if (this.ackTimeoutId === null) return;
+    clearTimeout(this.ackTimeoutId);
+    this.ackTimeoutId = null;
   }
 
   private readQueue(): PerformanceMetricsQueue {

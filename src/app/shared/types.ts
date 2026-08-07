@@ -7,32 +7,25 @@ export interface UserCreds {
   password: string;
 }
 
-export interface AuthResponse {
-  accessToken: string;
-  refreshToken: string;
-  isAdmin: boolean;
-}
-
-export interface VerifyResponse {
+export interface SessionResponse {
   authenticated: boolean;
   userId: number;
   username: string;
   isAdmin: boolean;
+  expiresAt: string;
 }
 
 //                                                                            WS
 
 export const WebSocketMessageType = {
   PING: 'PING',
+  PONG: 'PONG',
   SYNC_STATUS: 'SYNC_STATUS',
   DIARY_ENTRY_CREATED: 'DIARY_ENTRY_CREATED',
   DIARY_ENTRY_UPDATED: 'DIARY_ENTRY_UPDATED',
   DIARY_ENTRY_DELETED: 'DIARY_ENTRY_DELETED',
   DIARY_DAY_DELETED: 'DIARY_DAY_DELETED',
   BODY_WEIGHT_UPDATED: 'BODY_WEIGHT_UPDATED',
-  START_VOICE_RECORDING: 'START_VOICE_RECORDING',
-  AUDIO_CHUNK: 'AUDIO_CHUNK',
-  STOP_VOICE_RECORDING: 'STOP_VOICE_RECORDING',
   SEARCH_QUERY: 'SEARCH_QUERY',
   SEARCH_RESULTS: 'SEARCH_RESULTS',
   CATALOGUE_ENTRY_SAVED: 'CATALOGUE_ENTRY_SAVED',
@@ -50,6 +43,10 @@ export type WebSocketMessageType = (typeof WebSocketMessageType)[keyof typeof We
 
 export interface PingWsMessage {
   type: typeof WebSocketMessageType.PING;
+}
+
+export interface PongWsMessage {
+  type: typeof WebSocketMessageType.PONG;
 }
 
 export interface UserDataLastModifiedTs {
@@ -129,20 +126,6 @@ export interface BodyWeightToUpdate {
 export interface BodyWeightUpdatedWsMessage {
   type: typeof WebSocketMessageType.BODY_WEIGHT_UPDATED;
   payload: BodyWeightToUpdate;
-}
-
-export interface StartVoiceRecordingWsMessage {
-  type: typeof WebSocketMessageType.START_VOICE_RECORDING;
-}
-
-export interface AudioChunkWsMessage {
-  type: typeof WebSocketMessageType.AUDIO_CHUNK;
-  data: string;
-  sequence: number;
-}
-
-export interface StopVoiceRecordingWsMessage {
-  type: typeof WebSocketMessageType.STOP_VOICE_RECORDING;
 }
 
 export interface SearchQueryWsMessage {
@@ -317,9 +300,6 @@ export type IncomingWsMessage =
   | CatalogueImageGeneratedWsMessage;
 
 export type OutgoingWsMessage =
-  | StartVoiceRecordingWsMessage
-  | AudioChunkWsMessage
-  | StopVoiceRecordingWsMessage
   | SearchQueryWsMessage
   | MetricsSubscribeWsMessage
   | MetricsUnsubscribeWsMessage

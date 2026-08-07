@@ -69,6 +69,7 @@ export class FoodCatalogueService extends BaseFoodService {
     this.loadCatalogueFromLocalStorage();
     this.loadSearchCacheFromLocalStorage();
     this.setupSearchWebSocketListener();
+    this.networkService.connected$.subscribe(() => this.replaySearchQuery());
   }
 
   public reset(): void {
@@ -202,6 +203,12 @@ export class FoodCatalogueService extends BaseFoodService {
       sequenceNumber: sequenceNumber,
     };
     this.networkService.sendMessage(message);
+  }
+
+  private replaySearchQuery(): void {
+    const query = this.searchQuery$$().trim();
+    if (!query || this.searchSequenceNumber === 0) return;
+    this.sendSearchQuery(query, this.searchSequenceNumber);
   }
 
   private setupSearchWebSocketListener(): void {

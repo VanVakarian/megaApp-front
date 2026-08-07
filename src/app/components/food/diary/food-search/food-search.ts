@@ -4,7 +4,6 @@ import { DeviceInfoService } from '@app/services/device-info.service';
 import { FoodAddModalService, ModalState } from '@app/services/food/food-add-modal.service';
 import { FoodCatalogueService } from '@app/services/food/food-catalogue.service';
 import { FoodDiaryService } from '@app/services/food/food-diary.service';
-import { VoiceRecordingService } from '@app/services/voice-recording.service';
 import { ANIMATION_CLASSES } from '@app/shared/animations';
 import { FlipAnimateDirective } from '@app/shared/directives/flip-animate.directive';
 import { CatalogueEntry, DiaryEntry, HistoryEntryAction } from '@app/shared/types';
@@ -67,13 +66,8 @@ export class FoodSearch {
     }
   });
 
-  protected get isRecording(): boolean {
-    return this.voiceRecordingService.isRecording$$();
-  }
-
   protected readonly deviceInfoService = inject(DeviceInfoService);
   protected readonly foodAddModalService = inject(FoodAddModalService);
-  private readonly voiceRecordingService = inject(VoiceRecordingService);
   private readonly foodCatalogueService = inject(FoodCatalogueService);
   private readonly foodDiaryService = inject(FoodDiaryService);
 
@@ -84,19 +78,6 @@ export class FoodSearch {
 
   protected toggleLegacySearch(): void {
     this.foodCatalogueService.isLegacySearch$$.update((val) => !val);
-  }
-
-  protected async toggleVoiceRecording(): Promise<void> {
-    if (this.isRecording) {
-      this.voiceRecordingService.stopRecording();
-    } else {
-      try {
-        await this.voiceRecordingService.startRecording();
-      } catch (error) {
-        console.error('Failed to start voice recording:', error);
-        alert('Failed to access microphone. Please check permissions.');
-      }
-    }
   }
 
   protected takePhoto(): void {

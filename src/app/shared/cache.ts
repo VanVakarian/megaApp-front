@@ -1,21 +1,21 @@
-import { ACCESS_TOKEN_STORAGE_KEY, CACHE_KEY_VERSIONS } from '@app/shared/const';
+import { CACHE_KEY_VERSIONS } from '@app/shared/const';
 
-function base64UrlDecode(segment: string): string {
-  const base64 = segment.replace(/-/g, '+').replace(/_/g, '/'); // base64url alphabet -> base64 alphabet
-  const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
-  return atob(padded);
+let cacheUserId = 'guest';
+
+export function setCacheUserId(userId: number): void {
+  cacheUserId = String(userId);
+}
+
+export function clearCacheUserId(): void {
+  cacheUserId = 'guest';
+}
+
+export function hasCacheUser(): boolean {
+  return cacheUserId !== 'guest';
 }
 
 function getCacheUserId(): string {
-  const token = localStorage.getItem(ACCESS_TOKEN_STORAGE_KEY);
-  if (!token) return 'guest';
-
-  try {
-    const payload = JSON.parse(base64UrlDecode(token.split('.')[1]));
-    return payload.id ? String(payload.id) : 'guest';
-  } catch {
-    return 'guest';
-  }
+  return cacheUserId;
 }
 
 function resolveCacheKeyVersion(baseKey: string): number {

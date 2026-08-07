@@ -89,9 +89,6 @@ export const CACHE_KEY_VERSIONS: Readonly<Record<string, number>> = {
   navbar_collapsed: 1,
 };
 
-export const ACCESS_TOKEN_STORAGE_KEY = 'access_token';
-export const REFRESH_TOKEN_STORAGE_KEY = 'refresh_token';
-
 // Owned here (not in idb-cache.ts) so IDB_STORE_SCHEMA_CHECKPOINTS below can key off the same
 // constant instead of a bare string literal that could silently drift out of sync with it.
 export const DIARY_DAYS_STORE_NAME = 'foodDiaryDays';
