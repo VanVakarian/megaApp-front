@@ -2,6 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { computed, inject, Injectable, signal, WritableSignal } from '@angular/core';
 import { LocalStorageService } from '@app/services/local-storage.service';
 import { NotificationService } from '@app/services/notification.service';
+import { DEFAULT_METRIC_CHART_MODE, MetricChartMode } from '@app/shared/metrics-chart-mode';
 import { AnomalyFilterParams } from '@app/shared/metrics-series';
 import { SeverityThresholds } from '@app/shared/metrics-severity';
 import { CompositeMetricDefinition, MetricGranularity } from '@app/shared/types';
@@ -12,6 +13,7 @@ export type DashboardServiceSelection = Record<string, number>;
 export type SeverityThresholdsOverrides = Record<string, SeverityThresholds>;
 export type ServiceHeaderVisibility = Record<string, boolean>;
 export type ServiceCustomLabels = Record<string, string>;
+export type MetricChartModeOverrides = Record<string, Record<string, MetricChartMode>>;
 
 export const CardLayoutMode = {
   Compact: 'compact',
@@ -36,6 +38,7 @@ interface StoredMetricsSettings {
   syncCrosshairEnabled: boolean;
   dashboardSelection: DashboardMetricSelection;
   dashboardServiceSelection: DashboardServiceSelection;
+  metricChartModeOverrides: MetricChartModeOverrides;
   severityThresholds: SeverityThresholdsOverrides;
   serviceHeaderVisibility: ServiceHeaderVisibility;
   serviceCustomLabels: ServiceCustomLabels;
@@ -75,6 +78,7 @@ const DEFAULTS: StoredMetricsSettings = {
   syncCrosshairEnabled: false,
   dashboardSelection: {},
   dashboardServiceSelection: {},
+  metricChartModeOverrides: {},
   severityThresholds: {},
   serviceHeaderVisibility: {},
   serviceCustomLabels: {},
@@ -192,6 +196,7 @@ export class MetricsSettingsService {
   public readonly anomalyFilterParams$$: WritableSignal<AnomalyFilterParams>;
   public readonly dashboardSelection$$: WritableSignal<DashboardMetricSelection>;
   public readonly dashboardServiceSelection$$: WritableSignal<DashboardServiceSelection>;
+  public readonly metricChartModeOverrides$$: WritableSignal<MetricChartModeOverrides>;
   public readonly severityThresholdOverrides$$: WritableSignal<SeverityThresholdsOverrides>;
   public readonly serviceHeaderVisibility$$: WritableSignal<ServiceHeaderVisibility>;
   public readonly serviceCustomLabels$$: WritableSignal<ServiceCustomLabels>;
@@ -238,6 +243,7 @@ export class MetricsSettingsService {
     this.anomalyFilterParams$$ = signal(initial.anomalyFilterParams);
     this.dashboardSelection$$ = signal(initial.dashboardSelection);
     this.dashboardServiceSelection$$ = signal(initial.dashboardServiceSelection);
+    this.metricChartModeOverrides$$ = signal(initial.metricChartModeOverrides);
     this.severityThresholdOverrides$$ = signal(initial.severityThresholds);
     this.serviceHeaderVisibility$$ = signal(initial.serviceHeaderVisibility);
     this.serviceCustomLabels$$ = signal(initial.serviceCustomLabels);
@@ -320,6 +326,14 @@ export class MetricsSettingsService {
     this.dashboardServiceSelection$$.set(value);
   }
 
+  public setMetricChartModeOverrides(value: MetricChartModeOverrides): void {
+    this.metricChartModeOverrides$$.set(value);
+  }
+
+  public metricChartMode(service: string, name: string): MetricChartMode {
+    return this.metricChartModeOverrides$$()[service]?.[name] ?? DEFAULT_METRIC_CHART_MODE;
+  }
+
   public setSeverityThresholdOverrides(value: SeverityThresholdsOverrides): void {
     this.severityThresholdOverrides$$.set(value);
   }
@@ -350,6 +364,7 @@ export class MetricsSettingsService {
       syncCrosshairEnabled: this.syncCrosshairEnabled$$(),
       dashboardSelection: this.dashboardSelection$$(),
       dashboardServiceSelection: this.dashboardServiceSelection$$(),
+      metricChartModeOverrides: this.metricChartModeOverrides$$(),
       severityThresholds: this.severityThresholdOverrides$$(),
       serviceHeaderVisibility: this.serviceHeaderVisibility$$(),
       serviceCustomLabels: this.serviceCustomLabels$$(),
@@ -363,6 +378,7 @@ export class MetricsSettingsService {
     this.syncCrosshairEnabled$$.set(value.syncCrosshairEnabled);
     this.dashboardSelection$$.set(value.dashboardSelection);
     this.dashboardServiceSelection$$.set(value.dashboardServiceSelection);
+    this.metricChartModeOverrides$$.set(value.metricChartModeOverrides);
     this.severityThresholdOverrides$$.set(value.severityThresholds);
     this.serviceHeaderVisibility$$.set(value.serviceHeaderVisibility);
     this.serviceCustomLabels$$.set(value.serviceCustomLabels);

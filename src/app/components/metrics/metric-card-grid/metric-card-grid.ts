@@ -77,6 +77,7 @@ export class MetricCardGrid implements OnInit, OnDestroy {
 
   public readonly cardDashboardEnabledChangeOutput = output<{ technicalName: string; enabled: boolean }>();
   public readonly cardDashboardOrderChangeOutput = output<{ technicalName: string; order: number }>();
+  public readonly cardChartModeChangeOutput = output<{ technicalName: string; chartMode: MetricChartMode }>();
 
   private readonly hostElement: HTMLElement;
   private readonly expandedKey$$ = signal<string | null>(null);
@@ -194,5 +195,9 @@ export class MetricCardGrid implements OnInit, OnDestroy {
 
   protected onCardDashboardOrderChange(technicalName: string, order: number): void {
     this.cardDashboardOrderChangeOutput.emit({ technicalName, order });
+  }
+
+  protected onCardChartModeChange(technicalName: string, chartMode: MetricChartMode): void {
+    this.cardChartModeChangeOutput.emit({ technicalName, chartMode });
   }
 }

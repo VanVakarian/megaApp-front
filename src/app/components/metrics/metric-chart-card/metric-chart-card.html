@@ -15,6 +15,16 @@
                     [size]="4"
                     [gap]="1"
                     [checkIconSize]="3" />
+        <v-button surface="flat"
+                  [isLabelHidden]="true"
+                  [padding]="1"
+                  [isDisabled]="isSelectionDisabledInput()"
+                  class="shrink-0"
+                  (onClick)="toggleChartMode()">
+          <v-icon v-prefix
+                  [name]="chartModeInput() === 'bar' ? Icon.BarChart : Icon.Timeline"
+                  [size]="4" />
+        </v-button>
         <span class="flex-1 min-w-0 truncate">{{ labelInput() }}</span>
         @if (isDashboardEnabledInput()) {
           <v-input class="shrink-0 w-12"

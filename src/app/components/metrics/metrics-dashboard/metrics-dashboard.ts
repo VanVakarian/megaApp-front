@@ -10,7 +10,6 @@ import { formatMetricUnitValue } from '@app/shared/metric-units';
 import { MetricAggregation } from '@app/shared/metrics-aggregation';
 import {
   metricAggregation,
-  metricChartMode,
   metricColor,
   metricDescription,
   metricIntegerValued,
@@ -20,7 +19,7 @@ import {
   metricsServiceDefinitions,
   metricUnit,
 } from '@app/shared/metrics-catalog';
-import { MetricChartMode } from '@app/shared/metrics-chart-mode';
+import { DEFAULT_METRIC_CHART_MODE, MetricChartMode } from '@app/shared/metrics-chart-mode';
 import {
   buildCollapsedMetricWindow,
   buildMetricPointsIndex,
@@ -289,7 +288,7 @@ export class MetricsDashboard implements OnInit, OnDestroy {
         const metricPoints = applyAnomalyFilter(pointsIndex.get(key) ?? []);
         const aggregation = metricAggregation(option.service, name);
         const integerValued = metricIntegerValued(option.service, name);
-        const chartMode = metricChartMode(option.service, name);
+        const chartMode = this.metricsSettingsService.metricChartMode(option.service, name);
         const display = buildSeriesDisplay(
           key,
           metricPoints,
@@ -405,7 +404,7 @@ export class MetricsDashboard implements OnInit, OnDestroy {
         const key = metricPointsIndexKey(COMPOSITE_SERVICE_KEY, definition.id);
         const aggregation = metricAggregation(definition.serviceA, definition.metricName);
         const integerValued = metricIntegerValued(definition.serviceA, definition.metricName);
-        const chartMode = metricChartMode(definition.serviceA, definition.metricName);
+        const chartMode = this.metricsSettingsService.metricChartMode(definition.serviceA, definition.metricName);
         const compositeWindow = buildServiceMetricWindow(
           metricPoints,
           fallbackWindow.endBucket,
@@ -739,6 +738,24 @@ export class MetricsDashboard implements OnInit, OnDestroy {
       ...current,
       [service]: { ...current[service], [name]: order },
     });
+  }
+
+  protected setMetricChartMode(service: string, name: string, mode: MetricChartMode): void {
+    const current = this.metricsSettingsService.metricChartModeOverrides$$();
+    const serviceOverrides = { ...current[service] };
+    if (mode === DEFAULT_METRIC_CHART_MODE) {
+      delete serviceOverrides[name];
+    } else {
+      serviceOverrides[name] = mode;
+    }
+
+    const next = { ...current };
+    if (Object.keys(serviceOverrides).length > 0) {
+      next[service] = serviceOverrides;
+    } else {
+      delete next[service];
+    }
+    this.metricsSettingsService.setMetricChartModeOverrides(next);
   }
 
   protected toggleCardEditMode(): void {

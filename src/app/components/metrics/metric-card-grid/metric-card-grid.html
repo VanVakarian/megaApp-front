@@ -28,5 +28,6 @@
                      [isSelectionDisabledInput]="isSelectionDisabledInput()"
                      (cardClickOutput)="onCardToggle(item.card.key)"
                      (dashboardEnabledChangeOutput)="onCardDashboardEnabledChange(item.card.technicalName, $event)"
-                     (dashboardOrderChangeOutput)="onCardDashboardOrderChange(item.card.technicalName, $event)" />
+                     (dashboardOrderChangeOutput)="onCardDashboardOrderChange(item.card.technicalName, $event)"
+                     (chartModeChangeOutput)="onCardChartModeChange(item.card.technicalName, $event)" />
 }

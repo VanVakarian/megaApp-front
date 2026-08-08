@@ -22,7 +22,7 @@ import {
   MetricTooltipInteractionMode,
 } from '@app/shared/chart-config';
 import { formatMetricUnitValue, MetricUnit } from '@app/shared/metric-units';
-import { MetricChartMode } from '@app/shared/metrics-chart-mode';
+import { DEFAULT_METRIC_CHART_MODE, MetricChartMode } from '@app/shared/metrics-chart-mode';
 import {
   buildPaddedTickBuckets,
   buildRoundDayTickBuckets,
@@ -37,8 +37,10 @@ import {
   metricSyncCrosshairPlugin,
 } from '@app/shared/metrics-sync-crosshair';
 import { MetricGranularity } from '@app/shared/types';
+import { VButton } from '@ui-kit/components/v-button/v-button';
 import { VCard } from '@ui-kit/components/v-card/v-card';
 import { VCheckbox } from '@ui-kit/components/v-checkbox/v-checkbox';
+import { IconName, VIcon } from '@ui-kit/components/v-icon/v-icon';
 import { VInput } from '@ui-kit/components/v-input/v-input';
 import { VTooltip } from '@ui-kit/components/v-tooltip/v-tooltip';
 import {
@@ -97,7 +99,7 @@ const HOVER_NO_VALUE_PLACEHOLDER = '—';
 @Component({
   selector: 'metric-chart-card',
   templateUrl: './metric-chart-card.html',
-  imports: [VCard, VCheckbox, VInput, VTooltip],
+  imports: [VButton, VCard, VCheckbox, VIcon, VInput, VTooltip],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class MetricChartCard implements OnInit, OnDestroy {
@@ -130,6 +132,9 @@ export class MetricChartCard implements OnInit, OnDestroy {
   public readonly cardClickOutput = output<void>();
   public readonly dashboardEnabledChangeOutput = output<boolean>();
   public readonly dashboardOrderChangeOutput = output<number>();
+  public readonly chartModeChangeOutput = output<MetricChartMode>();
+
+  protected readonly Icon = IconName;
 
   // Widest formatted value across the currently visible window (whatever unit —
   // money, count, ratio, durations all vary wildly in digit count). Padding every
@@ -218,6 +223,11 @@ export class MetricChartCard implements OnInit, OnDestroy {
     const order = Number(rawValue);
     if (!Number.isFinite(order)) return;
     this.dashboardOrderChangeOutput.emit(order);
+  }
+
+  protected toggleChartMode(): void {
+    const next = this.chartModeInput() === 'bar' ? DEFAULT_METRIC_CHART_MODE : 'bar';
+    this.chartModeChangeOutput.emit(next);
   }
 
   private readonly chartCanvasElem = viewChild<ElementRef<HTMLCanvasElement>>('chartCanvas');

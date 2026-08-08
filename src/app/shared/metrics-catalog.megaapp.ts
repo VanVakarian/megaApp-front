@@ -12,7 +12,6 @@ export const MEGAAPP_METRICS_DEFINITION: MetricsServiceDefinition = {
           color: '#16a34a',
           aggregation: 'sum',
           integerValued: true,
-          chartMode: 'bar',
           description:
             'Сколько новых записей о приёме еды было добавлено в дневник питания за эту минуту. Каждая такая запись — это одно сохранённое блюдо или продукт за конкретный день.',
         }),
@@ -21,7 +20,6 @@ export const MEGAAPP_METRICS_DEFINITION: MetricsServiceDefinition = {
           color: '#16a34a',
           aggregation: 'sum',
           integerValued: true,
-          chartMode: 'bar',
           description:
             'Сколько уже существующих записей о приёме еды было изменено за эту минуту — например, поменяли вес продукта или сам продукт в уже сохранённой записи.',
         }),
@@ -30,7 +28,6 @@ export const MEGAAPP_METRICS_DEFINITION: MetricsServiceDefinition = {
           color: '#16a34a',
           aggregation: 'sum',
           integerValued: true,
-          chartMode: 'bar',
           description: 'Сколько записей о приёме еды было удалено из дневника питания за эту минуту.',
         }),
         metric('food_diary_day_deleted', {
@@ -38,7 +35,6 @@ export const MEGAAPP_METRICS_DEFINITION: MetricsServiceDefinition = {
           color: '#16a34a',
           aggregation: 'sum',
           integerValued: true,
-          chartMode: 'bar',
           description:
             'Сколько раз за эту минуту был полностью удалён целый день дневника питания — все записи о еде за конкретную дату сразу.',
         }),
@@ -47,7 +43,6 @@ export const MEGAAPP_METRICS_DEFINITION: MetricsServiceDefinition = {
           color: '#16a34a',
           aggregation: 'sum',
           integerValued: true,
-          chartMode: 'bar',
           description:
             'Сколько раз за эту минуту был восстановлен ранее удалённый день дневника питания (отмена удаления всего дня).',
         }),
@@ -56,7 +51,6 @@ export const MEGAAPP_METRICS_DEFINITION: MetricsServiceDefinition = {
           color: '#16a34a',
           aggregation: 'sum',
           integerValued: true,
-          chartMode: 'bar',
           description: 'Сколько раз за эту минуту было сохранено новое значение веса тела пользователя.',
         }),
         metric('food_catalogue_entry_created', {
@@ -64,7 +58,6 @@ export const MEGAAPP_METRICS_DEFINITION: MetricsServiceDefinition = {
           color: '#0891b2',
           aggregation: 'sum',
           integerValued: true,
-          chartMode: 'bar',
           description: 'Сколько новых продуктов было добавлено в каталог продуктов за эту минуту.',
         }),
         metric('food_catalogue_entry_updated', {
@@ -72,7 +65,6 @@ export const MEGAAPP_METRICS_DEFINITION: MetricsServiceDefinition = {
           color: '#0891b2',
           aggregation: 'sum',
           integerValued: true,
-          chartMode: 'bar',
           description:
             'Сколько существующих продуктов в каталоге было изменено за эту минуту — например, обновили калорийность или состав КБЖУ.',
         }),
@@ -81,7 +73,6 @@ export const MEGAAPP_METRICS_DEFINITION: MetricsServiceDefinition = {
           color: '#0891b2',
           aggregation: 'sum',
           integerValued: true,
-          chartMode: 'bar',
           description: 'Сколько продуктов было удалено из каталога продуктов за эту минуту.',
         }),
         metric('food_personal_kcal_job_ran', {
@@ -89,7 +80,6 @@ export const MEGAAPP_METRICS_DEFINITION: MetricsServiceDefinition = {
           color: '#64748b',
           aggregation: 'sum',
           integerValued: true,
-          chartMode: 'bar',
           description:
             'Показывает, что в эту минуту отработала фоновая ежемесячная задача пересчёта личной калорийности продуктов и нормы для пользователей — она запускается по расписанию один раз в месяц, 1-го числа. Значение 1 означает, что задача запустилась; в остальные минуты месяца эта метрика просто не приходит, и это нормально.',
         }),
@@ -98,7 +88,6 @@ export const MEGAAPP_METRICS_DEFINITION: MetricsServiceDefinition = {
           color: '#64748b',
           aggregation: 'sum',
           integerValued: true,
-          chartMode: 'bar',
           description:
             'Показывает, что в эту минуту отработала фоновая ежедневная задача резервного копирования базы данных — она запускается по расписанию один раз в сутки. Значение 1 означает, что задача запустилась; в остальное время суток эта метрика не приходит, и это нормально.',
         }),

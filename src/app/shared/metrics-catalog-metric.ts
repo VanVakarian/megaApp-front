@@ -1,6 +1,5 @@
 import { MetricUnit } from '@app/shared/metric-units';
 import { MetricAggregation } from '@app/shared/metrics-aggregation';
-import { MetricChartMode } from '@app/shared/metrics-chart-mode';
 
 export interface MetricConfig {
   name: string;
@@ -16,7 +15,6 @@ export interface MetricConfig {
   integerValued: boolean;
   unit: MetricUnit;
   color: string;
-  chartMode: MetricChartMode;
   // Метрика когда-то собиралась под этим именем, бэк её больше не шлёт. Запись
   // остаётся в каталоге (не удаляется), чтобы её label/description продолжали
   // резолвиться для любых точек, оставшихся в ретеншене, и рендерится в
@@ -47,7 +45,6 @@ interface MetricOptions {
   integerValued?: boolean;
   unit?: MetricUnit;
   color?: string;
-  chartMode?: MetricChartMode;
   removed?: boolean;
   removedNote?: string;
 }
@@ -74,7 +71,6 @@ export function metric(name: string, options: MetricOptions): MetricConfig {
     integerValued: options.integerValued ?? false,
     unit: options.unit ?? inferUnitFromSuffix(name),
     color: options.color ?? DEFAULT_METRIC_COLOR,
-    chartMode: options.chartMode ?? 'sparse-line',
     removed: options.removed ?? false,
     removedNote: options.removedNote,
   };

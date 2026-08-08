@@ -73,7 +73,6 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
           color: '#dc2626',
           aggregation: 'sum',
           integerValued: true,
-          chartMode: 'bar',
           description:
             'Сколько раз за этот цикл попытка отправить, переставить или отменить ордер на бирже закончилась ошибкой (биржа отказала). Ноль — это хорошо, значит все попытки прошли успешно. Если число равно количеству всех попыток за цикл — значит вообще ничего не получилось отправить, и стоит посмотреть логи бота.',
         }),
@@ -89,7 +88,6 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
           color: '#dc2626',
           aggregation: 'sum',
           integerValued: true,
-          chartMode: 'bar',
           description:
             'Сколько раз за эту минуту весь торговый цикл бота полностью не смог начаться — потому что не получилось загрузить базовые данные со счёта (открытые ордера, позиции) или книги заявок. Если это не ноль, в соответствующем цикле бот вообще не принимал никаких торговых решений — не «решил ничего не делать», а технически не смог даже попытаться. Разбивка по тому, на каком шаге сорвался цикл — в reconcile_failures_fetch_account и reconcile_failures_fetch_books. Этим отличается от cycle_errors, где попытки были, но часть из них не получилась.',
         }),
@@ -98,7 +96,6 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
           color: '#dc2626',
           aggregation: 'sum',
           integerValued: true,
-          chartMode: 'bar',
           description:
             'Из reconcile_failures — сколько раз цикл сорвался именно на шаге получения базового состояния счёта (открытые ордера, позиции, баланс) с биржи.',
         }),
@@ -107,7 +104,6 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
           color: '#dc2626',
           aggregation: 'sum',
           integerValued: true,
-          chartMode: 'bar',
           description:
             'Из reconcile_failures — сколько раз цикл сорвался именно на шаге загрузки стаканов по рабочему списку.',
         }),
@@ -230,7 +226,6 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
           color: '#dc2626',
           aggregation: 'sum',
           integerValued: true,
-          chartMode: 'bar',
           description:
             'Сколько discovery-циклов подряд завершились ошибкой (Gamma недоступна или не отдала цены). При ошибке V4 сохраняет последний успешный снепшот каталога и продолжает торговать по нему как есть — ноль здесь означает, что discovery работает исправно.',
         }),
@@ -415,7 +410,6 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
           color: '#dc2626',
           aggregation: 'sum',
           integerValued: true,
-          chartMode: 'bar',
           description:
             'Сколько попыток отменить обнаруженный дублирующий ордер закончились ошибкой биржи. Если не ноль — на рынке может временно остаться лишняя открытая заявка до следующей попытки в одном из следующих циклов.',
         }),

@@ -453,7 +453,8 @@
                                 [isEditModeInput]="isCardEditMode$$()"
                                 [isSelectionDisabledInput]="isSavingSettings$$()"
                                 (cardDashboardEnabledChangeOutput)="toggleDashboardMetric(row.id, $event.technicalName, $event.enabled)"
-                                (cardDashboardOrderChangeOutput)="setDashboardMetricOrder(row.id, $event.technicalName, $event.order)" />
+                                (cardDashboardOrderChangeOutput)="setDashboardMetricOrder(row.id, $event.technicalName, $event.order)"
+                                (cardChartModeChangeOutput)="setMetricChartMode(row.id, $event.technicalName, $event.chartMode)" />
             </div>
           </div>
         </v-card>
@@ -484,7 +485,8 @@
                                 [isEditModeInput]="isCardEditMode$$()"
                                 [isSelectionDisabledInput]="isSavingSettings$$()"
                                 (cardDashboardEnabledChangeOutput)="toggleDashboardMetric(service.service, $event.technicalName, $event.enabled)"
-                                (cardDashboardOrderChangeOutput)="setDashboardMetricOrder(service.service, $event.technicalName, $event.order)" />
+                                (cardDashboardOrderChangeOutput)="setDashboardMetricOrder(service.service, $event.technicalName, $event.order)"
+                                (cardChartModeChangeOutput)="setMetricChartMode(service.service, $event.technicalName, $event.chartMode)" />
             </div>
           </v-card>
         } @empty {

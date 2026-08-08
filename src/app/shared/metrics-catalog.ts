@@ -6,7 +6,6 @@ import { MEGAAPP_METRICS_DEFINITION } from '@app/shared/metrics-catalog.megaapp'
 import { SOZVON_KONSPEKT_METRICS_DEFINITION } from '@app/shared/metrics-catalog.sozvon-konspekt';
 import { SPREAD_CAPTURE_BOT_METRICS_DEFINITION } from '@app/shared/metrics-catalog.spread-capture-bot';
 import { SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION } from '@app/shared/metrics-catalog.spread-capture-bot-v4';
-import { MetricChartMode } from '@app/shared/metrics-chart-mode';
 
 export type { MetricsGroupDefinition, MetricsServiceDefinition } from '@app/shared/metrics-catalog-metric';
 
@@ -14,7 +13,6 @@ const UNCATALOGUED_DEFAULTS = {
   aggregation: 'avg' as MetricAggregation,
   integerValued: true,
   unit: 'count' as MetricUnit,
-  chartMode: 'sparse-line' as MetricChartMode,
   color: DEFAULT_METRIC_COLOR,
   description: 'Метрика ещё не описана в каталоге — показано значение по умолчанию.',
 };
@@ -118,8 +116,4 @@ export function metricUnit(service: string, name: string): MetricUnit {
 
 export function metricColor(service: string, name: string): string {
   return lookupMetric(service, name)?.color ?? UNCATALOGUED_DEFAULTS.color;
-}
-
-export function metricChartMode(service: string, name: string): MetricChartMode {
-  return lookupMetric(service, name)?.chartMode ?? UNCATALOGUED_DEFAULTS.chartMode;
 }
