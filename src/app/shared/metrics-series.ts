@@ -18,6 +18,7 @@ interface CollapsedBucketState {
 
 interface MinuteCollapseCacheEntry {
   aggregation: MetricAggregation;
+  integerValued: boolean;
   bucketSizeSeconds: number;
   rawPoints: MetricPoint[];
   bucketStates: Map<number, CollapsedBucketState>;
@@ -389,17 +390,23 @@ export class MinuteMetricCollapseCache {
     cacheKey: string,
     points: MetricPoint[],
     aggregation: MetricAggregation,
+    integerValued: boolean,
     bucketSizeSeconds: number,
   ): MetricPoint[] {
     const cached = this.cache.get(cacheKey);
-    if (!cached || cached.aggregation !== aggregation || cached.bucketSizeSeconds !== bucketSizeSeconds) {
-      const rebuilt = this.rebuild(points, aggregation, bucketSizeSeconds);
+    if (
+      !cached ||
+      cached.aggregation !== aggregation ||
+      cached.integerValued !== integerValued ||
+      cached.bucketSizeSeconds !== bucketSizeSeconds
+    ) {
+      const rebuilt = this.rebuild(points, aggregation, integerValued, bucketSizeSeconds);
       this.cache.set(cacheKey, rebuilt);
       return rebuilt.collapsedPoints;
     }
 
     if (!this.canIncrementallyUpdate(cached.rawPoints, points)) {
-      const rebuilt = this.rebuild(points, aggregation, bucketSizeSeconds);
+      const rebuilt = this.rebuild(points, aggregation, integerValued, bucketSizeSeconds);
       this.cache.set(cacheKey, rebuilt);
       return rebuilt.collapsedPoints;
     }
@@ -428,10 +435,12 @@ export class MinuteMetricCollapseCache {
   private rebuild(
     points: MetricPoint[],
     aggregation: MetricAggregation,
+    integerValued: boolean,
     bucketSizeSeconds: number,
   ): MinuteCollapseCacheEntry {
     const entry: MinuteCollapseCacheEntry = {
       aggregation,
+      integerValued,
       bucketSizeSeconds,
       rawPoints: points.slice(),
       bucketStates: new Map<number, CollapsedBucketState>(),
@@ -521,7 +530,7 @@ export class MinuteMetricCollapseCache {
         name: points[0].name,
         granularity: points[0].granularity,
         bucket,
-        value: aggregateMetricValues(entry.aggregation, state.values),
+        value: aggregateMetricValues(entry.aggregation, state.values, entry.integerValued),
       }));
   }
 }

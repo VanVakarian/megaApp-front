@@ -596,7 +596,9 @@ export class FoodDiaryService extends BaseFoodService {
       const foodEntries: DiaryEntryWithFullData[] = [];
 
       const targetKcals = day.nutrients?.targetKcals || 2000;
-      const consumedKcals = day.nutrients?.consumedKcals || 0;
+      // Diary entries are the source of truth for the daily calories. This keeps the
+      // summary synchronized with an entry updated by another device or reconciled by the server.
+      const consumedKcals = Object.values(day.food).reduce((total, entry) => total + entry.kcals, 0);
       const kcalsPercent = this.calculatePercentage(consumedKcals, targetKcals);
 
       for (const [id, entry] of Object.entries(day.food)) {

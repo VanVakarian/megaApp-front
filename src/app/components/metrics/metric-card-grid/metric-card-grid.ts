@@ -139,6 +139,12 @@ export class MetricCardGrid implements OnInit, OnDestroy {
 
   public ngOnInit(): void {
     this.gapPx$$.set(parseFloat(getComputedStyle(this.hostElement).columnGap) || 0);
+    // ResizeObserver's first callback is async (next frame at the earliest), so on a
+    // fresh mount containerWidthPx$$ would otherwise sit at its 0 default for that
+    // frame — fitColumnsToWidth(0, ...) returns 1, so the grid briefly renders as a
+    // single full-width column before snapping to the real column count. Reading the
+    // width synchronously here (forces a layout, but only once, on init) closes that gap.
+    this.containerWidthPx$$.set(this.hostElement.getBoundingClientRect().width);
     this.resizeObserver = new ResizeObserver(([entry]) => {
       this.containerWidthPx$$.set(entry.contentRect.width);
     });

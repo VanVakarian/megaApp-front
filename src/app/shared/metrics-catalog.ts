@@ -11,7 +11,8 @@ import { MetricChartMode } from '@app/shared/metrics-chart-mode';
 export type { MetricsGroupDefinition, MetricsServiceDefinition } from '@app/shared/metrics-catalog-metric';
 
 const UNCATALOGUED_DEFAULTS = {
-  aggregation: 'avgRound' as MetricAggregation,
+  aggregation: 'avg' as MetricAggregation,
+  integerValued: true,
   unit: 'count' as MetricUnit,
   chartMode: 'sparse-line' as MetricChartMode,
   color: DEFAULT_METRIC_COLOR,
@@ -96,11 +97,19 @@ export function metricLabel(service: string, name: string): string {
 }
 
 export function metricDescription(service: string, name: string): string {
-  return lookupMetric(service, name)?.description ?? UNCATALOGUED_DEFAULTS.description;
+  const config = lookupMetric(service, name);
+  if (!config) return UNCATALOGUED_DEFAULTS.description;
+  if (!config.removed) return config.description;
+  const note = config.removedNote ?? 'замены нет';
+  return `${config.description}\n\nМетрика удалена, больше не собирается. ${note}.`;
 }
 
 export function metricAggregation(service: string, name: string): MetricAggregation {
   return lookupMetric(service, name)?.aggregation ?? UNCATALOGUED_DEFAULTS.aggregation;
+}
+
+export function metricIntegerValued(service: string, name: string): boolean {
+  return lookupMetric(service, name)?.integerValued ?? UNCATALOGUED_DEFAULTS.integerValued;
 }
 
 export function metricUnit(service: string, name: string): MetricUnit {

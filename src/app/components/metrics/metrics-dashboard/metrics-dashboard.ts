@@ -13,6 +13,7 @@ import {
   metricChartMode,
   metricColor,
   metricDescription,
+  metricIntegerValued,
   metricLabel,
   metricsCatalogKnownNames,
   metricsServiceDefinition,
@@ -57,6 +58,17 @@ const DASHBOARD_PANEL_KEY = '__dashboard__';
 const DEFAULT_COMPOSITE_LABEL = 'Составные метрики';
 const GRANULARITY_OPTIONS: MetricGranularity[] = ['minute', 'hour', 'day'];
 const COLLAPSED_MINUTE_STEP_SECONDS = 5 * 60;
+
+// The 5-minute view exists only to declutter a compact card, not to change what a
+// metric means (that's still decided by its own `aggregation` for hour/day rollup
+// and the full-width raw view) — so every metric collapses by averaging, which is
+// gap-robust (a bucket with fewer raw points still yields a representative value,
+// no separate handling needed for a still-filling or gap-shortened bucket) and
+// smooths one-off spikes instead of amplifying them. The one exception is `max`
+// metrics (e.g. CPU peak) — averaging would hide the peak the metric exists to show.
+function collapsedDisplayAggregation(aggregation: MetricAggregation): MetricAggregation {
+  return aggregation === 'max' ? 'max' : 'avg';
+}
 
 interface MetricGroupData {
   id: string;
@@ -201,10 +213,6 @@ export class MetricsDashboard implements OnInit, OnDestroy {
     // 5-minute collapsing only makes sense for the raw minute-granularity feed —
     // hour/day granularity is already bucketed, nothing to collapse further.
     const isMinuteGranularity = granularity === 'minute';
-    // The current 5-minute bucket keeps growing as new minute points arrive, so a
-    // sum metric looks like it dips right before it — only fully elapsed buckets
-    // are safe to compare against each other.
-    const lastClosedCollapsedBucket = previousCompletedBucket(this.now$$(), COLLAPSED_MINUTE_STEP_SECONDS);
     const anomalyFilterEnabled = this.anomalyFilterEnabled$$();
     const anomalyFilterParams = this.anomalyFilterParams$$();
     const dashboardSelection = this.dashboardSelection$$();
@@ -231,6 +239,7 @@ export class MetricsDashboard implements OnInit, OnDestroy {
       key: string,
       metricPoints: MetricPoint[],
       aggregation: MetricAggregation,
+      integerValued: boolean,
       chartMode: MetricChartMode,
       useCollapsed: boolean,
       window: MetricWindow,
@@ -239,11 +248,15 @@ export class MetricsDashboard implements OnInit, OnDestroy {
       const displayStepSeconds = useCollapsed ? COLLAPSED_MINUTE_STEP_SECONDS : stepSeconds;
       const displayPoints = useCollapsed
         ? filterMetricPointsByWindow(
-            this.minuteMetricCollapseCache.collapse(key, metricPoints, aggregation, COLLAPSED_MINUTE_STEP_SECONDS),
+            this.minuteMetricCollapseCache.collapse(
+              key,
+              metricPoints,
+              collapsedDisplayAggregation(aggregation),
+              integerValued,
+              COLLAPSED_MINUTE_STEP_SECONDS,
+            ),
             displayWindow.startBucket,
-            aggregation === 'sum'
-              ? Math.min(displayWindow.endBucket, lastClosedCollapsedBucket)
-              : displayWindow.endBucket,
+            displayWindow.endBucket,
           )
         : metricPoints;
       const series =
@@ -275,17 +288,19 @@ export class MetricsDashboard implements OnInit, OnDestroy {
         const key = metricPointsIndexKey(option.service, name);
         const metricPoints = applyAnomalyFilter(pointsIndex.get(key) ?? []);
         const aggregation = metricAggregation(option.service, name);
+        const integerValued = metricIntegerValued(option.service, name);
         const chartMode = metricChartMode(option.service, name);
         const display = buildSeriesDisplay(
           key,
           metricPoints,
           aggregation,
+          integerValued,
           chartMode,
           isMinuteGranularity,
           serviceWindow,
         );
         const fullWidthDisplay = isMinuteGranularity
-          ? buildSeriesDisplay(key, metricPoints, aggregation, chartMode, false, serviceWindow)
+          ? buildSeriesDisplay(key, metricPoints, aggregation, integerValued, chartMode, false, serviceWindow)
           : display;
         const rawValue = metricPoints[metricPoints.length - 1]?.value ?? 0;
         const color = metricColor(option.service, name);
@@ -309,11 +324,16 @@ export class MetricsDashboard implements OnInit, OnDestroy {
         };
       };
 
-      const groups = (definition?.groups ?? []).map((group) => ({
-        id: group.id,
-        label: group.label,
-        cards: group.metrics.map((config) => buildCard(config.name)),
-      }));
+      // filter(cards.length > 0) на конце: если группа каталога целиком состоит из
+      // removed-метрик (как синтетическая группа "Removed" в самом каталоге), после
+      // вычитки removed-карточек в неё нечего класть — не рисуем пустую полосу.
+      const groups = (definition?.groups ?? [])
+        .map((group) => ({
+          id: group.id,
+          label: group.label,
+          cards: group.metrics.filter((config) => !config.removed).map((config) => buildCard(config.name)),
+        }))
+        .filter((group) => group.cards.length > 0);
 
       // Метрики, реально приходящие с бэка для этого сервиса, но ещё не описанные
       // ни в одной группе каталога — отдельный явно подписанный блок вместо того,
@@ -328,6 +348,20 @@ export class MetricsDashboard implements OnInit, OnDestroy {
           id: 'uncatalogued',
           label: 'Не в каталоге',
           cards: discoveredNames.map(buildCard),
+        });
+      }
+
+      // Метрики, явно помеченные в каталоге как removed (бэк их когда-то слал под
+      // этим именем, но перестал) — не путать с discoveredNames выше: там имя
+      // неизвестно каталогу вообще, здесь оно известно, просто отправлено в архив.
+      const removedNames = (definition?.groups ?? []).flatMap((group) =>
+        group.metrics.filter((config) => config.removed).map((config) => config.name),
+      );
+      if (removedNames.length > 0) {
+        groups.push({
+          id: 'removed',
+          label: 'Removed',
+          cards: removedNames.map(buildCard),
         });
       }
 
@@ -370,6 +404,7 @@ export class MetricsDashboard implements OnInit, OnDestroy {
 
         const key = metricPointsIndexKey(COMPOSITE_SERVICE_KEY, definition.id);
         const aggregation = metricAggregation(definition.serviceA, definition.metricName);
+        const integerValued = metricIntegerValued(definition.serviceA, definition.metricName);
         const chartMode = metricChartMode(definition.serviceA, definition.metricName);
         const compositeWindow = buildServiceMetricWindow(
           metricPoints,
@@ -388,12 +423,13 @@ export class MetricsDashboard implements OnInit, OnDestroy {
           key,
           windowedMetricPoints,
           aggregation,
+          integerValued,
           chartMode,
           isMinuteGranularity,
           compositeWindow,
         );
         const fullWidthDisplay = isMinuteGranularity
-          ? buildSeriesDisplay(key, windowedMetricPoints, aggregation, chartMode, false, compositeWindow)
+          ? buildSeriesDisplay(key, windowedMetricPoints, aggregation, integerValued, chartMode, false, compositeWindow)
           : display;
         const rawValue = windowedMetricPoints[windowedMetricPoints.length - 1]?.value ?? 0;
         const unit = metricUnit(definition.serviceA, definition.metricName);

@@ -139,6 +139,7 @@ export const HARDWARE_METRICS_DEFINITION: MetricsServiceDefinition = {
           color: '#64748b',
           unit: 'humanDuration',
           aggregation: 'last',
+          integerValued: true,
           description:
             'Сколько секунд сервер не перезагружался. Сброс вниз почти всегда означает reboot, redeploy VM или аварийный restart узла.',
         }),

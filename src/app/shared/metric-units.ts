@@ -32,8 +32,8 @@ function formatHumanDurationValue(valueSeconds: number): string {
 }
 
 function formatCountValue(value: number): string {
-  if (Math.abs(value) >= 1000 || Number.isInteger(value)) return value.toString();
-  return value.toFixed(2);
+  if (Number.isInteger(value)) return value.toString();
+  return (Math.round(value * 10) / 10).toFixed(1);
 }
 
 export function formatMetricUnitValue(unit: MetricUnit, value: number): string {

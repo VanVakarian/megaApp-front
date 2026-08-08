@@ -11,6 +11,7 @@ export const SOZVON_KONSPEKT_METRICS_DEFINITION: MetricsServiceDefinition = {
           label: 'Successful Recognitions',
           color: '#16a34a',
           aggregation: 'sum',
+          integerValued: true,
           chartMode: 'bar',
           description:
             'Сколько голосовых записей за эту минуту были успешно скачаны, распознаны через OpenRouter и сохранены обратно на Яндекс.Диск в виде текстового файла. Ноль — нормально, если в эту минуту просто не было новых записей для обработки.',
@@ -19,6 +20,7 @@ export const SOZVON_KONSPEKT_METRICS_DEFINITION: MetricsServiceDefinition = {
           label: 'Failed Recognitions',
           color: '#dc2626',
           aggregation: 'sum',
+          integerValued: true,
           chartMode: 'bar',
           description:
             'Сколько попыток распознать запись за эту минуту закончились ошибкой — на любом из шагов: скачивание с Диска, отправка в модель или загрузка готового текста обратно. Запись, упавшая с ошибкой, останется без .txt-файла и будет подхвачена повторно на следующем цикле поллинга.',
@@ -62,6 +64,7 @@ export const SOZVON_KONSPEKT_METRICS_DEFINITION: MetricsServiceDefinition = {
           label: 'Application Errors',
           color: '#ea580c',
           aggregation: 'sum',
+          integerValued: true,
           chartMode: 'bar',
           description:
             'Сколько раз за эту минуту приложение столкнулось с любой ошибкой — неважно какой: не скачался файл с Диска, не сработал ffmpeg при сжатии, модель не ответила, не загрузился готовый текст обратно, или что-то ещё непредвиденное. Ошибки в этом приложении — редкость по своей природе, поэтому здесь специально не разбито по типам: любое отклонение от нормальной работы достаточно важно само по себе, чтобы тут появиться. Ноль — всё работает штатно.',
