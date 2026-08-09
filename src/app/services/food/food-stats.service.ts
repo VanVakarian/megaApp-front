@@ -7,6 +7,7 @@ import { firstValueFrom } from 'rxjs';
 import { dateToIsoNoTimeNoTZ, formatDateTicks } from '../../shared/utils';
 import { LocalStorageService } from '../local-storage.service';
 import { PerformanceMetricsService } from '../performance-metrics.service';
+import { FoodSettingsService } from './food-settings.service';
 
 interface AggregatedPeriodData {
   data: StatsChartData;
@@ -25,7 +26,8 @@ export class FoodStatsService {
     FoodStatsService.GRANULARITY_MONTH_SWITCH_YEARS * FoodStatsService.DAYS_IN_YEAR;
 
   private readonly STATS_STORAGE_KEY = 'food_stats';
-  private readonly SLIDER_KEY = 'food_stats_slider';
+
+  private readonly foodSettingsService = inject(FoodSettingsService);
 
   private readonly stats$$: WritableSignal<Stats> = signal({});
   private readonly topProductsByKcalSignal$$: WritableSignal<FoodStatsTopProduct[]> = signal([]);
@@ -114,7 +116,7 @@ export class FoodStatsService {
       this.applyResponse(serverResponse);
       this.saveStatsToLocalStorage();
 
-      this.applyDateRangeOnLoad(isLocalStatsEmpty);
+      void this.applyDateRangeOnLoad(isLocalStatsEmpty);
       void this.performanceMetrics.recordAfterPaint('food.stats_response_apply', startedAt, {
         cache: cachedResponse ? 'hit' : 'miss',
         days: Object.keys(serverResponse.days).length,
@@ -175,7 +177,11 @@ export class FoodStatsService {
     };
   }
 
-  private applyDateRangeOnLoad(useDefaultIfNoSaved: boolean): void {
+  // statsDateRange$$ is a separate namespace store with its own independent GET — awaiting
+  // ready() here means the restore always sees the real saved range regardless of which of the
+  // two requests (this one, or /api/food/stats above) happens to answer first.
+  private async applyDateRangeOnLoad(useDefaultIfNoSaved: boolean): Promise<void> {
+    await this.foodSettingsService.ready();
     setTimeout(() => {
       if (this.tryRestoreSavedDateRange()) return;
       if (!useDefaultIfNoSaved) return;
@@ -192,11 +198,11 @@ export class FoodStatsService {
     if (maxIdx < 0) return;
     const startVal = startIdx === 0 ? 'first' : (dates[startIdx] ?? 'first');
     const endVal = endIdx >= maxIdx ? 'last' : (dates[endIdx] ?? 'last');
-    this.localStorageService.setUserScoped(this.SLIDER_KEY, { start: startVal, end: endVal });
+    this.foodSettingsService.setStatsDateRange({ start: startVal, end: endVal });
   }
 
   private tryRestoreSavedDateRange(): boolean {
-    const saved = this.localStorageService.getUserScoped<{ start: string; end: string }>(this.SLIDER_KEY);
+    const saved = this.foodSettingsService.statsDateRange$$();
     if (!saved) return false;
     const dates = this.statsChartData$$().dates;
     const maxIdx = dates.length - 1;
@@ -542,7 +548,7 @@ export class FoodStatsService {
     const savedResponse = this.loadStatsFromLocalStorage();
     if (savedResponse && Object.keys(savedResponse.days).length > 0) {
       this.applyResponse(savedResponse);
-      this.applyDateRangeOnLoad(true);
+      void this.applyDateRangeOnLoad(true);
     }
   }
 

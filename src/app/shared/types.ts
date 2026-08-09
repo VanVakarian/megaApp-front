@@ -37,6 +37,7 @@ export const WebSocketMessageType = {
   METRICS_UNSUBSCRIBE: 'METRICS_UNSUBSCRIBE',
   PERFORMANCE_METRICS_BATCH: 'PERFORMANCE_METRICS_BATCH',
   PERFORMANCE_METRICS_ACK: 'PERFORMANCE_METRICS_ACK',
+  SETTINGS_UPDATED: 'SETTINGS_UPDATED',
 } as const;
 
 export type WebSocketMessageType = (typeof WebSocketMessageType)[keyof typeof WebSocketMessageType];
@@ -283,6 +284,17 @@ export interface PerformanceMetricsAckWsMessage {
   };
 }
 
+export interface SettingsUpdatedWsMessage {
+  type: typeof WebSocketMessageType.SETTINGS_UPDATED;
+  payload: {
+    namespace: string;
+    fields: Record<string, unknown>;
+    // Server write commit time (ms). Two quick PUTs from the same user race their own broadcast
+    // goroutines to the socket — this lets the recipient drop one that arrives out of order.
+    updatedAt: number;
+  };
+}
+
 export type IncomingWsMessage =
   | PingWsMessage
   | SyncStatusWsMessage
@@ -297,7 +309,8 @@ export type IncomingWsMessage =
   | PerformanceMetricsAckWsMessage
   | SearchResultsWsMessage
   | CatalogueEntrySavedWsMessage
-  | CatalogueImageGeneratedWsMessage;
+  | CatalogueImageGeneratedWsMessage
+  | SettingsUpdatedWsMessage;
 
 export type OutgoingWsMessage =
   | SearchQueryWsMessage
@@ -374,9 +387,6 @@ export interface ServerResponseProductSave extends ServerResponseBasic {
 export interface UserSettings {
   selectedChapterFood: boolean;
   selectedChapterMoney: boolean;
-  darkTheme: boolean;
-  liteVersion: boolean;
-  height: number | null;
   userName: string;
   isUserAdmin?: boolean; // TODO[068]: Think of a better way to work with admin privileges
 }
@@ -384,9 +394,6 @@ export interface UserSettings {
 export const KeyOfUserSettings = {
   selectedChapterFood: 'selectedChapterFood',
   selectedChapterMoney: 'selectedChapterMoney',
-  darkTheme: 'darkTheme',
-  liteVersion: 'liteVersion',
-  height: 'height',
   userName: 'userName',
   isUserAdmin: 'isUserAdmin',
 } as const;

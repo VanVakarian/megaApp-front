@@ -47,15 +47,17 @@ export const DEFAULT_REQUEST_STATUS_FADE_OUT_TIMER: number = 3000;
 export const DEFAULT_SETTINGS: UserSettings = {
   selectedChapterFood: false,
   selectedChapterMoney: false,
-  darkTheme: false,
-  liteVersion: false,
-  height: null,
   userName: '',
 };
 
 export const BACKGROUND_SYNC_RETRIES_MAX: number = 3;
 
 export const BACKGROUND_SYNC_TIMEOUT_MS: number = 8000;
+
+// How long an auto-save namespace store (NamespaceSettingsStore.set()) waits for a quiet period
+// before flushing its buffered field changes as a single PUT — collapses a burst of rapid changes
+// (e.g. dragging a range slider) into one request instead of one per intermediate value.
+export const SETTINGS_AUTO_SAVE_DEBOUNCE_MS: number = 500;
 
 // Registered cache entities and their current schema version. Bumping one key's version
 // invalidates only that key — unlike the old single global CACHE_SCHEMA_VERSION, which
@@ -66,19 +68,17 @@ export const BACKGROUND_SYNC_TIMEOUT_MS: number = 8000;
 // needed. `food_diary` (pre-IndexedDB-migration localStorage blob) is intentionally absent for
 // that reason — any leftover copy just gets purged.
 export const CACHE_KEY_VERSIONS: Readonly<Record<string, number>> = {
-  settings: 4,
+  settings_core: 1,
+  settings_food: 1,
+  settings_money: 1,
+  settings_metrics: 1,
   food_stats: 4,
-  food_stats_slider: 4,
   food_catalogue: 4,
   food_search_cache: 4,
   food_personal_kcals: 4,
   food_diary_deleted_day_snapshot: 4,
-  food_stats_accordion_open_blocks: 1,
-  food_stats_top_products_metric: 1,
-  money_settings: 4,
   money_snapshot: 4,
   metrics_detail: 4,
-  metrics_settings: 4,
   metrics_granularity: 4,
   metrics_active_card_layout_mode: 4,
   metrics_active_tooltip_mode: 4,
@@ -87,6 +87,7 @@ export const CACHE_KEY_VERSIONS: Readonly<Record<string, number>> = {
   performance_metrics_queue: 1,
   sync_pending_operation: 4,
   navbar_collapsed: 1,
+  dark_theme: 1,
 };
 
 // Owned here (not in idb-cache.ts) so IDB_STORE_SCHEMA_CHECKPOINTS below can key off the same

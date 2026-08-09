@@ -95,6 +95,15 @@ export async function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+export function isDeepEqual(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  if (typeof a !== 'object' || typeof b !== 'object' || a === null || b === null) return false;
+  const aEntries = Object.entries(a as Record<string, unknown>);
+  const bRecord = b as Record<string, unknown>;
+  if (aEntries.length !== Object.keys(bRecord).length) return false;
+  return aEntries.every(([key, value]) => isDeepEqual(value, bRecord[key]));
+}
+
 // Purely a safety bound against pathological inputs (e.g. an absurdly small target width on a very
 // wide container) — no realistic column-fit layout ever approaches this many columns.
 const FIT_COLUMNS_MAX_SEARCH = 64;

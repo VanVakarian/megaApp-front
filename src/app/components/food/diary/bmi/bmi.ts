@@ -1,6 +1,5 @@
 import { Component, computed, inject, OnInit, Signal } from '@angular/core';
 import { FoodDiaryService } from '@app/services/food/food-diary.service';
-import { SettingsService } from '@app/services/settings.service';
 import { IconName, VIcon } from '@ui-kit/components/v-icon/v-icon';
 
 interface BmiSegment {
@@ -53,7 +52,6 @@ export class BMI implements OnInit {
   );
 
   private readonly foodDiaryService = inject(FoodDiaryService);
-  private readonly settingsService = inject(SettingsService);
 
   public ngOnInit(): void {
     this.bmiSegmentsWidthFractions = this.calculateBmiSegmentsWidthFractions();
@@ -89,7 +87,7 @@ export class BMI implements OnInit {
   }
 
   private prepBmiSegmentsThresholdsInKgs(): number[] {
-    const height = this.settingsService.settings$$().height;
+    const height = this.foodDiaryService.height$$();
     if (!height) return [];
 
     const heightMeters = height / 100;

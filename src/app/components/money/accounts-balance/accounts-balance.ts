@@ -20,7 +20,7 @@ export class AccountsBalance {
 
   private readonly moneyService = inject(MoneyService);
 
-  protected readonly keepNativeCurrency$$ = computed(() => this.moneyService.keepTransactionCurrency$$());
+  protected readonly convertToUnifiedCurrency$$ = computed(() => this.moneyService.convertToUnifiedCurrency$$());
   private readonly displayCurrency$$ = computed(() => this.moneyService.displayCurrency$$());
   private readonly today = new Date().toISOString().substring(0, 10);
   private readonly latestRates$$ = computed(() => this.moneyService.getRatesForDate(this.today) ?? {});
@@ -84,7 +84,7 @@ export class AccountsBalance {
     const currency = this.currencies$$().find((c) => c.id === account.currencyId);
     if (!currency) return this.formatNumber(balance);
 
-    if (this.keepNativeCurrency$$() || currency.ticker === this.displayCurrency$$()) {
+    if (!this.convertToUnifiedCurrency$$() || currency.ticker === this.displayCurrency$$()) {
       const ws = currency.whitespace ? ' ' : '';
       const formatted = this.formatNumber(balance);
       if (currency.symbolPosEnum === SymbolPosition.BEFORE) return `${currency.symbol}${ws}${formatted}`;

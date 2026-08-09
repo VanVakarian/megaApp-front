@@ -38,6 +38,7 @@ import { SyncEngineService, SyncOperationMode, SyncOperationType } from '../sync
 import { BaseFoodService } from './food-base.service';
 import { FoodCatalogueService } from './food-catalogue.service';
 import { FoodPersonalKcalsService } from './food-personal-kcals.service';
+import { FoodSettingsService } from './food-settings.service';
 import { FoodStatsService } from './food-stats.service';
 
 const DEFAULT_NUTRIENTS = {
@@ -87,6 +88,8 @@ export class FoodDiaryService extends BaseFoodService {
   public readonly diaryEntryFocusId$$: WritableSignal<number | null> = signal(null);
   public readonly diaryEntryResetId$$: WritableSignal<number | null> = signal(null);
 
+  public readonly height$$: Signal<number | null> = computed(() => this.foodSettingsService.height$$());
+
   private readonly DIARY_STORAGE_KEY = 'food_diary';
   private readonly DELETED_DAY_SNAPSHOT_STORAGE_KEY = 'food_diary_deleted_day_snapshot';
 
@@ -128,6 +131,7 @@ export class FoodDiaryService extends BaseFoodService {
   private readonly catalogueService = inject(FoodCatalogueService);
   private readonly personalKcalsService = inject(FoodPersonalKcalsService);
   private readonly foodStatsService = inject(FoodStatsService);
+  private readonly foodSettingsService = inject(FoodSettingsService);
   private readonly authService = inject(AuthService);
   private readonly notificationService = inject(NotificationService);
   private readonly performanceMetrics = inject(PerformanceMetricsService);
@@ -168,6 +172,11 @@ export class FoodDiaryService extends BaseFoodService {
     this.pendingSegments = [];
     this.lastSyncTs = 0;
     this.pendingDiaryEntryIds.clear();
+    this.foodSettingsService.reset();
+  }
+
+  public setHeight(height: number | null): void {
+    this.foodSettingsService.setHeight(height);
   }
 
   // Used only for the unsaved/unconfirmed window where the server hasn't computed entry.kcals

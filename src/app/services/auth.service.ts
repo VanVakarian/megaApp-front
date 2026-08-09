@@ -4,7 +4,6 @@ import { Router } from '@angular/router';
 import { IndexedDbCacheService } from '@app/services/indexed-db-cache.service';
 import { NetworkService } from '@app/services/network.service';
 import { NotificationService } from '@app/services/notification.service';
-import { SettingsService } from '@app/services/settings.service';
 import { SyncEngineService } from '@app/services/sync-engine.service';
 import { clearAllUserScopedCaches, clearCacheUserId, setCacheUserId } from '@app/shared/cache';
 import { SESSION_BOOTSTRAP_TIMEOUT_MS } from '@app/shared/const';
@@ -39,7 +38,6 @@ export class AuthService {
   private readonly http = inject(HttpClient);
   private readonly router = inject(Router);
   private readonly syncEngine = inject(SyncEngineService);
-  private readonly settingsService = inject(SettingsService);
   private readonly notificationService = inject(NotificationService);
   private readonly indexedDbCache = inject(IndexedDbCacheService);
 
@@ -80,7 +78,6 @@ export class AuthService {
     this.clearRenewTimer();
     this.networkService.disconnect();
     this.syncEngine.reset();
-    this.settingsService.reset();
     this.notificationService.clearAll();
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');

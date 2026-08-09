@@ -19,7 +19,7 @@ export class ChartThemeService {
   private readonly settingsService = inject(SettingsService);
 
   public readonly colors$$ = computed<ChartColors>(() => {
-    const colors = this.settingsService.settings$$().darkTheme ? CHART_COLORS_DARK : CHART_COLORS_LIGHT;
+    const colors = this.settingsService.darkTheme$$() ? CHART_COLORS_DARK : CHART_COLORS_LIGHT;
     // Chart.js resolves grid/tick/legend colors from these defaults on every chart.update()
     // call unless a chart's own options override them. Setting them here, as part of computing
     // colors$$ rather than in a separate effect, guarantees they're current before any chart
@@ -30,8 +30,6 @@ export class ChartThemeService {
   });
 
   public readonly monthLabelsOptions$$ = computed<MonthLabelsPluginOptions>(() =>
-    this.settingsService.settings$$().darkTheme
-      ? FOOD_STATS_MONTH_LABELS_OPTIONS_DARK
-      : FOOD_STATS_MONTH_LABELS_OPTIONS_LIGHT,
+    this.settingsService.darkTheme$$() ? FOOD_STATS_MONTH_LABELS_OPTIONS_DARK : FOOD_STATS_MONTH_LABELS_OPTIONS_LIGHT,
   );
 }

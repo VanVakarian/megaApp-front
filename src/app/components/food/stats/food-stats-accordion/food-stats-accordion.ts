@@ -1,10 +1,10 @@
-import { ChangeDetectionStrategy, Component, inject, signal, WritableSignal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, Signal } from '@angular/core';
 import { FoodStatsBlock, getFoodStatsBlockOrder } from '@app/components/food/stats/food-stats-block';
 import { FoodStatsCharts } from '@app/components/food/stats/food-stats-charts/food-stats-charts';
 import { Milestones } from '@app/components/food/stats/milestones/milestones';
 import { Streak } from '@app/components/food/stats/streak/streak';
 import { TopProducts } from '@app/components/food/stats/top-products/top-products';
-import { LocalStorageService } from '@app/services/local-storage.service';
+import { FoodSettingsService } from '@app/services/food/food-settings.service';
 import { VButton } from '@ui-kit/components/v-button/v-button';
 import { IconName, VIcon } from '@ui-kit/components/v-icon/v-icon';
 
@@ -23,8 +23,6 @@ const BLOCK_ICONS: Record<FoodStatsBlock, IconName> = {
 // Accordion always renders as a single stacked column.
 const BLOCK_TOGGLES: BlockToggle[] = getFoodStatsBlockOrder().map((block) => ({ block, icon: BLOCK_ICONS[block] }));
 
-const OPEN_BLOCKS_STORAGE_KEY = 'food_stats_accordion_open_blocks';
-
 @Component({
   selector: 'food-stats-accordion',
   templateUrl: './food-stats-accordion.html',
@@ -32,29 +30,21 @@ const OPEN_BLOCKS_STORAGE_KEY = 'food_stats_accordion_open_blocks';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class FoodStatsAccordion {
+  private readonly foodSettingsService = inject(FoodSettingsService);
+
   protected readonly Block = FoodStatsBlock;
   protected readonly toggles: BlockToggle[] = BLOCK_TOGGLES;
 
-  private readonly localStorageService = inject(LocalStorageService);
-
-  private readonly openBlocks$$: WritableSignal<ReadonlySet<FoodStatsBlock>> = signal(this.loadOpenBlocks());
+  private readonly openBlocks$$: Signal<FoodStatsBlock[]> = this.foodSettingsService.statsAccordionOpenBlocks$$;
 
   protected isOpen(block: FoodStatsBlock): boolean {
-    return this.openBlocks$$().has(block);
+    return this.openBlocks$$().includes(block);
   }
 
   protected toggleBlock(block: FoodStatsBlock): void {
-    this.openBlocks$$.update((current) => {
-      const next = new Set(current);
-      if (next.has(block)) next.delete(block);
-      else next.add(block);
-      return next;
-    });
-    this.localStorageService.setUserScoped(OPEN_BLOCKS_STORAGE_KEY, [...this.openBlocks$$()]);
-  }
-
-  private loadOpenBlocks(): ReadonlySet<FoodStatsBlock> {
-    const stored = this.localStorageService.getUserScoped<FoodStatsBlock[]>(OPEN_BLOCKS_STORAGE_KEY);
-    return new Set(stored ?? getFoodStatsBlockOrder());
+    const current = this.openBlocks$$();
+    this.foodSettingsService.setStatsAccordionOpenBlocks(
+      current.includes(block) ? current.filter((openBlock) => openBlock !== block) : [...current, block],
+    );
   }
 }

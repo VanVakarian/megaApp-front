@@ -1,4 +1,4 @@
-import { inject, Injectable, WritableSignal } from '@angular/core';
+import { inject, Injectable, Signal } from '@angular/core';
 import { MetricsSettingsService } from '@app/services/metrics-settings.service';
 import { CompositeMetricDefinition } from '@app/shared/types';
 
@@ -10,8 +10,7 @@ import { CompositeMetricDefinition } from '@app/shared/types';
 export class CompositeMetricsSettingsService {
   private readonly metricsSettingsService = inject(MetricsSettingsService);
 
-  public readonly definitions$$: WritableSignal<CompositeMetricDefinition[]> =
-    this.metricsSettingsService.compositeMetrics$$;
+  public readonly definitions$$: Signal<CompositeMetricDefinition[]> = this.metricsSettingsService.compositeMetrics$$;
 
   public addDefinition(): void {
     this.persist([...this.definitions$$(), { id: crypto.randomUUID(), metricName: '', serviceA: '', serviceB: '' }]);

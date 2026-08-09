@@ -13,6 +13,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { ChartThemeService } from '@app/services/chart-theme.service';
+import { MoneyService } from '@app/services/money.service';
 import { PerformanceMetricsService } from '@app/services/performance-metrics.service';
 import {
   ChartColors,
@@ -51,10 +52,11 @@ export class IncomeChart implements AfterViewInit, OnDestroy {
 
   protected readonly chartCanvas = viewChild.required<ElementRef<HTMLCanvasElement>>('chartCanvas');
   protected readonly chart$$ = signal<Chart | null>(null);
-  protected readonly enabledCategoryIds$$ = signal<Set<number | null>>(new Set());
-  protected readonly yearlyMode$$ = signal(false);
+  protected readonly enabledCategoryIds$$ = computed(() => this.moneyService.incomeEnabledCategoryIds$$());
+  protected readonly yearlyMode$$ = computed(() => this.moneyService.incomeYearlyMode$$());
 
   private readonly chartThemeService = inject(ChartThemeService);
+  private readonly moneyService = inject(MoneyService);
   private readonly performanceMetrics = inject(PerformanceMetricsService);
   // Chart.js caches a scale's resolved grid/border/ticks color internally — mutating
   // chart.data and calling chart.update('none') doesn't reliably repaint it after a theme
@@ -83,7 +85,7 @@ export class IncomeChart implements AfterViewInit, OnDestroy {
       if (newIds.length > 0) {
         const updated = new Set(current);
         newIds.forEach((id) => updated.add(id));
-        this.enabledCategoryIds$$.set(updated);
+        this.moneyService.setIncomeEnabledCategoryIds(updated);
       }
     });
   });
@@ -211,15 +213,15 @@ export class IncomeChart implements AfterViewInit, OnDestroy {
   }
 
   protected onViewToggleChange(value: string[]): void {
-    this.yearlyMode$$.set(value[0] === 'yearly');
+    this.moneyService.setIncomeYearlyMode(value[0] === 'yearly');
   }
 
   protected toggleAll(): void {
     const series = this.dataInput().categorySeries;
     if (this.allEnabled$$()) {
-      this.enabledCategoryIds$$.set(new Set());
+      this.moneyService.setIncomeEnabledCategoryIds(new Set());
     } else {
-      this.enabledCategoryIds$$.set(new Set(series.map((s) => s.categoryId)));
+      this.moneyService.setIncomeEnabledCategoryIds(new Set(series.map((s) => s.categoryId)));
     }
   }
 
@@ -231,7 +233,7 @@ export class IncomeChart implements AfterViewInit, OnDestroy {
     } else {
       updated.delete(categoryId);
     }
-    this.enabledCategoryIds$$.set(updated);
+    this.moneyService.setIncomeEnabledCategoryIds(updated);
   }
 
   protected isCategoryEnabled(categoryId: number | null): boolean {

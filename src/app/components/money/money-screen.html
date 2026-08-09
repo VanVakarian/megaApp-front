@@ -93,10 +93,10 @@
               <div class="v-theme-transition self-stretch w-px border-l border-[var(--v-color-border-subtle)]"></div>
 
               <v-button surface="flat"
-                        [class.v-primary]="!keepNativeCurrency$$()"
+                        [class.v-primary]="convertToUnifiedCurrency$$()"
                         [isLabelHidden]="true"
                         [padding]="2"
-                        (onClick)="toggleKeepNativeCurrency()">
+                        (onClick)="toggleConvertToUnifiedCurrency()">
                 <v-icon v-prefix
                         [name]="Icon.CurrencyExchange"
                         [size]="4"></v-icon>

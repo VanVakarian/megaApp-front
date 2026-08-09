@@ -80,7 +80,7 @@ export class MoneyScreen implements OnInit {
     return currency?.symbol ?? '₽';
   });
 
-  protected readonly keepNativeCurrency$$ = computed(() => this.moneyService.keepTransactionCurrency$$());
+  protected readonly convertToUnifiedCurrency$$ = computed(() => this.moneyService.convertToUnifiedCurrency$$());
 
   protected readonly currencyToggleItems: VToggleItem[] = [
     { id: 'RUB', label: '₽' },
@@ -198,8 +198,8 @@ export class MoneyScreen implements OnInit {
     void this.performanceMetrics.recordAfterPaint('money.currency_change', startedAt, { from: previous, to: id });
   }
 
-  protected toggleKeepNativeCurrency(): void {
-    this.moneyService.setKeepTransactionCurrency(!this.keepNativeCurrency$$());
+  protected toggleConvertToUnifiedCurrency(): void {
+    this.moneyService.setConvertToUnifiedCurrency(!this.convertToUnifiedCurrency$$());
   }
 
   public ngOnInit(): void {

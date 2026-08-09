@@ -62,8 +62,8 @@ export class ExpenseChart implements AfterViewInit, OnDestroy {
   protected readonly chartCanvas = viewChild.required<ElementRef<HTMLCanvasElement>>('chartCanvas');
   protected readonly yMaxElem = viewChild.required<VInput>('yMaxElem');
   protected readonly chart$$ = signal<Chart | null>(null);
-  protected readonly enabledCategoryIds$$ = signal<Set<number | null>>(new Set());
-  protected readonly yearlyMode$$ = signal(false);
+  protected readonly enabledCategoryIds$$ = computed(() => this.moneyService.enabledCategoryIds$$());
+  protected readonly yearlyMode$$ = computed(() => this.moneyService.yearlyMode$$());
 
   private readonly moneyService = inject(MoneyService);
   private readonly chartThemeService = inject(ChartThemeService);
@@ -132,7 +132,7 @@ export class ExpenseChart implements AfterViewInit, OnDestroy {
       if (newIds.length > 0) {
         const updated = new Set(current);
         newIds.forEach((id) => updated.add(id));
-        this.enabledCategoryIds$$.set(updated);
+        this.moneyService.setEnabledCategoryIds(updated);
       }
     });
   });
@@ -262,7 +262,7 @@ export class ExpenseChart implements AfterViewInit, OnDestroy {
   }
 
   protected onViewToggleChange(value: string[]): void {
-    this.yearlyMode$$.set(value[0] === 'yearly');
+    this.moneyService.setYearlyMode(value[0] === 'yearly');
   }
 
   protected onYMaxChange(value: string): void {
@@ -278,9 +278,9 @@ export class ExpenseChart implements AfterViewInit, OnDestroy {
   protected toggleAll(): void {
     const series = this.allSeriesList$$();
     if (this.allEnabled$$()) {
-      this.enabledCategoryIds$$.set(new Set());
+      this.moneyService.setEnabledCategoryIds(new Set());
     } else {
-      this.enabledCategoryIds$$.set(new Set(series.map((s) => s.categoryId)));
+      this.moneyService.setEnabledCategoryIds(new Set(series.map((s) => s.categoryId)));
     }
   }
 
@@ -292,7 +292,7 @@ export class ExpenseChart implements AfterViewInit, OnDestroy {
     } else {
       updated.delete(categoryId);
     }
-    this.enabledCategoryIds$$.set(updated);
+    this.moneyService.setEnabledCategoryIds(updated);
   }
 
   protected isCategoryEnabled(categoryId: number | null): boolean {

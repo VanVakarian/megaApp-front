@@ -1,18 +1,10 @@
-import { ChangeDetectionStrategy, Component, computed, inject, Signal, signal, WritableSignal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, Signal } from '@angular/core';
 import { StatsHelpIcon } from '@app/components/food/stats/stats-help-icon/stats-help-icon';
 import { FoodStatsInsightsService, FoodStatsTopProductShare } from '@app/services/food/food-stats-insights.service';
-import { LocalStorageService } from '@app/services/local-storage.service';
+import { FoodSettingsService, TopProductsMetric } from '@app/services/food/food-settings.service';
 import { VCard } from '@ui-kit/components/v-card/v-card';
 import { VProgress } from '@ui-kit/components/v-progress/v-progress';
 import { VToggle, VToggleItem } from '@ui-kit/components/v-toggle/v-toggle';
-
-export const TopProductsMetric = {
-  Kcal: 'kcal',
-  Weight: 'weight',
-} as const;
-export type TopProductsMetric = (typeof TopProductsMetric)[keyof typeof TopProductsMetric];
-
-const METRIC_STORAGE_KEY = 'food_stats_top_products_metric';
 
 @Component({
   selector: 'food-stats-top-products',
@@ -22,14 +14,16 @@ const METRIC_STORAGE_KEY = 'food_stats_top_products_metric';
 })
 export class TopProducts {
   private readonly insightsService = inject(FoodStatsInsightsService);
-  private readonly localStorageService = inject(LocalStorageService);
+  private readonly foodSettingsService = inject(FoodSettingsService);
 
   protected readonly metricToggleItems: VToggleItem[] = [
     { id: TopProductsMetric.Kcal, label: 'По калориям' },
     { id: TopProductsMetric.Weight, label: 'По весу' },
   ];
 
-  protected readonly metric$$: WritableSignal<TopProductsMetric> = signal(this.loadMetric());
+  protected readonly metric$$: Signal<TopProductsMetric> = computed(() =>
+    this.foodSettingsService.statsTopProductsMetric$$(),
+  );
 
   protected readonly products$$: Signal<FoodStatsTopProductShare[]> = computed(() =>
     this.metric$$() === TopProductsMetric.Kcal
@@ -43,13 +37,7 @@ export class TopProducts {
 
   protected onMetricToggleChange(value: string[]): void {
     const metric = value[0] === TopProductsMetric.Weight ? TopProductsMetric.Weight : TopProductsMetric.Kcal;
-    this.metric$$.set(metric);
-    this.localStorageService.setUserScoped(METRIC_STORAGE_KEY, metric);
-  }
-
-  private loadMetric(): TopProductsMetric {
-    const stored = this.localStorageService.getUserScoped<TopProductsMetric>(METRIC_STORAGE_KEY);
-    return stored === TopProductsMetric.Weight ? TopProductsMetric.Weight : TopProductsMetric.Kcal;
+    this.foodSettingsService.setStatsTopProductsMetric(metric);
   }
 
   // Bar width is relative to the top product's value for the active metric (not an absolute % of

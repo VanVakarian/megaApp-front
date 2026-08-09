@@ -13,6 +13,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { ChartThemeService } from '@app/services/chart-theme.service';
+import { MoneyService, SuspensionFilter } from '@app/services/money.service';
 import { PerformanceMetricsService } from '@app/services/performance-metrics.service';
 import {
   BALANCE_ACCOUNT_PALETTE,
@@ -53,10 +54,11 @@ export class BalancesChart implements AfterViewInit, OnDestroy {
 
   protected readonly chartCanvas = viewChild.required<ElementRef<HTMLCanvasElement>>('chartCanvas');
   protected readonly chart$$ = signal<Chart | null>(null);
-  protected readonly showByAccount$$ = signal(false);
-  protected readonly suspensionFilter$$ = signal<'all' | 'exclude' | 'only'>('all');
-  protected readonly enabledAccountIds$$ = signal<Set<number>>(new Set());
+  protected readonly showByAccount$$ = computed(() => this.moneyService.showByAccount$$());
+  protected readonly suspensionFilter$$ = computed(() => this.moneyService.suspensionFilter$$());
+  protected readonly enabledAccountIds$$ = computed(() => this.moneyService.enabledAccountIds$$());
 
+  private readonly moneyService = inject(MoneyService);
   private readonly chartThemeService = inject(ChartThemeService);
   private readonly performanceMetrics = inject(PerformanceMetricsService);
 
@@ -166,7 +168,7 @@ export class BalancesChart implements AfterViewInit, OnDestroy {
       if (newIds.length > 0) {
         const updated = new Set(current);
         newIds.forEach((id) => updated.add(id));
-        this.enabledAccountIds$$.set(updated);
+        this.moneyService.setEnabledAccountIds(updated);
       }
     });
   });
@@ -246,7 +248,7 @@ export class BalancesChart implements AfterViewInit, OnDestroy {
   }
 
   protected onViewToggleChange(value: string[]): void {
-    this.showByAccount$$.set(value[0] === 'by-account');
+    this.moneyService.setShowByAccount(value[0] === 'by-account');
   }
 
   protected suspensionToggleValue(): string[] {
@@ -254,7 +256,7 @@ export class BalancesChart implements AfterViewInit, OnDestroy {
   }
 
   protected onSuspensionToggleChange(value: string[]): void {
-    this.suspensionFilter$$.set((value[0] ?? 'all') as 'all' | 'exclude' | 'only');
+    this.moneyService.setSuspensionFilter((value[0] ?? 'all') as SuspensionFilter);
   }
 
   protected isAccountEnabled(accountId: number): boolean {
@@ -272,9 +274,9 @@ export class BalancesChart implements AfterViewInit, OnDestroy {
   protected toggleAll(): void {
     const series = this.dataInput().accountSeries;
     if (this.allEnabled$$()) {
-      this.enabledAccountIds$$.set(new Set());
+      this.moneyService.setEnabledAccountIds(new Set());
     } else {
-      this.enabledAccountIds$$.set(new Set(series.map((s) => s.accountId)));
+      this.moneyService.setEnabledAccountIds(new Set(series.map((s) => s.accountId)));
     }
   }
 
@@ -286,7 +288,7 @@ export class BalancesChart implements AfterViewInit, OnDestroy {
     } else {
       updated.delete(accountId);
     }
-    this.enabledAccountIds$$.set(updated);
+    this.moneyService.setEnabledAccountIds(updated);
   }
 
   protected getAccountColor(accountId: number): string {

@@ -66,7 +66,7 @@ export class TransactionsList {
   private readonly assets$$ = computed(() => this.moneyService.assets$$());
   private readonly displayCurrency$$ = computed(() => this.moneyService.displayCurrency$$());
   protected readonly isRatesReady$$ = computed(() => this.moneyService.isChartDataReady$$());
-  protected readonly keepNativeCurrency$$ = this.moneyService.keepTransactionCurrency$$;
+  protected readonly convertToUnifiedCurrency$$ = this.moneyService.convertToUnifiedCurrency$$;
 
   protected readonly groupedTransactions$$ = computed(() =>
     this.performanceMetrics.measure(
@@ -287,7 +287,7 @@ export class TransactionsList {
 
     const displayTicker = this.displayCurrency$$();
 
-    if (this.keepNativeCurrency$$() || currency.ticker === displayTicker) {
+    if (!this.convertToUnifiedCurrency$$() || currency.ticker === displayTicker) {
       return this.formatWithCurrency(transaction.amount, currency, transaction.kind);
     }
 
@@ -299,15 +299,15 @@ export class TransactionsList {
     return this.formatWithCurrency(converted, displayCurrency, transaction.kind);
   }
 
-  protected toggleKeepNativeCurrency(): void {
-    this.moneyService.setKeepTransactionCurrency(!this.keepNativeCurrency$$());
+  protected toggleConvertToUnifiedCurrency(): void {
+    this.moneyService.setConvertToUnifiedCurrency(!this.convertToUnifiedCurrency$$());
   }
 
   protected formatTransferAmounts(transaction: Transaction): string {
     const twin = this.getTwinTransaction(transaction);
     if (!twin) return this.formatAmount(transaction);
 
-    if (this.keepNativeCurrency$$()) {
+    if (!this.convertToUnifiedCurrency$$()) {
       return `${this.formatPlainAmount(transaction.accountId, transaction.amount)} → ${this.formatPlainAmount(twin.accountId, twin.amount)}`;
     }
 

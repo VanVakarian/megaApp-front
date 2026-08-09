@@ -13,14 +13,10 @@ export class DarkSwitch {
   protected readonly settingsService = inject(SettingsService);
 
   protected readonly iconName$$ = computed(() => {
-    return this.settingsService.settings$$().darkTheme ? IconName.LightMode : IconName.DarkMode;
+    return this.settingsService.darkTheme$$() ? IconName.LightMode : IconName.DarkMode;
   });
 
-  protected async switchTheme(): Promise<void> {
-    const setting = { darkTheme: !this.settingsService.settings$$().darkTheme };
-    this.settingsService.applyThemeAnimated(setting.darkTheme);
-    const requestIsSuccess = await this.settingsService.saveSetting(setting);
-
-    if (!requestIsSuccess) this.settingsService.applyThemeAnimated(!setting.darkTheme);
+  protected switchTheme(): void {
+    this.settingsService.setDarkTheme(!this.settingsService.darkTheme$$());
   }
 }

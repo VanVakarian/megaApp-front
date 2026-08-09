@@ -3,6 +3,7 @@ import { computed, effect, inject, Injectable, Signal, signal, WritableSignal } 
 import { AuthService, AuthSessionState } from '@app/services/auth.service';
 import { LocalStorageService } from '@app/services/local-storage.service';
 import { PerformanceMetricsService } from '@app/services/performance-metrics.service';
+import { NamespaceSettingsStore } from '@app/services/settings/namespace-settings-store';
 import { Observable, of, Subject } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import {
@@ -18,6 +19,8 @@ import {
   TransactionKind,
 } from '../shared/types';
 import { SyncEngineService, SyncOperationMode, SyncOperationType } from './sync-engine.service';
+
+export type SuspensionFilter = 'all' | 'exclude' | 'only';
 
 interface BaseResponse {
   success: boolean;
@@ -59,10 +62,16 @@ interface MoneySettings {
   chartRangeStart: string | null;
   chartRangeEnd: string | null;
   expenseChartYMax: ExpenseChartYMaxSetting | null;
-  keepTransactionCurrency: boolean;
+  convertToUnifiedCurrency: boolean;
+  enabledCategoryIds: (number | null)[];
+  incomeEnabledCategoryIds: (number | null)[];
+  yearlyMode: boolean;
+  incomeYearlyMode: boolean;
+  showByAccount: boolean;
+  suspensionFilter: SuspensionFilter;
+  enabledAccountIds: number[];
 }
 
-const SETTINGS_KEY = 'money_settings';
 const SNAPSHOT_KEY = 'money_snapshot';
 
 function defaultSettings(): MoneySettings {
@@ -71,7 +80,14 @@ function defaultSettings(): MoneySettings {
     chartRangeStart: null,
     chartRangeEnd: null,
     expenseChartYMax: null,
-    keepTransactionCurrency: true,
+    convertToUnifiedCurrency: false,
+    enabledCategoryIds: [],
+    incomeEnabledCategoryIds: [],
+    yearlyMode: false,
+    incomeYearlyMode: false,
+    showByAccount: false,
+    suspensionFilter: 'all',
+    enabledAccountIds: [],
   };
 }
 
@@ -112,14 +128,35 @@ export class MoneyService {
       return { dateISO: item.dateISO, rates: accumulated };
     });
   });
-  public readonly displayCurrency$$: WritableSignal<string> = signal(this.readSettings().displayCurrency);
-  public readonly chartRangeStart$$: WritableSignal<string | null> = signal(this.readSettings().chartRangeStart);
-  public readonly chartRangeEnd$$: WritableSignal<string | null> = signal(this.readSettings().chartRangeEnd);
-  public readonly expenseChartYMax$$: WritableSignal<ExpenseChartYMaxSetting | null> = signal(
-    this.readSettings().expenseChartYMax,
+  private readonly settingsStore = new NamespaceSettingsStore<MoneySettings>('money', defaultSettings());
+
+  public readonly displayCurrency$$: Signal<string> = computed(() => this.settingsStore.value$$().displayCurrency);
+  public readonly chartRangeStart$$: Signal<string | null> = computed(
+    () => this.settingsStore.value$$().chartRangeStart,
   );
-  public readonly keepTransactionCurrency$$: WritableSignal<boolean> = signal(
-    this.readSettings().keepTransactionCurrency,
+  public readonly chartRangeEnd$$: Signal<string | null> = computed(() => this.settingsStore.value$$().chartRangeEnd);
+  public readonly expenseChartYMax$$: Signal<ExpenseChartYMaxSetting | null> = computed(
+    () => this.settingsStore.value$$().expenseChartYMax,
+  );
+  public readonly convertToUnifiedCurrency$$: Signal<boolean> = computed(
+    () => this.settingsStore.value$$().convertToUnifiedCurrency,
+  );
+  public readonly enabledCategoryIds$$: Signal<Set<number | null>> = computed(
+    () => new Set(this.settingsStore.value$$().enabledCategoryIds),
+  );
+  public readonly incomeEnabledCategoryIds$$: Signal<Set<number | null>> = computed(
+    () => new Set(this.settingsStore.value$$().incomeEnabledCategoryIds),
+  );
+  public readonly yearlyMode$$: Signal<boolean> = computed(() => this.settingsStore.value$$().yearlyMode);
+  public readonly incomeYearlyMode$$: Signal<boolean> = computed(
+    () => this.settingsStore.value$$().incomeYearlyMode,
+  );
+  public readonly showByAccount$$: Signal<boolean> = computed(() => this.settingsStore.value$$().showByAccount);
+  public readonly suspensionFilter$$: Signal<SuspensionFilter> = computed(
+    () => this.settingsStore.value$$().suspensionFilter,
+  );
+  public readonly enabledAccountIds$$: Signal<Set<number>> = computed(
+    () => new Set(this.settingsStore.value$$().enabledAccountIds),
   );
 
   // Transaction ids with an edit/delete sitting in the sync queue, not yet confirmed or rolled
@@ -142,34 +179,48 @@ export class MoneyService {
   });
 
   public setChartRange(start: string | null, end: string | null): void {
-    this.chartRangeStart$$.set(start);
-    this.chartRangeEnd$$.set(end);
-    this.saveSettings({ chartRangeStart: start, chartRangeEnd: end });
+    this.settingsStore.set('chartRangeStart', start);
+    this.settingsStore.set('chartRangeEnd', end);
   }
 
   public setDisplayCurrency(id: string): void {
-    this.displayCurrency$$.set(id);
-    this.saveSettings({ displayCurrency: id });
+    this.settingsStore.set('displayCurrency', id);
   }
 
   public setExpenseChartYMax(setting: ExpenseChartYMaxSetting | null): void {
-    this.expenseChartYMax$$.set(setting);
-    this.saveSettings({ expenseChartYMax: setting });
+    this.settingsStore.set('expenseChartYMax', setting);
   }
 
-  public setKeepTransactionCurrency(value: boolean): void {
-    this.keepTransactionCurrency$$.set(value);
-    this.saveSettings({ keepTransactionCurrency: value });
+  public setConvertToUnifiedCurrency(value: boolean): void {
+    this.settingsStore.set('convertToUnifiedCurrency', value);
   }
 
-  private readSettings(): MoneySettings {
-    const stored = this.localStorageService.getUserScoped<Partial<MoneySettings>>(SETTINGS_KEY);
-    return stored ? { ...defaultSettings(), ...stored } : defaultSettings();
+  public setEnabledCategoryIds(ids: ReadonlySet<number | null>): void {
+    this.settingsStore.set('enabledCategoryIds', [...ids]);
   }
 
-  private saveSettings(patch: Partial<MoneySettings>): void {
-    const current = this.readSettings();
-    this.localStorageService.setUserScoped(SETTINGS_KEY, { ...current, ...patch });
+  public setIncomeEnabledCategoryIds(ids: ReadonlySet<number | null>): void {
+    this.settingsStore.set('incomeEnabledCategoryIds', [...ids]);
+  }
+
+  public setYearlyMode(value: boolean): void {
+    this.settingsStore.set('yearlyMode', value);
+  }
+
+  public setIncomeYearlyMode(value: boolean): void {
+    this.settingsStore.set('incomeYearlyMode', value);
+  }
+
+  public setShowByAccount(value: boolean): void {
+    this.settingsStore.set('showByAccount', value);
+  }
+
+  public setSuspensionFilter(value: SuspensionFilter): void {
+    this.settingsStore.set('suspensionFilter', value);
+  }
+
+  public setEnabledAccountIds(ids: ReadonlySet<number>): void {
+    this.settingsStore.set('enabledAccountIds', [...ids]);
   }
 
   constructor(
@@ -194,13 +245,7 @@ export class MoneyService {
     this.rateHistory$$.set([]);
     this.isDataReady$$.set(false);
     this.pendingTransactionIds.clear();
-
-    const defaults = defaultSettings();
-    this.displayCurrency$$.set(defaults.displayCurrency);
-    this.chartRangeStart$$.set(defaults.chartRangeStart);
-    this.chartRangeEnd$$.set(defaults.chartRangeEnd);
-    this.expenseChartYMax$$.set(defaults.expenseChartYMax);
-    this.keepTransactionCurrency$$.set(defaults.keepTransactionCurrency);
+    this.settingsStore.reset();
   }
 
   //                                                            ~~~ BOOTSTRAP ~~~
