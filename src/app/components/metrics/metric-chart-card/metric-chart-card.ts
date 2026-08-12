@@ -30,6 +30,7 @@ import {
   findNearestSeriesPoint,
   formatMetricBucketLabel,
   MetricSeriesPoint,
+  valueCorridor,
 } from '@app/shared/metrics-series';
 import {
   hoverBucket$$,
@@ -118,6 +119,8 @@ export class MetricChartCard implements OnInit, OnDestroy {
   public readonly isFullWidthInput = input<boolean>(false);
   public readonly syncCrosshairEnabledInput = input<boolean>(false);
   public readonly forceZeroBaselineInput = input<boolean>(false);
+  public readonly anomalyCorridorEnabledInput = input<boolean>(false);
+  public readonly anomalyCorridorPercentInput = input<number>(95);
   public readonly tooltipModeInput = input<TooltipMode>(TooltipMode.Nearest);
   public readonly descriptionInput = input<string>('');
   public readonly heightPxInput = input<number>(DEFAULT_CHART_HEIGHT_PX);
@@ -258,6 +261,8 @@ export class MetricChartCard implements OnInit, OnDestroy {
     this.cardWidthPx$$();
     this.syncCrosshairEnabledInput();
     this.forceZeroBaselineInput();
+    this.anomalyCorridorEnabledInput();
+    this.anomalyCorridorPercentInput();
     // This chart's own dataset color comes from colorInput, not the theme — colors$$ is only
     // needed to detect a theme switch and recreate the chart so its grid/tick colors repaint
     // (see createChartConfig/ensureChart: Chart.js doesn't reliably repaint a scale's cached
@@ -411,9 +416,15 @@ export class MetricChartCard implements OnInit, OnDestroy {
     this.chart!.options.plugins.metricSyncCrosshair = this.syncCrosshairOptions();
 
     const values = series.map((point) => point.value).filter((value): value is number => value !== null);
+    // The corridor only ever narrows the Y-axis range — the plotted data (set
+    // above) is untouched, so a spike still draws, it just runs off the top/
+    // bottom of a shorter axis instead of stretching it to fit.
+    const corridor = this.anomalyCorridorEnabledInput()
+      ? valueCorridor(values, this.anomalyCorridorPercentInput())
+      : null;
     const forceZeroBaseline = this.chartModeInput() === 'bar' || this.forceZeroBaselineInput();
-    let min = forceZeroBaseline ? 0 : values.length > 0 ? Math.min(...values) : 0;
-    let max = values.length > 0 ? Math.max(...values) : 1;
+    let min = forceZeroBaseline ? 0 : (corridor?.min ?? (values.length > 0 ? Math.min(...values) : 0));
+    let max = corridor?.max ?? (values.length > 0 ? Math.max(...values) : 1);
     if (min === max) {
       min -= 1;
       max += 1;

@@ -4,12 +4,14 @@ import {
   computed,
   effect,
   ElementRef,
+  inject,
   input,
   OnDestroy,
   OnInit,
   output,
   signal,
 } from '@angular/core';
+import { MetricCardExpansionService } from '@app/services/metric-card-expansion.service';
 import { CardLayoutMode, TooltipMode } from '@app/services/metrics-settings.service';
 import { MetricUnit } from '@app/shared/metric-units';
 import { MetricChartMode } from '@app/shared/metrics-chart-mode';
@@ -52,6 +54,8 @@ interface RenderItem {
   isExpanded: boolean;
 }
 
+const EMPTY_KEY_SET: ReadonlySet<string> = new Set();
+
 @Component({
   selector: 'metric-card-grid',
   templateUrl: './metric-card-grid.html',
@@ -70,6 +74,8 @@ export class MetricCardGrid implements OnInit, OnDestroy {
   public readonly layoutModeInput = input.required<CardLayoutMode>();
   public readonly syncCrosshairEnabledInput = input<boolean>(false);
   public readonly forceZeroBaselineInput = input<boolean>(false);
+  public readonly anomalyCorridorEnabledInput = input<boolean>(false);
+  public readonly anomalyCorridorPercentInput = input<number>(95);
   public readonly tooltipModeInput = input<TooltipMode>(TooltipMode.Nearest);
   public readonly isEditModeInput = input<boolean>(false);
   public readonly hideDashboardControlsInput = input<boolean>(false);
@@ -79,8 +85,8 @@ export class MetricCardGrid implements OnInit, OnDestroy {
   public readonly cardDashboardOrderChangeOutput = output<{ technicalName: string; order: number }>();
   public readonly cardChartModeChangeOutput = output<{ technicalName: string; chartMode: MetricChartMode }>();
 
+  private readonly expansionService = inject(MetricCardExpansionService);
   private readonly hostElement: HTMLElement;
-  private readonly expandedKey$$ = signal<string | null>(null);
   private readonly containerWidthPx$$ = signal(0);
   private readonly gapPx$$ = signal(0);
   private resizeObserver: ResizeObserver | null = null;
@@ -106,31 +112,54 @@ export class MetricCardGrid implements OnInit, OnDestroy {
   // "expanded" copy would be identical to the row card it sits under.
   protected readonly canExpand$$ = computed(() => this.columnCount$$() >= 2);
 
-  // The single source of truth for "which card is highlighted/expanded right
-  // now" — null whenever expanding isn't possible, so callers never need to
-  // re-check canExpand$$ themselves.
-  protected readonly selectedKey$$ = computed(() => (this.canExpand$$() ? this.expandedKey$$() : null));
-
-  private readonly resetExpandedOnDisableEffect = effect(() => {
-    if (this.canExpand$$()) return;
-    this.expandedKey$$.set(null);
+  // The single source of truth for "which of this grid's own cards are
+  // expanded right now" — empty whenever expanding isn't possible, so callers
+  // never need to re-check canExpand$$ themselves. Filtered down from the
+  // service's page-wide set to this grid's own cards, since a card key
+  // belongs to exactly one grid.
+  protected readonly selectedKeys$$ = computed<ReadonlySet<string>>(() => {
+    if (!this.canExpand$$()) return EMPTY_KEY_SET;
+    const ownKeys = new Set(this.cardsInput().map((card) => card.key));
+    const expanded = new Set<string>();
+    for (const key of this.expansionService.expandedKeys$$()) {
+      if (ownKeys.has(key)) expanded.add(key);
+    }
+    return expanded;
   });
 
-  // Inserts the expanded card right after the last card of the row that contains
-  // it, so it always lands as a new row directly under the clicked card's row,
-  // regardless of how many columns fit at the current width.
+  // Once this grid drops below 2 columns, expanding stops being meaningful here —
+  // forget this grid's own expanded cards (other grids' expanded cards are untouched).
+  private readonly resetExpandedOnDisableEffect = effect(() => {
+    if (this.canExpand$$()) return;
+    this.expansionService.collapseKeys(this.cardsInput().map((card) => card.key));
+  });
+
+  // Every expanded card is inserted right after the last card of the row that
+  // contains it, in the row's own left-to-right order — so clicking several
+  // cards in the same row stacks their large charts, in that order, directly
+  // under the row, regardless of how many columns fit at the current width.
   protected readonly renderItems$$ = computed<RenderItem[]>(() => {
     const cards = this.cardsInput();
-    const items: RenderItem[] = cards.map((card) => ({ card, isExpanded: false }));
-
-    const expandedKey = this.selectedKey$$();
-    const expandedIndex = expandedKey === null ? -1 : cards.findIndex((card) => card.key === expandedKey);
-    if (expandedIndex === -1) return items;
+    const expandedKeys = this.selectedKeys$$();
+    if (expandedKeys.size === 0) {
+      return cards.map((card) => ({ card, isExpanded: false }));
+    }
 
     const columns = this.columnCount$$();
-    const rowIndex = Math.floor(expandedIndex / columns);
-    const insertAt = Math.min((rowIndex + 1) * columns, cards.length);
-    items.splice(insertAt, 0, { card: cards[expandedIndex], isExpanded: true });
+    const items: RenderItem[] = [];
+    for (let index = 0; index < cards.length; index++) {
+      items.push({ card: cards[index], isExpanded: false });
+
+      const isRowEnd = (index + 1) % columns === 0 || index === cards.length - 1;
+      if (!isRowEnd) continue;
+
+      const rowStart = index - (index % columns);
+      for (let rowCardIndex = rowStart; rowCardIndex <= index; rowCardIndex++) {
+        if (expandedKeys.has(cards[rowCardIndex].key)) {
+          items.push({ card: cards[rowCardIndex], isExpanded: true });
+        }
+      }
+    }
     return items;
   });
 
@@ -186,7 +215,7 @@ export class MetricCardGrid implements OnInit, OnDestroy {
 
   protected onCardToggle(key: string): void {
     if (!this.canExpand$$()) return;
-    this.expandedKey$$.update((current) => (current === key ? null : key));
+    this.expansionService.toggle(key);
   }
 
   protected onCardDashboardEnabledChange(technicalName: string, enabled: boolean): void {

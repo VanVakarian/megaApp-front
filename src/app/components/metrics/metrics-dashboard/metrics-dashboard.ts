@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, OnDestroy, OnInit, signal } from '@angular/core';
 import { CompositeMetricsSettingsService } from '@app/services/composite-metrics-settings.service';
 import { DeviceInfoService } from '@app/services/device-info.service';
+import { MetricCardExpansionService } from '@app/services/metric-card-expansion.service';
 import { MetricsHealthService } from '@app/services/metrics-health.service';
 import { CardLayoutMode, MetricsSettingsService, TooltipMode } from '@app/services/metrics-settings.service';
 import { MetricsService } from '@app/services/metrics.service';
@@ -27,7 +28,6 @@ import {
   buildServiceMetricWindow,
   buildSparseBarSeriesFromPoints,
   buildSparseLineSeriesFromPoints,
-  filterAnomalousMetricPoints,
   filterMetricPointsByWindow,
   metricPointsIndexKey,
   MetricWindow,
@@ -94,6 +94,7 @@ export class MetricsDashboard implements OnInit, OnDestroy {
   protected readonly metricsService = inject(MetricsService);
   protected readonly metricsHealthService = inject(MetricsHealthService);
   protected readonly deviceInfoService = inject(DeviceInfoService);
+  protected readonly metricCardExpansionService = inject(MetricCardExpansionService);
   protected readonly Icon = IconName;
   protected readonly CardLayoutMode = CardLayoutMode;
   protected readonly TooltipMode = TooltipMode;
@@ -119,8 +120,8 @@ export class MetricsDashboard implements OnInit, OnDestroy {
   protected readonly selectedGranularity$$ = this.metricsSettingsService.granularity$$;
   protected readonly syncCrosshairEnabled$$ = this.metricsSettingsService.syncCrosshairEnabled$$;
   protected readonly forceZeroBaselineEnabled$$ = this.metricsSettingsService.forceZeroBaselineEnabled$$;
-  protected readonly anomalyFilterEnabled$$ = this.metricsSettingsService.anomalyFilterEnabled$$;
-  protected readonly anomalyFilterParams$$ = this.metricsSettingsService.anomalyFilterParams$$;
+  protected readonly anomalyCorridorEnabled$$ = this.metricsSettingsService.anomalyCorridorEnabled$$;
+  protected readonly anomalyCorridorPercent$$ = this.metricsSettingsService.anomalyCorridorPercent$$;
   protected readonly dashboardSelection$$ = this.metricsSettingsService.dashboardSelection$$;
   protected readonly dashboardServiceSelection$$ = this.metricsSettingsService.dashboardServiceSelection$$;
   protected readonly isSavingSettings$$ = this.metricsSettingsService.isSaving$$;
@@ -212,8 +213,6 @@ export class MetricsDashboard implements OnInit, OnDestroy {
     // 5-minute collapsing only makes sense for the raw minute-granularity feed —
     // hour/day granularity is already bucketed, nothing to collapse further.
     const isMinuteGranularity = granularity === 'minute';
-    const anomalyFilterEnabled = this.anomalyFilterEnabled$$();
-    const anomalyFilterParams = this.anomalyFilterParams$$();
     const dashboardSelection = this.dashboardSelection$$();
     const fallbackWindow = buildMetricWindow(
       previousCompletedBucket(this.now$$(), stepSeconds),
@@ -230,9 +229,6 @@ export class MetricsDashboard implements OnInit, OnDestroy {
       }
       pointsByService.set(point.service, [point]);
     }
-
-    const applyAnomalyFilter = (metricPoints: MetricPoint[]): MetricPoint[] =>
-      anomalyFilterEnabled ? filterAnomalousMetricPoints(metricPoints, anomalyFilterParams) : metricPoints;
 
     const buildSeriesDisplay = (
       key: string,
@@ -285,7 +281,7 @@ export class MetricsDashboard implements OnInit, OnDestroy {
 
       const buildCard = (name: string): MetricChartCardData => {
         const key = metricPointsIndexKey(option.service, name);
-        const metricPoints = applyAnomalyFilter(pointsIndex.get(key) ?? []);
+        const metricPoints = pointsIndex.get(key) ?? [];
         const aggregation = metricAggregation(option.service, name);
         const integerValued = metricIntegerValued(option.service, name);
         const chartMode = this.metricsSettingsService.metricChartMode(option.service, name);
@@ -415,8 +411,10 @@ export class MetricsDashboard implements OnInit, OnDestroy {
         // (windowed at index-build time) — composite metricPoints are assembled
         // straight from the full retained history above, so without this they'd leak
         // off-window historical values into the raw (non-collapsed) display's min/max.
-        const windowedMetricPoints = applyAnomalyFilter(
-          filterMetricPointsByWindow(metricPoints, compositeWindow.startBucket, compositeWindow.endBucket),
+        const windowedMetricPoints = filterMetricPointsByWindow(
+          metricPoints,
+          compositeWindow.startBucket,
+          compositeWindow.endBucket,
         );
         const display = buildSeriesDisplay(
           key,
@@ -650,28 +648,16 @@ export class MetricsDashboard implements OnInit, OnDestroy {
     this.metricsSettingsService.setForceZeroBaselineEnabled(!this.forceZeroBaselineEnabled$$());
   }
 
-  protected toggleAnomalyFilterEnabled(): void {
+  protected toggleAnomalyCorridorEnabled(): void {
     const startedAt = performance.now();
-    this.metricsSettingsService.setAnomalyFilterEnabled(!this.anomalyFilterEnabled$$());
-    void this.performanceMetrics.recordAfterPaint('metrics.data_shape_change', startedAt, { kind: 'anomaly_filter' });
+    this.metricsSettingsService.setAnomalyCorridorEnabled(!this.anomalyCorridorEnabled$$());
+    void this.performanceMetrics.recordAfterPaint('metrics.data_shape_change', startedAt, { kind: 'anomaly_corridor' });
   }
 
-  protected onAnomalyFilterWindowRadiusChange(rawValue: string): void {
-    const value = Math.round(Number(rawValue));
-    if (!Number.isFinite(value) || value <= 0) return;
-    this.metricsSettingsService.setAnomalyFilterWindowRadius(value);
-  }
-
-  protected onAnomalyFilterSensitivityChange(rawValue: string): void {
+  protected onAnomalyCorridorPercentChange(rawValue: string): void {
     const value = Number(rawValue);
-    if (!Number.isFinite(value) || value <= 0) return;
-    this.metricsSettingsService.setAnomalyFilterSensitivity(value);
-  }
-
-  protected onAnomalyFilterMinRelativeJumpPercentChange(rawValue: string): void {
-    const value = Number(rawValue);
-    if (!Number.isFinite(value) || value < 0) return;
-    this.metricsSettingsService.setAnomalyFilterMinRelativeJumpPercent(value);
+    if (!Number.isFinite(value) || value <= 0 || value > 100) return;
+    this.metricsSettingsService.setAnomalyCorridorPercent(value);
   }
 
   protected saveSettings(): void {

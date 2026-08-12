@@ -2,7 +2,6 @@ import { computed, Injectable, Signal, WritableSignal } from '@angular/core';
 import { NamespaceSettingsStore } from '@app/services/settings/namespace-settings-store';
 import { persistedSignal } from '@app/services/settings/persisted-signal';
 import { DEFAULT_METRIC_CHART_MODE, MetricChartMode } from '@app/shared/metrics-chart-mode';
-import { AnomalyFilterParams } from '@app/shared/metrics-series';
 import { SeverityThresholds } from '@app/shared/metrics-severity';
 import { CompositeMetricDefinition, MetricGranularity } from '@app/shared/types';
 
@@ -43,7 +42,11 @@ interface StoredMetricsSettings {
   serviceHeaderVisibility: ServiceHeaderVisibility;
   serviceCustomLabels: ServiceCustomLabels;
   compositeMetrics: CompositeMetricDefinition[];
-  anomalyFilterParams: AnomalyFilterParams;
+  // Percent of the value mass the anomaly corridor (Y-axis clamp, see
+  // valueCorridor in metrics-series.ts) must keep visible — the only knob left
+  // after simplifying this from a per-point Hampel/MAD outlier filter down to
+  // a plain display-range trim.
+  anomalyCorridorPercent: number;
 }
 
 const GRANULARITY_STORAGE_KEY = 'metrics_granularity';
@@ -54,13 +57,9 @@ const ACTIVE_TOOLTIP_MODE_STORAGE_KEY = 'metrics_active_tooltip_mode';
 const DEFAULT_ACTIVE_TOOLTIP_MODE: TooltipMode = TooltipMode.Nearest;
 const FORCE_ZERO_BASELINE_ENABLED_STORAGE_KEY = 'metrics_force_zero_baseline_enabled';
 const DEFAULT_FORCE_ZERO_BASELINE_ENABLED = false;
-const ANOMALY_FILTER_ENABLED_STORAGE_KEY = 'metrics_anomaly_filter_enabled';
-const DEFAULT_ANOMALY_FILTER_ENABLED = false;
-const DEFAULT_ANOMALY_FILTER_PARAMS: AnomalyFilterParams = {
-  windowRadius: 4,
-  sensitivity: 4,
-  minRelativeJumpPercent: 10,
-};
+const ANOMALY_CORRIDOR_ENABLED_STORAGE_KEY = 'metrics_anomaly_corridor_enabled';
+const DEFAULT_ANOMALY_CORRIDOR_ENABLED = false;
+const DEFAULT_ANOMALY_CORRIDOR_PERCENT = 95;
 const DEFAULT_CARD_WIDTH_PX = 304;
 const DEFAULT_CARD_HEIGHT_PX = 112;
 const DEFAULT_CARD_EXPANDED_HEIGHT_PX = 400;
@@ -81,7 +80,7 @@ const DEFAULTS: StoredMetricsSettings = {
   serviceHeaderVisibility: {},
   serviceCustomLabels: {},
   compositeMetrics: [],
-  anomalyFilterParams: DEFAULT_ANOMALY_FILTER_PARAMS,
+  anomalyCorridorPercent: DEFAULT_ANOMALY_CORRIDOR_PERCENT,
 };
 
 @Injectable({
@@ -92,8 +91,8 @@ export class MetricsSettingsService {
 
   public readonly cardSize$$: Signal<CardSize> = computed(() => this.store.value$$().cardSize);
   public readonly syncCrosshairEnabled$$: Signal<boolean> = computed(() => this.store.value$$().syncCrosshairEnabled);
-  public readonly anomalyFilterParams$$: Signal<AnomalyFilterParams> = computed(
-    () => this.store.value$$().anomalyFilterParams,
+  public readonly anomalyCorridorPercent$$: Signal<number> = computed(
+    () => this.store.value$$().anomalyCorridorPercent,
   );
   public readonly dashboardSelection$$: Signal<DashboardMetricSelection> = computed(
     () => this.store.value$$().dashboardSelection,
@@ -137,9 +136,9 @@ export class MetricsSettingsService {
     FORCE_ZERO_BASELINE_ENABLED_STORAGE_KEY,
     DEFAULT_FORCE_ZERO_BASELINE_ENABLED,
   );
-  public readonly anomalyFilterEnabled$$: WritableSignal<boolean> = persistedSignal(
-    ANOMALY_FILTER_ENABLED_STORAGE_KEY,
-    DEFAULT_ANOMALY_FILTER_ENABLED,
+  public readonly anomalyCorridorEnabled$$: WritableSignal<boolean> = persistedSignal(
+    ANOMALY_CORRIDOR_ENABLED_STORAGE_KEY,
+    DEFAULT_ANOMALY_CORRIDOR_ENABLED,
   );
 
   public setCardWidthPx(value: number): void {
@@ -186,20 +185,12 @@ export class MetricsSettingsService {
     this.forceZeroBaselineEnabled$$.set(value);
   }
 
-  public setAnomalyFilterEnabled(value: boolean): void {
-    this.anomalyFilterEnabled$$.set(value);
+  public setAnomalyCorridorEnabled(value: boolean): void {
+    this.anomalyCorridorEnabled$$.set(value);
   }
 
-  public setAnomalyFilterWindowRadius(value: number): void {
-    this.updateAnomalyFilterParams({ windowRadius: value });
-  }
-
-  public setAnomalyFilterSensitivity(value: number): void {
-    this.updateAnomalyFilterParams({ sensitivity: value });
-  }
-
-  public setAnomalyFilterMinRelativeJumpPercent(value: number): void {
-    this.updateAnomalyFilterParams({ minRelativeJumpPercent: value });
+  public setAnomalyCorridorPercent(value: number): void {
+    this.store.stage('anomalyCorridorPercent', value);
   }
 
   public setDashboardSelection(value: DashboardMetricSelection): void {
@@ -240,9 +231,5 @@ export class MetricsSettingsService {
 
   private updateCardSize(patch: Partial<CardSize>): void {
     this.store.stage('cardSize', { ...this.cardSize$$(), ...patch });
-  }
-
-  private updateAnomalyFilterParams(patch: Partial<AnomalyFilterParams>): void {
-    this.store.stage('anomalyFilterParams', { ...this.anomalyFilterParams$$(), ...patch });
   }
 }

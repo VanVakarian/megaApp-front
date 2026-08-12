@@ -322,65 +322,25 @@ export function filterMetricPointsByWindow(
   return points.filter((point) => point.bucket >= windowStartBucket && point.bucket <= windowEndBucket);
 }
 
-// Whether the filter is active is a separate, local-only flag owned by
-// MetricsSettingsService — these are just the numeric knobs, shared from here
-// so the settings service and this module stay on one definition.
-export interface AnomalyFilterParams {
-  windowRadius: number;
-  sensitivity: number;
-  // A *percentage* of the local median, not a raw unit count — metrics range
-  // from fractional ratios to billions, so a fixed absolute floor would be
-  // meaningless for one scale or the other. A percentage stays meaningful
-  // regardless of what unit the metric happens to be in.
-  minRelativeJumpPercent: number;
+export interface ValueCorridor {
+  min: number;
+  max: number;
 }
 
-// Standard MAD->sigma scale factor for a normal distribution — turns the raw
-// median absolute deviation into something comparable to a stddev-based threshold.
-const MAD_CONSISTENCY_FACTOR = 1.4826;
+// Chart Y-axis clamp, not a data filter — the underlying series is never
+// touched, only the visible corridor. `percent` is how much of the value mass
+// must fit inside [min, max]: trim the same fraction of points off each tail
+// (e.g. 95% kept → 2.5% trimmed low, 2.5% trimmed high) and take the corridor
+// from what's left. One sort, two index reads — nothing fancier than that on
+// purpose, this tab already does plenty of math per card.
+export function valueCorridor(values: number[], percent: number): ValueCorridor | null {
+  if (values.length === 0) return null;
 
-// Practical (lower-)median: always an actual member of `values`, never an
-// average of the two middle values on an even-length input — so replacing an
-// outlier with it never introduces a fractional value into an integer-only
-// metric (e.g. an order count).
-function medianOf(values: number[]): number {
   const sorted = values.slice().sort((left, right) => left - right);
-  return sorted[(sorted.length - 1) >> 1];
-}
-
-// Hampel-style outlier filter: each point is compared against the median of its
-// `windowRadius` neighbors on both sides (original, unfiltered values — a single
-// non-recursive pass). A point is replaced by that local median once it deviates
-// by more than `sensitivity` local MADs *and* by at least `minRelativeJumpPercent`
-// of the local median — the second guard matters because a locally flat run
-// (MAD ~ 0) would otherwise flag every genuine single-unit change as an outlier
-// too. Expressing that floor as a percentage of the *local* median (not a fixed
-// unit count) is what makes one setting work for a metric in the billions and
-// one in fractions alike — each gets its own floor, scaled to its own values.
-export function filterAnomalousMetricPoints(points: MetricPoint[], options: AnomalyFilterParams): MetricPoint[] {
-  const { windowRadius, sensitivity, minRelativeJumpPercent } = options;
-  if (points.length < 3) return points;
-
-  const values = points.map((point) => point.value);
-
-  return points.map((point, index) => {
-    const start = Math.max(0, index - windowRadius);
-    const end = Math.min(values.length, index + windowRadius + 1);
-    const neighbors: number[] = [];
-    for (let neighborIndex = start; neighborIndex < end; neighborIndex++) {
-      if (neighborIndex === index) continue;
-      neighbors.push(values[neighborIndex]);
-    }
-    if (neighbors.length === 0) return point;
-
-    const median = medianOf(neighbors);
-    const mad = medianOf(neighbors.map((value) => Math.abs(value - median))) * MAD_CONSISTENCY_FACTOR;
-    const deviation = Math.abs(point.value - median);
-    const minRelativeJump = (minRelativeJumpPercent / 100) * Math.abs(median);
-    const threshold = Math.max(sensitivity * mad, minRelativeJump);
-
-    return deviation > threshold ? { ...point, value: median } : point;
-  });
+  const tailFraction = (1 - percent / 100) / 2;
+  const lowIndex = Math.floor(tailFraction * (sorted.length - 1));
+  const highIndex = Math.ceil((1 - tailFraction) * (sorted.length - 1));
+  return { min: sorted[lowIndex], max: sorted[highIndex] };
 }
 
 export class MinuteMetricCollapseCache {
