@@ -8,6 +8,7 @@ import { MetricsService } from '@app/services/metrics.service';
 import { PerformanceMetricsService } from '@app/services/performance-metrics.service';
 import { METRICS_GRANULARITY_STEP_SECONDS, METRICS_GRANULARITY_WINDOW_PERIODS } from '@app/shared/chart-config';
 import { ToolbarGroup } from '@app/shared/components/toolbar-group/toolbar-group';
+import { FitTextOnOverflowDirective } from '@app/shared/directives/fit-text-on-overflow.directive';
 import { formatMetricUnitValue } from '@app/shared/metric-units';
 import { MetricAggregation } from '@app/shared/metrics-aggregation';
 import {
@@ -76,6 +77,10 @@ interface MetricGroupData {
   cards: MetricChartCardData[];
 }
 
+interface DashboardRowData extends MetricGroupData {
+  shortLabel: string;
+}
+
 interface ServiceMetricsData {
   groups: MetricGroupData[];
   dashboardCards: MetricChartCardData[];
@@ -89,7 +94,19 @@ interface MetricsServiceOption {
   selector: 'metrics-dashboard',
   templateUrl: './metrics-dashboard.html',
   styleUrl: './metrics-dashboard.css',
-  imports: [VButton, VCard, VCheckbox, VExpand, VInput, VIcon, VToggle, VTooltip, ToolbarGroup, MetricCardGrid],
+  imports: [
+    VButton,
+    VCard,
+    VCheckbox,
+    VExpand,
+    VInput,
+    VIcon,
+    VToggle,
+    VTooltip,
+    ToolbarGroup,
+    MetricCardGrid,
+    FitTextOnOverflowDirective,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class MetricsDashboard implements OnInit, OnDestroy {
@@ -468,16 +485,22 @@ export class MetricsDashboard implements OnInit, OnDestroy {
     return result;
   });
 
-  protected readonly dashboardRows$$ = computed<MetricGroupData[]>(() => {
+  protected readonly dashboardRows$$ = computed<DashboardRowData[]>(() => {
     const data = this.serviceMetricsData$$();
     const serviceSelection = this.dashboardServiceSelection$$();
-    const rows: { id: string; label: string; order: number; cards: MetricChartCardData[] }[] = [];
+    const rows: { id: string; label: string; shortLabel: string; order: number; cards: MetricChartCardData[] }[] = [];
     for (const option of this.serviceOptions$$()) {
       const order = serviceSelection[option.service];
       if (order === undefined) continue;
       const cards = data.get(option.service)?.dashboardCards ?? [];
       if (cards.length === 0) continue;
-      rows.push({ id: option.service, label: this.resolvedServiceLabel(option.service), order, cards });
+      rows.push({
+        id: option.service,
+        label: this.resolvedServiceLabel(option.service),
+        shortLabel: this.resolvedServiceShortLabel(option.service),
+        order,
+        cards,
+      });
     }
     const compositeOrder = serviceSelection[COMPOSITE_SERVICE_KEY];
     const compositeCards = data.get(COMPOSITE_SERVICE_KEY)?.dashboardCards ?? [];
@@ -485,12 +508,13 @@ export class MetricsDashboard implements OnInit, OnDestroy {
       rows.push({
         id: COMPOSITE_SERVICE_KEY,
         label: this.resolvedServiceLabel(COMPOSITE_SERVICE_KEY),
+        shortLabel: this.resolvedServiceShortLabel(COMPOSITE_SERVICE_KEY),
         order: compositeOrder,
         cards: compositeCards,
       });
     }
     rows.sort((left, right) => left.order - right.order || left.label.localeCompare(right.label));
-    return rows.map(({ id, label, cards }) => ({ id, label, cards }));
+    return rows.map(({ id, label, shortLabel, cards }) => ({ id, label, shortLabel, cards }));
   });
 
   private readonly dashboardModelProbe = effect(() => {
