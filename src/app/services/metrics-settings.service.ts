@@ -9,7 +9,11 @@ export type DashboardMetricSelection = Record<string, Record<string, number>>;
 export type DashboardServiceSelection = Record<string, number>;
 export type SeverityThresholdsOverrides = Record<string, SeverityThresholds>;
 export type ServiceHeaderVisibility = Record<string, boolean>;
-export type ServiceCustomLabels = Record<string, string>;
+export interface ServiceCustomLabel {
+  short: string;
+  long: string;
+}
+export type ServiceCustomLabels = Record<string, ServiceCustomLabel>;
 export type MetricChartModeOverrides = Record<string, Record<string, MetricChartMode>>;
 
 export const CardLayoutMode = {
@@ -219,6 +223,20 @@ export class MetricsSettingsService {
 
   public setServiceCustomLabels(value: ServiceCustomLabels): void {
     this.store.stage('serviceCustomLabels', value);
+  }
+
+  public setServiceCustomLabel(service: string, patch: Partial<ServiceCustomLabel>): void {
+    const current = this.serviceCustomLabels$$();
+    const existing = current[service];
+    const merged: ServiceCustomLabel = { short: existing?.short ?? '', long: existing?.long ?? '', ...patch };
+
+    const next = { ...current };
+    if (merged.short.trim() || merged.long.trim()) {
+      next[service] = merged;
+    } else {
+      delete next[service];
+    }
+    this.setServiceCustomLabels(next);
   }
 
   public setCompositeMetrics(value: CompositeMetricDefinition[]): void {

@@ -1,28 +1,31 @@
-<div class="flex flex-col"
-     style="--v-color-primary-muted: color-mix(in oklab, var(--v-color-primary) 45%, var(--v-color-text-muted) 55%)">
+<div class="flex flex-col">
   <div class="flex flex-wrap items-start gap-2 px-4 pt-2 pb-2 [transition:box-shadow_300ms_ease-out,background-color_var(--v-theme-transition-duration,0s)]"
        [class]="stickyBarClasses$$()"
        [style.background-color]="deviceInfoService.isDesktopScreen$$() ? 'var(--v-color-bg)' : null">
     <div class="flex flex-wrap flex-initial min-w-0 gap-2">
-      <v-button class="v-primary"
+      <v-button [class.v-primary]="isServiceExpanded(dashboardPanelKey)"
                 [surface]="isServiceExpanded(dashboardPanelKey) ? 'raised' : 'flat'"
-                [color]="dashboardButtonColor()"
                 (onClick)="toggleServiceExpanded(dashboardPanelKey)">
         Dashboard
       </v-button>
 
       @for (entry of headerEntries$$(); track entry.service) {
         @if (entry.isComposite) {
-          <v-button [surface]="isServiceExpanded(entry.service) ? 'raised' : 'flat'"
+          <v-button [class.v-primary]="isServiceExpanded(entry.service)"
+                    [surface]="isServiceExpanded(entry.service) ? 'raised' : 'flat'"
                     (onClick)="toggleServiceExpanded(entry.service)">
-            {{ resolvedServiceLabel(entry.service) }}
+            @if (hasHoverExpandableServiceLabel(entry.service)) {<span class="header-label-short">{{ resolvedServiceShortLabel(entry.service) }}</span><span class="header-label-long">{{ resolvedServiceLabel(entry.service) }}</span>} @else {
+              {{ resolvedServiceLabel(entry.service) }}
+            }
           </v-button>
         } @else {
           <v-button class="v-primary"
                     [surface]="isServiceExpanded(entry.service) ? 'raised' : 'flat'"
                     [color]="sectionButtonColor(entry.service)"
                     (onClick)="toggleServiceExpanded(entry.service)">
-            {{ resolvedServiceLabel(entry.service) }}
+            @if (hasHoverExpandableServiceLabel(entry.service)) {<span class="header-label-short">{{ resolvedServiceShortLabel(entry.service) }}</span><span class="header-label-long">{{ resolvedServiceLabel(entry.service) }}</span>} @else {
+              {{ resolvedServiceLabel(entry.service) }}
+            }
           </v-button>
         }
       } @empty {
@@ -47,6 +50,7 @@
 
       @if (metricCardExpansionService.hasExpanded$$()) {
         <v-button surface="flat"
+                  title="Свернуть все развёрнутые карточки"
                   [isLabelHidden]="true"
                   [padding]="2"
                   (onClick)="metricCardExpansionService.collapseAll()">
@@ -57,6 +61,7 @@
       }
 
       <v-button [surface]="isServiceExpanded(settingsPanelKey) ? 'raised' : 'flat'"
+                title="Настройки дашборда: размер карточек, коридор аномалий, список метрик"
                 [isLabelHidden]="true"
                 [padding]="2"
                 (onClick)="toggleServiceExpanded(settingsPanelKey)">
@@ -67,6 +72,7 @@
 
       <v-button [class.v-primary]="isCardEditMode$$()"
                 [surface]="isCardEditMode$$() ? 'raised' : 'flat'"
+                title="Режим редактирования: выбрать метрики и задать их порядок на карточках"
                 [isLabelHidden]="true"
                 [padding]="2"
                 (onClick)="toggleCardEditMode()">
@@ -75,17 +81,35 @@
                 [size]="6" />
       </v-button>
 
-      <v-button [class.v-primary]="anomalyCorridorEnabled$$()"
-                [surface]="anomalyCorridorEnabled$$() ? 'raised' : 'flat'"
-                [isLabelHidden]="true"
-                [padding]="2"
-                (onClick)="toggleAnomalyCorridorEnabled()">
-        <v-icon v-prefix
-                [name]="Icon.DataThresholding"
-                [size]="6" />
-      </v-button>
+      <toolbar-group [isActive]="anomalyCorridorEnabled$$()">
+        @if (anomalyCorridorEnabled$$()) {
+          <v-input class="w-[69px]"
+                   [value]="anomalyCorridorPercent$$().toString()"
+                   (valueChange)="onAnomalyCorridorPercentChange($event)"
+                   type="number"
+                   inputmode="numeric"
+                   title="Коридор аномалий, % значений"
+                   [isDisabled]="isSavingSettings$$()"
+                   textAlign="right">
+            <span v-postfix
+                  class="opacity-60 mr-2 text-sm">%</span>
+          </v-input>
+        }
+
+        <v-button [class.v-primary]="anomalyCorridorEnabled$$()"
+                  [surface]="anomalyCorridorEnabled$$() ? 'raised' : 'flat'"
+                  title="Коридор аномалий: обрезает ось Y графика по проценту значений, скрывая редкие выбросы"
+                  [isLabelHidden]="true"
+                  [padding]="2"
+                  (onClick)="toggleAnomalyCorridorEnabled()">
+          <v-icon v-prefix
+                  [name]="Icon.DataThresholding"
+                  [size]="6" />
+        </v-button>
+      </toolbar-group>
 
       <v-button surface="flat"
+                title="Переключить размер карточек: широкие / узкие"
                 [isLabelHidden]="true"
                 [padding]="2"
                 (onClick)="cycleCardLayoutMode()">
@@ -97,6 +121,7 @@
 
       <v-button [class.v-primary]="forceZeroBaselineEnabled$$()"
                 [surface]="forceZeroBaselineEnabled$$() ? 'raised' : 'flat'"
+                title="Начинать ось Y графика с нуля"
                 [isLabelHidden]="true"
                 [padding]="2"
                 (onClick)="toggleForceZeroBaseline()">
@@ -107,6 +132,7 @@
       </v-button>
 
       <v-button surface="flat"
+                title="Переключить подсказку на графике: по ближайшей точке / по вертикальной линии"
                 [isLabelHidden]="true"
                 [padding]="2"
                 (onClick)="cycleTooltipMode()">
@@ -117,6 +143,7 @@
       </v-button>
 
       <v-toggle [items]="granularityToggleItems"
+                title="Гранулярность данных на графиках"
                 [value]="granularityToggleValue()"
                 [isDisabled]="isSavingSettings$$()"
                 (valueChange)="onGranularityToggleChange($event)" />
@@ -253,9 +280,14 @@
                             [checkIconSize]="3" />
                 <span>Show in header</span>
               </label>
+              <v-input class="shrink-0 w-24"
+                       [value]="serviceCustomLabelShort(compositeServiceKey)"
+                       (valueChange)="setServiceCustomLabelShort(compositeServiceKey, $event)"
+                       [isDisabled]="isSavingSettings$$()"
+                       [inputSize]="3" />
               <v-input class="shrink-0 w-40"
-                       [value]="serviceCustomLabel(compositeServiceKey)"
-                       (valueChange)="setServiceCustomLabel(compositeServiceKey, $event)"
+                       [value]="serviceCustomLabelLong(compositeServiceKey)"
+                       (valueChange)="setServiceCustomLabelLong(compositeServiceKey, $event)"
                        placeholder="Custom name"
                        [isDisabled]="isSavingSettings$$()"
                        [inputSize]="3" />
@@ -360,9 +392,14 @@
                               [checkIconSize]="3" />
                   <span>Show in header</span>
                 </label>
+                <v-input class="shrink-0 w-24"
+                         [value]="serviceCustomLabelShort(service.service)"
+                         (valueChange)="setServiceCustomLabelShort(service.service, $event)"
+                         [isDisabled]="isSavingSettings$$()"
+                         [inputSize]="3" />
                 <v-input class="shrink-0 w-40"
-                         [value]="serviceCustomLabel(service.service)"
-                         (valueChange)="setServiceCustomLabel(service.service, $event)"
+                         [value]="serviceCustomLabelLong(service.service)"
+                         (valueChange)="setServiceCustomLabelLong(service.service, $event)"
                          placeholder="Custom name"
                          [isDisabled]="isSavingSettings$$()"
                          [inputSize]="3" />

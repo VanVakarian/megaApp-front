@@ -7,6 +7,7 @@ import { CardLayoutMode, MetricsSettingsService, TooltipMode } from '@app/servic
 import { MetricsService } from '@app/services/metrics.service';
 import { PerformanceMetricsService } from '@app/services/performance-metrics.service';
 import { METRICS_GRANULARITY_STEP_SECONDS, METRICS_GRANULARITY_WINDOW_PERIODS } from '@app/shared/chart-config';
+import { ToolbarGroup } from '@app/shared/components/toolbar-group/toolbar-group';
 import { formatMetricUnitValue } from '@app/shared/metric-units';
 import { MetricAggregation } from '@app/shared/metrics-aggregation';
 import {
@@ -87,7 +88,8 @@ interface MetricsServiceOption {
 @Component({
   selector: 'metrics-dashboard',
   templateUrl: './metrics-dashboard.html',
-  imports: [VButton, VCard, VCheckbox, VExpand, VInput, VIcon, VToggle, VTooltip, MetricCardGrid],
+  styleUrl: './metrics-dashboard.css',
+  imports: [VButton, VCard, VCheckbox, VExpand, VInput, VIcon, VToggle, VTooltip, ToolbarGroup, MetricCardGrid],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class MetricsDashboard implements OnInit, OnDestroy {
@@ -524,9 +526,22 @@ export class MetricsDashboard implements OnInit, OnDestroy {
   }
 
   protected resolvedServiceLabel(service: string): string {
-    const customLabel = this.metricsSettingsService.serviceCustomLabels$$()[service]?.trim();
-    if (customLabel) return customLabel;
+    const long = this.metricsSettingsService.serviceCustomLabels$$()[service]?.long?.trim();
+    if (long) return long;
     return service === COMPOSITE_SERVICE_KEY ? DEFAULT_COMPOSITE_LABEL : service;
+  }
+
+  // Compact form shown by default on the top header buttons — expands to the full
+  // resolvedServiceLabel() on hover (see the .header-label-* rules in the stylesheet).
+  protected resolvedServiceShortLabel(service: string): string {
+    const short = this.metricsSettingsService.serviceCustomLabels$$()[service]?.short?.trim();
+    return short || this.resolvedServiceLabel(service);
+  }
+
+  // When short and long resolve to the same text, skip the hover-swap markup entirely —
+  // crossfading identical text onto itself is a pointless flicker, not an animation.
+  protected hasHoverExpandableServiceLabel(service: string): boolean {
+    return this.resolvedServiceShortLabel(service) !== this.resolvedServiceLabel(service);
   }
 
   protected serviceColor(service: string): string {
@@ -540,15 +555,6 @@ export class MetricsDashboard implements OnInit, OnDestroy {
   protected sectionButtonColor(service: string): string {
     const color = this.serviceColor(service);
     return this.isServiceExpanded(service) ? color : mutedSectionColor(color);
-  }
-
-  // Can't feed `var(--v-color-primary)` into mutedSectionColor() here: the muted
-  // result is assigned back onto that very same custom property on the button's
-  // host, and a custom property that references itself is invalid per spec.
-  // `--v-color-primary-muted` (set once, further up the tree in the template)
-  // is a separate variable name, so no cycle.
-  protected dashboardButtonColor(): string | undefined {
-    return this.isServiceExpanded(this.dashboardPanelKey) ? undefined : 'var(--v-color-primary-muted)';
   }
 
   protected granularityLabel(granularity: MetricGranularity): string {
@@ -794,19 +800,20 @@ export class MetricsDashboard implements OnInit, OnDestroy {
     this.metricsSettingsService.setServiceHeaderVisibility(next);
   }
 
-  protected serviceCustomLabel(service: string): string {
-    return this.metricsSettingsService.serviceCustomLabels$$()[service] ?? '';
+  protected serviceCustomLabelShort(service: string): string {
+    return this.metricsSettingsService.serviceCustomLabels$$()[service]?.short ?? '';
   }
 
-  protected setServiceCustomLabel(service: string, value: string): void {
-    const current = this.metricsSettingsService.serviceCustomLabels$$();
-    const next = { ...current };
-    if (value.trim()) {
-      next[service] = value;
-    } else {
-      delete next[service];
-    }
-    this.metricsSettingsService.setServiceCustomLabels(next);
+  protected serviceCustomLabelLong(service: string): string {
+    return this.metricsSettingsService.serviceCustomLabels$$()[service]?.long ?? '';
+  }
+
+  protected setServiceCustomLabelShort(service: string, value: string): void {
+    this.metricsSettingsService.setServiceCustomLabel(service, { short: value });
+  }
+
+  protected setServiceCustomLabelLong(service: string, value: string): void {
+    this.metricsSettingsService.setServiceCustomLabel(service, { long: value });
   }
 
   protected toggleCompositeSettingsExpanded(): void {
