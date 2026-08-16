@@ -1,7 +1,9 @@
 import { MetricUnit } from '@app/shared/metric-units';
 import { MetricAggregation } from '@app/shared/metrics-aggregation';
 import { DEFAULT_METRIC_COLOR, MetricConfig, MetricsServiceDefinition } from '@app/shared/metrics-catalog-metric';
+import { CYCLE_BOOKS_FETCHER_BOT_METRICS_DEFINITION } from '@app/shared/metrics-catalog.cycle-books-fetcher-bot';
 import { HARDWARE_METRICS_DEFINITION } from '@app/shared/metrics-catalog.hardware';
+import { LIVE_BOOKS_FETCHER_BOT_METRICS_DEFINITION } from '@app/shared/metrics-catalog.live-books-fetcher-bot';
 import { MEGAAPP_METRICS_DEFINITION } from '@app/shared/metrics-catalog.megaapp';
 import { SOZVON_KONSPEKT_METRICS_DEFINITION } from '@app/shared/metrics-catalog.sozvon-konspekt';
 import { SPREAD_CAPTURE_BOT_METRICS_DEFINITION } from '@app/shared/metrics-catalog.spread-capture-bot';
@@ -40,6 +42,8 @@ const STATIC_CATALOGS: ResolvedCatalog[] = [
   buildCatalog(SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION),
   buildCatalog(MEGAAPP_METRICS_DEFINITION),
   buildCatalog(SOZVON_KONSPEKT_METRICS_DEFINITION),
+  buildCatalog(CYCLE_BOOKS_FETCHER_BOT_METRICS_DEFINITION),
+  buildCatalog(LIVE_BOOKS_FETCHER_BOT_METRICS_DEFINITION),
 ];
 
 const STATIC_CATALOG_BY_SERVICE = new Map<string, ResolvedCatalog>(
