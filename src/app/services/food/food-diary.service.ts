@@ -25,11 +25,10 @@ import {
   ServerResponseWithDiaryEntries,
   ServerResponseWithDiaryId,
   UnifiedDiary,
-  UserDataLastModifiedTs,
   WebSocketMessageType,
 } from '@app/shared/types';
 import { calculateTodayIsoWithUserTimeShift, dateToIsoNoTimeNoTZ } from '@app/shared/utils';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, Subject } from 'rxjs';
 import { LocalStorageService } from '../local-storage.service';
 import { NetworkService } from '../network.service';
 import { NotificationService } from '../notification.service';
@@ -39,7 +38,6 @@ import { BaseFoodService } from './food-base.service';
 import { FoodCatalogueService } from './food-catalogue.service';
 import { FoodPersonalKcalsService } from './food-personal-kcals.service';
 import { FoodSettingsService } from './food-settings.service';
-import { FoodStatsService } from './food-stats.service';
 
 const DEFAULT_NUTRIENTS = {
   targetKcals: 2000,
@@ -88,6 +86,12 @@ export class FoodDiaryService extends BaseFoodService {
   public readonly diaryEntryFocusId$$: WritableSignal<number | null> = signal(null);
   public readonly diaryEntryResetId$$: WritableSignal<number | null> = signal(null);
 
+  // Fires with a dateISO whenever diaryRaw$$ changes for that date — own mutation applied, or a
+  // realtime update from another device. FoodStatsService listens to decide whether a day outside
+  // its live window needs a background stats refetch (§2.3) — kept as an event instead of a direct
+  // dependency so this service never has to know FoodStatsService exists.
+  public readonly mutationApplied$ = new Subject<string>();
+
   public readonly height$$: Signal<number | null> = computed(() => this.foodSettingsService.height$$());
 
   private readonly DIARY_STORAGE_KEY = 'food_diary';
@@ -113,8 +117,6 @@ export class FoodDiaryService extends BaseFoodService {
   // `segments` on success; dropped (not confirmed) on failure so the date is retried later.
   private pendingSegments: DiarySegment[] = [];
 
-  private lastSyncTs = 0;
-
   // Entry IDs with an edit/delete sitting in the sync queue, not yet confirmed or rolled back.
   // A background refetch (SYNC_STATUS reload, periodic reload) can legitimately return
   // pre-commit data for these IDs while the write is still queued/in flight — the fix is to
@@ -130,7 +132,6 @@ export class FoodDiaryService extends BaseFoodService {
 
   private readonly catalogueService = inject(FoodCatalogueService);
   private readonly personalKcalsService = inject(FoodPersonalKcalsService);
-  private readonly foodStatsService = inject(FoodStatsService);
   private readonly foodSettingsService = inject(FoodSettingsService);
   private readonly authService = inject(AuthService);
   private readonly notificationService = inject(NotificationService);
@@ -141,7 +142,7 @@ export class FoodDiaryService extends BaseFoodService {
     if (this.authService.sessionState$$() !== AuthSessionState.Authenticated) return;
     const dateISO = this.selectedDayIso$$();
     this.hydrateDayFromIndexedDb(dateISO);
-    this.ensureSegmentCoverage(dateISO);
+    void this.ensureSegmentCoverage(dateISO);
   });
 
   private readonly resetOnAuthLossEffect$$ = effect(() => {
@@ -170,7 +171,6 @@ export class FoodDiaryService extends BaseFoodService {
     this.diaryEntryResetId$$.set(null);
     this.segments = [];
     this.pendingSegments = [];
-    this.lastSyncTs = 0;
     this.pendingDiaryEntryIds.clear();
     this.foodSettingsService.reset();
   }
@@ -224,6 +224,7 @@ export class FoodDiaryService extends BaseFoodService {
       return { result: false, diaryId: 0 };
     }
 
+    const startedAt = performance.now();
     const tempId = Date.now();
     const originalDiary = { ...this.diaryRaw$$() };
 
@@ -231,26 +232,23 @@ export class FoodDiaryService extends BaseFoodService {
     const selectedDay = this.selectedDayIso$$();
     const nutrientsDelta = this.calculateEntryNutrients(diaryEntry);
 
-    const statsRollback = this.foodStatsService.createStatsRollback(selectedDay);
-
     const entryWithTempId = { ...diaryEntry, id: tempId, kcals: kcalsDelta };
 
     this.updateDiaryEntryWithNewValues(entryWithTempId);
     this.updateNutrientsOptimistically(selectedDay, nutrientsDelta, kcalsDelta);
     this.persistDay(selectedDay);
-
-    this.foodStatsService.updateStatsOptimistically(selectedDay, null, kcalsDelta);
+    void this.performanceMetrics.recordAfterPaint('food.diary_mutation', startedAt, { mutationType: 'create' });
 
     const successCallback = (response: ServerResponseWithDiaryId) => {
       if (response.result && response.diaryId) {
         this.reconcileCreatedDiaryEntry(tempId, response.diaryId, response.kcals, response.version);
       }
+      this.mutationApplied$.next(selectedDay);
     };
 
     const rollbackFunction = () => {
       this.diaryRaw$$.set(originalDiary);
       this.persistDay(selectedDay);
-      statsRollback();
     };
 
     this.addSyncOperation({
@@ -277,6 +275,7 @@ export class FoodDiaryService extends BaseFoodService {
       return false;
     }
 
+    const startedAt = performance.now();
     const originalDiary = { ...this.diaryRaw$$() };
     const selectedDay = this.selectedDayIso$$();
     const originalEntry = originalDiary[selectedDay]?.food[diaryEntry.id];
@@ -300,17 +299,12 @@ export class FoodDiaryService extends BaseFoodService {
       fiber: newNutrients.fiber - originalNutrients.fiber,
     };
 
-    const statsRollback = this.foodStatsService.createStatsRollback(selectedDay);
-
     const optimisticHistoryIndex = originalEntry.history.length;
 
     this.updateDiaryEntryWithNewValues({ ...diaryEntry, kcals: newKcals });
     this.updateNutrientsOptimistically(selectedDay, nutrientsDelta, kcalsDelta);
     this.persistDay(selectedDay);
-
-    if (kcalsDelta !== 0) {
-      this.foodStatsService.updateStatsOptimistically(selectedDay, null, kcalsDelta);
-    }
+    void this.performanceMetrics.recordAfterPaint('food.diary_mutation', startedAt, { mutationType: 'edit' });
 
     this.pendingDiaryEntryIds.add(diaryEntry.id);
 
@@ -318,9 +312,6 @@ export class FoodDiaryService extends BaseFoodService {
       this.pendingDiaryEntryIds.delete(diaryEntry.id);
       this.diaryRaw$$.set(originalDiary);
       this.persistDay(selectedDay);
-      if (kcalsDelta !== 0) {
-        statsRollback();
-      }
     };
 
     const successCallback = (response: ServerResponseWithDiaryId) => {
@@ -334,6 +325,7 @@ export class FoodDiaryService extends BaseFoodService {
           response.appliedHistoryEntry ?? null,
         );
       }
+      this.mutationApplied$.next(selectedDay);
     };
 
     const editRequest: DiaryEntryToEdit = {
@@ -367,6 +359,7 @@ export class FoodDiaryService extends BaseFoodService {
       return false;
     }
 
+    const startedAt = performance.now();
     const selectedDay = this.selectedDayIso$$();
     const originalDiary = { ...this.diaryRaw$$() };
     const deletedEntry = originalDiary[selectedDay]?.food[diaryEntryId];
@@ -387,13 +380,10 @@ export class FoodDiaryService extends BaseFoodService {
       fiber: -deletedNutrients.fiber,
     };
 
-    const statsRollback = this.foodStatsService.createStatsRollback(selectedDay);
-
     this.removeDiaryEntry(diaryEntryId);
     this.updateNutrientsOptimistically(selectedDay, nutrientsDelta, kcalsDelta);
     this.persistDay(selectedDay);
-
-    this.foodStatsService.updateStatsOptimistically(selectedDay, null, kcalsDelta);
+    void this.performanceMetrics.recordAfterPaint('food.diary_mutation', startedAt, { mutationType: 'delete' });
 
     this.pendingDiaryEntryIds.add(diaryEntryId);
 
@@ -401,7 +391,6 @@ export class FoodDiaryService extends BaseFoodService {
       this.pendingDiaryEntryIds.delete(diaryEntryId);
       this.diaryRaw$$.set(originalDiary);
       this.persistDay(selectedDay);
-      statsRollback();
     };
 
     this.addSyncOperation({
@@ -409,7 +398,10 @@ export class FoodDiaryService extends BaseFoodService {
       type: SyncOperationType.DELETE,
       endpoint: `/api/food/diary/${diaryEntryId}`,
       data: {},
-      successCallback: () => this.pendingDiaryEntryIds.delete(diaryEntryId),
+      successCallback: () => {
+        this.pendingDiaryEntryIds.delete(diaryEntryId);
+        this.mutationApplied$.next(selectedDay);
+      },
       rollbackCallback: rollbackFunction,
       feedback: {
         successMessage: 'Запись удалена',
@@ -428,6 +420,7 @@ export class FoodDiaryService extends BaseFoodService {
       return false;
     }
 
+    const startedAt = performance.now();
     const selectedDay = this.selectedDayIso$$();
     const originalDiary = { ...this.diaryRaw$$() };
     const deletedEntries = Object.values(originalDiary[selectedDay]?.food || {});
@@ -439,20 +432,17 @@ export class FoodDiaryService extends BaseFoodService {
 
     const { kcalsDelta, nutrientsDelta } = this.calculateRemovedEntriesDelta(deletedEntries);
     const deletedDaySnapshot = this.createDeletedDaySnapshot(selectedDay, deletedEntries);
-    const statsRollback = this.foodStatsService.createStatsRollback(selectedDay);
 
     this.saveDeletedDaySnapshot(deletedDaySnapshot);
     this.clearDiaryEntriesForDay(selectedDay);
     this.updateNutrientsOptimistically(selectedDay, nutrientsDelta, kcalsDelta);
     this.persistDay(selectedDay);
-
-    this.foodStatsService.updateStatsOptimistically(selectedDay, null, kcalsDelta);
+    void this.performanceMetrics.recordAfterPaint('food.diary_mutation', startedAt, { mutationType: 'delete_day' });
 
     const rollbackFunction = () => {
       this.diaryRaw$$.set(originalDiary);
       this.persistDay(selectedDay);
       this.clearDeletedDaySnapshot();
-      statsRollback();
     };
 
     this.addSyncOperation({
@@ -460,6 +450,7 @@ export class FoodDiaryService extends BaseFoodService {
       type: SyncOperationType.DELETE,
       endpoint: `/api/food/diary/day/${selectedDay}`,
       data: {},
+      successCallback: () => this.mutationApplied$.next(selectedDay),
       rollbackCallback: rollbackFunction,
       feedback: {
         successMessage: 'Записи за день удалены',
@@ -485,6 +476,7 @@ export class FoodDiaryService extends BaseFoodService {
       return false;
     }
 
+    const startedAt = performance.now();
     const originalDiary = { ...this.diaryRaw$$() };
     const restoredEntries = this.cloneDiaryEntries(snapshot.entries);
     const tempEntries = restoredEntries.map((entry, index) => ({
@@ -493,25 +485,24 @@ export class FoodDiaryService extends BaseFoodService {
       dateISO: snapshot.dateISO,
     }));
     const { kcalsDelta, nutrientsDelta } = this.calculateAddedEntriesDelta(restoredEntries);
-    const statsRollback = this.foodStatsService.createStatsRollback(snapshot.dateISO);
 
     this.clearDeletedDaySnapshot();
     this.addDiaryEntriesForDay(snapshot.dateISO, tempEntries);
     this.updateNutrientsOptimistically(snapshot.dateISO, nutrientsDelta, kcalsDelta);
     this.persistDay(snapshot.dateISO);
-    this.foodStatsService.updateStatsOptimistically(snapshot.dateISO, null, kcalsDelta);
+    void this.performanceMetrics.recordAfterPaint('food.diary_mutation', startedAt, { mutationType: 'restore_day' });
 
     const successCallback = (response: ServerResponseWithDiaryEntries) => {
       if (response.result && response.diaryEntries?.length) {
         this.replaceDiaryEntriesForDay(snapshot.dateISO, tempEntries, response.diaryEntries);
       }
+      this.mutationApplied$.next(snapshot.dateISO);
     };
 
     const rollbackFunction = () => {
       this.diaryRaw$$.set(originalDiary);
       this.persistDay(snapshot.dateISO);
       this.saveDeletedDaySnapshot(snapshot);
-      statsRollback();
     };
 
     this.addSyncOperation({
@@ -550,12 +541,11 @@ export class FoodDiaryService extends BaseFoodService {
       return false;
     }
 
+    const startedAt = performance.now();
     const originalDiary = { ...this.diaryRaw$$() };
     const dateISO = bodyWeight.dateISO;
 
     const newWeight = Number(bodyWeight.bodyWeight);
-
-    const statsRollback = this.foodStatsService.createStatsRollback(dateISO);
 
     this.diaryRaw$$.update((diary) => {
       return {
@@ -567,13 +557,11 @@ export class FoodDiaryService extends BaseFoodService {
       };
     });
     this.persistDay(dateISO);
-
-    this.foodStatsService.updateStatsOptimistically(dateISO, newWeight, 0);
+    void this.performanceMetrics.recordAfterPaint('food.diary_mutation', startedAt, { mutationType: 'body_weight' });
 
     const rollbackFunction = () => {
       this.diaryRaw$$.set(originalDiary);
       this.persistDay(dateISO);
-      statsRollback();
     };
 
     this.addSyncOperation({
@@ -581,6 +569,7 @@ export class FoodDiaryService extends BaseFoodService {
       type: SyncOperationType.CREATE,
       endpoint: '/api/food/body-weight',
       data: bodyWeight,
+      successCallback: () => this.mutationApplied$.next(dateISO),
       rollbackCallback: rollbackFunction,
       feedback: {
         successMessage: 'Вес сохранён',
@@ -1020,26 +1009,38 @@ export class FoodDiaryService extends BaseFoodService {
   // Single entry point for both "just landed on a date nowhere near anything loaded" (calendar
   // jump) and "walking day by day, approaching the edge of what's already loaded" — both reduce
   // to the same question: is this date, or the next one just past it, covered by a segment yet.
-  private ensureSegmentCoverage(dateISO: string): void {
+  // Returns once every fetch this call kicked off (there can be up to two, one per edge) settles —
+  // used by ensureTodaySegmentLoaded() so the reconnect coordinator can await the initial paint.
+  private async ensureSegmentCoverage(dateISO: string): Promise<void> {
     const containingSegment = this.findContainingSegment(dateISO);
+    const pending: Promise<void>[] = [];
 
     if (!containingSegment) {
-      this.fetchSegmentAround(dateISO);
-      return;
+      pending.push(this.fetchSegmentAround(dateISO));
+    } else {
+      const daysToStart = this.daysBetween(containingSegment.start, dateISO);
+      const daysToEnd = this.daysBetween(dateISO, containingSegment.end);
+
+      if (daysToStart <= this.EDGE_THRESHOLD_DAYS) {
+        const beyondStart = this.addDaysToIso(containingSegment.start, -1);
+        if (!this.isDateCovered(beyondStart)) pending.push(this.fetchSegmentAround(beyondStart));
+      }
+
+      if (daysToEnd <= this.EDGE_THRESHOLD_DAYS) {
+        const beyondEnd = this.addDaysToIso(containingSegment.end, 1);
+        if (!this.isDateCovered(beyondEnd)) pending.push(this.fetchSegmentAround(beyondEnd));
+      }
     }
 
-    const daysToStart = this.daysBetween(containingSegment.start, dateISO);
-    const daysToEnd = this.daysBetween(dateISO, containingSegment.end);
+    await Promise.all(pending);
+  }
 
-    if (daysToStart <= this.EDGE_THRESHOLD_DAYS) {
-      const beyondStart = this.addDaysToIso(containingSegment.start, -1);
-      if (!this.isDateCovered(beyondStart)) this.fetchSegmentAround(beyondStart);
-    }
-
-    if (daysToEnd <= this.EDGE_THRESHOLD_DAYS) {
-      const beyondEnd = this.addDaysToIso(containingSegment.end, 1);
-      if (!this.isDateCovered(beyondEnd)) this.fetchSegmentAround(beyondEnd);
-    }
+  // Diary's own share of the reconnect coordinator's initial-load sequence (§2.4) — piggybacks on
+  // the same segment-coverage/dedup logic the reactive selectedDayIso$$ effect already uses (see
+  // ensureDiarySegmentEffect$$), so calling this never double-fetches even if that effect already
+  // kicked off the same first segment moments earlier.
+  public ensureTodaySegmentLoaded(): Promise<void> {
+    return this.ensureSegmentCoverage(calculateTodayIsoWithUserTimeShift());
   }
 
   // First segment of the session is small (the common case), every subsequent one is large (see
@@ -1047,8 +1048,8 @@ export class FoodDiaryService extends BaseFoodService {
   // distance from today. "First" means first fetch kicked off this session, confirmed or still
   // pending — a second navigation landing while the first fetch is still in flight is not a
   // first segment either.
-  private fetchSegmentAround(centerDate: string): void {
-    if (this.isDateCovered(centerDate)) return;
+  private fetchSegmentAround(centerDate: string): Promise<void> {
+    if (this.isDateCovered(centerDate)) return Promise.resolve();
 
     const isFirstFetchOfSession = this.segments.length === 0 && this.pendingSegments.length === 0;
     const offsetDays = isFirstFetchOfSession ? this.FIRST_SEGMENT_OFFSET_DAYS : this.NEXT_SEGMENT_OFFSET_DAYS;
@@ -1059,7 +1060,7 @@ export class FoodDiaryService extends BaseFoodService {
 
     this.pendingSegments.push(window);
 
-    this.getFoodDiaryFullUpdateRange(centerDate, offsetDays)
+    return this.getFoodDiaryFullUpdateRange(centerDate, offsetDays)
       .then(() => this.addSegment(window))
       .catch((error) => console.error('Failed fetching diary segment:', error))
       .finally(() => {
@@ -1121,12 +1122,6 @@ export class FoodDiaryService extends BaseFoodService {
       if (!message?.type) return;
 
       switch (message.type) {
-        case WebSocketMessageType.SYNC_STATUS:
-          if (this.isValidSyncStatusPayload(message.payload)) {
-            this.handleSyncStatus(message.payload);
-          }
-          break;
-
         case WebSocketMessageType.DIARY_ENTRY_CREATED:
           if (this.isValidNewDiaryEntryPayload(message.payload)) {
             this.handleDiaryEntryCreated(message.payload);
@@ -1157,38 +1152,6 @@ export class FoodDiaryService extends BaseFoodService {
           }
           break;
       }
-    });
-  }
-
-  private isValidSyncStatusPayload(payload: UserDataLastModifiedTs): payload is UserDataLastModifiedTs {
-    return payload && typeof payload.userDataLastModifiedTs === 'number';
-  }
-
-  private async handleSyncStatus(payload: UserDataLastModifiedTs): Promise<void> {
-    try {
-      const serverUserDataTs = payload.userDataLastModifiedTs;
-
-      if (serverUserDataTs > this.lastSyncTs) {
-        await this.loadAllFoodData();
-        this.lastSyncTs = Date.now();
-      }
-    } catch (error) {
-      console.error('Failed to handle sync status:', error);
-    }
-  }
-
-  // Diary itself isn't triggered here — ensureDiarySegmentEffect$$ already covers it reactively
-  // for whatever day is currently selected, independent of when/whether this is called.
-  public async loadAllFoodData(): Promise<void> {
-    const startedAt = performance.now();
-    await Promise.all([
-      this.catalogueService.getCatalogueEntries(),
-      this.personalKcalsService.getPersonalKcals(),
-      this.foodStatsService.getStats(),
-    ]);
-    void this.performanceMetrics.recordAfterPaint('food.initial_load', startedAt, {
-      catalogueEntries: Object.keys(this.catalogueService.catalogue$$()).length,
-      statsDays: this.foodStatsService.statsChartData$$().dates.length,
     });
   }
 
@@ -1232,10 +1195,7 @@ export class FoodDiaryService extends BaseFoodService {
     const nutrientsDelta = this.calculateEntryNutrients(diaryEntry);
 
     this.updateNutrientsOptimistically(dateISO, nutrientsDelta, kcalsDelta);
-
-    if (kcalsDelta !== 0) {
-      this.foodStatsService.updateStatsOptimistically(dateISO, null, kcalsDelta);
-    }
+    this.mutationApplied$.next(dateISO);
   }
 
   private isValidUpdatedDiaryEntryPayload(payload: DiaryEntryToUpdate): payload is DiaryEntryToUpdate {
@@ -1318,10 +1278,7 @@ export class FoodDiaryService extends BaseFoodService {
     };
 
     this.updateNutrientsOptimistically(dateISO, nutrientsDelta, kcalsDelta);
-
-    if (kcalsDelta !== 0) {
-      this.foodStatsService.updateStatsOptimistically(dateISO, null, kcalsDelta);
-    }
+    this.mutationApplied$.next(dateISO);
   }
 
   private isValidDeletedDiaryEntryPayload(payload: DiaryEntryToDelete): payload is DiaryEntryToDelete {
@@ -1371,7 +1328,7 @@ export class FoodDiaryService extends BaseFoodService {
 
     this.persistDay(dateISO);
     this.updateNutrientsOptimistically(dateISO, nutrientsDelta, kcalsDelta);
-    this.foodStatsService.updateStatsOptimistically(dateISO, null, kcalsDelta);
+    this.mutationApplied$.next(dateISO);
   }
 
   private handleDiaryDayDeleted(dateISO: string): void {
@@ -1386,7 +1343,7 @@ export class FoodDiaryService extends BaseFoodService {
     this.clearDiaryEntriesForDay(dateISO);
     this.updateNutrientsOptimistically(dateISO, nutrientsDelta, kcalsDelta);
     this.persistDay(dateISO);
-    this.foodStatsService.updateStatsOptimistically(dateISO, null, kcalsDelta);
+    this.mutationApplied$.next(dateISO);
   }
 
   private isValidBodyWeightUpdatePayload(payload: BodyWeightToUpdate): payload is BodyWeightToUpdate {
@@ -1411,6 +1368,6 @@ export class FoodDiaryService extends BaseFoodService {
     });
 
     this.persistDay(bodyWeightToUpdate.dateISO);
-    this.foodStatsService.updateStatsOptimistically(bodyWeightToUpdate.dateISO, bodyWeightToUpdate.newBodyWeight, 0);
+    this.mutationApplied$.next(bodyWeightToUpdate.dateISO);
   }
 }

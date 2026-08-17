@@ -29,6 +29,7 @@ export const WebSocketMessageType = {
   SEARCH_QUERY: 'SEARCH_QUERY',
   SEARCH_RESULTS: 'SEARCH_RESULTS',
   CATALOGUE_ENTRY_SAVED: 'CATALOGUE_ENTRY_SAVED',
+  CATALOGUE_ENTRY_DELETED: 'CATALOGUE_ENTRY_DELETED',
   CATALOGUE_IMAGE_GENERATED: 'CATALOGUE_IMAGE_GENERATED',
   METRICS_HEALTH: 'METRICS_HEALTH',
   METRICS_LATEST: 'METRICS_LATEST',
@@ -148,6 +149,13 @@ export interface SearchResultsWsMessage {
 export interface CatalogueEntrySavedWsMessage {
   type: typeof WebSocketMessageType.CATALOGUE_ENTRY_SAVED;
   payload: CatalogueEntry;
+}
+
+export interface CatalogueEntryDeletedWsMessage {
+  type: typeof WebSocketMessageType.CATALOGUE_ENTRY_DELETED;
+  payload: {
+    catalogueId: number;
+  };
 }
 
 export interface CatalogueImageGeneratedWsMessage {
@@ -309,6 +317,7 @@ export type IncomingWsMessage =
   | PerformanceMetricsAckWsMessage
   | SearchResultsWsMessage
   | CatalogueEntrySavedWsMessage
+  | CatalogueEntryDeletedWsMessage
   | CatalogueImageGeneratedWsMessage
   | SettingsUpdatedWsMessage;
 
@@ -508,6 +517,17 @@ export interface CatalogueEntry {
 
 export interface Catalogue {
   [id: number]: CatalogueEntry;
+}
+
+// GET /api/food/catalogue response — version is a cheap "did anything change" signal for
+// reconnect catch-up, checked without downloading the whole catalogue (GET /api/food/catalogue/version).
+export interface CatalogueListResponse {
+  version: number;
+  entries: Catalogue;
+}
+
+export interface CatalogueVersionResponse {
+  version: number;
 }
 
 export interface PersonalKcals {

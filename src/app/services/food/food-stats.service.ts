@@ -2,11 +2,15 @@ import { HttpClient } from '@angular/common/http';
 import { computed, effect, inject, Injectable, Signal, signal, WritableSignal } from '@angular/core';
 import { AuthService, AuthSessionState } from '@app/services/auth.service';
 import { exhaustRequest } from '@app/shared/decorators/exhaust-request.decorator';
-import { DayStats, FoodStatsResponse, FoodStatsTopProduct, Stats, StatsChartData } from '@app/shared/types';
+import { FoodStatsResponse, FoodStatsTopProduct, Stats, StatsChartData } from '@app/shared/types';
 import { firstValueFrom } from 'rxjs';
 import { dateToIsoNoTimeNoTZ, formatDateTicks } from '../../shared/utils';
 import { LocalStorageService } from '../local-storage.service';
+import { NetworkService } from '../network.service';
 import { PerformanceMetricsService } from '../performance-metrics.service';
+import { SyncEngineService } from '../sync-engine.service';
+import { BaseFoodService } from './food-base.service';
+import { FoodDiaryService } from './food-diary.service';
 import { FoodSettingsService } from './food-settings.service';
 
 interface AggregatedPeriodData {
@@ -15,10 +19,17 @@ interface AggregatedPeriodData {
   periodEndIdx: number[];
 }
 
+const LIVE_WINDOW_DAYS = 3;
+
+// Must match the backend's defaultStatsWindowDays (megaapp-back/internal/food/service.go) — the
+// number of recent days GET /api/food/stats returns without the ?from=all opt-in. Used to decide
+// whether a requested clip can be satisfied by the default window or needs ensureFullHistoryLoaded().
+const DEFAULT_STATS_WINDOW_DAYS = 90;
+
 @Injectable({
   providedIn: 'root',
 })
-export class FoodStatsService {
+export class FoodStatsService extends BaseFoodService {
   private static readonly DAYS_IN_YEAR = 365;
   private static readonly GRANULARITY_WEEK_SWITCH_DAYS = 370;
   private static readonly GRANULARITY_MONTH_SWITCH_YEARS = 4;
@@ -27,7 +38,12 @@ export class FoodStatsService {
 
   private readonly STATS_STORAGE_KEY = 'food_stats';
 
+  protected getStorageKey(): string {
+    return this.STATS_STORAGE_KEY;
+  }
+
   private readonly foodSettingsService = inject(FoodSettingsService);
+  private readonly foodDiaryService = inject(FoodDiaryService);
 
   private readonly stats$$: WritableSignal<Stats> = signal({});
   private readonly topProductsByKcalSignal$$: WritableSignal<FoodStatsTopProduct[]> = signal([]);
@@ -41,6 +57,38 @@ export class FoodStatsService {
   public readonly topProductsWindowTotalWeight$$: Signal<number> =
     this.topProductsWindowTotalWeightSignal$$.asReadonly();
   public readonly totalEntries$$: Signal<number> = this.totalEntriesSignal$$.asReadonly();
+
+  // The last LIVE_WINDOW_DAYS calendar days (today included) are shown live-derived from the
+  // diary instead of the stored/cached value (§2.3 of plan 28) — the diary already has both kcal
+  // sum and bodyWeight per day (DiaryDay.totals), and its own first segment always covers this
+  // window, so this needs no extra request and no manual patch on every diary mutation. A day
+  // outside the window keeps the stored value as-is; see foodDiaryService.mutationApplied$
+  // subscription below for how that value eventually catches up.
+  //
+  // targetKcal/weightAvg are NOT re-derived here even for in-window days — they come from
+  // settings/a smoothing window wider than one day, not from diary entries, so the stored value
+  // is authoritative for them regardless of the live window.
+  private readonly displayStats$$: Signal<Stats> = computed(() => {
+    const stored = this.stats$$();
+    const diary = this.foodDiaryService.diary$$();
+    const merged: Stats = { ...stored };
+
+    for (const dateISO of this.liveWindowDates()) {
+      const day = diary[dateISO];
+      if (!day) continue;
+      const existing = stored[dateISO];
+      merged[dateISO] = {
+        weight: day.totals.bodyWeight ?? existing?.weight ?? Number.NaN,
+        weightAvg: existing?.weightAvg ?? Number.NaN,
+        consumedKcal: day.totals.kcalsConsumed,
+        targetKcal: existing?.targetKcal ?? Number.NaN,
+        hasNoData: existing ? existing.hasNoData && day.food.length === 0 : day.food.length === 0,
+      };
+    }
+
+    return merged;
+  });
+
   public readonly statsChartData$$: Signal<StatsChartData> = computed(() =>
     this.performanceMetrics.measure(
       'food.stats_base_model',
@@ -77,6 +125,11 @@ export class FoodStatsService {
   private readonly authService = inject(AuthService);
   private readonly performanceMetrics = inject(PerformanceMetricsService);
 
+  // Once true, every getStats() call (from anywhere — the reconnect coordinator included) fetches
+  // full history instead of the default recent window, so a user who has explicitly widened their
+  // view never sees it silently regress back to the last 90 days on a routine background refresh.
+  private hasFullHistoryLoaded = false;
+
   private readonly resetOnAuthLossEffect$$ = effect(() => {
     if (this.authService.sessionState$$() === AuthSessionState.Guest) {
       this.reset();
@@ -84,10 +137,16 @@ export class FoodStatsService {
   });
 
   constructor(
-    private http: HttpClient,
-    private localStorageService: LocalStorageService,
+    http: HttpClient,
+    localStorageService: LocalStorageService,
+    networkService: NetworkService,
+    syncEngine: SyncEngineService,
   ) {
+    super(http, localStorageService, networkService, syncEngine);
     this.loadStatsFromLocalStorageOnInit();
+    this.foodDiaryService.mutationApplied$.subscribe((dateISO) => {
+      if (!this.isDateInLiveWindow(dateISO)) void this.getStats();
+    });
   }
 
   public reset(): void {
@@ -99,6 +158,22 @@ export class FoodStatsService {
     this.totalEntriesSignal$$.set(0);
     this.selectedDateIdxStart$$.set(0);
     this.selectedDateIdxEnd$$.set(0);
+    this.hasFullHistoryLoaded = false;
+  }
+
+  private liveWindowDates(): string[] {
+    const today = new Date();
+    const dates: string[] = [];
+    for (let offset = 0; offset < LIVE_WINDOW_DAYS; offset++) {
+      const date = new Date(today);
+      date.setDate(date.getDate() - offset);
+      dates.push(dateToIsoNoTimeNoTZ(date));
+    }
+    return dates;
+  }
+
+  public isDateInLiveWindow(dateISO: string): boolean {
+    return this.liveWindowDates().includes(dateISO);
   }
 
   @exhaustRequest()
@@ -110,7 +185,8 @@ export class FoodStatsService {
     }
 
     try {
-      const serverResponse = await firstValueFrom(this.http.get<FoodStatsResponse>('/api/food/stats'));
+      const url = this.hasFullHistoryLoaded ? '/api/food/stats?from=all' : '/api/food/stats';
+      const serverResponse = await firstValueFrom(this.http.get<FoodStatsResponse>(url));
       const isLocalStatsEmpty = Object.keys(this.stats$$()).length === 0;
 
       this.applyResponse(serverResponse);
@@ -128,6 +204,15 @@ export class FoodStatsService {
     }
   }
 
+  // Fetches the full account history once (see hasFullHistoryLoaded) — the deliberate wide, rare
+  // request the backend keeps as an explicit opt-in (§2.1 of plan 28) instead of the default
+  // recent window.
+  public async ensureFullHistoryLoaded(): Promise<void> {
+    if (this.hasFullHistoryLoaded) return;
+    this.hasFullHistoryLoaded = true;
+    await this.getStats();
+  }
+
   // response.topProducts* may be missing on a stale pre-migration localStorage cache — the ?? [] /
   // ?? 0 fallbacks keep loadStatsFromLocalStorageOnInit() from setting signals to undefined.
   private applyResponse(response: FoodStatsResponse): void {
@@ -139,49 +224,15 @@ export class FoodStatsService {
     this.totalEntriesSignal$$.set(response.totalEntries);
   }
 
-  public updateStats(dateIso: string, newWeight: number | null, kcalsDelta: number) {
-    if (newWeight === null && !kcalsDelta) return;
-
-    const stats = this.stats$$();
-    const dateStats = stats[dateIso] ?? this.buildFallbackDayStats(stats, dateIso);
-
-    this.stats$$.set({
-      ...stats,
-      [dateIso]: {
-        ...dateStats,
-        weight: newWeight === null ? dateStats.weight : newWeight,
-        consumedKcal: dateStats.consumedKcal + kcalsDelta,
-        hasNoData: kcalsDelta !== 0 ? false : dateStats.hasNoData,
-      },
-    });
-  }
-
-  // A new day (typically today) may not exist yet in stats$$ — it only gets added by a full
-  // getStats() fetch from the server. Without this fallback, an optimistic update for such a
-  // day silently no-ops, and the point only appears after the next full refresh. Carry values
-  // forward from the nearest known day at or before dateIso (never a later one, since that would
-  // show a not-yet-reached day's target/average on an earlier date). NaN when no such day exists
-  // at all (brand new user) so the chart shows a gap instead of a fake zero.
-  private buildFallbackDayStats(stats: Stats, dateIso: string): DayStats {
-    const priorDates = Object.keys(stats)
-      .filter((date) => date <= dateIso)
-      .sort();
-    const nearestKnown = priorDates.length ? stats[priorDates[priorDates.length - 1]] : null;
-
-    return {
-      weight: nearestKnown?.weight ?? Number.NaN,
-      weightAvg: nearestKnown?.weightAvg ?? Number.NaN,
-      consumedKcal: 0,
-      targetKcal: nearestKnown?.targetKcal ?? Number.NaN,
-      hasNoData: true,
-    };
-  }
-
   // statsDateRange$$ is a separate namespace store with its own independent GET — awaiting
   // ready() here means the restore always sees the real saved range regardless of which of the
   // two requests (this one, or /api/food/stats above) happens to answer first.
   private async applyDateRangeOnLoad(useDefaultIfNoSaved: boolean): Promise<void> {
     await this.foodSettingsService.ready();
+    const saved = this.foodSettingsService.statsDateRange$$();
+    if (saved && this.savedRangeNeedsFullHistory(saved.start)) {
+      await this.ensureFullHistoryLoaded();
+    }
     setTimeout(() => {
       if (this.tryRestoreSavedDateRange()) return;
       if (!useDefaultIfNoSaved) return;
@@ -190,6 +241,14 @@ export class FoodStatsService {
       this.selectedDateIdxEnd$$.set(total - 1);
       this.clipDateRange(90);
     }, 1);
+  }
+
+  // 'first' always needs the full history; an explicit saved date needs it only if it falls
+  // before whatever's currently loaded (the default window).
+  private savedRangeNeedsFullHistory(savedStart: string): boolean {
+    if (savedStart === 'first') return true;
+    const loadedDates = this.statsChartData$$().dates;
+    return loadedDates.length > 0 && savedStart < loadedDates[0];
   }
 
   public saveDateRange(startIdx: number, endIdx: number): void {
@@ -217,7 +276,7 @@ export class FoodStatsService {
   }
 
   private prepareChartData(): StatsChartData {
-    const stats = this.stats$$() || {};
+    const stats = this.displayStats$$() || {};
     const result: StatsChartData = {
       dates: [],
       weights: [],
@@ -490,10 +549,31 @@ export class FoodStatsService {
     };
   }
 
-  public clipDateRange(daysAmtToShow: number) {
+  // Sets the range instantly from whatever's currently loaded — used only for the "no saved
+  // range yet" default (applyDateRangeOnLoad below). Animated user-triggered clips go through
+  // animateClipDateRange() in the chart component instead, which resolves clipNeedsFullHistory()
+  // itself before computing the animation's target range.
+  private clipDateRange(daysAmtToShow: number): void {
+    if (this.clipNeedsFullHistory(daysAmtToShow)) {
+      void this.ensureFullHistoryLoaded().then(() => this.applyClip(daysAmtToShow));
+      return;
+    }
+    this.applyClip(daysAmtToShow);
+  }
+
+  private applyClip(daysAmtToShow: number): void {
     const [start, end] = this.getClipRange(daysAmtToShow);
     this.selectedDateIdxStart$$.set(start);
     this.selectedDateIdxEnd$$.set(end);
+  }
+
+  // True when daysAmtToShow asks for more days than the default server window provides — callers
+  // must await ensureFullHistoryLoaded() first, otherwise getClipRange() below clamps to whatever
+  // partial window is currently loaded instead of the true requested range. Compared against the
+  // fixed window size, not against however many days happen to be loaded right now, so the
+  // routine default-window clip (90) never triggers an unnecessary full-history fetch on its own.
+  public clipNeedsFullHistory(daysAmtToShow: number): boolean {
+    return daysAmtToShow === -1 || daysAmtToShow > DEFAULT_STATS_WINDOW_DAYS;
   }
 
   public getClipRange(daysAmtToShow: number): [number, number] {
@@ -533,11 +613,11 @@ export class FoodStatsService {
       topProductsWindowTotalWeight: this.topProductsWindowTotalWeightSignal$$(),
       totalEntries: this.totalEntriesSignal$$(),
     };
-    this.localStorageService.setUserScoped(this.STATS_STORAGE_KEY, response);
+    this.saveToLocalStorage(response);
   }
 
   private loadStatsFromLocalStorage(): FoodStatsResponse | null {
-    const saved = this.localStorageService.getUserScoped<FoodStatsResponse>(this.STATS_STORAGE_KEY);
+    const saved = this.loadFromLocalStorage<FoodStatsResponse>();
     // Stale cache from before the {days, topProducts, totalEntries} envelope was introduced —
     // saved.days would be undefined and crash Object.keys() downstream. Treat as no cache.
     if (!saved || typeof saved.days !== 'object' || saved.days === null) return null;
@@ -550,18 +630,5 @@ export class FoodStatsService {
       this.applyResponse(savedResponse);
       void this.applyDateRangeOnLoad(true);
     }
-  }
-
-  public createStatsRollback(dateIso: string): () => void {
-    const originalStats = { ...this.stats$$() };
-    return () => {
-      this.stats$$.set(originalStats);
-      this.saveStatsToLocalStorage();
-    };
-  }
-
-  public updateStatsOptimistically(dateIso: string, newWeight: number | null, kcalsDelta: number): void {
-    this.updateStats(dateIso, newWeight, kcalsDelta);
-    this.saveStatsToLocalStorage();
   }
 }

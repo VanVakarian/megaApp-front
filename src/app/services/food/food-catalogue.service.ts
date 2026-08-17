@@ -5,8 +5,10 @@ import { exhaustRequest } from '@app/shared/decorators/exhaust-request.decorator
 import {
   Catalogue,
   CatalogueEntry,
+  CatalogueEntryDeletedWsMessage,
   CatalogueEntrySavedWsMessage,
   CatalogueImageGeneratedWsMessage,
+  CatalogueListResponse,
   ProductPreviewData,
   ProductSaveRequest,
   SearchQueryWsMessage,
@@ -31,9 +33,13 @@ import { BaseFoodService } from './food-base.service';
 })
 export class FoodCatalogueService extends BaseFoodService {
   private readonly CATALOGUE_STORAGE_KEY = 'food_catalogue';
+  private readonly CATALOGUE_VERSION_STORAGE_KEY = 'food_catalogue_version';
   private readonly SEARCH_CACHE_KEY = 'food_search_cache';
 
   public readonly catalogue$$: WritableSignal<Catalogue> = signal({});
+  // Bumped by the server on every applied create/update/delete — the cheap "did the shared
+  // catalogue change" signal the reconnect coordinator checks instead of re-downloading it.
+  public readonly catalogueVersion$$: WritableSignal<number> = signal(0);
 
   private readonly searchQuery$$: WritableSignal<string> = signal('');
   public readonly searchResults$$: WritableSignal<CatalogueEntry[]> = signal([]);
@@ -74,6 +80,7 @@ export class FoodCatalogueService extends BaseFoodService {
 
   public reset(): void {
     this.catalogue$$.set({});
+    this.catalogueVersion$$.set(0);
     this.searchQuery$$.set('');
     this.searchResults$$.set([]);
     this.isLegacySearch$$.set(false);
@@ -88,23 +95,20 @@ export class FoodCatalogueService extends BaseFoodService {
   public async getCatalogueEntries(): Promise<Catalogue> {
     const startedAt = performance.now();
     try {
-      const response = await firstValueFrom(this.http.get<Catalogue>('/api/food/catalogue'));
+      const response = await firstValueFrom(this.http.get<CatalogueListResponse>('/api/food/catalogue'));
 
-      this.catalogue$$.set(response);
-      this.saveToLocalStorage(response);
-      this.performanceMetrics.record('food.catalogue_load', performance.now() - startedAt, {
+      this.catalogue$$.set(response.entries);
+      this.catalogueVersion$$.set(response.version);
+      this.saveToLocalStorage(response.entries);
+      this.saveCatalogueVersionToLocalStorage(response.version);
+      void this.performanceMetrics.recordAfterPaint('food.catalogue_load', startedAt, {
         source: 'server',
-        entries: Object.keys(response).length,
+        entries: Object.keys(response.entries).length,
       });
-      return response;
+      return response.entries;
     } catch (error) {
       console.error('Failed getting catalogue entries:', error);
-      this.performanceMetrics.record(
-        'food.catalogue_load',
-        performance.now() - startedAt,
-        { source: 'server' },
-        'error',
-      );
+      void this.performanceMetrics.recordAfterPaint('food.catalogue_load', startedAt, { source: 'server' }, 'error');
       return {};
     }
   }
@@ -115,11 +119,19 @@ export class FoodCatalogueService extends BaseFoodService {
     if (savedCatalogue) {
       this.catalogue$$.set(savedCatalogue);
     }
+    const savedVersion = this.localStorageService.getUserScoped<number>(this.CATALOGUE_VERSION_STORAGE_KEY);
+    if (typeof savedVersion === 'number') {
+      this.catalogueVersion$$.set(savedVersion);
+    }
     this.performanceMetrics.record('food.catalogue_load', performance.now() - startedAt, {
       source: 'cache',
       entries: savedCatalogue ? Object.keys(savedCatalogue).length : 0,
       hit: Boolean(savedCatalogue),
     });
+  }
+
+  private saveCatalogueVersionToLocalStorage(version: number): void {
+    this.localStorageService.setUserScoped(this.CATALOGUE_VERSION_STORAGE_KEY, version);
   }
 
   public searchProducts(query: string): void {
@@ -221,14 +233,35 @@ export class FoodCatalogueService extends BaseFoodService {
     this.networkService.wsMessages$
       .pipe(filter((msg) => msg.type === WebSocketMessageType.CATALOGUE_ENTRY_SAVED))
       .subscribe((msg) => {
-        this.handleCatalogueEntrySaved(msg as CatalogueEntrySavedWsMessage);
+        const typed = msg as CatalogueEntrySavedWsMessage;
+        if (this.isValidCatalogueEntry(typed.payload)) this.handleCatalogueEntrySaved(typed);
+      });
+
+    this.networkService.wsMessages$
+      .pipe(filter((msg) => msg.type === WebSocketMessageType.CATALOGUE_ENTRY_DELETED))
+      .subscribe((msg) => {
+        const typed = msg as CatalogueEntryDeletedWsMessage;
+        if (typed.payload && typeof typed.payload.catalogueId === 'number') {
+          this.removeCatalogueEntry(typed.payload.catalogueId);
+        }
       });
 
     this.networkService.wsMessages$
       .pipe(filter((msg) => msg.type === WebSocketMessageType.CATALOGUE_IMAGE_GENERATED))
       .subscribe((msg) => {
-        this.handleCatalogueImageGenerated(msg as CatalogueImageGeneratedWsMessage);
+        const typed = msg as CatalogueImageGeneratedWsMessage;
+        if (
+          typed.payload &&
+          typeof typed.payload.catalogueId === 'number' &&
+          typeof typed.payload.imageVersion === 'number'
+        ) {
+          this.handleCatalogueImageGenerated(typed);
+        }
       });
+  }
+
+  private isValidCatalogueEntry(entry: CatalogueEntry): entry is CatalogueEntry {
+    return Boolean(entry) && typeof entry.id === 'number' && typeof entry.name === 'string';
   }
 
   private handleSearchResults(msg: SearchResultsWsMessage): void {
@@ -236,7 +269,7 @@ export class FoodCatalogueService extends BaseFoodService {
     const queryFromMessage = msg.payload.query;
     const sequenceFromMessage = msg.payload.sequenceNumber;
 
-    if (!queryFromMessage) {
+    if (!queryFromMessage || !Array.isArray(results)) {
       return;
     }
 
@@ -359,6 +392,8 @@ export class FoodCatalogueService extends BaseFoodService {
   }
 
   public saveProduct(productData: ProductSaveRequest): Promise<CatalogueEntry> {
+    const startedAt = performance.now();
+    const mutationType = productData.id ? 'update' : 'create';
     return new Promise<CatalogueEntry>((resolve, reject) => {
       this.addSyncOperation({
         mode: SyncOperationMode.NonOptimistic,
@@ -367,15 +402,30 @@ export class FoodCatalogueService extends BaseFoodService {
         data: productData,
         applyCallback: (response: ServerResponseProductSave) => {
           if (!response.result || !response.data?.catalogueEntry) {
+            void this.performanceMetrics.recordAfterPaint(
+              'food.catalogue_mutation',
+              startedAt,
+              { mutationType },
+              'error',
+            );
             reject(new Error(response.error || 'Failed to save product'));
             return;
           }
 
           const catalogueEntry = response.data.catalogueEntry;
           this.upsertCatalogueEntry(catalogueEntry);
+          void this.performanceMetrics.recordAfterPaint('food.catalogue_mutation', startedAt, { mutationType });
           resolve(catalogueEntry);
         },
-        errorCallback: (error: SyncOperationError) => reject(error),
+        errorCallback: (error: SyncOperationError) => {
+          void this.performanceMetrics.recordAfterPaint(
+            'food.catalogue_mutation',
+            startedAt,
+            { mutationType },
+            'error',
+          );
+          reject(error);
+        },
       });
     });
   }
@@ -400,6 +450,7 @@ export class FoodCatalogueService extends BaseFoodService {
   }
 
   public deleteProduct(catalogueId: number): Promise<void> {
+    const startedAt = performance.now();
     return new Promise<void>((resolve, reject) => {
       this.addSyncOperation({
         mode: SyncOperationMode.NonOptimistic,
@@ -408,14 +459,31 @@ export class FoodCatalogueService extends BaseFoodService {
         data: {},
         applyCallback: (response: ServerResponseBasic) => {
           if (!response.result) {
+            void this.performanceMetrics.recordAfterPaint(
+              'food.catalogue_mutation',
+              startedAt,
+              { mutationType: 'delete' },
+              'error',
+            );
             reject(new Error('Failed to delete product'));
             return;
           }
 
           this.removeCatalogueEntry(catalogueId);
+          void this.performanceMetrics.recordAfterPaint('food.catalogue_mutation', startedAt, {
+            mutationType: 'delete',
+          });
           resolve();
         },
-        errorCallback: (error: SyncOperationError) => reject(error),
+        errorCallback: (error: SyncOperationError) => {
+          void this.performanceMetrics.recordAfterPaint(
+            'food.catalogue_mutation',
+            startedAt,
+            { mutationType: 'delete' },
+            'error',
+          );
+          reject(error);
+        },
       });
     });
   }

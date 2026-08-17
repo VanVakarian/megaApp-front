@@ -301,15 +301,14 @@ export class FoodStatsCharts implements OnInit, AfterViewInit, OnDestroy {
     this.foodStatsService.saveDateRange(start, end);
   }
 
-  protected clipDateRange(daysAmtToShow: number): void {
-    this.foodStatsService.clipDateRange(daysAmtToShow);
-    this.foodStatsService.saveDateRange(
-      this.foodStatsService.selectedDateIdxStart$$(),
-      this.foodStatsService.selectedDateIdxEnd$$(),
-    );
-  }
-
-  protected animateClipDateRange(daysAmtToShow: number): void {
+  // "Выбрать всё" / "1 год" can ask for more days than the default server window loaded (§2.1 of
+  // plan 28) — clipNeedsFullHistory() catches that and this awaits the full-history fetch before
+  // resolving the target range, otherwise getClipRange() below would clamp to whatever partial
+  // window happened to already be in memory and animate to the wrong place.
+  protected async animateClipDateRange(daysAmtToShow: number): Promise<void> {
+    if (this.foodStatsService.clipNeedsFullHistory(daysAmtToShow)) {
+      await this.foodStatsService.ensureFullHistoryLoaded();
+    }
     const targetRange = this.foodStatsService.getClipRange(daysAmtToShow);
     this.animateRangeTo(targetRange);
   }

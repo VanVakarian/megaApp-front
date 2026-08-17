@@ -74,6 +74,7 @@ export const CACHE_KEY_VERSIONS: Readonly<Record<string, number>> = {
   settings_metrics: 1,
   food_stats: 4,
   food_catalogue: 4,
+  food_catalogue_version: 1,
   food_search_cache: 4,
   food_personal_kcals: 4,
   food_diary_deleted_day_snapshot: 4,
@@ -86,6 +87,7 @@ export const CACHE_KEY_VERSIONS: Readonly<Record<string, number>> = {
   metrics_anomaly_corridor_enabled: 4,
   performance_metrics_queue: 1,
   sync_pending_operation: 4,
+  food_sync_checkpoint: 1,
   navbar_collapsed: 1,
   dark_theme: 1,
 };
