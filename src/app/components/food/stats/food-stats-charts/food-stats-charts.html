@@ -11,21 +11,22 @@
           <div><span class="font-semibold">Калории</span> — столбики: сколько съедено за день, линия: ваша дневная
             норма.</div>
         </div>
-        <div class="text-[color:var(--v-color-text-muted)]">Период показа можно менять ползунком или кнопками внизу.</div>
+        <div class="text-[color:var(--v-color-text-muted)]">Период показа можно менять ползунком или кнопками внизу.
+        </div>
       </div>
     </food-stats-help-icon>
   </div>
 
   <div class="flex flex-col gap-2">
 
-    <div class="chart-container h-[160px]">
+    <div class="chart-container h-[180px]">
       <canvas #weightChartCanvas
               id="WeightChart">
         {{ weightChart$$() }}
       </canvas>
     </div>
 
-    <div class="chart-container pl-[22px] h-[160px]">
+    <div class="chart-container pl-[22px] h-[180px]">
       <canvas #kcalsChartCanvas
               id="KcalsChart">
         {{ kcalsChart$$() }}

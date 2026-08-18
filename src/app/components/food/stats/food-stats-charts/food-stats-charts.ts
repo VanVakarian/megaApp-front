@@ -302,6 +302,12 @@ export class FoodStatsCharts implements OnInit, AfterViewInit, OnDestroy {
     this.foodStatsService.selectedDateIdxStart$$.set(start);
     this.foodStatsService.selectedDateIdxEnd$$.set(end);
     this.foodStatsService.saveDateRange(start, end);
+    // Live drag, unlike animateClipDateRange() below, can pull the start thumb into the
+    // not-yet-loaded region on its own — indices apply optimistically, the gap fills in once this
+    // resolves (see rangeNeedsFullHistory()).
+    if (this.foodStatsService.rangeNeedsFullHistory(start)) {
+      void this.foodStatsService.ensureFullHistoryLoaded();
+    }
   }
 
   // "Выбрать всё" / "1 год" can ask for more days than the default server window loaded (§2.1 of

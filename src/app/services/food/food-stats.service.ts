@@ -283,8 +283,18 @@ export class FoodStatsService extends BaseFoodService {
   // response.topProducts*/summary may be missing on a stale pre-migration localStorage cache — the
   // ?? [] / ?? 0 / ?? EMPTY_STATS_SUMMARY fallbacks keep loadStatsFromLocalStorageOnInit() from
   // setting signals to undefined.
+  //
+  // response.days is merged into stats$$, never used to replace it outright: every page load's
+  // mandatory bootstrap getStats() (FoodSyncCoordinatorService.loadInitialFoodData()) is windowed
+  // (90 days) regardless of what's already cached — a hard .set() here let that response instantly
+  // shrink stats$$ back down to 90 days even when a wider range (full history, from a previous
+  // session's cache or this session's ensureFullHistoryLoaded()) was already loaded, visible as the
+  // chart snapping narrower right after paint and then widening again ~500ms later once the
+  // full-history follow-up resolved — and, via saveStatsToLocalStorage() right after, silently
+  // regressing the persisted cache down to those same 90 days too. Merging means a response only
+  // ever adds/refreshes days, never discards ones already known.
   private applyResponse(response: FoodStatsResponse): void {
-    this.stats$$.set(response.days);
+    this.stats$$.update((current) => ({ ...current, ...response.days }));
     this.summarySignal$$.set(response.summary ?? EMPTY_STATS_SUMMARY);
     this.topProductsByKcalSignal$$.set(response.topProductsByKcal ?? []);
     this.topProductsByWeightSignal$$.set(response.topProductsByWeight ?? []);
@@ -293,10 +303,20 @@ export class FoodStatsService extends BaseFoodService {
     this.totalEntriesSignal$$.set(response.totalEntries);
   }
 
-  // statsDateRange$$ is a separate namespace store with its own independent GET — awaiting
-  // ready() here means the restore always sees the real saved range regardless of which of the
-  // two requests (this one, or /api/food/stats above) happens to answer first.
+  // statsDateRange$$ is backed by NamespaceSettingsStore, which seeds its state synchronously from
+  // localStorage in its own constructor — so the saved range is already available here without
+  // waiting for anything. Restoring it immediately, before the await below, is what keeps the
+  // slider/labels from ever rendering at their selectedDateIdxStart$$/End$$ default (0/0): without
+  // this line the first paint always showed the oldest day twice ("От"/"До" both the earliest
+  // cached date) until the settings GET below resolved and snapped the slider into place.
+  //
+  // statsDateRange$$ is still a separate namespace store with its own independent GET though, so
+  // the awaited call below stays: it re-confirms against the server (covering a stale/missing
+  // local cache, e.g. first login on a new device) regardless of which of the two requests (this
+  // one, or /api/food/stats above) happens to answer first.
   private async applyDateRangeOnLoad(useDefaultIfNoSaved: boolean): Promise<void> {
+    this.tryRestoreSavedDateRange();
+
     await this.foodSettingsService.ready();
     const saved = this.foodSettingsService.statsDateRange$$();
     if (saved && this.savedRangeNeedsFullHistory(saved.start)) {
@@ -684,6 +704,17 @@ export class FoodStatsService extends BaseFoodService {
   // routine default-window clip (90) never triggers an unnecessary full-history fetch on its own.
   public clipNeedsFullHistory(daysAmtToShow: number): boolean {
     return daysAmtToShow === -1 || daysAmtToShow > DEFAULT_STATS_WINDOW_DAYS;
+  }
+
+  // Same gap as clipNeedsFullHistory() guards for the range-clip buttons, but index-based: a live
+  // slider drag can pull the start thumb into statsChartData$$().dates' NaN-padded region (days
+  // older than loadedDates$$()) without ever going through getClipRange()/animateClipDateRange(),
+  // since onRangeChange() applies the dragged indices directly. Compared against the padding
+  // count, not the fixed 90-day window, so it stays correct once daysInDiary/loadedDates$$ change.
+  public rangeNeedsFullHistory(startIdx: number): boolean {
+    if (this.hasFullHistoryLoaded) return false;
+    const paddingCount = this.statsChartData$$().dates.length - this.loadedDates$$().length;
+    return startIdx < paddingCount;
   }
 
   public getClipRange(daysAmtToShow: number): [number, number] {
