@@ -78,7 +78,7 @@ export class FoodSyncCoordinatorService {
 
     void this.performanceMetrics.recordAfterPaint('food.initial_load', startedAt, {
       catalogueEntries: Object.keys(this.foodCatalogueService.catalogue$$()).length,
-      statsDays: this.foodStatsService.statsChartData$$().dates.length,
+      statsDays: this.foodStatsService.loadedDates$$().length,
     });
   }
 

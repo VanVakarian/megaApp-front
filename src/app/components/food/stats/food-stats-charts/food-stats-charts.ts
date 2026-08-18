@@ -269,9 +269,12 @@ export class FoodStatsCharts implements OnInit, AfterViewInit, OnDestroy {
     );
   });
 
-  public async ngOnInit(): Promise<void> {
-    this.foodStatsService.getStats();
-
+  // Doesn't call getStats() itself — FoodStatsCharts is always mounted under FoodScreen, whose
+  // ngOnInit already triggers FoodSyncCoordinatorService.loadInitialFoodData() (the single
+  // bootstrap owner for food data, §2.4 of plan 28). This component is a pure reactive reader of
+  // statsChartDataClipped$$; a second independent getStats() call here used to race that bootstrap
+  // call for who decides windowed vs. full history (see plan 28, "Находки в эксплуатации").
+  public ngOnInit(): void {
     this.lastChartColors = this.chartThemeService.colors$$();
     this.initializeCharts(this.lastChartColors);
   }

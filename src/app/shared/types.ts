@@ -567,8 +567,40 @@ export interface FoodStatsTopProduct {
   weight: number;
 }
 
+export interface FoodStatsWeightRecord {
+  weight: number;
+  dateISO: string;
+}
+
+export interface FoodStatsCaloricDayRecord {
+  percent: number;
+  dateISO: string;
+}
+
+export interface FoodStatsYearAgo {
+  dateISO: string;
+  weightThen: number;
+  weightNow: number;
+  deltaKg: number;
+}
+
+// All-time aggregates computed server-side over the full account history — unlike `days`, never
+// trimmed to the default recent window (see backend StatsSummary / plan 28 "Находки в
+// эксплуатации"), so it's correct in every /api/food/stats response regardless of the requested
+// window.
+export interface FoodStatsSummary {
+  daysInDiary: number;
+  minWeight: FoodStatsWeightRecord | null;
+  maxWeight: FoodStatsWeightRecord | null;
+  mostCaloricDay: FoodStatsCaloricDayRecord | null;
+  leastCaloricDay: FoodStatsCaloricDayRecord | null;
+  weightChangeSinceStartKg: number | null;
+  yearAgo: FoodStatsYearAgo | null;
+}
+
 export interface FoodStatsResponse {
   days: Stats;
+  summary?: FoodStatsSummary;
   topProductsByKcal: FoodStatsTopProduct[];
   topProductsByWeight: FoodStatsTopProduct[];
   topProductsWindowTotalKcal: number;

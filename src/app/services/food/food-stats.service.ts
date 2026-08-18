@@ -2,9 +2,9 @@ import { HttpClient } from '@angular/common/http';
 import { computed, effect, inject, Injectable, Signal, signal, WritableSignal } from '@angular/core';
 import { AuthService, AuthSessionState } from '@app/services/auth.service';
 import { exhaustRequest } from '@app/shared/decorators/exhaust-request.decorator';
-import { FoodStatsResponse, FoodStatsTopProduct, Stats, StatsChartData } from '@app/shared/types';
+import { FoodStatsResponse, FoodStatsSummary, FoodStatsTopProduct, Stats, StatsChartData } from '@app/shared/types';
 import { firstValueFrom } from 'rxjs';
-import { dateToIsoNoTimeNoTZ, formatDateTicks } from '../../shared/utils';
+import { dateToIsoNoTimeNoTZ, formatDateTicks, isoDaysBefore } from '../../shared/utils';
 import { LocalStorageService } from '../local-storage.service';
 import { NetworkService } from '../network.service';
 import { PerformanceMetricsService } from '../performance-metrics.service';
@@ -20,6 +20,18 @@ interface AggregatedPeriodData {
 }
 
 const LIVE_WINDOW_DAYS = 3;
+
+// Fallback for a stale pre-migration localStorage cache / an older server build's response, neither
+// of which carries `summary` yet — same reasoning as the `?? []` fallbacks in applyResponse().
+const EMPTY_STATS_SUMMARY: FoodStatsSummary = {
+  daysInDiary: 0,
+  minWeight: null,
+  maxWeight: null,
+  mostCaloricDay: null,
+  leastCaloricDay: null,
+  weightChangeSinceStartKg: null,
+  yearAgo: null,
+};
 
 // Must match the backend's defaultStatsWindowDays (megaapp-back/internal/food/service.go) — the
 // number of recent days GET /api/food/stats returns without the ?from=all opt-in. Used to decide
@@ -46,6 +58,8 @@ export class FoodStatsService extends BaseFoodService {
   private readonly foodDiaryService = inject(FoodDiaryService);
 
   private readonly stats$$: WritableSignal<Stats> = signal({});
+  private readonly summarySignal$$: WritableSignal<FoodStatsSummary> = signal(EMPTY_STATS_SUMMARY);
+  public readonly summary$$: Signal<FoodStatsSummary> = this.summarySignal$$.asReadonly();
   private readonly topProductsByKcalSignal$$: WritableSignal<FoodStatsTopProduct[]> = signal([]);
   private readonly topProductsByWeightSignal$$: WritableSignal<FoodStatsTopProduct[]> = signal([]);
   private readonly topProductsWindowTotalKcalSignal$$: WritableSignal<number> = signal(0);
@@ -89,6 +103,13 @@ export class FoodStatsService extends BaseFoodService {
     return merged;
   });
 
+  // Chronologically sorted dates actually loaded into stats$$/displayStats$$ — i.e. the real
+  // fetched window (90 days by default, or the full account history once ensureFullHistoryLoaded()
+  // has resolved), *not* padded with the placeholder days prepareChartData() adds below. Public so
+  // callers that need "how many days did we really fetch" (e.g. telemetry) don't have to read
+  // statsChartData$$().dates, which is always padded to the account's full daysInDiary.
+  public readonly loadedDates$$: Signal<string[]> = computed(() => Object.keys(this.displayStats$$()).sort());
+
   public readonly statsChartData$$: Signal<StatsChartData> = computed(() =>
     this.performanceMetrics.measure(
       'food.stats_base_model',
@@ -128,7 +149,18 @@ export class FoodStatsService extends BaseFoodService {
   // Once true, every getStats() call (from anywhere — the reconnect coordinator included) fetches
   // full history instead of the default recent window, so a user who has explicitly widened their
   // view never sees it silently regress back to the last 90 days on a routine background refresh.
+  // Monotonic for the session — never set back to false except by reset(). This is the *desired*
+  // completeness, set as soon as ensureFullHistoryLoaded() is called — not proof that full data has
+  // actually landed yet (see fullHistoryApplied below for that).
   private hasFullHistoryLoaded = false;
+
+  // True once a full-history response has actually been applied. Separate from
+  // hasFullHistoryLoaded (desire) on purpose: fetchAndApply() uses this, not the desire flag, to
+  // decide whether a windowed response may still be applied — a windowed request that resolves
+  // while the full-history request is still in flight is happily shown (partial-but-correct beats
+  // a blank screen if the full request is slow or fails); only once full history has actually
+  // landed does a later, slower windowed response get discarded instead of regressing the view.
+  private fullHistoryApplied = false;
 
   private readonly resetOnAuthLossEffect$$ = effect(() => {
     if (this.authService.sessionState$$() === AuthSessionState.Guest) {
@@ -144,13 +176,20 @@ export class FoodStatsService extends BaseFoodService {
   ) {
     super(http, localStorageService, networkService, syncEngine);
     this.loadStatsFromLocalStorageOnInit();
-    this.foodDiaryService.mutationApplied$.subscribe((dateISO) => {
-      if (!this.isDateInLiveWindow(dateISO)) void this.getStats();
+    // Refetch after every diary/weight mutation, live-window dates included — milestones (summary$$)
+    // only ever come from a real server response (see summary$$ below), so a live-window edit that
+    // skipped this would leave "Вехи" showing the pre-edit snapshot for the rest of the session even
+    // though the chart (fed from displayStats$$, which does merge local edits live) already moved on.
+    // Cheap: the backend invalidates its stats cache on every write, so this is a normal fresh fetch,
+    // not a redundant one.
+    this.foodDiaryService.mutationApplied$.subscribe(() => {
+      void this.getStats();
     });
   }
 
   public reset(): void {
     this.stats$$.set({});
+    this.summarySignal$$.set(EMPTY_STATS_SUMMARY);
     this.topProductsByKcalSignal$$.set([]);
     this.topProductsByWeightSignal$$.set([]);
     this.topProductsWindowTotalKcalSignal$$.set(0);
@@ -159,6 +198,7 @@ export class FoodStatsService extends BaseFoodService {
     this.selectedDateIdxStart$$.set(0);
     this.selectedDateIdxEnd$$.set(0);
     this.hasFullHistoryLoaded = false;
+    this.fullHistoryApplied = false;
   }
 
   private liveWindowDates(): string[] {
@@ -172,12 +212,41 @@ export class FoodStatsService extends BaseFoodService {
     return dates;
   }
 
-  public isDateInLiveWindow(dateISO: string): boolean {
-    return this.liveWindowDates().includes(dateISO);
+  // getStats() and loadFullHistoryNow() are two separately-@exhaustRequest()-decorated methods —
+  // each decorator instance tracks its own in-flight promise, independently of the other — instead
+  // of one shared method branching on hasFullHistoryLoaded. That used to let a windowed getStats()
+  // call already in flight silently satisfy a concurrent ensureFullHistoryLoaded() with 90-day
+  // data: the flag flipped true, but the actual network request stayed whatever the earlier caller
+  // had already started, and ensureFullHistoryLoaded() never found out (see plan 28, "Находки в
+  // эксплуатации 18.08.2026"). Splitting the methods makes that collision structurally impossible.
+  // Once hasFullHistoryLoaded is true, getStats() delegates to loadFullHistoryNow() rather than
+  // fetching '?from=all' itself — a reconnect-triggered getStats() and an in-flight
+  // ensureFullHistoryLoaded() then share loadFullHistoryNow()'s single @exhaustRequest() promise
+  // instead of firing two concurrent full-history requests.
+  @exhaustRequest()
+  public async getStats(): Promise<void> {
+    if (this.hasFullHistoryLoaded) {
+      await this.loadFullHistoryNow();
+      return;
+    }
+    await this.fetchAndApply('/api/food/stats', false);
+  }
+
+  // Fetches the full account history once (see hasFullHistoryLoaded) — the deliberate wide, rare
+  // request the backend keeps as an explicit opt-in (§2.1 of plan 28) instead of the default
+  // recent window.
+  public async ensureFullHistoryLoaded(): Promise<void> {
+    if (this.hasFullHistoryLoaded) return;
+    this.hasFullHistoryLoaded = true;
+    await this.loadFullHistoryNow();
   }
 
   @exhaustRequest()
-  public async getStats(): Promise<void> {
+  private async loadFullHistoryNow(): Promise<void> {
+    await this.fetchAndApply('/api/food/stats?from=all', true);
+  }
+
+  private async fetchAndApply(url: string, isFullHistoryRequest: boolean): Promise<void> {
     const startedAt = performance.now();
     const cachedResponse = this.loadStatsFromLocalStorage();
     if (cachedResponse && Object.keys(cachedResponse.days).length > 0) {
@@ -185,11 +254,18 @@ export class FoodStatsService extends BaseFoodService {
     }
 
     try {
-      const url = this.hasFullHistoryLoaded ? '/api/food/stats?from=all' : '/api/food/stats';
       const serverResponse = await firstValueFrom(this.http.get<FoodStatsResponse>(url));
+
+      // Once full history has actually landed, a slower/stale windowed response that started
+      // before it must not regress stats$$ back down to 90 days. Before that point, a windowed
+      // response is still applied even if full history is desired/pending — showing correct-but-
+      // partial data beats showing nothing while a slow or failed full-history request is in flight.
+      if (!isFullHistoryRequest && this.fullHistoryApplied) return;
+
       const isLocalStatsEmpty = Object.keys(this.stats$$()).length === 0;
 
       this.applyResponse(serverResponse);
+      if (isFullHistoryRequest) this.fullHistoryApplied = true;
       this.saveStatsToLocalStorage();
 
       void this.applyDateRangeOnLoad(isLocalStatsEmpty);
@@ -204,19 +280,12 @@ export class FoodStatsService extends BaseFoodService {
     }
   }
 
-  // Fetches the full account history once (see hasFullHistoryLoaded) — the deliberate wide, rare
-  // request the backend keeps as an explicit opt-in (§2.1 of plan 28) instead of the default
-  // recent window.
-  public async ensureFullHistoryLoaded(): Promise<void> {
-    if (this.hasFullHistoryLoaded) return;
-    this.hasFullHistoryLoaded = true;
-    await this.getStats();
-  }
-
-  // response.topProducts* may be missing on a stale pre-migration localStorage cache — the ?? [] /
-  // ?? 0 fallbacks keep loadStatsFromLocalStorageOnInit() from setting signals to undefined.
+  // response.topProducts*/summary may be missing on a stale pre-migration localStorage cache — the
+  // ?? [] / ?? 0 / ?? EMPTY_STATS_SUMMARY fallbacks keep loadStatsFromLocalStorageOnInit() from
+  // setting signals to undefined.
   private applyResponse(response: FoodStatsResponse): void {
     this.stats$$.set(response.days);
+    this.summarySignal$$.set(response.summary ?? EMPTY_STATS_SUMMARY);
     this.topProductsByKcalSignal$$.set(response.topProductsByKcal ?? []);
     this.topProductsByWeightSignal$$.set(response.topProductsByWeight ?? []);
     this.topProductsWindowTotalKcalSignal$$.set(response.topProductsWindowTotalKcal ?? 0);
@@ -244,10 +313,12 @@ export class FoodStatsService extends BaseFoodService {
   }
 
   // 'first' always needs the full history; an explicit saved date needs it only if it falls
-  // before whatever's currently loaded (the default window).
+  // before whatever's actually fetched (the default window) — deliberately loadedDates$$, not
+  // statsChartData$$().dates, since the latter is padded out to the account's full scale (see
+  // buildFullDateAxis) and would make this comparison never trigger for any concrete saved date.
   private savedRangeNeedsFullHistory(savedStart: string): boolean {
     if (savedStart === 'first') return true;
-    const loadedDates = this.statsChartData$$().dates;
+    const loadedDates = this.loadedDates$$();
     return loadedDates.length > 0 && savedStart < loadedDates[0];
   }
 
@@ -275,8 +346,32 @@ export class FoodStatsService extends BaseFoodService {
     return true;
   }
 
+  // Builds the axis over the account's *full* date range — daysInDiary days ending at the last
+  // loaded date — not just whatever's currently in stats$$. Days older than the loaded window
+  // (default 90, until ensureFullHistoryLoaded() resolves) get NaN placeholders instead of being
+  // left out of the array entirely.
+  //
+  // This exists so the slider (whose track/max value is sized off this array's length, see
+  // FoodStatsCharts) is at the account's true scale from the very first, cheap, windowed response —
+  // not just whatever happened to be loaded — and, critically, so that scale never changes size
+  // once ensureFullHistoryLoaded() later fills the placeholders in with real data. Before this,
+  // the array length jumped from 90 to the full history size at that point, which reshuffled every
+  // index-based position on the slider and made it visibly jump/flicker on load.
+  private buildFullDateAxis(loadedDates: string[]): string[] {
+    if (loadedDates.length === 0) return loadedDates;
+    const paddingCount = Math.max(0, this.summarySignal$$().daysInDiary - loadedDates.length);
+    if (paddingCount === 0) return loadedDates;
+
+    const padding: string[] = [];
+    for (let offset = paddingCount; offset >= 1; offset--) {
+      padding.push(isoDaysBefore(loadedDates[0], offset));
+    }
+    return [...padding, ...loadedDates];
+  }
+
   private prepareChartData(): StatsChartData {
     const stats = this.displayStats$$() || {};
+    const dates = this.buildFullDateAxis(this.loadedDates$$());
     const result: StatsChartData = {
       dates: [],
       weights: [],
@@ -287,10 +382,22 @@ export class FoodStatsService extends BaseFoodService {
       hasNoData: [],
     };
 
-    Object.entries(stats).forEach(([date, dayStats]) => {
+    dates.forEach((date) => {
+      const dayStats = stats[date];
+      result.dates.push(date);
+      if (!dayStats) {
+        // Not fetched yet (older than the loaded window) — a gap in every series until
+        // ensureFullHistoryLoaded() resolves and this slot gets real values.
+        result.weights.push(Number.NaN);
+        result.weightsAvg.push(Number.NaN);
+        result.kcalsFactual.push(Number.NaN);
+        result.kcalsVirtual.push(Number.NaN);
+        result.kcalsTarget.push(Number.NaN);
+        result.hasNoData.push(true);
+        return;
+      }
       const { weight, weightAvg, consumedKcal, targetKcal, hasNoData } = dayStats;
       const hasKcal = consumedKcal !== undefined && consumedKcal !== null;
-      result.dates.push(date);
       result.weights.push(weight);
       result.weightsAvg.push(weightAvg);
       result.kcalsFactual.push(!hasKcal ? Number.NaN : consumedKcal);
@@ -401,11 +508,14 @@ export class FoodStatsService extends BaseFoodService {
       const hasVirtualKcal =
         kcalsVirtualValue !== undefined && kcalsVirtualValue !== null && !Number.isNaN(kcalsVirtualValue);
 
-      if (weightValue !== undefined && weightValue !== null) {
+      // NaN here means "not fetched yet" (see buildFullDateAxis) rather than "missing" — excluded
+      // the same way as the kcal series above, so a period straddling the loaded-window boundary
+      // aggregates over its real days instead of getting poisoned to NaN by the placeholder ones.
+      if (weightValue !== undefined && weightValue !== null && !Number.isNaN(weightValue)) {
         weightsSum[groupIndex] += weightValue;
         weightsCount[groupIndex] += 1;
       }
-      if (weightAvgValue !== undefined && weightAvgValue !== null) {
+      if (weightAvgValue !== undefined && weightAvgValue !== null && !Number.isNaN(weightAvgValue)) {
         weightsAvgSum[groupIndex] += weightAvgValue;
         weightsAvgCount[groupIndex] += 1;
       }
@@ -414,7 +524,7 @@ export class FoodStatsService extends BaseFoodService {
         kcalsVirtualSum[groupIndex] += hasVirtualKcal ? kcalsVirtualValue : 0;
         kcalsCount[groupIndex] += 1;
       }
-      if (kcalsTargetValue !== undefined && kcalsTargetValue !== null) {
+      if (kcalsTargetValue !== undefined && kcalsTargetValue !== null && !Number.isNaN(kcalsTargetValue)) {
         kcalsTargetSum[groupIndex] += kcalsTargetValue;
         kcalsTargetCount[groupIndex] += 1;
       }
@@ -607,6 +717,7 @@ export class FoodStatsService extends BaseFoodService {
   private saveStatsToLocalStorage(): void {
     const response: FoodStatsResponse = {
       days: this.stats$$(),
+      summary: this.summarySignal$$(),
       topProductsByKcal: this.topProductsByKcalSignal$$(),
       topProductsByWeight: this.topProductsByWeightSignal$$(),
       topProductsWindowTotalKcal: this.topProductsWindowTotalKcalSignal$$(),

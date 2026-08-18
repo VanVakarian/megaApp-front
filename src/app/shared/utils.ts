@@ -41,6 +41,16 @@ export function calcDateWithUserTimeShift(date: Date): Date {
   return adjustedDate;
 }
 
+// All-UTC date arithmetic — deliberately avoids new Date(dateISO) for parsing (that reads a
+// date-only string as UTC midnight, which shifts by a day once read back through local getters for
+// any user behind UTC) by building/reading the Date exclusively through its UTC accessors.
+export function isoDaysBefore(dateISO: string, daysBefore: number): string {
+  const [year, month, day] = dateISO.split('-').map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  date.setUTCDate(date.getUTCDate() - daysBefore);
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`;
+}
+
 export function formatDateTicks(dateIso: string): string {
   const date = new Date(dateIso);
   const day = String(date.getDate()).padStart(2, '0');

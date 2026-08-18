@@ -111,7 +111,7 @@
           <div class="account-chips-list flex gap-1 pb-1 overflow-x-auto">
             @for (account of topAccounts$$(); track account.id) {
               <button type="button"
-                      class="shrink-0 whitespace-nowrap rounded-full border border-dashed border-neutral-300 px-2 py-0.5 text-xs text-neutral-500 hover:bg-neutral-100 transition-colors duration-150 cursor-pointer"
+                      class="shrink-0 whitespace-nowrap rounded-full border border-dashed border-[var(--v-color-border-subtle)] px-2 py-0.5 text-xs text-neutral-500 hover:bg-neutral-100 transition-colors duration-150 cursor-pointer"
                       (click)="onAccountChange(account.id)">{{ account.title }}</button>
             }
           </div>
@@ -143,7 +143,7 @@
           <div class="flex flex-wrap gap-1 overflow-hidden max-h-[48px]">
             @for (item of topCategoryItems$$(); track item.id) {
               <button type="button"
-                      class="shrink-0 whitespace-nowrap rounded-full border border-dashed border-neutral-300 px-2 py-0.5 text-xs text-neutral-500 hover:bg-neutral-100 transition-colors duration-150 cursor-pointer"
+                      class="shrink-0 whitespace-nowrap rounded-full border border-dashed border-[var(--v-color-border-subtle)] px-2 py-0.5 text-xs text-neutral-500 hover:bg-neutral-100 transition-colors duration-150 cursor-pointer"
                       (click)="categoryId$$.set(item.id)">{{ item.label }}</button>
             }
           </div>
@@ -330,7 +330,7 @@
     <div class="flex flex-wrap gap-1 overflow-hidden max-h-[75px]">
       @for (note of topNoteItems$$(); track note) {
         <button type="button"
-                class="shrink-0 whitespace-nowrap rounded-full border border-dashed border-neutral-300 px-2 py-0.5 text-xs text-neutral-500 hover:bg-neutral-100 transition-colors duration-150 cursor-pointer"
+                class="shrink-0 whitespace-nowrap rounded-full border border-dashed border-[var(--v-color-border-subtle)] px-2 py-0.5 text-xs text-neutral-500 hover:bg-neutral-100 transition-colors duration-150 cursor-pointer"
                 (click)="notes$$.set(note)">{{ note }}</button>
       }
     </div>

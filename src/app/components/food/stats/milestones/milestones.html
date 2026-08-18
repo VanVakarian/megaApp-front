@@ -22,7 +22,7 @@
 
   @if (m.yearAgo) {
     <div class="mb-1 text-xs font-bold uppercase text-[color:var(--v-color-text-muted)]">
-      Год назад — {{ formatDate(m.yearAgo.dateIso) }}
+      Год назад — {{ formatDate(m.yearAgo.dateISO) }}
     </div>
     <div class="grid grid-cols-3 gap-2 mb-3">
       <div class="rounded-[8px] bg-[color:var(--v-color-surface-accent)] p-2 text-center">
@@ -54,7 +54,7 @@
           <span class="flex items-center gap-1 font-semibold">
             {{ m.minWeight.weight }} кг
             <span class="text-[10px] font-normal text-[color:var(--v-color-text-muted)]">{{
-              formatDate(m.minWeight.dateIso)
+              formatDate(m.minWeight.dateISO)
             }}</span>
             <v-button surface="link"
                       class="rotate-45"
@@ -63,7 +63,7 @@
                       [paddingX]="1"
                       [paddingY]="0"
                       [bgOpacity]="0"
-                      (onClick)="goToDate(m.minWeight.dateIso)">
+                      (onClick)="goToDate(m.minWeight.dateISO)">
               <v-icon v-prefix
                       [name]="Icon.SwitchAccessShortcut"
                       [size]="4" />
@@ -78,7 +78,7 @@
           <span class="flex items-center gap-1 font-semibold">
             {{ m.maxWeight.weight }} кг
             <span class="text-[10px] font-normal text-[color:var(--v-color-text-muted)]">{{
-              formatDate(m.maxWeight.dateIso)
+              formatDate(m.maxWeight.dateISO)
             }}</span>
             <v-button surface="link"
                       class="rotate-45"
@@ -87,7 +87,7 @@
                       [paddingX]="1"
                       [paddingY]="0"
                       [bgOpacity]="0"
-                      (onClick)="goToDate(m.maxWeight.dateIso)">
+                      (onClick)="goToDate(m.maxWeight.dateISO)">
               <v-icon v-prefix
                       [name]="Icon.SwitchAccessShortcut"
                       [size]="4" />
@@ -102,7 +102,7 @@
           <span class="flex items-center gap-1 font-semibold">
             {{ m.mostCaloricDay.percent }}%
             <span class="text-[10px] font-normal text-[color:var(--v-color-text-muted)]">{{
-              formatDate(m.mostCaloricDay.dateIso)
+              formatDate(m.mostCaloricDay.dateISO)
             }}</span>
             <v-button surface="link"
                       class="rotate-45"
@@ -111,7 +111,7 @@
                       [paddingX]="1"
                       [paddingY]="0"
                       [bgOpacity]="0"
-                      (onClick)="goToDate(m.mostCaloricDay.dateIso)">
+                      (onClick)="goToDate(m.mostCaloricDay.dateISO)">
               <v-icon v-prefix
                       [name]="Icon.SwitchAccessShortcut"
                       [size]="4" />
@@ -126,7 +126,7 @@
           <span class="flex items-center gap-1 font-semibold">
             {{ m.leastCaloricDay.percent }}%
             <span class="text-[10px] font-normal text-[color:var(--v-color-text-muted)]">{{
-              formatDate(m.leastCaloricDay.dateIso)
+              formatDate(m.leastCaloricDay.dateISO)
             }}</span>
             <v-button surface="link"
                       class="rotate-45"
@@ -135,7 +135,7 @@
                       [paddingX]="1"
                       [paddingY]="0"
                       [bgOpacity]="0"
-                      (onClick)="goToDate(m.leastCaloricDay.dateIso)">
+                      (onClick)="goToDate(m.leastCaloricDay.dateISO)">
               <v-icon v-prefix
                       [name]="Icon.SwitchAccessShortcut"
                       [size]="4" />
