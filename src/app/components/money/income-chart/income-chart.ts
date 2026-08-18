@@ -15,12 +15,7 @@ import {
 import { ChartThemeService } from '@app/services/chart-theme.service';
 import { MoneyService } from '@app/services/money.service';
 import { PerformanceMetricsService } from '@app/services/performance-metrics.service';
-import {
-  ChartColors,
-  createIncomeChartConfig,
-  formatMonthYearLabel,
-  INCOME_SERIES_PALETTE,
-} from '@app/shared/chart-config';
+import { ChartColors, createIncomeChartConfig, formatMonthYearLabel, incomeCategoricalPalette } from '@app/shared/chart-config';
 import { IncomeChartCategorySeries, IncomeChartData } from '@app/shared/types';
 import { VButton } from '@ui-kit/components/v-button/v-button';
 import { VCheckbox } from '@ui-kit/components/v-checkbox/v-checkbox';
@@ -109,7 +104,7 @@ export class IncomeChart implements AfterViewInit, OnDestroy {
         }
         this.lastColors = colors;
         if (!chart) return;
-        this.rebuildChartDatasets(chart, data, activeSeries, yearly, monthRange);
+        this.rebuildChartDatasets(chart, data, activeSeries, yearly, monthRange, colors);
       },
       () => ({ months: data.months.length, series: activeSeries.length, yearly }),
     );
@@ -241,8 +236,8 @@ export class IncomeChart implements AfterViewInit, OnDestroy {
   }
 
   protected getCategoryColor(categoryId: number | null): string {
-    const index = this.dataInput().categorySeries.findIndex((s) => s.categoryId === categoryId);
-    return INCOME_SERIES_PALETTE[index % INCOME_SERIES_PALETTE.length];
+    const series = this.dataInput().categorySeries.find((s) => s.categoryId === categoryId);
+    return incomeCategoricalPalette.getColor(series?.categoryName ?? String(categoryId), this.chartThemeService.colors$$());
   }
 
   private rebuildChartDatasets(
@@ -251,6 +246,7 @@ export class IncomeChart implements AfterViewInit, OnDestroy {
     activeSeries: IncomeChartCategorySeries[],
     yearly: boolean,
     monthRange: [string, string] | null,
+    colors: ChartColors,
   ): void {
     const effectiveData: IncomeChartData =
       !yearly && monthRange !== null
@@ -314,8 +310,7 @@ export class IncomeChart implements AfterViewInit, OnDestroy {
       : () => '';
 
     const datasets: ChartDataset<'bar'>[] = activeSeries.map((series) => {
-      const index = data.categorySeries.findIndex((s) => s.categoryId === series.categoryId);
-      const color = INCOME_SERIES_PALETTE[index % INCOME_SERIES_PALETTE.length];
+      const color = incomeCategoricalPalette.getColor(series.categoryName, colors);
       const monthlyValues =
         effectiveData.categorySeries.find((s) => s.categoryId === series.categoryId)?.values ?? series.values;
       return {

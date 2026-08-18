@@ -1,3 +1,4 @@
+import { CategoricalHue, createCategoricalPalette } from '@app/shared/categorical-palette';
 import { formatMetricUnitValue, MetricUnit } from '@app/shared/metric-units';
 import { formatMetricTickLabel } from '@app/shared/metrics-series';
 import { MetricGranularity } from '@app/shared/types';
@@ -12,6 +13,7 @@ export interface ChartColors {
   virtualAlpha: string;
   text: string;
   grid: string;
+  isDark: boolean;
 }
 
 export interface MonthLabelsPluginOptions {
@@ -68,6 +70,7 @@ export const CHART_COLORS_LIGHT: ChartColors = {
   virtualAlpha: '#a1acce80',
   text: '#64748b',
   grid: '#e2e8f0',
+  isDark: false,
 };
 
 export const CHART_COLORS_DARK: ChartColors = {
@@ -79,6 +82,7 @@ export const CHART_COLORS_DARK: ChartColors = {
   virtualAlpha: '#3f465a80',
   text: '#94a3b8',
   grid: '#334155',
+  isDark: true,
 };
 
 export function createWeightChartConfig(colors: ChartColors): ChartConfiguration {
@@ -236,25 +240,6 @@ export const FOOD_STATS_MONTH_LABELS_OPTIONS_DARK: MonthLabelsPluginOptions = {
   labelColor: '#94a3b8',
 };
 
-export const BALANCE_ACCOUNT_PALETTE = [
-  'rgb(78, 121, 167)',
-  'rgb(242, 142, 43)',
-  'rgb(225, 87, 89)',
-  'rgb(118, 183, 178)',
-  'rgb(89, 161, 79)',
-  'rgb(237, 201, 72)',
-  'rgb(176, 122, 161)',
-  'rgb(255, 157, 167)',
-  'rgb(156, 117, 95)',
-  'rgb(186, 176, 172)',
-  'rgb(211, 114, 149)',
-  'rgb(160, 203, 232)',
-  'rgb(255, 190, 125)',
-  'rgb(134, 188, 182)',
-  'rgb(140, 209, 125)',
-  'rgb(241, 206, 99)',
-];
-
 // Same grid/border/ticks treatment as createWeightChartConfig (the reference look for the
 // whole app): subtle grid.color/border.color, muted ticks.color, both from the same
 // ChartColors the theme is currently resolved to. Money/metrics charts used to leave these
@@ -324,23 +309,6 @@ export function createBalanceChartConfig(colors: ChartColors): ChartConfiguratio
 
 export const INCOME_CHART_ALLOWED_CATEGORIES: ReadonlySet<string> = new Set(['Зарплата', 'Проекты', 'Проценты']);
 
-const INCOME_BASE_COLORS: string[] = [
-  'rgb(30, 64, 175)',
-  'rgb(3, 105, 161)',
-  'rgb(180, 83, 9)',
-  'rgb(185, 28, 28)',
-  'rgb(21, 128, 61)',
-  'rgb(15, 118, 110)',
-  'rgb(124, 58, 237)',
-  'rgb(190, 24, 93)',
-];
-
-const INCOME_COLOR_ALPHA = 0.8;
-
-export const INCOME_SERIES_PALETTE = INCOME_BASE_COLORS.map((rgb) =>
-  rgb.replace('rgb(', 'rgba(').replace(')', `, ${INCOME_COLOR_ALPHA})`),
-);
-
 export const INCOME_VIRTUAL_SERIES = {
   DIVIDENDS: -1,
   CB_CLOSED_PNL: -2,
@@ -395,30 +363,47 @@ export function createIncomeChartConfig(colors: ChartColors): ChartConfiguration
 
 export interface ExpenseCategoryConfig {
   name: string;
-  color: string;
+  // Optional fixed hue for categories that should always render in a specific color instead of
+  // the auto-generated one — e.g. a category people already associate with a color from outside
+  // the app. Pick from CategoricalHue (Red/Orange/Yellow/Green/Teal/Blue/Purple/Pink) or any raw
+  // 0-360 degree value for a finer shade. Unpinned categories get an auto hue from
+  // expenseCategoricalPalette that's kept clear of every pinned one (see PIN_EXCLUSION_RADIUS_DEG
+  // in categorical-palette.ts).
+  hue?: CategoricalHue | number;
 }
 
-const EXPENSE_COLOR_ALPHA = 0.85;
-
+// Display order, and optionally a pinned color (CategoricalHue.Red/Orange/Yellow/Green/Teal/
+// Blue/Purple/Pink, see categorical-palette.ts) — see ExpenseCategoryConfig. Auto colors for the
+// rest come from expenseCategoricalPalette.getColor(), keyed by category name (see
+// ExpenseChart.getCategoryColor / rebuildChartDatasets).
 export const EXPENSE_CATEGORY_CONFIG: ExpenseCategoryConfig[] = [
-  { name: 'Еда', color: 'rgb(103, 184, 66)' },
-  { name: 'Алкоголь', color: 'rgb(255, 153, 0)' },
-  { name: 'Квартплата', color: 'rgb(74, 134, 232)' },
-  { name: 'Развл.', color: 'rgb(56, 118, 29)' },
-  { name: 'Отдых', color: 'rgb(230, 102, 0)' },
-  { name: 'Проезд', color: 'rgb(111, 168, 220)' },
-  { name: 'Одежда', color: 'rgb(204, 0, 0)' },
-  { name: 'Связь', color: 'rgb(255, 217, 102)' },
-  { name: 'Рекуррентка', color: 'rgb(152, 0, 0)' },
-  { name: 'Лекарства', color: 'rgb(28, 69, 135)' },
-  { name: 'Хоз.товары', color: 'rgb(234, 153, 153)' },
-  { name: 'Запчасти', color: 'rgb(39, 78, 19)' },
-  { name: 'Прочее', color: 'rgb(183, 183, 183)' },
-  { name: 'Подарок', color: 'rgb(153, 0, 255)' },
-  { name: 'Техника', color: 'rgb(255, 0, 0)' },
+  { name: 'Еда', hue: CategoricalHue.Green },
+  { name: 'Алкоголь', hue: CategoricalHue.Yellow },
+  { name: 'Квартплата', hue: CategoricalHue.Blue },
+  { name: 'Развл.' },
+  { name: 'Отдых' },
+  { name: 'Проезд' },
+  { name: 'Одежда' },
+  { name: 'Связь' },
+  { name: 'Рекуррентка', hue: CategoricalHue.Red },
+  { name: 'Лекарства' },
+  { name: 'Хоз.товары' },
+  { name: 'Запчасти' },
+  { name: 'Прочее', hue: CategoricalHue.Orange },
+  { name: 'Подарок', hue: CategoricalHue.Lilac },
+  { name: 'Техника' },
 ];
 
-const EXPENSE_FALLBACK_COLOR = 'rgb(183, 183, 183)';
+// One independent hue pool per chart domain — a pin in one (e.g. Food=green here) doesn't eat
+// into the other two domains' available hue space. Pins must be registered before any getColor()
+// call for that palette (see CategoricalPalette.pin doc), which module-eval order guarantees here.
+export const expenseCategoricalPalette = createCategoricalPalette();
+EXPENSE_CATEGORY_CONFIG.forEach((c) => {
+  if (c.hue !== undefined) expenseCategoricalPalette.pin(c.name, c.hue);
+});
+
+export const incomeCategoricalPalette = createCategoricalPalette();
+export const balanceCategoricalPalette = createCategoricalPalette();
 
 export function rgbToRgba(rgb: string, alpha: number): string {
   return rgb.replace('rgb(', 'rgba(').replace(')', `, ${alpha})`);
@@ -427,11 +412,6 @@ export function rgbToRgba(rgb: string, alpha: number): string {
 export function formatMonthYearLabel(dateISO: string): string {
   const date = new Date(dateISO + 'T00:00:00');
   return `${date.toLocaleDateString('en-US', { month: 'long' })} ${date.getFullYear()}`;
-}
-
-export function getExpenseCategoryColor(categoryName: string, fallbackIndex: number): string {
-  const entry = EXPENSE_CATEGORY_CONFIG.find((c) => c.name === categoryName);
-  return rgbToRgba(entry ? entry.color : EXPENSE_FALLBACK_COLOR, EXPENSE_COLOR_ALPHA);
 }
 
 // Same explicit-color rationale as createBalanceChartConfig above.

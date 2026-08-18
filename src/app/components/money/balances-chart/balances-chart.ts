@@ -15,12 +15,7 @@ import {
 import { ChartThemeService } from '@app/services/chart-theme.service';
 import { MoneyService, SuspensionFilter } from '@app/services/money.service';
 import { PerformanceMetricsService } from '@app/services/performance-metrics.service';
-import {
-  BALANCE_ACCOUNT_PALETTE,
-  ChartColors,
-  createBalanceChartConfig,
-  formatMonthYearLabel,
-} from '@app/shared/chart-config';
+import { balanceCategoricalPalette, ChartColors, createBalanceChartConfig, formatMonthYearLabel } from '@app/shared/chart-config';
 import { BalanceChartAccountSeries, BalanceChartData } from '@app/shared/types';
 import { VButton } from '@ui-kit/components/v-button/v-button';
 import { VCheckbox } from '@ui-kit/components/v-checkbox/v-checkbox';
@@ -292,8 +287,7 @@ export class BalancesChart implements AfterViewInit, OnDestroy {
   }
 
   protected getAccountColor(accountId: number): string {
-    const index = this.dataInput().accountSeries.findIndex((s) => s.accountId === accountId);
-    return BALANCE_ACCOUNT_PALETTE[index % BALANCE_ACCOUNT_PALETTE.length];
+    return balanceCategoricalPalette.getColor(String(accountId), this.chartThemeService.colors$$());
   }
 
   private rebuildChartDatasets(
@@ -345,12 +339,10 @@ export class BalancesChart implements AfterViewInit, OnDestroy {
 
     const datasets: ChartDataset<'line'>[] = [];
     const accumulated: number[] = new Array(data.dates.length).fill(0);
-    const allSeries = data.accountSeries;
 
     activeSeries.forEach((series, localIdx) => {
-      const globalIdx = allSeries.findIndex((s) => s.accountId === series.accountId);
-      const color = BALANCE_ACCOUNT_PALETTE[globalIdx % BALANCE_ACCOUNT_PALETTE.length];
-      const colorAlpha = color.replace('rgb(', 'rgba(').replace(')', ', 0.6)');
+      const color = balanceCategoricalPalette.getColor(String(series.accountId), colors);
+      const colorAlpha = balanceCategoricalPalette.getColor(String(series.accountId), colors, 0.6);
 
       const rawValues = series.values.map((_, i) => getEffectiveValue(series, i));
       const cumulativeData = rawValues.map((v, i) => {

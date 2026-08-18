@@ -19,8 +19,8 @@ import {
   ChartColors,
   EXPENSE_CATEGORY_CONFIG,
   createExpenseChartConfig,
+  expenseCategoricalPalette,
   formatMonthYearLabel,
-  getExpenseCategoryColor,
 } from '@app/shared/chart-config';
 import { convertAmount } from '@app/shared/money-utils';
 import { ExpenseChartData } from '@app/shared/types';
@@ -140,7 +140,6 @@ export class ExpenseChart implements AfterViewInit, OnDestroy {
   private readonly chartUpdateEffect = effect(() => {
     const data = this.dataInput();
     const activeSeries = this.activeSeries$$();
-    const allSeries = this.allSeriesList$$();
     const yearly = this.yearlyMode$$();
     const ymax = this.yMaxInput$$();
     const monthRange = this.monthRangeInput();
@@ -158,7 +157,7 @@ export class ExpenseChart implements AfterViewInit, OnDestroy {
         }
         this.lastColors = colors;
         if (!chart) return;
-        this.rebuildChartDatasets(chart, data, activeSeries, allSeries, yearly, ymax, monthRange);
+        this.rebuildChartDatasets(chart, data, activeSeries, yearly, ymax, monthRange, colors);
       },
       () => ({ months: data.monthRows.length, series: activeSeries.length, yearly }),
     );
@@ -301,18 +300,17 @@ export class ExpenseChart implements AfterViewInit, OnDestroy {
 
   protected getCategoryColor(categoryId: number | null, allSeries: ExpenseChartSeries[]): string {
     const series = allSeries.find((s) => s.categoryId === categoryId);
-    const fallbackIndex = allSeries.findIndex((s) => s.categoryId === categoryId);
-    return getExpenseCategoryColor(series?.categoryName ?? '', fallbackIndex);
+    return expenseCategoricalPalette.getColor(series?.categoryName ?? 'Uncategorized', this.chartThemeService.colors$$());
   }
 
   private rebuildChartDatasets(
     chart: Chart,
     data: ExpenseChartData,
     activeSeries: ExpenseChartSeries[],
-    allSeries: ExpenseChartSeries[],
     yearly: boolean,
     yMaxRaw: string,
     monthRange: [string, string] | null,
+    colors: ChartColors,
   ): void {
     const effectiveData: ExpenseChartData =
       !yearly && monthRange !== null
@@ -370,8 +368,7 @@ export class ExpenseChart implements AfterViewInit, OnDestroy {
       : () => '';
 
     const datasets: ChartDataset<'bar'>[] = activeSeries.map((series) => {
-      const fallbackIndex = allSeries.findIndex((s) => s.categoryId === series.categoryId);
-      const color = getExpenseCategoryColor(series.categoryName, fallbackIndex);
+      const color = expenseCategoricalPalette.getColor(series.categoryName, colors);
       const seriesValues: number[] = yearly
         ? yearlyValues!.get(series.categoryId)!
         : months.map((_, i) =>
