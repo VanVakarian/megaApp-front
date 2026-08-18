@@ -8,13 +8,13 @@
 } -->
 
 <div class="flex gap-2">
-  <div class="w-full mb-2">
+  <div class="w-full mb-3">
     <diary-nav-buttons />
   </div>
 </div>
 
 <v-accordion groupId="food-diary-section">
-  <v-expand class="BMI mb-2"
+  <v-expand class="BMI mb-3"
             (onOpened)="onBMIExpandOpened($event)">
     <div v-header
          class="v-header v-theme-transition w-full p-2 text-center"
@@ -30,27 +30,6 @@
     </div>
   </v-expand>
 </v-accordion>
-
-<!-- @for (food of selectedDayDiaryEntries$$(); track food.id) { -->
-@if (selectedDayDiaryEntries$$().length > 0) {
-  <div #foodCont
-       class="whitespace-nowrap flex w-full gap-1 px-2 overflow-hidden text-base font-normal">
-    <div #foodName
-         class="tw-card-food-entry grow whitespace-nowrap overflow-hidden text-center">
-      Блюдо:
-    </div>
-
-    <div #foodWeight
-         class="text-center">
-      г.
-    </div>
-
-    <div #foodPercent
-         class="text-center">
-      %
-    </div>
-  </div>
-}
 
 <v-accordion groupId="food-diary-section">
   @for (food of selectedDayDiaryEntries$$(); track food.id) {
@@ -83,14 +62,14 @@
             <span class="readable-text-bg py-[1px] px-[6px]">{{ food.foodName }}</span>
           </div>
 
-          <div #foodWeight
-               class="text-right">
-            {{ food.foodWeight }} <span class="text-xs"> Г.</span>
+          <div class="col-animated-width overflow-hidden whitespace-nowrap text-right"
+               [style.width.px]="columnWidths$$().weight">
+            <span #foodWeightMeasureElem>{{ food.foodWeight }} <span class="text-xs"> Г.</span></span>
           </div>
 
-          <div #foodPercent
-               class="pl-2 text-right">
-            {{ food.foodPercent }} <span class="text-xs">%</span>
+          <div class="col-animated-width overflow-hidden whitespace-nowrap ml-2 text-right"
+               [style.width.px]="columnWidths$$().percent">
+            <span #foodPercentMeasureElem>{{ food.foodPercent }} <span class="text-xs">%</span></span>
           </div>
         </div>
       </div>
@@ -112,7 +91,7 @@
 </v-accordion>
 
 @if (deviceInfoService.isDesktopScreen$$() || hasSelectedDayDiaryEntries$$() || canRestoreSelectedDay$$()) {
-  <div class="flex justify-start gap-4 mt-4">
+  <div class="flex justify-start gap-3 mt-3">
     @if (hasSelectedDayDiaryEntries$$()) {
       <v-button class="shrink-0"
                 surface="flat"

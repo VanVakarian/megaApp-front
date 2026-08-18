@@ -4,3 +4,10 @@
     width: 100vw !important;
   }
 }
+
+.col-animated-width {
+  // Lets `width` transition to/from the browser-resolved `auto` size (first paint, before
+  // any width has been measured yet), not just between two explicit px values.
+  interpolate-size: allow-keywords;
+  transition: width var(--animation-duration-medium) ease;
+}

@@ -1,12 +1,11 @@
 import { NgStyle } from '@angular/common';
 import {
-  AfterViewInit,
+  afterRenderEffect,
   Component,
   computed,
   effect,
   ElementRef,
   inject,
-  NgZone,
   signal,
   viewChild,
   viewChildren,
@@ -55,15 +54,21 @@ import { NutritionSummary } from './nutrition-summary/nutrition-summary';
     VIcon,
   ],
 })
-export class FoodDiary implements AfterViewInit {
+export class FoodDiary {
   protected readonly bodyWeightComponent = viewChild.required<BodyWeight>('bodyWeight');
   protected readonly diaryEntryHeaders = viewChildren<ElementRef>('diaryEntryHeader');
 
-  protected readonly weightsDivs = viewChildren<ElementRef>('foodWeight');
-  protected readonly kcalsDivs = viewChildren<ElementRef>('foodKcals');
-  protected readonly percentsDivs = viewChildren<ElementRef>('foodPercent');
+  private readonly weightMeasureElems = viewChildren<ElementRef>('foodWeightMeasureElem');
+  private readonly percentMeasureElems = viewChildren<ElementRef>('foodPercentMeasureElem');
 
-  private readonly shouldRecalcColumns$$ = signal(0);
+  // null = no width constraint yet, each row sits at its own natural (auto) width.
+  // Never reset on day change — new rows are born pinned to the last committed width
+  // instead of jumping to auto, then animate (via CSS transition) to the freshly
+  // measured target once the new day's content has painted.
+  protected readonly columnWidths$$ = signal<{ weight: number | null; percent: number | null }>({
+    weight: null,
+    percent: null,
+  });
 
   protected readonly ModalViewMode = ModalState;
 
@@ -108,10 +113,27 @@ export class FoodDiary implements AfterViewInit {
   protected isDeleteDayConfirmOpen = false;
   protected readonly Icon = IconName;
 
-  private readonly columnWidthsSyncEffect$$ = effect(() => {
-    this.selectedDayDiaryEntries$$();
-    this.shouldRecalcColumns$$();
-    setTimeout(() => this.syncColumnWidths(), 0);
+  // Measures natural content width from the unconstrained inner spans (unaffected by
+  // whatever width is currently applied to their parent), so recalculation never needs
+  // to reset columns back to auto first — that reset was the source of the visible jump.
+  private readonly columnWidthsSyncEffect$$ = afterRenderEffect({
+    read: () => {
+      this.selectedDayDiaryEntries$$();
+
+      const weightWidths = this.weightMeasureElems().map((elem) => elem.nativeElement.getBoundingClientRect().width);
+      const percentWidths = this.percentMeasureElems().map(
+        (elem) => elem.nativeElement.getBoundingClientRect().width,
+      );
+      if (weightWidths.length === 0) return;
+
+      const nextWeight = Math.ceil(Math.max(...weightWidths));
+      const nextPercent = Math.ceil(Math.max(...percentWidths));
+
+      this.columnWidths$$.update((current) => {
+        if (current.weight === nextWeight && current.percent === nextPercent) return current;
+        return { weight: nextWeight, percent: nextPercent };
+      });
+    },
   });
 
   private readonly closeFoodEntriesOnDayChangeEffect$$ = effect(() => {
@@ -132,7 +154,6 @@ export class FoodDiary implements AfterViewInit {
   protected readonly deviceInfoService = inject(DeviceInfoService);
   protected readonly foodCatalogueService = inject(FoodCatalogueService);
   private readonly accordionGroupService = inject(AccordionGroupService);
-  private readonly ngZone = inject(NgZone);
   private readonly keyboardService = inject(KeyboardService);
 
   private readonly shortcutSubscription = this.keyboardService
@@ -144,14 +165,6 @@ export class FoodDiary implements AfterViewInit {
     .subscribe(() => {
       this.openAddFoodModal();
     });
-
-  public ngAfterViewInit(): void {
-    this.triggerColumnRecalc();
-  }
-
-  private triggerColumnRecalc(): void {
-    this.shouldRecalcColumns$$.update((val) => val + 1);
-  }
 
   protected setBackgroundStyle(percent: number, ltr = false): { [key: string]: string } {
     const percentCapped = percent <= 100 ? percent : 100;
@@ -191,53 +204,6 @@ export class FoodDiary implements AfterViewInit {
     await this.foodDiaryService.restoreSelectedDayEntries();
   }
 
-  private syncColumnWidths(): void {
-    this.ngZone.run(() => {
-      const weightsDivs = this.weightsDivs();
-      const kcalsDivs = this.kcalsDivs();
-      const percentsDivs = this.percentsDivs();
-
-      if (weightsDivs.length === 0) return;
-
-      this.resetWidth(weightsDivs);
-      this.resetWidth(kcalsDivs);
-      this.resetWidth(percentsDivs);
-
-      setTimeout(() => {
-        const maxWeightWidth = this.getMaxWidth(weightsDivs);
-        const maxKcalsWidth = this.getMaxWidth(kcalsDivs);
-        const maxPercentWidth = this.getMaxWidth(percentsDivs);
-
-        if (maxWeightWidth > 0) {
-          this.setWidth(weightsDivs, maxWeightWidth);
-        }
-        if (maxKcalsWidth > 0) {
-          this.setWidth(kcalsDivs, maxKcalsWidth);
-        }
-        if (maxPercentWidth > 0) {
-          this.setWidth(percentsDivs, maxPercentWidth);
-        }
-      }, 0);
-    });
-  }
-
-  private getMaxWidth(elems: readonly ElementRef[]): number {
-    const widths = elems.map((elem) => elem.nativeElement.offsetWidth);
-    return Math.max(...widths);
-  }
-
-  private resetWidth(elems: readonly ElementRef[]): void {
-    elems.forEach((elem) => {
-      elem.nativeElement.style.width = 'auto';
-    });
-  }
-
-  private setWidth(elems: readonly ElementRef[], width: number): void {
-    elems.forEach((elem) => {
-      elem.nativeElement.style.width = `${Math.ceil(width)}px`;
-    });
-  }
-
   protected isEntryExpanded(diaryEntryId: number): boolean {
     return this.openedDiaryEntryId$$() === diaryEntryId;
   }
@@ -251,7 +217,6 @@ export class FoodDiary implements AfterViewInit {
         this.openedDiaryEntryId$$.set(expandingDiaryEntryId);
       }, 0);
       this.foodDiaryService.focusDiaryEntry(expandingDiaryEntryId);
-      this.triggerColumnRecalc();
 
       if (this.deviceInfoService.isDesktopScreen$$()) return;
 

@@ -1,4 +1,4 @@
-<div class="flex w-full gap-2">
+<div class="flex w-full gap-3">
   @if(deviceInfoService.isDesktopScreen$$()) {
     <v-button surface="flat"
               [isLabelHidden]="true"
@@ -62,7 +62,7 @@
   </div>
 
   <div [class]="deviceInfoService.shouldHideFabButtons$$() ? 'fab-hide-slide-down-hidden' : 'fab-hide-slide-down-visible'"
-       class="fixed bottom-4 flex gap-5"
+       class="bottom-4 fixed flex gap-5"
        [style.right]="dateNavRowRightPx"
        style="z-index: 10">
     <v-button surface="raised"
