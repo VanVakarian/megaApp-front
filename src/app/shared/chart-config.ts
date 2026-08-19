@@ -333,7 +333,7 @@ export function createIncomeChartConfig(colors: ChartColors): ChartConfiguration
           footerAlign: 'right',
           callbacks: {
             label: (ctx) => {
-              if (ctx.parsed.y === 0) return '';
+              if (!ctx.parsed.y) return '';
               return ` ${ctx.dataset.label}: ${new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(ctx.parsed.y)} ₽`;
             },
           },
@@ -431,7 +431,7 @@ export function createExpenseChartConfig(colors: ChartColors): ChartConfiguratio
           footerAlign: 'right',
           callbacks: {
             label: (ctx) => {
-              if (ctx.parsed.y === 0) return '';
+              if (!ctx.parsed.y) return '';
               return ` ${ctx.dataset.label}: ${new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(ctx.parsed.y)} ₽`;
             },
           },

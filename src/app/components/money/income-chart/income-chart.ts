@@ -15,7 +15,12 @@ import {
 import { ChartThemeService } from '@app/services/chart-theme.service';
 import { MoneyService } from '@app/services/money.service';
 import { PerformanceMetricsService } from '@app/services/performance-metrics.service';
-import { ChartColors, createIncomeChartConfig, formatMonthYearLabel, incomeCategoricalPalette } from '@app/shared/chart-config';
+import {
+  ChartColors,
+  createIncomeChartConfig,
+  formatMonthYearLabel,
+  incomeCategoricalPalette,
+} from '@app/shared/chart-config';
 import { IncomeChartCategorySeries, IncomeChartData } from '@app/shared/types';
 import { VButton } from '@ui-kit/components/v-button/v-button';
 import { VCheckbox } from '@ui-kit/components/v-checkbox/v-checkbox';
@@ -173,12 +178,12 @@ export class IncomeChart implements AfterViewInit, OnDestroy {
     const chart = new Chart(ctx, { ...createIncomeChartConfig(colors), plugins: [this.yearSeparatorPlugin] });
     if (chart.options.plugins?.tooltip?.callbacks) {
       chart.options.plugins.tooltip.callbacks.label = (ctx) => {
-        if (ctx.parsed.y === 0) return '';
+        if (!ctx.parsed.y) return '';
         return ` ${ctx.dataset.label}: ${new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(ctx.parsed.y)} ${this.currencySymbolInput()}`;
       };
       chart.options.plugins.tooltip.callbacks.footer = (items) => {
         if (items.length < 2) return [];
-        const sum = items.reduce((acc, item) => acc + item.parsed.y, 0);
+        const sum = items.reduce((acc, item) => acc + (item.parsed.y ?? 0), 0);
         return `${new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(sum)} ${this.currencySymbolInput()}`;
       };
     }
@@ -237,7 +242,10 @@ export class IncomeChart implements AfterViewInit, OnDestroy {
 
   protected getCategoryColor(categoryId: number | null): string {
     const series = this.dataInput().categorySeries.find((s) => s.categoryId === categoryId);
-    return incomeCategoricalPalette.getColor(series?.categoryName ?? String(categoryId), this.chartThemeService.colors$$());
+    return incomeCategoricalPalette.getColor(
+      series?.categoryName ?? String(categoryId),
+      this.chartThemeService.colors$$(),
+    );
   }
 
   private rebuildChartDatasets(

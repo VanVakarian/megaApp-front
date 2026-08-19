@@ -226,12 +226,12 @@ export class ExpenseChart implements AfterViewInit, OnDestroy {
     const chart = new Chart(ctx, { ...createExpenseChartConfig(colors), plugins: [this.yearSeparatorPlugin] });
     if (chart.options.plugins?.tooltip?.callbacks) {
       chart.options.plugins.tooltip.callbacks.label = (ctx) => {
-        if (ctx.parsed.y === 0) return '';
+        if (!ctx.parsed.y) return '';
         return ` ${ctx.dataset.label}: ${new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(ctx.parsed.y)} ${this.currencySymbolInput()}`;
       };
       chart.options.plugins.tooltip.callbacks.footer = (items) => {
         if (items.length < 2) return [];
-        const sum = items.reduce((acc, item) => acc + item.parsed.y, 0);
+        const sum = items.reduce((acc, item) => acc + (item.parsed.y ?? 0), 0);
         return `${new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(sum)} ${this.currencySymbolInput()}`;
       };
     }
@@ -300,7 +300,10 @@ export class ExpenseChart implements AfterViewInit, OnDestroy {
 
   protected getCategoryColor(categoryId: number | null, allSeries: ExpenseChartSeries[]): string {
     const series = allSeries.find((s) => s.categoryId === categoryId);
-    return expenseCategoricalPalette.getColor(series?.categoryName ?? 'Uncategorized', this.chartThemeService.colors$$());
+    return expenseCategoricalPalette.getColor(
+      series?.categoryName ?? 'Uncategorized',
+      this.chartThemeService.colors$$(),
+    );
   }
 
   private rebuildChartDatasets(

@@ -39,7 +39,7 @@
   "devDependencies": {
     "@angular/build": "^21.1.0",
     "@angular/cli": "~21.1.0",
-    "@angular/compiler-cli": "^21.1.0",
+    "@angular/compiler-cli": "21.1.0",
     "@html-eslint/eslint-plugin": "^0.24.1",
     "@html-eslint/parser": "^0.24.1",
     "@types/jsonwebtoken": "^9.0.2",
@@ -53,5 +53,8 @@
     "tailwindcss": "^3.4.3",
     "typescript": "~5.9.3",
     "vitest": "^4.0.8"
+  },
+  "overrides": {
+    "@angular/cdk": "21.1.0"
   }
 }
