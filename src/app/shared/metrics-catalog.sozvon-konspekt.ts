@@ -1,3 +1,4 @@
+import { MetricColor } from '@app/shared/metric-colors';
 import { metric, MetricsServiceDefinition } from '@app/shared/metrics-catalog-metric';
 
 export const SOZVON_KONSPEKT_METRICS_DEFINITION: MetricsServiceDefinition = {
@@ -9,7 +10,7 @@ export const SOZVON_KONSPEKT_METRICS_DEFINITION: MetricsServiceDefinition = {
       metrics: [
         metric('recognition_success', {
           label: 'Successful Recognitions',
-          color: '#16a34a',
+          color: MetricColor.Green600,
           aggregation: 'sum',
           integerValued: true,
           description:
@@ -17,7 +18,7 @@ export const SOZVON_KONSPEKT_METRICS_DEFINITION: MetricsServiceDefinition = {
         }),
         metric('recognition_failed', {
           label: 'Failed Recognitions',
-          color: '#dc2626',
+          color: MetricColor.Red600,
           aggregation: 'sum',
           integerValued: true,
           description:
@@ -25,7 +26,7 @@ export const SOZVON_KONSPEKT_METRICS_DEFINITION: MetricsServiceDefinition = {
         }),
         metric('recognition_cost_usd', {
           label: 'Recognition Cost',
-          color: '#2563eb',
+          color: MetricColor.Blue600,
           unit: 'money',
           aggregation: 'sum',
           description:
@@ -39,14 +40,14 @@ export const SOZVON_KONSPEKT_METRICS_DEFINITION: MetricsServiceDefinition = {
       metrics: [
         metric('convert_time_ratio', {
           label: 'Conversion Time Ratio',
-          color: '#7c3aed',
+          color: MetricColor.Violet600,
           aggregation: 'avg',
           description:
             'Сколько секунд реального времени уходит на сжатие звука перед отправкой в модель, в пересчёте на одну секунду самой записи — например, 5% означает, что минутный звонок сжимается за 3 секунды. Считается не по одной записи, а по сумме времени и сумме длительностей всех записей, сжатых за эту минуту, — это важно, потому что одна 59-минутная запись и пятьдесят 1-минутных иначе перекосили бы число в любую сторону. Метрика появляется только в минуты, когда сжатие реально происходило.',
         }),
         metric('recognition_time_ratio', {
           label: 'Recognition Time Ratio',
-          color: '#a78bfa',
+          color: MetricColor.Violet400,
           aggregation: 'avg',
           description:
             'Сколько секунд реального времени уходит на сам запрос распознавания в OpenRouter, в пересчёте на одну секунду записи — например, 50% означает, что минутный звонок распознаётся примерно за 30 секунд. Как и у convert_time_ratio, это отношение суммы времени к сумме длительностей всех записей за минуту, а не среднее по отдельным записям — короткие и длинные звонки не искажают число друг относительно друга. Метрика появляется только в минуты, когда хотя бы одна запись дошла до этапа распознавания.',
@@ -59,7 +60,7 @@ export const SOZVON_KONSPEKT_METRICS_DEFINITION: MetricsServiceDefinition = {
       metrics: [
         metric('application_errors', {
           label: 'Application Errors',
-          color: '#ea580c',
+          color: MetricColor.Orange600,
           aggregation: 'sum',
           integerValued: true,
           description:

@@ -1,3 +1,4 @@
+import { MetricColor } from '@app/shared/metric-colors';
 import { MetricUnit } from '@app/shared/metric-units';
 import { MetricAggregation } from '@app/shared/metrics-aggregation';
 
@@ -14,7 +15,7 @@ export interface MetricConfig {
   // появляется значение вроде "70.2 репрайса", которого на самом деле не бывает.
   integerValued: boolean;
   unit: MetricUnit;
-  color: string;
+  color: MetricColor;
   // Метрика когда-то собиралась под этим именем, бэк её больше не шлёт. Запись
   // остаётся в каталоге (не удаляется), чтобы её label/description продолжали
   // резолвиться для любых точек, оставшихся в ретеншене, и рендерится в
@@ -44,12 +45,12 @@ interface MetricOptions {
   // metrics whose raw samples are always whole numbers.
   integerValued?: boolean;
   unit?: MetricUnit;
-  color?: string;
+  color?: MetricColor;
   removed?: boolean;
   removedNote?: string;
 }
 
-export const DEFAULT_METRIC_COLOR = '#578f92';
+export const DEFAULT_METRIC_COLOR: MetricColor = MetricColor.Default;
 
 const RATIO_SUFFIX = /_ratio(_avg|_max)?$/; // *_ratio[_avg|_max] -> доля 0..1
 const BYTES_SUFFIX = /_bytes$/; // *_bytes -> байты

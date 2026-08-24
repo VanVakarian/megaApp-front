@@ -1,3 +1,4 @@
+import { MetricColor } from '@app/shared/metric-colors';
 import { metric, MetricsServiceDefinition } from '@app/shared/metrics-catalog-metric';
 
 export const LIVE_BOOKS_FETCHER_BOT_METRICS_DEFINITION: MetricsServiceDefinition = {
@@ -9,7 +10,7 @@ export const LIVE_BOOKS_FETCHER_BOT_METRICS_DEFINITION: MetricsServiceDefinition
       metrics: [
         metric('catalog_markets_total', {
           label: 'Catalog Markets Total',
-          color: '#0e7490',
+          color: MetricColor.Cyan700,
           aggregation: 'last',
           integerValued: true,
           description:
@@ -17,7 +18,7 @@ export const LIVE_BOOKS_FETCHER_BOT_METRICS_DEFINITION: MetricsServiceDefinition
         }),
         metric('catalog_dropped_date_like', {
           label: 'Catalog Dropped: Date-Like',
-          color: '#0e7490',
+          color: MetricColor.Cyan700,
           aggregation: 'last',
           integerValued: true,
           description:
@@ -25,28 +26,28 @@ export const LIVE_BOOKS_FETCHER_BOT_METRICS_DEFINITION: MetricsServiceDefinition
         }),
         metric('discovery_duration_ms', {
           label: 'Discovery Duration (ms)',
-          color: '#0e7490',
+          color: MetricColor.Cyan700,
           aggregation: 'avg',
           description:
             'Сколько миллисекунд занял весь Discovery-цикл целиком — от первого постраничного запроса к Gamma до готового обновлённого каталога рынков. Выполняется раз в DISCOVERY_INTERVAL (по умолчанию раз в час), не на каждом Sweep. Если растёт, смотри discovery_gamma_ms и discovery_collect_ms по отдельности, чтобы понять, какой шаг замедлился.',
         }),
         metric('discovery_gamma_ms', {
           label: 'Discovery Gamma Duration (ms)',
-          color: '#0e7490',
+          color: MetricColor.Cyan700,
           aggregation: 'avg',
           description:
             'Сколько миллисекунд суммарно заняли все постраничные запросы к Gamma API (keyset-пагинация по всем активным событиям) в этом Discovery-цикле — обычно самый тяжёлый шаг, чаще всего доминирует в discovery_duration_ms.',
         }),
         metric('discovery_collect_ms', {
           label: 'Discovery Collect Duration (ms)',
-          color: '#0e7490',
+          color: MetricColor.Cyan700,
           aggregation: 'avg',
           description:
             'Сколько миллисекунд заняли разбор полученных от Gamma событий и построение итогового списка рынков (включая отсев date-like рынков) в этом Discovery-цикле.',
         }),
         metric('catalog_revision', {
           label: 'Catalog Revision',
-          color: '#0e7490',
+          color: MetricColor.Cyan700,
           aggregation: 'last',
           integerValued: true,
           description:
@@ -54,7 +55,7 @@ export const LIVE_BOOKS_FETCHER_BOT_METRICS_DEFINITION: MetricsServiceDefinition
         }),
         metric('discovery_errors', {
           label: 'Discovery Errors',
-          color: '#dc2626',
+          color: MetricColor.Red600,
           aggregation: 'sum',
           integerValued: true,
           description:
@@ -62,7 +63,7 @@ export const LIVE_BOOKS_FETCHER_BOT_METRICS_DEFINITION: MetricsServiceDefinition
         }),
         metric('catalog_recovered_from_previous', {
           label: 'Catalog Recovered From Previous',
-          color: '#d97706',
+          color: MetricColor.Amber600,
           aggregation: 'sum',
           integerValued: true,
           description:
@@ -76,14 +77,14 @@ export const LIVE_BOOKS_FETCHER_BOT_METRICS_DEFINITION: MetricsServiceDefinition
       metrics: [
         metric('sweep_duration_ms', {
           label: 'Sweep Duration (ms)',
-          color: '#7c3aed',
+          color: MetricColor.Violet600,
           aggregation: 'avg',
           description:
             'Сколько миллисекунд занял один полный проход Sweep — параллельный опрос текущих bid/ask цен по всем рынкам каталога через CLOB /prices, батчами по нескольку сотен токенов. Sweep крутится без пауз: один проход сразу сменяется следующим, поэтому рост этой метрики напрямую означает, что свежие котировки в /v1/spread-candidates обновляются реже.',
         }),
         metric('sweep_markets_total', {
           label: 'Sweep Markets Total',
-          color: '#7c3aed',
+          color: MetricColor.Violet600,
           aggregation: 'last',
           integerValued: true,
           description:
@@ -91,7 +92,7 @@ export const LIVE_BOOKS_FETCHER_BOT_METRICS_DEFINITION: MetricsServiceDefinition
         }),
         metric('sweep_valid_quotes', {
           label: 'Sweep Valid Quotes',
-          color: '#7c3aed',
+          color: MetricColor.Violet600,
           aggregation: 'avg',
           integerValued: true,
           description:
@@ -99,7 +100,7 @@ export const LIVE_BOOKS_FETCHER_BOT_METRICS_DEFINITION: MetricsServiceDefinition
         }),
         metric('quote_generation', {
           label: 'Quote Generation',
-          color: '#7c3aed',
+          color: MetricColor.Violet600,
           aggregation: 'last',
           integerValued: true,
           description:
@@ -107,7 +108,7 @@ export const LIVE_BOOKS_FETCHER_BOT_METRICS_DEFINITION: MetricsServiceDefinition
         }),
         metric('sweeps_completed', {
           label: 'Sweeps Completed',
-          color: '#16a34a',
+          color: MetricColor.Green600,
           aggregation: 'sum',
           integerValued: true,
           description:
@@ -115,7 +116,7 @@ export const LIVE_BOOKS_FETCHER_BOT_METRICS_DEFINITION: MetricsServiceDefinition
         }),
         metric('sweeps_failed', {
           label: 'Sweeps Failed',
-          color: '#dc2626',
+          color: MetricColor.Red600,
           aggregation: 'sum',
           integerValued: true,
           description:
@@ -123,7 +124,7 @@ export const LIVE_BOOKS_FETCHER_BOT_METRICS_DEFINITION: MetricsServiceDefinition
         }),
         metric('sweep_requests', {
           label: 'Sweep Requests',
-          color: '#2563eb',
+          color: MetricColor.Blue600,
           aggregation: 'sum',
           integerValued: true,
           description:
@@ -131,7 +132,7 @@ export const LIVE_BOOKS_FETCHER_BOT_METRICS_DEFINITION: MetricsServiceDefinition
         }),
         metric('sweep_retries', {
           label: 'Sweep Retries',
-          color: '#d97706',
+          color: MetricColor.Amber600,
           aggregation: 'sum',
           integerValued: true,
           description:
@@ -139,7 +140,7 @@ export const LIVE_BOOKS_FETCHER_BOT_METRICS_DEFINITION: MetricsServiceDefinition
         }),
         metric('sweep_rate_limited', {
           label: 'Sweep Rate Limited',
-          color: '#d97706',
+          color: MetricColor.Amber600,
           aggregation: 'sum',
           integerValued: true,
           description:
@@ -153,7 +154,7 @@ export const LIVE_BOOKS_FETCHER_BOT_METRICS_DEFINITION: MetricsServiceDefinition
       metrics: [
         metric('heap_alloc_bytes', {
           label: 'Heap Allocated',
-          color: '#0891b2',
+          color: MetricColor.Cyan600,
           unit: 'bytes',
           aggregation: 'max',
           description:
@@ -161,7 +162,7 @@ export const LIVE_BOOKS_FETCHER_BOT_METRICS_DEFINITION: MetricsServiceDefinition
         }),
         metric('goroutines', {
           label: 'Goroutines',
-          color: '#0891b2',
+          color: MetricColor.Cyan600,
           aggregation: 'max',
           integerValued: true,
           description:
@@ -175,21 +176,21 @@ export const LIVE_BOOKS_FETCHER_BOT_METRICS_DEFINITION: MetricsServiceDefinition
       metrics: [
         metric('archive_publish_duration_ms', {
           label: 'Archive Publish Duration (ms)',
-          color: '#db2777',
+          color: MetricColor.Pink600,
           aggregation: 'avg',
           description:
             'Сколько миллисекунд заняла публикация очередного часового архива — запись поминутного и почасового parquet-файлов вместе с манифестом на диск. Срабатывает раз в час, при закрытии текущего часового буфера накопленных котировок.',
         }),
         metric('archive_minute_rows', {
           label: 'Archive Minute Rows',
-          color: '#db2777',
+          color: MetricColor.Pink600,
           aggregation: 'last',
           integerValued: true,
           description: 'Сколько строк поминутных котировок попало в только что опубликованный часовой parquet-архив.',
         }),
         metric('archive_hour_rows', {
           label: 'Archive Hour Rows',
-          color: '#db2777',
+          color: MetricColor.Pink600,
           aggregation: 'last',
           integerValued: true,
           description:
@@ -197,7 +198,7 @@ export const LIVE_BOOKS_FETCHER_BOT_METRICS_DEFINITION: MetricsServiceDefinition
         }),
         metric('archive_publish_errors', {
           label: 'Archive Publish Errors',
-          color: '#dc2626',
+          color: MetricColor.Red600,
           aggregation: 'sum',
           integerValued: true,
           description:
@@ -211,7 +212,7 @@ export const LIVE_BOOKS_FETCHER_BOT_METRICS_DEFINITION: MetricsServiceDefinition
       metrics: [
         metric('candidate_requests_total', {
           label: 'Candidate Requests',
-          color: '#2563eb',
+          color: MetricColor.Blue600,
           aggregation: 'sum',
           integerValued: true,
           description:
@@ -219,7 +220,7 @@ export const LIVE_BOOKS_FETCHER_BOT_METRICS_DEFINITION: MetricsServiceDefinition
         }),
         metric('candidate_requests_stale_snapshot', {
           label: 'Candidate Requests: Stale Snapshot',
-          color: '#dc2626',
+          color: MetricColor.Red600,
           aggregation: 'sum',
           integerValued: true,
           description:
@@ -227,7 +228,7 @@ export const LIVE_BOOKS_FETCHER_BOT_METRICS_DEFINITION: MetricsServiceDefinition
         }),
         metric('candidate_requests_invalid', {
           label: 'Candidate Requests: Invalid',
-          color: '#d97706',
+          color: MetricColor.Amber600,
           aggregation: 'sum',
           integerValued: true,
           description:
@@ -241,7 +242,7 @@ export const LIVE_BOOKS_FETCHER_BOT_METRICS_DEFINITION: MetricsServiceDefinition
       metrics: [
         metric('catalog_startup_source', {
           label: 'Catalog Startup Source',
-          color: '#578f92',
+          color: MetricColor.Default,
           aggregation: 'last',
           integerValued: true,
           description:
@@ -268,19 +269,19 @@ export const LIVE_BOOKS_FETCHER_BOT_METRICS_DEFINITION: MetricsServiceDefinition
       metrics: [
         metric('process_cpu_ratio_avg', {
           label: 'Bot CPU Avg',
-          color: '#dc2626',
+          color: MetricColor.Red600,
           aggregation: 'avg',
           description: 'Средняя доля общей CPU-мощности сервера, которую за минуту съел сам процесс бота.',
         }),
         metric('process_cpu_ratio_max', {
           label: 'Bot CPU Peak',
-          color: '#ef4444',
+          color: MetricColor.Red500,
           aggregation: 'max',
           description: 'Пиковая доля CPU сервера, которую занимал процесс бота в одном из 5-секундных замеров этой минуты.',
         }),
         metric('process_rss_bytes', {
           label: 'Bot RSS',
-          color: '#ea580c',
+          color: MetricColor.Orange600,
           aggregation: 'avg',
           description: 'Текущий RSS процесса бота: сколько физической памяти реально держит сам сервис прямо сейчас.',
         }),

@@ -1,3 +1,4 @@
+import { MetricColor } from '@app/shared/metric-colors';
 import { metric, MetricsServiceDefinition } from '@app/shared/metrics-catalog-metric';
 
 export const CYCLE_BOOKS_FETCHER_BOT_METRICS_DEFINITION: MetricsServiceDefinition = {
@@ -9,7 +10,7 @@ export const CYCLE_BOOKS_FETCHER_BOT_METRICS_DEFINITION: MetricsServiceDefinitio
       metrics: [
         metric('ws_connected', {
           label: 'WS Connected',
-          color: '#2563eb',
+          color: MetricColor.Blue600,
           aggregation: 'last',
           integerValued: true,
           description:
@@ -17,7 +18,7 @@ export const CYCLE_BOOKS_FETCHER_BOT_METRICS_DEFINITION: MetricsServiceDefinitio
         }),
         metric('ws_reconnects_total', {
           label: 'WS Reconnects',
-          color: '#d97706',
+          color: MetricColor.Amber600,
           aggregation: 'sum',
           integerValued: true,
           description:
@@ -25,7 +26,7 @@ export const CYCLE_BOOKS_FETCHER_BOT_METRICS_DEFINITION: MetricsServiceDefinitio
         }),
         metric('max_quote_staleness_seconds', {
           label: 'Max Quote Staleness (s)',
-          color: '#d97706',
+          color: MetricColor.Amber600,
           unit: 'count',
           aggregation: 'max',
           description:
@@ -39,7 +40,7 @@ export const CYCLE_BOOKS_FETCHER_BOT_METRICS_DEFINITION: MetricsServiceDefinitio
       metrics: [
         metric('markets_tracked', {
           label: 'Markets Tracked',
-          color: '#0e7490',
+          color: MetricColor.Cyan700,
           aggregation: 'last',
           integerValued: true,
           description:
@@ -47,7 +48,7 @@ export const CYCLE_BOOKS_FETCHER_BOT_METRICS_DEFINITION: MetricsServiceDefinitio
         }),
         metric('markets_missing_next', {
           label: 'Markets Missing Next',
-          color: '#dc2626',
+          color: MetricColor.Red600,
           aggregation: 'last',
           integerValued: true,
           description:
@@ -61,7 +62,7 @@ export const CYCLE_BOOKS_FETCHER_BOT_METRICS_DEFINITION: MetricsServiceDefinitio
       metrics: [
         metric('quote_rows_written_total', {
           label: 'Quote Rows Written',
-          color: '#16a34a',
+          color: MetricColor.Green600,
           aggregation: 'sum',
           integerValued: true,
           description:
@@ -69,7 +70,7 @@ export const CYCLE_BOOKS_FETCHER_BOT_METRICS_DEFINITION: MetricsServiceDefinitio
         }),
         metric('store_bytes_written_total', {
           label: 'Store Bytes Written',
-          color: '#578f92',
+          color: MetricColor.Default,
           unit: 'bytes',
           aggregation: 'sum',
           description:
@@ -77,7 +78,7 @@ export const CYCLE_BOOKS_FETCHER_BOT_METRICS_DEFINITION: MetricsServiceDefinitio
         }),
         metric('archive_failures_total', {
           label: 'Archive Failures',
-          color: '#dc2626',
+          color: MetricColor.Red600,
           aggregation: 'sum',
           integerValued: true,
           description:
@@ -104,19 +105,19 @@ export const CYCLE_BOOKS_FETCHER_BOT_METRICS_DEFINITION: MetricsServiceDefinitio
       metrics: [
         metric('process_cpu_ratio_avg', {
           label: 'Bot CPU Avg',
-          color: '#dc2626',
+          color: MetricColor.Red600,
           aggregation: 'avg',
           description: 'Средняя доля общей CPU-мощности сервера, которую за минуту съел сам процесс бота.',
         }),
         metric('process_cpu_ratio_max', {
           label: 'Bot CPU Peak',
-          color: '#ef4444',
+          color: MetricColor.Red500,
           aggregation: 'max',
           description: 'Пиковая доля CPU сервера, которую занимал процесс бота в одном из 5-секундных замеров этой минуты.',
         }),
         metric('process_rss_bytes', {
           label: 'Bot RSS',
-          color: '#ea580c',
+          color: MetricColor.Orange600,
           aggregation: 'avg',
           description: 'Текущий RSS процесса бота: сколько физической памяти реально держит сам сервис прямо сейчас.',
         }),

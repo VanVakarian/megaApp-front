@@ -1,3 +1,4 @@
+import { MetricColor } from '@app/shared/metric-colors';
 import { metric, MetricsServiceDefinition } from '@app/shared/metrics-catalog-metric';
 
 export const MEGAAPP_METRICS_DEFINITION: MetricsServiceDefinition = {
@@ -9,7 +10,7 @@ export const MEGAAPP_METRICS_DEFINITION: MetricsServiceDefinition = {
       metrics: [
         metric('food_diary_entry_created', {
           label: 'Food Entries Created',
-          color: '#16a34a',
+          color: MetricColor.Green600,
           aggregation: 'sum',
           integerValued: true,
           description:
@@ -17,7 +18,7 @@ export const MEGAAPP_METRICS_DEFINITION: MetricsServiceDefinition = {
         }),
         metric('food_diary_entry_updated', {
           label: 'Food Entries Updated',
-          color: '#16a34a',
+          color: MetricColor.Green600,
           aggregation: 'sum',
           integerValued: true,
           description:
@@ -25,14 +26,14 @@ export const MEGAAPP_METRICS_DEFINITION: MetricsServiceDefinition = {
         }),
         metric('food_diary_entry_deleted', {
           label: 'Food Entries Deleted',
-          color: '#16a34a',
+          color: MetricColor.Green600,
           aggregation: 'sum',
           integerValued: true,
           description: 'Сколько записей о приёме еды было удалено из дневника питания за эту минуту.',
         }),
         metric('food_diary_day_deleted', {
           label: 'Food Days Deleted',
-          color: '#16a34a',
+          color: MetricColor.Green600,
           aggregation: 'sum',
           integerValued: true,
           description:
@@ -40,7 +41,7 @@ export const MEGAAPP_METRICS_DEFINITION: MetricsServiceDefinition = {
         }),
         metric('food_diary_day_restored', {
           label: 'Food Days Restored',
-          color: '#16a34a',
+          color: MetricColor.Green600,
           aggregation: 'sum',
           integerValued: true,
           description:
@@ -48,21 +49,21 @@ export const MEGAAPP_METRICS_DEFINITION: MetricsServiceDefinition = {
         }),
         metric('food_body_weight_updated', {
           label: 'Body Weight Updates',
-          color: '#16a34a',
+          color: MetricColor.Green600,
           aggregation: 'sum',
           integerValued: true,
           description: 'Сколько раз за эту минуту было сохранено новое значение веса тела пользователя.',
         }),
         metric('food_catalogue_entry_created', {
           label: 'Products Created',
-          color: '#0891b2',
+          color: MetricColor.Cyan600,
           aggregation: 'sum',
           integerValued: true,
           description: 'Сколько новых продуктов было добавлено в каталог продуктов за эту минуту.',
         }),
         metric('food_catalogue_entry_updated', {
           label: 'Products Updated',
-          color: '#0891b2',
+          color: MetricColor.Cyan600,
           aggregation: 'sum',
           integerValued: true,
           description:
@@ -70,14 +71,14 @@ export const MEGAAPP_METRICS_DEFINITION: MetricsServiceDefinition = {
         }),
         metric('food_catalogue_entry_deleted', {
           label: 'Products Deleted',
-          color: '#0891b2',
+          color: MetricColor.Cyan600,
           aggregation: 'sum',
           integerValued: true,
           description: 'Сколько продуктов было удалено из каталога продуктов за эту минуту.',
         }),
         metric('food_personal_kcal_job_ran', {
           label: 'Personal Kcal Job Runs',
-          color: '#64748b',
+          color: MetricColor.Slate500,
           aggregation: 'sum',
           integerValued: true,
           description:
@@ -85,7 +86,7 @@ export const MEGAAPP_METRICS_DEFINITION: MetricsServiceDefinition = {
         }),
         metric('backup_job_ran', {
           label: 'Backup Job Runs',
-          color: '#64748b',
+          color: MetricColor.Slate500,
           aggregation: 'sum',
           integerValued: true,
           description:
@@ -99,20 +100,20 @@ export const MEGAAPP_METRICS_DEFINITION: MetricsServiceDefinition = {
       metrics: [
         metric('process_cpu_ratio_avg', {
           label: 'MegaApp CPU Avg',
-          color: '#dc2626',
+          color: MetricColor.Red600,
           aggregation: 'avg',
           description: 'Средняя доля общей CPU-мощности сервера, которую за минуту съел сам процесс megaapp-back.',
         }),
         metric('process_cpu_ratio_max', {
           label: 'MegaApp CPU Peak',
-          color: '#ef4444',
+          color: MetricColor.Red500,
           aggregation: 'max',
           description:
             'Пиковая доля CPU сервера, которую занимал процесс megaapp-back в одном из 5-секундных замеров этой минуты.',
         }),
         metric('process_rss_bytes', {
           label: 'MegaApp RSS',
-          color: '#ea580c',
+          color: MetricColor.Orange600,
           aggregation: 'avg',
           description:
             'Текущий RSS процесса megaapp-back: сколько физической памяти реально держит сам сервис прямо сейчас.',

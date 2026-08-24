@@ -1,3 +1,4 @@
+import { MetricColor } from '@app/shared/metric-colors';
 import { metric, MetricsServiceDefinition } from '@app/shared/metrics-catalog-metric';
 
 export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition = {
@@ -9,7 +10,7 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
       metrics: [
         metric('free_cash', {
           label: 'Free Cash',
-          color: '#16a34a',
+          color: MetricColor.Green600,
           unit: 'money',
           aggregation: 'last',
           description:
@@ -17,7 +18,7 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
         }),
         metric('estimated_open_positions_value', {
           label: 'Estimated Open Positions Value',
-          color: '#16a34a',
+          color: MetricColor.Green600,
           unit: 'money',
           aggregation: 'last',
           description:
@@ -25,7 +26,7 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
         }),
         metric('open_positions_no_book_count', {
           label: 'Open Positions: No Book',
-          color: '#d97706',
+          color: MetricColor.Amber600,
           aggregation: 'last',
           integerValued: true,
           description:
@@ -33,7 +34,7 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
         }),
         metric('open_positions_empty_bid_count', {
           label: 'Open Positions: Empty Bid',
-          color: '#d97706',
+          color: MetricColor.Amber600,
           aggregation: 'last',
           integerValued: true,
           description:
@@ -41,7 +42,7 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
         }),
         metric('open_positions_partial_depth_count', {
           label: 'Open Positions: Partial Depth',
-          color: '#d97706',
+          color: MetricColor.Amber600,
           aggregation: 'last',
           integerValued: true,
           description:
@@ -49,14 +50,14 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
         }),
         metric('open_positions_uncovered_shares', {
           label: 'Open Positions: Uncovered Shares',
-          color: '#d97706',
+          color: MetricColor.Amber600,
           aggregation: 'last',
           description:
             'То же самое «слепое пятно», что в трёх метриках выше (No Book, Empty Bid, Partial Depth), но не в штуках позиций, а в объёме: сколько контрактов из уже купленных позиций сейчас не оценены в деньгах, потому что не нашлось желающих их выкупить. Эти контракты у бота реально есть, просто estimated_open_positions_value их не учитывает — то есть настоящая стоимость счёта, скорее всего, чуть больше, чем показывает estimated_account_value. Чем больше число — тем больше эта неучтённая часть.',
         }),
         metric('estimated_account_value', {
           label: 'Estimated Account Value',
-          color: '#16a34a',
+          color: MetricColor.Green600,
           unit: 'money',
           aggregation: 'last',
           description:
@@ -70,7 +71,7 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
       metrics: [
         metric('cycle_errors', {
           label: 'Cycle Errors',
-          color: '#dc2626',
+          color: MetricColor.Red600,
           aggregation: 'sum',
           integerValued: true,
           description:
@@ -85,7 +86,7 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
         }),
         metric('reconcile_failures', {
           label: 'Reconcile Failures',
-          color: '#dc2626',
+          color: MetricColor.Red600,
           aggregation: 'sum',
           integerValued: true,
           description:
@@ -93,7 +94,7 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
         }),
         metric('reconcile_failures_fetch_account', {
           label: 'Reconcile Failures: Fetch Account',
-          color: '#dc2626',
+          color: MetricColor.Red600,
           aggregation: 'sum',
           integerValued: true,
           description:
@@ -101,7 +102,7 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
         }),
         metric('reconcile_failures_fetch_books', {
           label: 'Reconcile Failures: Fetch Books',
-          color: '#dc2626',
+          color: MetricColor.Red600,
           aggregation: 'sum',
           integerValued: true,
           description:
@@ -109,7 +110,7 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
         }),
         metric('no_mutation_streak', {
           label: 'No-Mutation Streak',
-          color: '#d97706',
+          color: MetricColor.Amber600,
           aggregation: 'last',
           integerValued: true,
           description:
@@ -117,7 +118,7 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
         }),
         metric('export_pending_snapshots', {
           label: 'Export Pending Snapshots',
-          color: '#d97706',
+          color: MetricColor.Amber600,
           aggregation: 'last',
           integerValued: true,
           description:
@@ -138,28 +139,28 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
       metrics: [
         metric('fetch_ms', {
           label: 'Fetch Duration (ms)',
-          color: '#7c3aed',
+          color: MetricColor.Violet600,
           aggregation: 'avg',
           description:
             'Сколько миллисекунд заняло получение базового состояния счёта (открытые ордера, позиции, баланс) с биржи в начале этого торгового цикла. Чем меньше — тем быстрее бот видит актуальную картину. Большие скачки чаще говорят о медленном ответе биржи, а не о проблеме в самом боте.',
         }),
         metric('books_ms', {
           label: 'Books Duration (ms)',
-          color: '#7c3aed',
+          color: MetricColor.Violet600,
           aggregation: 'avg',
           description:
             'Сколько миллисекунд заняла загрузка стаканов (книг заявок) по всем рынкам из рабочего списка в этом цикле. Чем больше рынков нужно отследить, тем дольше может занимать этот шаг — само по себе это не ошибка.',
         }),
         metric('reconcile_ms', {
           label: 'Reconcile Duration (ms)',
-          color: '#7c3aed',
+          color: MetricColor.Violet600,
           aggregation: 'avg',
           description:
             'Сколько миллисекунд заняло принятие и исполнение всех торговых решений по покупке и продаже в этом цикле, уже после того как данные счёта и стаканы были получены. Это «расчётная» часть цикла без учёта сетевых задержек на загрузку данных.',
         }),
         metric('cycle_duration_ms', {
           label: 'Cycle Duration (ms)',
-          color: '#7c3aed',
+          color: MetricColor.Violet600,
           aggregation: 'avg',
           description:
             'Сколько миллисекунд занял весь торговый цикл целиком — от начала до конца, включая загрузку данных счёта, стаканов и принятие решений. Это самая верхнеуровневая метрика скорости работы reconcile-цикла: если она стабильно растёт, стоит посмотреть на fetch_ms/books_ms/reconcile_ms по отдельности, чтобы понять, какой именно шаг стал медленнее. Раз в ~30 минут к этому добавляется отдельный, независимый discovery-цикл — его длительность смотри в discovery_duration_ms.',
@@ -172,7 +173,7 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
       metrics: [
         metric('catalog_markets_total', {
           label: 'Catalog Markets Total',
-          color: '#0e7490',
+          color: MetricColor.Cyan700,
           aggregation: 'last',
           integerValued: true,
           description:
@@ -180,7 +181,7 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
         }),
         metric('discovery_dropped_date_like', {
           label: 'Discovery Dropped: Date-Like',
-          color: '#0e7490',
+          color: MetricColor.Cyan700,
           aggregation: 'last',
           integerValued: true,
           description:
@@ -188,42 +189,42 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
         }),
         metric('discovery_duration_ms', {
           label: 'Discovery Duration (ms)',
-          color: '#0e7490',
+          color: MetricColor.Cyan700,
           aggregation: 'avg',
           description:
             'Сколько миллисекунд занял весь discovery-цикл целиком — от запроса Gamma-событий до публикации нового снепшота каталога. Выполняется раз в ~30 минут, независимо от reconcile-цикла. Если растёт, смотри discovery_gamma_ms/discovery_collect_ms/discovery_prices_ms/discovery_merge_ms по отдельности, чтобы понять, какой шаг замедлился.',
         }),
         metric('discovery_gamma_ms', {
           label: 'Discovery Gamma Duration (ms)',
-          color: '#0e7490',
+          color: MetricColor.Cyan700,
           aggregation: 'avg',
           description:
             'Сколько миллисекунд заняла загрузка всех активных событий с Gamma API в этом discovery-цикле — обычно самый тяжёлый шаг, чаще всего доминирует в discovery_duration_ms.',
         }),
         metric('discovery_collect_ms', {
           label: 'Discovery Collect Duration (ms)',
-          color: '#0e7490',
+          color: MetricColor.Cyan700,
           aggregation: 'avg',
           description:
             'Сколько миллисекунд заняли разбор полученных Gamma-событий и построение списка рынков (включая отсев date-like спортивных рынков) в этом discovery-цикле.',
         }),
         metric('discovery_prices_ms', {
           label: 'Discovery Prices Duration (ms)',
-          color: '#0e7490',
+          color: MetricColor.Cyan700,
           aggregation: 'avg',
           description:
             'Сколько миллисекунд заняли параллельные price-batch запросы (батчами по 200 токенов, 20 воркеров одновременно) ко всем токенам собранных рынков в этом discovery-цикле.',
         }),
         metric('discovery_merge_ms', {
           label: 'Discovery Merge Duration (ms)',
-          color: '#0e7490',
+          color: MetricColor.Cyan700,
           aggregation: 'avg',
           description:
             'Сколько миллисекунд заняло слияние полученных цен bid/ask с рядами рынков перед публикацией нового снепшота каталога — последний шаг discovery-цикла.',
         }),
         metric('discovery_errors', {
           label: 'Discovery Errors',
-          color: '#dc2626',
+          color: MetricColor.Red600,
           aggregation: 'sum',
           integerValued: true,
           description:
@@ -237,7 +238,7 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
       metrics: [
         metric('candidates_stage1_total', {
           label: 'Candidates: Stage 1 Total',
-          color: '#0891b2',
+          color: MetricColor.Cyan600,
           aggregation: 'last',
           integerValued: true,
           description:
@@ -245,7 +246,7 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
         }),
         metric('candidates_stage2_total', {
           label: 'Candidates: Stage 2 Total',
-          color: '#0891b2',
+          color: MetricColor.Cyan600,
           aggregation: 'avg',
           integerValued: true,
           description:
@@ -253,21 +254,21 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
         }),
         metric('candidates_stage2_effective_spread_avg_pts', {
           label: 'Effective Spread: Avg (pts)',
-          color: '#0891b2',
+          color: MetricColor.Cyan600,
           aggregation: 'avg',
           description:
             'Средний реальный (эффективный) спред в пунктах среди кандидатов уровня 1 за этот цикл — диагностика, не влияет на торговые решения. Публикуется только когда есть хотя бы один кандидат с посчитанным спредом. Помогает видеть, насколько в среднем рынки не дотягивают до порога входа.',
         }),
         metric('candidates_stage2_effective_spread_min_pts', {
           label: 'Effective Spread: Min (pts)',
-          color: '#0891b2',
+          color: MetricColor.Cyan600,
           aggregation: 'avg',
           description:
             'Минимальный реальный (эффективный) спред в пунктах среди кандидатов уровня 1 за этот цикл — худший случай в текущем пуле, публикуется только когда есть хотя бы один кандидат с посчитанным спредом. Полезно, чтобы понять, насколько близко к порогу входа находятся самые слабые кандидаты.',
         }),
         metric('legacy_positions', {
           label: 'Legacy Positions',
-          color: '#0891b2',
+          color: MetricColor.Cyan600,
           aggregation: 'last',
           integerValued: true,
           description:
@@ -275,7 +276,7 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
         }),
         metric('books_missing', {
           label: 'Missing Books',
-          color: '#0891b2',
+          color: MetricColor.Cyan600,
           aggregation: 'last',
           integerValued: true,
           description:
@@ -283,7 +284,7 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
         }),
         metric('filtered_out', {
           label: 'Filtered Out',
-          color: '#64748b',
+          color: MetricColor.Slate500,
           aggregation: 'sum',
           integerValued: true,
           description:
@@ -297,7 +298,7 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
       metrics: [
         metric('candidates_stage1_dropped_no_price', {
           label: 'Dropped: No Price',
-          color: '#64748b',
+          color: MetricColor.Slate500,
           aggregation: 'last',
           integerValued: true,
           description:
@@ -305,7 +306,7 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
         }),
         metric('candidates_stage1_dropped_bid_range', {
           label: 'Dropped: Bid Range',
-          color: '#64748b',
+          color: MetricColor.Slate500,
           aggregation: 'last',
           integerValued: true,
           description:
@@ -313,7 +314,7 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
         }),
         metric('candidates_stage1_dropped_spread', {
           label: 'Dropped: Spread',
-          color: '#64748b',
+          color: MetricColor.Slate500,
           aggregation: 'last',
           integerValued: true,
           description:
@@ -321,7 +322,7 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
         }),
         metric('candidates_stage1_dropped_volume', {
           label: 'Dropped: Volume',
-          color: '#64748b',
+          color: MetricColor.Slate500,
           aggregation: 'last',
           integerValued: true,
           description:
@@ -329,7 +330,7 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
         }),
         metric('candidates_stage1_dropped_days_to_end', {
           label: 'Dropped: Days to End',
-          color: '#64748b',
+          color: MetricColor.Slate500,
           aggregation: 'last',
           integerValued: true,
           description:
@@ -337,7 +338,7 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
         }),
         metric('candidates_stage1_dropped_missing_dates', {
           label: 'Dropped: Missing Dates',
-          color: '#64748b',
+          color: MetricColor.Slate500,
           aggregation: 'last',
           integerValued: true,
           description:
@@ -345,7 +346,7 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
         }),
         metric('candidates_stage1_dropped_market_age', {
           label: 'Dropped: Market Age',
-          color: '#64748b',
+          color: MetricColor.Slate500,
           aggregation: 'last',
           integerValued: true,
           description:
@@ -359,7 +360,7 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
       metrics: [
         metric('orders_total', {
           label: 'Open Orders',
-          color: '#2563eb',
+          color: MetricColor.Blue600,
           aggregation: 'last',
           integerValued: true,
           description:
@@ -367,7 +368,7 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
         }),
         metric('orders_buy', {
           label: 'Buy Orders',
-          color: '#2563eb',
+          color: MetricColor.Blue600,
           aggregation: 'last',
           integerValued: true,
           description:
@@ -375,7 +376,7 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
         }),
         metric('orders_sell', {
           label: 'Sell Orders',
-          color: '#2563eb',
+          color: MetricColor.Blue600,
           aggregation: 'last',
           integerValued: true,
           description:
@@ -383,7 +384,7 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
         }),
         metric('trade_post', {
           label: 'Post Actions',
-          color: '#2563eb',
+          color: MetricColor.Blue600,
           aggregation: 'avg',
           integerValued: true,
           description:
@@ -391,7 +392,7 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
         }),
         metric('trade_cancel', {
           label: 'Cancel Actions',
-          color: '#2563eb',
+          color: MetricColor.Blue600,
           aggregation: 'avg',
           integerValued: true,
           description:
@@ -399,7 +400,7 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
         }),
         metric('duplicate_orders_canceled', {
           label: 'Duplicate Orders Canceled',
-          color: '#d97706',
+          color: MetricColor.Amber600,
           aggregation: 'sum',
           integerValued: true,
           description:
@@ -407,7 +408,7 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
         }),
         metric('duplicate_orders_cancel_failed', {
           label: 'Duplicate Orders Cancel Failed',
-          color: '#dc2626',
+          color: MetricColor.Red600,
           aggregation: 'sum',
           integerValued: true,
           description:
@@ -421,7 +422,7 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
       metrics: [
         metric('buy_place', {
           label: 'Buy Place',
-          color: '#ea580c',
+          color: MetricColor.Orange600,
           aggregation: 'sum',
           integerValued: true,
           description:
@@ -429,7 +430,7 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
         }),
         metric('buy_keep', {
           label: 'Buy Keep',
-          color: '#ea580c',
+          color: MetricColor.Orange600,
           aggregation: 'avg',
           integerValued: true,
           description:
@@ -437,7 +438,7 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
         }),
         metric('buy_replace', {
           label: 'Buy Replace',
-          color: '#ea580c',
+          color: MetricColor.Orange600,
           aggregation: 'avg',
           integerValued: true,
           description:
@@ -445,7 +446,7 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
         }),
         metric('buy_blocked', {
           label: 'Buy Blocked',
-          color: '#ea580c',
+          color: MetricColor.Orange600,
           aggregation: 'avg',
           integerValued: true,
           description:
@@ -453,7 +454,7 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
         }),
         metric('buy_stop', {
           label: 'Buy Stop',
-          color: '#ea580c',
+          color: MetricColor.Orange600,
           aggregation: 'sum',
           integerValued: true,
           description:
@@ -461,7 +462,7 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
         }),
         metric('buy_backoff_active', {
           label: 'Buy Backoff Active',
-          color: '#ea580c',
+          color: MetricColor.Orange600,
           aggregation: 'last',
           integerValued: true,
           description:
@@ -469,7 +470,7 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
         }),
         metric('blacklisted_entries', {
           label: 'Blacklisted Entries',
-          color: '#ea580c',
+          color: MetricColor.Orange600,
           aggregation: 'last',
           integerValued: true,
           description:
@@ -483,7 +484,7 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
       metrics: [
         metric('buy_blocked_no_book', {
           label: 'Buy Blocked: No Book',
-          color: '#ea580c',
+          color: MetricColor.Orange600,
           aggregation: 'avg',
           integerValued: true,
           description:
@@ -491,7 +492,7 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
         }),
         metric('buy_blocked_below_min', {
           label: 'Buy Blocked: Below Min',
-          color: '#ea580c',
+          color: MetricColor.Orange600,
           aggregation: 'avg',
           integerValued: true,
           description:
@@ -499,7 +500,7 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
         }),
         metric('buy_blocked_backoff', {
           label: 'Buy Blocked: Backoff',
-          color: '#ea580c',
+          color: MetricColor.Orange600,
           aggregation: 'avg',
           integerValued: true,
           description:
@@ -507,7 +508,7 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
         }),
         metric('buy_exchange_rejected_insufficient_balance', {
           label: 'Buy Rejected: Insufficient Balance',
-          color: '#ea580c',
+          color: MetricColor.Orange600,
           aggregation: 'sum',
           integerValued: true,
           description:
@@ -515,7 +516,7 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
         }),
         metric('buy_replace_reprice', {
           label: 'Buy Replace: Reprice',
-          color: '#ea580c',
+          color: MetricColor.Orange600,
           aggregation: 'avg',
           integerValued: true,
           description:
@@ -523,7 +524,7 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
         }),
         metric('buy_replace_size_change', {
           label: 'Buy Replace: Size Change',
-          color: '#ea580c',
+          color: MetricColor.Orange600,
           aggregation: 'sum',
           integerValued: true,
           description:
@@ -531,7 +532,7 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
         }),
         metric('buy_stop_no_deficit', {
           label: 'Buy Stop: No Deficit',
-          color: '#ea580c',
+          color: MetricColor.Orange600,
           aggregation: 'sum',
           integerValued: true,
           description:
@@ -539,7 +540,7 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
         }),
         metric('buy_stop_market_dropped_out', {
           label: 'Buy Stop: Market Dropped Out',
-          color: '#ea580c',
+          color: MetricColor.Orange600,
           aggregation: 'sum',
           integerValued: true,
           description:
@@ -547,7 +548,7 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
         }),
         metric('buy_stop_no_candidate', {
           label: 'Buy Stop: No Candidate',
-          color: '#ea580c',
+          color: MetricColor.Orange600,
           aggregation: 'sum',
           integerValued: true,
           description:
@@ -555,7 +556,7 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
         }),
         metric('buy_stop_entry_blacklisted', {
           label: 'Buy Stop: Entry Blacklisted',
-          color: '#ea580c',
+          color: MetricColor.Orange600,
           aggregation: 'sum',
           integerValued: true,
           description:
@@ -563,7 +564,7 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
         }),
         metric('buy_stop_queue_too_deep', {
           label: 'Buy Stop: Queue Too Deep',
-          color: '#ea580c',
+          color: MetricColor.Orange600,
           aggregation: 'sum',
           integerValued: true,
           description:
@@ -571,7 +572,7 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
         }),
         metric('buy_stop_effective_spread_too_tight', {
           label: 'Buy Stop: Effective Spread Too Tight',
-          color: '#ea580c',
+          color: MetricColor.Orange600,
           aggregation: 'sum',
           integerValued: true,
           description:
@@ -585,7 +586,7 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
       metrics: [
         metric('sell_place', {
           label: 'Sell Place',
-          color: '#db2777',
+          color: MetricColor.Pink600,
           aggregation: 'sum',
           integerValued: true,
           description:
@@ -593,14 +594,14 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
         }),
         metric('sell_dust_liquidation_attempted_shares', {
           label: 'Sell Dust Liquidation Attempted (shares)',
-          color: '#db2777',
+          color: MetricColor.Pink600,
           aggregation: 'sum',
           description:
             'Суммарный объём в контрактах, который бот в этом цикле пытался продать как «пыль» — остаток позиции настолько маленький, что обычная логика продажи его не покрывает. Раз в несколько минут бот отдельно пытается закрыть такие мелкие хвосты позиций (если размещение удалось — попадает также в sell_place).',
         }),
         metric('sell_keep', {
           label: 'Sell Keep',
-          color: '#db2777',
+          color: MetricColor.Pink600,
           aggregation: 'avg',
           integerValued: true,
           description:
@@ -608,7 +609,7 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
         }),
         metric('sell_replace', {
           label: 'Sell Replace',
-          color: '#db2777',
+          color: MetricColor.Pink600,
           aggregation: 'avg',
           integerValued: true,
           description:
@@ -616,7 +617,7 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
         }),
         metric('sell_blocked', {
           label: 'Sell Blocked',
-          color: '#db2777',
+          color: MetricColor.Pink600,
           aggregation: 'avg',
           integerValued: true,
           description:
@@ -624,7 +625,7 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
         }),
         metric('sell_stop', {
           label: 'Sell Stop',
-          color: '#db2777',
+          color: MetricColor.Pink600,
           aggregation: 'sum',
           integerValued: true,
           description:
@@ -632,7 +633,7 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
         }),
         metric('sell_backoff_active', {
           label: 'Sell Backoff Active',
-          color: '#db2777',
+          color: MetricColor.Pink600,
           aggregation: 'last',
           integerValued: true,
           description:
@@ -646,7 +647,7 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
       metrics: [
         metric('sell_blocked_no_book', {
           label: 'Sell Blocked: No Book',
-          color: '#db2777',
+          color: MetricColor.Pink600,
           aggregation: 'avg',
           integerValued: true,
           description:
@@ -654,7 +655,7 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
         }),
         metric('sell_blocked_below_min', {
           label: 'Sell Blocked: Below Min',
-          color: '#db2777',
+          color: MetricColor.Pink600,
           aggregation: 'avg',
           integerValued: true,
           description:
@@ -662,7 +663,7 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
         }),
         metric('sell_blocked_queue_too_deep', {
           label: 'Sell Blocked: Queue Too Deep',
-          color: '#db2777',
+          color: MetricColor.Pink600,
           aggregation: 'avg',
           integerValued: true,
           description:
@@ -670,7 +671,7 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
         }),
         metric('sell_blocked_backoff', {
           label: 'Sell Blocked: Backoff',
-          color: '#db2777',
+          color: MetricColor.Pink600,
           aggregation: 'avg',
           integerValued: true,
           description:
@@ -678,7 +679,7 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
         }),
         metric('sell_replace_reprice', {
           label: 'Sell Replace: Reprice',
-          color: '#db2777',
+          color: MetricColor.Pink600,
           aggregation: 'avg',
           integerValued: true,
           description:
@@ -686,7 +687,7 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
         }),
         metric('sell_replace_expand', {
           label: 'Sell Replace: Expand',
-          color: '#db2777',
+          color: MetricColor.Pink600,
           aggregation: 'sum',
           integerValued: true,
           description:
@@ -694,7 +695,7 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
         }),
         metric('sell_replace_reduce', {
           label: 'Sell Replace: Reduce',
-          color: '#db2777',
+          color: MetricColor.Pink600,
           aggregation: 'sum',
           integerValued: true,
           description:
@@ -702,7 +703,7 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
         }),
         metric('sell_stop_no_inventory', {
           label: 'Sell Stop: No Inventory',
-          color: '#db2777',
+          color: MetricColor.Pink600,
           aggregation: 'sum',
           integerValued: true,
           description:
@@ -716,7 +717,7 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
       metrics: [
         metric('export_fetch_ms', {
           label: 'V3 Export Fetch Duration (ms)',
-          color: '#7c3aed',
+          color: MetricColor.Violet600,
           aggregation: 'avg',
           removed: true,
           removedNote: 'Замены нет — шаг убран вместе с V3 `/export`, время discovery теперь в discovery_duration_ms',
@@ -725,7 +726,7 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
         }),
         metric('v3_occupied_total', {
           label: 'V3 Occupied Total',
-          color: '#0891b2',
+          color: MetricColor.Cyan600,
           aggregation: 'last',
           integerValued: true,
           removed: true,
@@ -735,7 +736,7 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
         }),
         metric('dropped_v3_occupied', {
           label: 'Dropped: V3 Occupied',
-          color: '#64748b',
+          color: MetricColor.Slate500,
           aggregation: 'last',
           integerValued: true,
           removed: true,
@@ -745,7 +746,7 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
         }),
         metric('catalog_candidates', {
           label: 'Catalog Candidates',
-          color: '#0891b2',
+          color: MetricColor.Cyan600,
           aggregation: 'last',
           integerValued: true,
           removed: true,
@@ -755,7 +756,7 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
         }),
         metric('dropped_no_price', {
           label: 'Dropped: No Price',
-          color: '#64748b',
+          color: MetricColor.Slate500,
           aggregation: 'last',
           integerValued: true,
           removed: true,
@@ -765,7 +766,7 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
         }),
         metric('dropped_bid_range', {
           label: 'Dropped: Bid Range',
-          color: '#64748b',
+          color: MetricColor.Slate500,
           aggregation: 'last',
           integerValued: true,
           removed: true,
@@ -775,7 +776,7 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
         }),
         metric('dropped_spread', {
           label: 'Dropped: Spread',
-          color: '#64748b',
+          color: MetricColor.Slate500,
           aggregation: 'last',
           integerValued: true,
           removed: true,
@@ -785,7 +786,7 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
         }),
         metric('dropped_volume', {
           label: 'Dropped: Volume',
-          color: '#64748b',
+          color: MetricColor.Slate500,
           aggregation: 'last',
           integerValued: true,
           removed: true,
@@ -795,7 +796,7 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
         }),
         metric('dropped_days_to_end', {
           label: 'Dropped: Days to End',
-          color: '#64748b',
+          color: MetricColor.Slate500,
           aggregation: 'last',
           integerValued: true,
           removed: true,
@@ -806,7 +807,7 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
         }),
         metric('dropped_market_age', {
           label: 'Dropped: Market Age',
-          color: '#64748b',
+          color: MetricColor.Slate500,
           aggregation: 'last',
           integerValued: true,
           removed: true,
@@ -816,7 +817,7 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
         }),
         metric('worklist_candidates', {
           label: 'Worklist Candidates',
-          color: '#0891b2',
+          color: MetricColor.Cyan600,
           aggregation: 'last',
           integerValued: true,
           removed: true,
@@ -827,7 +828,7 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
         }),
         metric('worklist_ex_candidates', {
           label: 'Worklist Ex-Candidates',
-          color: '#0891b2',
+          color: MetricColor.Cyan600,
           aggregation: 'last',
           integerValued: true,
           removed: true,
@@ -843,19 +844,19 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
       metrics: [
         metric('process_cpu_ratio_avg', {
           label: 'Bot CPU Avg',
-          color: '#dc2626',
+          color: MetricColor.Red600,
           aggregation: 'avg',
           description: 'Средняя доля общей CPU-мощности сервера, которую за минуту съел сам процесс бота.',
         }),
         metric('process_cpu_ratio_max', {
           label: 'Bot CPU Peak',
-          color: '#ef4444',
+          color: MetricColor.Red500,
           aggregation: 'max',
           description: 'Пиковая доля CPU сервера, которую занимал процесс бота в одном из 5-секундных замеров этой минуты.',
         }),
         metric('process_rss_bytes', {
           label: 'Bot RSS',
-          color: '#ea580c',
+          color: MetricColor.Orange600,
           aggregation: 'avg',
           description: 'Текущий RSS процесса бота: сколько физической памяти реально держит сам сервис прямо сейчас.',
         }),
