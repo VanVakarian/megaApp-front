@@ -99,20 +99,20 @@ export const MEGAAPP_METRICS_DEFINITION: MetricsServiceDefinition = {
       metrics: [
         metric('process_cpu_ratio_avg', {
           label: 'MegaApp CPU Avg',
-          color: '#db2777',
+          color: '#dc2626',
           aggregation: 'avg',
           description: 'Средняя доля общей CPU-мощности сервера, которую за минуту съел сам процесс megaapp-back.',
         }),
         metric('process_cpu_ratio_max', {
           label: 'MegaApp CPU Peak',
-          color: '#ec4899',
+          color: '#ef4444',
           aggregation: 'max',
           description:
             'Пиковая доля CPU сервера, которую занимал процесс megaapp-back в одном из 5-секундных замеров этой минуты.',
         }),
         metric('process_rss_bytes', {
           label: 'MegaApp RSS',
-          color: '#84cc16',
+          color: '#ea580c',
           aggregation: 'avg',
           description:
             'Текущий RSS процесса megaapp-back: сколько физической памяти реально держит сам сервис прямо сейчас.',

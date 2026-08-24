@@ -512,5 +512,29 @@ export const SPREAD_CAPTURE_BOT_METRICS_DEFINITION: MetricsServiceDefinition = {
         }),
       ],
     },
+    {
+      id: 'process',
+      label: 'Bot Process',
+      metrics: [
+        metric('process_cpu_ratio_avg', {
+          label: 'Bot CPU Avg',
+          color: '#dc2626',
+          aggregation: 'avg',
+          description: 'Средняя доля общей CPU-мощности сервера, которую за минуту съел сам процесс бота.',
+        }),
+        metric('process_cpu_ratio_max', {
+          label: 'Bot CPU Peak',
+          color: '#ef4444',
+          aggregation: 'max',
+          description: 'Пиковая доля CPU сервера, которую занимал процесс бота в одном из 5-секундных замеров этой минуты.',
+        }),
+        metric('process_rss_bytes', {
+          label: 'Bot RSS',
+          color: '#ea580c',
+          aggregation: 'avg',
+          description: 'Текущий RSS процесса бота: сколько физической памяти реально держит сам сервис прямо сейчас.',
+        }),
+      ],
+    },
   ],
 };
