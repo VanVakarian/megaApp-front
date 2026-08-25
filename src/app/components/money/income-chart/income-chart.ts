@@ -9,7 +9,6 @@ import {
   input,
   OnDestroy,
   signal,
-  untracked,
   viewChild,
 } from '@angular/core';
 import { ChartThemeService } from '@app/services/chart-theme.service';
@@ -51,7 +50,7 @@ export class IncomeChart implements AfterViewInit, OnDestroy {
 
   protected readonly chartCanvas = viewChild.required<ElementRef<HTMLCanvasElement>>('chartCanvas');
   protected readonly chart$$ = signal<Chart | null>(null);
-  protected readonly enabledCategoryIds$$ = computed(() => this.moneyService.incomeEnabledCategoryIds$$());
+  protected readonly disabledCategoryIds$$ = computed(() => this.moneyService.disabledIncomeCategoryIds$$());
   protected readonly yearlyMode$$ = computed(() => this.moneyService.yearlyMode$$());
 
   private readonly chartThemeService = inject(ChartThemeService);
@@ -67,21 +66,8 @@ export class IncomeChart implements AfterViewInit, OnDestroy {
 
   protected readonly activeCategorySeries$$ = computed(() => {
     const series = this.dataInput().categorySeries;
-    const enabled = this.enabledCategoryIds$$();
-    return series.filter((s) => enabled.has(s.categoryId));
-  });
-
-  private readonly syncEnabledCategoriesEffect = effect(() => {
-    const series = this.dataInput().categorySeries;
-    untracked(() => {
-      const current = this.enabledCategoryIds$$();
-      const newIds = series.map((s) => s.categoryId).filter((id) => !current.has(id));
-      if (newIds.length > 0) {
-        const updated = new Set(current);
-        newIds.forEach((id) => updated.add(id));
-        this.moneyService.setIncomeEnabledCategoryIds(updated);
-      }
-    });
+    const disabled = this.disabledCategoryIds$$();
+    return series.filter((s) => !disabled.has(s.categoryId));
   });
 
   private readonly chartUpdateEffect = effect(() => {
@@ -196,8 +182,8 @@ export class IncomeChart implements AfterViewInit, OnDestroy {
 
   protected readonly allEnabled$$ = computed(() => {
     const series = this.dataInput().categorySeries;
-    const enabled = this.enabledCategoryIds$$();
-    return series.every((s) => enabled.has(s.categoryId));
+    const disabled = this.disabledCategoryIds$$();
+    return series.every((s) => !disabled.has(s.categoryId));
   });
 
   protected readonly allNoneLabel$$ = computed(() => (this.allEnabled$$() ? 'None' : 'All'));
@@ -205,25 +191,25 @@ export class IncomeChart implements AfterViewInit, OnDestroy {
   protected toggleAll(): void {
     const series = this.dataInput().categorySeries;
     if (this.allEnabled$$()) {
-      this.moneyService.setIncomeEnabledCategoryIds(new Set());
+      this.moneyService.setDisabledIncomeCategoryIds(new Set(series.map((s) => s.categoryId)));
     } else {
-      this.moneyService.setIncomeEnabledCategoryIds(new Set(series.map((s) => s.categoryId)));
+      this.moneyService.setDisabledIncomeCategoryIds(new Set());
     }
   }
 
   protected toggleCategory(categoryId: number | null, checked: boolean): void {
-    const current = this.enabledCategoryIds$$();
+    const current = this.disabledCategoryIds$$();
     const updated = new Set(current);
     if (checked) {
-      updated.add(categoryId);
-    } else {
       updated.delete(categoryId);
+    } else {
+      updated.add(categoryId);
     }
-    this.moneyService.setIncomeEnabledCategoryIds(updated);
+    this.moneyService.setDisabledIncomeCategoryIds(updated);
   }
 
   protected isCategoryEnabled(categoryId: number | null): boolean {
-    return this.enabledCategoryIds$$().has(categoryId);
+    return !this.disabledCategoryIds$$().has(categoryId);
   }
 
   protected getCategoryColor(categoryId: number | null): string {

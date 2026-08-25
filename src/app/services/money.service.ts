@@ -63,12 +63,12 @@ interface MoneySettings {
   chartRangeEnd: string | null;
   expenseChartYMax: ExpenseChartYMaxSetting | null;
   convertToUnifiedCurrency: boolean;
-  enabledCategoryIds: (number | null)[];
-  incomeEnabledCategoryIds: (number | null)[];
+  disabledCategoryIds: (number | null)[];
+  disabledIncomeCategoryIds: (number | null)[];
   yearlyMode: boolean;
   showByAccount: boolean;
   suspensionFilter: SuspensionFilter;
-  enabledAccountIds: number[];
+  disabledAccountIds: number[];
 }
 
 const SNAPSHOT_KEY = 'money_snapshot';
@@ -80,12 +80,12 @@ function defaultSettings(): MoneySettings {
     chartRangeEnd: null,
     expenseChartYMax: null,
     convertToUnifiedCurrency: false,
-    enabledCategoryIds: [],
-    incomeEnabledCategoryIds: [],
+    disabledCategoryIds: [],
+    disabledIncomeCategoryIds: [],
     yearlyMode: false,
     showByAccount: false,
     suspensionFilter: 'all',
-    enabledAccountIds: [],
+    disabledAccountIds: [],
   };
 }
 
@@ -139,19 +139,19 @@ export class MoneyService {
   public readonly convertToUnifiedCurrency$$: Signal<boolean> = computed(
     () => this.settingsStore.value$$().convertToUnifiedCurrency,
   );
-  public readonly enabledCategoryIds$$: Signal<Set<number | null>> = computed(
-    () => new Set(this.settingsStore.value$$().enabledCategoryIds),
+  public readonly disabledCategoryIds$$: Signal<Set<number | null>> = computed(
+    () => new Set(this.settingsStore.value$$().disabledCategoryIds),
   );
-  public readonly incomeEnabledCategoryIds$$: Signal<Set<number | null>> = computed(
-    () => new Set(this.settingsStore.value$$().incomeEnabledCategoryIds),
+  public readonly disabledIncomeCategoryIds$$: Signal<Set<number | null>> = computed(
+    () => new Set(this.settingsStore.value$$().disabledIncomeCategoryIds),
   );
   public readonly yearlyMode$$: Signal<boolean> = computed(() => this.settingsStore.value$$().yearlyMode);
   public readonly showByAccount$$: Signal<boolean> = computed(() => this.settingsStore.value$$().showByAccount);
   public readonly suspensionFilter$$: Signal<SuspensionFilter> = computed(
     () => this.settingsStore.value$$().suspensionFilter,
   );
-  public readonly enabledAccountIds$$: Signal<Set<number>> = computed(
-    () => new Set(this.settingsStore.value$$().enabledAccountIds),
+  public readonly disabledAccountIds$$: Signal<Set<number>> = computed(
+    () => new Set(this.settingsStore.value$$().disabledAccountIds),
   );
 
   // Transaction ids with an edit/delete sitting in the sync queue, not yet confirmed or rolled
@@ -190,12 +190,12 @@ export class MoneyService {
     this.settingsStore.set('convertToUnifiedCurrency', value);
   }
 
-  public setEnabledCategoryIds(ids: ReadonlySet<number | null>): void {
-    this.settingsStore.set('enabledCategoryIds', [...ids]);
+  public setDisabledCategoryIds(ids: ReadonlySet<number | null>): void {
+    this.settingsStore.set('disabledCategoryIds', [...ids]);
   }
 
-  public setIncomeEnabledCategoryIds(ids: ReadonlySet<number | null>): void {
-    this.settingsStore.set('incomeEnabledCategoryIds', [...ids]);
+  public setDisabledIncomeCategoryIds(ids: ReadonlySet<number | null>): void {
+    this.settingsStore.set('disabledIncomeCategoryIds', [...ids]);
   }
 
   public setYearlyMode(value: boolean): void {
@@ -210,8 +210,8 @@ export class MoneyService {
     this.settingsStore.set('suspensionFilter', value);
   }
 
-  public setEnabledAccountIds(ids: ReadonlySet<number>): void {
-    this.settingsStore.set('enabledAccountIds', [...ids]);
+  public setDisabledAccountIds(ids: ReadonlySet<number>): void {
+    this.settingsStore.set('disabledAccountIds', [...ids]);
   }
 
   constructor(

@@ -9,7 +9,6 @@ import {
   inject,
   input,
   signal,
-  untracked,
   viewChild,
 } from '@angular/core';
 import { ChartThemeService } from '@app/services/chart-theme.service';
@@ -51,7 +50,7 @@ export class BalancesChart implements AfterViewInit, OnDestroy {
   protected readonly chart$$ = signal<Chart | null>(null);
   protected readonly showByAccount$$ = computed(() => this.moneyService.showByAccount$$());
   protected readonly suspensionFilter$$ = computed(() => this.moneyService.suspensionFilter$$());
-  protected readonly enabledAccountIds$$ = computed(() => this.moneyService.enabledAccountIds$$());
+  protected readonly disabledAccountIds$$ = computed(() => this.moneyService.disabledAccountIds$$());
 
   private readonly moneyService = inject(MoneyService);
   private readonly chartThemeService = inject(ChartThemeService);
@@ -151,21 +150,8 @@ export class BalancesChart implements AfterViewInit, OnDestroy {
 
   protected readonly activeAccountSeries$$ = computed(() => {
     const series = this.dataInput().accountSeries;
-    const enabled = this.enabledAccountIds$$();
-    return series.filter((s) => enabled.has(s.accountId));
-  });
-
-  private readonly syncEnabledAccountsEffect = effect(() => {
-    const series = this.dataInput().accountSeries;
-    untracked(() => {
-      const current = this.enabledAccountIds$$();
-      const newIds = series.map((s) => s.accountId).filter((id) => !current.has(id));
-      if (newIds.length > 0) {
-        const updated = new Set(current);
-        newIds.forEach((id) => updated.add(id));
-        this.moneyService.setEnabledAccountIds(updated);
-      }
-    });
+    const disabled = this.disabledAccountIds$$();
+    return series.filter((s) => !disabled.has(s.accountId));
   });
 
   private readonly chartUpdateEffect = effect(() => {
@@ -255,13 +241,13 @@ export class BalancesChart implements AfterViewInit, OnDestroy {
   }
 
   protected isAccountEnabled(accountId: number): boolean {
-    return this.enabledAccountIds$$().has(accountId);
+    return !this.disabledAccountIds$$().has(accountId);
   }
 
   protected readonly allEnabled$$ = computed(() => {
     const series = this.dataInput().accountSeries;
-    const enabled = this.enabledAccountIds$$();
-    return series.every((s) => enabled.has(s.accountId));
+    const disabled = this.disabledAccountIds$$();
+    return series.every((s) => !disabled.has(s.accountId));
   });
 
   protected readonly allNoneLabel$$ = computed(() => (this.allEnabled$$() ? 'None' : 'All'));
@@ -269,21 +255,21 @@ export class BalancesChart implements AfterViewInit, OnDestroy {
   protected toggleAll(): void {
     const series = this.dataInput().accountSeries;
     if (this.allEnabled$$()) {
-      this.moneyService.setEnabledAccountIds(new Set());
+      this.moneyService.setDisabledAccountIds(new Set(series.map((s) => s.accountId)));
     } else {
-      this.moneyService.setEnabledAccountIds(new Set(series.map((s) => s.accountId)));
+      this.moneyService.setDisabledAccountIds(new Set());
     }
   }
 
   protected toggleAccount(accountId: number, checked: boolean): void {
-    const current = this.enabledAccountIds$$();
+    const current = this.disabledAccountIds$$();
     const updated = new Set(current);
     if (checked) {
-      updated.add(accountId);
-    } else {
       updated.delete(accountId);
+    } else {
+      updated.add(accountId);
     }
-    this.moneyService.setEnabledAccountIds(updated);
+    this.moneyService.setDisabledAccountIds(updated);
   }
 
   protected getAccountColor(accountId: number): string {
