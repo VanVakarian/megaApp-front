@@ -24,7 +24,6 @@ import {
 import { IncomeChartCategorySeries, IncomeChartData } from '@app/shared/types';
 import { VButton } from '@ui-kit/components/v-button/v-button';
 import { VCheckbox } from '@ui-kit/components/v-checkbox/v-checkbox';
-import { VToggle, VToggleItem } from '@ui-kit/components/v-toggle/v-toggle';
 import {
   BarController,
   BarElement,
@@ -42,7 +41,7 @@ Chart.register(BarController, BarElement, CategoryScale, LinearScale, Tooltip, L
 @Component({
   selector: 'income-chart',
   templateUrl: './income-chart.html',
-  imports: [VButton, VCheckbox, VToggle],
+  imports: [VButton, VCheckbox],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class IncomeChart implements AfterViewInit, OnDestroy {
@@ -53,7 +52,7 @@ export class IncomeChart implements AfterViewInit, OnDestroy {
   protected readonly chartCanvas = viewChild.required<ElementRef<HTMLCanvasElement>>('chartCanvas');
   protected readonly chart$$ = signal<Chart | null>(null);
   protected readonly enabledCategoryIds$$ = computed(() => this.moneyService.incomeEnabledCategoryIds$$());
-  protected readonly yearlyMode$$ = computed(() => this.moneyService.incomeYearlyMode$$());
+  protected readonly yearlyMode$$ = computed(() => this.moneyService.yearlyMode$$());
 
   private readonly chartThemeService = inject(ChartThemeService);
   private readonly moneyService = inject(MoneyService);
@@ -65,11 +64,6 @@ export class IncomeChart implements AfterViewInit, OnDestroy {
   // cheap in-place mutation.
   private lastColors: ChartColors | null = null;
   private yearBoundaries: { year: string; startIdx: number; endIdx: number }[] = [];
-
-  protected readonly viewToggleItems: VToggleItem[] = [
-    { id: 'monthly', label: 'Monthly' },
-    { id: 'yearly', label: 'Yearly' },
-  ];
 
   protected readonly activeCategorySeries$$ = computed(() => {
     const series = this.dataInput().categorySeries;
@@ -207,14 +201,6 @@ export class IncomeChart implements AfterViewInit, OnDestroy {
   });
 
   protected readonly allNoneLabel$$ = computed(() => (this.allEnabled$$() ? 'None' : 'All'));
-
-  protected viewToggleValue(): string[] {
-    return this.yearlyMode$$() ? ['yearly'] : ['monthly'];
-  }
-
-  protected onViewToggleChange(value: string[]): void {
-    this.moneyService.setIncomeYearlyMode(value[0] === 'yearly');
-  }
 
   protected toggleAll(): void {
     const series = this.dataInput().categorySeries;

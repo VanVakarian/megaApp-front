@@ -66,7 +66,6 @@ interface MoneySettings {
   enabledCategoryIds: (number | null)[];
   incomeEnabledCategoryIds: (number | null)[];
   yearlyMode: boolean;
-  incomeYearlyMode: boolean;
   showByAccount: boolean;
   suspensionFilter: SuspensionFilter;
   enabledAccountIds: number[];
@@ -84,7 +83,6 @@ function defaultSettings(): MoneySettings {
     enabledCategoryIds: [],
     incomeEnabledCategoryIds: [],
     yearlyMode: false,
-    incomeYearlyMode: false,
     showByAccount: false,
     suspensionFilter: 'all',
     enabledAccountIds: [],
@@ -148,9 +146,6 @@ export class MoneyService {
     () => new Set(this.settingsStore.value$$().incomeEnabledCategoryIds),
   );
   public readonly yearlyMode$$: Signal<boolean> = computed(() => this.settingsStore.value$$().yearlyMode);
-  public readonly incomeYearlyMode$$: Signal<boolean> = computed(
-    () => this.settingsStore.value$$().incomeYearlyMode,
-  );
   public readonly showByAccount$$: Signal<boolean> = computed(() => this.settingsStore.value$$().showByAccount);
   public readonly suspensionFilter$$: Signal<SuspensionFilter> = computed(
     () => this.settingsStore.value$$().suspensionFilter,
@@ -205,10 +200,6 @@ export class MoneyService {
 
   public setYearlyMode(value: boolean): void {
     this.settingsStore.set('yearlyMode', value);
-  }
-
-  public setIncomeYearlyMode(value: boolean): void {
-    this.settingsStore.set('incomeYearlyMode', value);
   }
 
   public setShowByAccount(value: boolean): void {
