@@ -83,6 +83,18 @@ export class FoodDiaryService extends BaseFoodService {
   });
   public readonly selectedDayTotals$$: Signal<DayTotals> = computed(() => this.extractSelectedDayTotals());
 
+  // The single in-progress, unsubmitted weight edit across the whole diary (add-form or one
+  // edit-form row) — null when nothing is being edited. selectedDayTotals$$ folds it in so every
+  // consumer (top bar, nutrition-summary, per-row progress ring) reads the exact same projected
+  // percent, computed with the same rounding rule the server applies on save — the live preview
+  // and the post-save value can never disagree.
+  private readonly draftEntryWeight$$: WritableSignal<{
+    dateISO: string;
+    diaryId: number | null; // null = a new, not-yet-created entry (add-form)
+    foodCatalogueId: number;
+    weight: number;
+  } | null> = signal(null);
+
   public readonly diaryEntryFocusId$$: WritableSignal<number | null> = signal(null);
   public readonly diaryEntryResetId$$: WritableSignal<number | null> = signal(null);
 
@@ -169,6 +181,7 @@ export class FoodDiaryService extends BaseFoodService {
     this.selectedDayIso$$.set(calculateTodayIsoWithUserTimeShift());
     this.diaryEntryFocusId$$.set(null);
     this.diaryEntryResetId$$.set(null);
+    this.draftEntryWeight$$.set(null);
     this.segments = [];
     this.pendingSegments = [];
     this.pendingDiaryEntryIds.clear();
@@ -179,15 +192,29 @@ export class FoodDiaryService extends BaseFoodService {
     this.foodSettingsService.setHeight(height);
   }
 
+  // diaryId: the entry being edited, or null while adding a not-yet-created one.
+  public setDraftEntryWeight(dateISO: string, diaryId: number | null, foodCatalogueId: number, weight: number): void {
+    this.draftEntryWeight$$.set({ dateISO, diaryId, foodCatalogueId, weight });
+  }
+
+  // No-ops unless diaryId still owns the current draft — safe to call from any form on
+  // reset/submit/destroy without risking clearing another row's still-active draft.
+  public clearDraftEntryWeight(diaryId: number | null): void {
+    if (this.draftEntryWeight$$()?.diaryId === diaryId) {
+      this.draftEntryWeight$$.set(null);
+    }
+  }
+
   // Used only for the unsaved/unconfirmed window where the server hasn't computed entry.kcals
-  // yet: optimistic create before the response arrives, and the live edit-form preview value.
-  private estimateEntryKcalsNow(entry: DiaryEntry): number {
-    const entryWeight = entry.foodWeight / 100;
+  // yet: optimistic create/edit before the response arrives, and the live add/edit-form preview
+  // (selectedDayTotals$$, via draftEntryWeight$$) — same rounding rule as the server, so the
+  // preview and the post-save value are guaranteed to match.
+  private estimateEntryKcalsNow(foodCatalogueId: number, foodWeight: number): number {
     const personalKcalsPer100g =
-      this.personalKcalsService.personalKcals$$()[entry.foodCatalogueId] ??
-      this.catalogueService.catalogue$$()[entry.foodCatalogueId]?.kcals ??
+      this.personalKcalsService.personalKcals$$()[foodCatalogueId] ??
+      this.catalogueService.catalogue$$()[foodCatalogueId]?.kcals ??
       0;
-    return Math.round(entryWeight * personalKcalsPer100g);
+    return Math.round((foodWeight / 100) * personalKcalsPer100g);
   }
 
   public focusDiaryEntry(diaryEntryId: number): void {
@@ -228,7 +255,7 @@ export class FoodDiaryService extends BaseFoodService {
     const tempId = Date.now();
     const originalDiary = { ...this.diaryRaw$$() };
 
-    const kcalsDelta = this.estimateEntryKcalsNow(diaryEntry);
+    const kcalsDelta = this.estimateEntryKcalsNow(diaryEntry.foodCatalogueId, diaryEntry.foodWeight);
     const selectedDay = this.selectedDayIso$$();
     const nutrientsDelta = this.calculateEntryNutrients(diaryEntry);
 
@@ -287,7 +314,7 @@ export class FoodDiaryService extends BaseFoodService {
     }
 
     const originalKcals = originalEntry.kcals;
-    const newKcals = this.estimateEntryKcalsNow(diaryEntry);
+    const newKcals = this.estimateEntryKcalsNow(diaryEntry.foodCatalogueId, diaryEntry.foodWeight);
     const kcalsDelta = newKcals - originalKcals;
 
     const originalNutrients = this.calculateEntryNutrients(originalEntry);
@@ -662,7 +689,20 @@ export class FoodDiaryService extends BaseFoodService {
       consumedFiber: 0,
     };
 
-    return this.diary$$()[selectedDay]?.totals || defaultTotals;
+    const totals = this.diary$$()[selectedDay]?.totals || defaultTotals;
+
+    const draft = this.draftEntryWeight$$();
+    if (!draft || draft.dateISO !== selectedDay) return totals;
+
+    const previousKcals = draft.diaryId !== null ? (this.diaryRaw$$()[selectedDay]?.food[draft.diaryId]?.kcals ?? 0) : 0;
+    const projectedKcals = this.estimateEntryKcalsNow(draft.foodCatalogueId, draft.weight);
+    const kcalsConsumed = totals.kcalsConsumed - previousKcals + projectedKcals;
+
+    return {
+      ...totals,
+      kcalsConsumed,
+      kcalsPercent: this.calculatePercentage(kcalsConsumed, totals.targetKcals),
+    };
   }
 
   private updateNutrientsOptimistically(dateISO: string, nutrientsDelta: NutrientDelta, kcalsDelta: number): void {

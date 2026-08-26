@@ -6,6 +6,7 @@ import {
   inject,
   Input,
   OnChanges,
+  OnDestroy,
   Output,
   signal,
   viewChild,
@@ -23,9 +24,7 @@ import {
 import { DeviceInfoService } from '@app/services/device-info.service';
 import { FoodCatalogueService } from '@app/services/food/food-catalogue.service';
 import { FoodDiaryService } from '@app/services/food/food-diary.service';
-import { FoodPersonalKcalsService } from '@app/services/food/food-personal-kcals.service';
 import { DiaryEntry, HistoryEntry, HistoryEntryAction } from '@app/shared/types';
-import { projectDaysConsumedPercent } from '@app/shared/utils';
 import { VButton } from '@ui-kit/components/v-button/v-button';
 import { VExpand } from '@ui-kit/components/v-expand/v-expand';
 import { IconName, VIcon } from '@ui-kit/components/v-icon/v-icon';
@@ -59,7 +58,7 @@ interface DiaryEntryFormModel {
     NutritionSummary,
   ],
 })
-export class DiaryEntryEditForm implements OnChanges {
+export class DiaryEntryEditForm implements OnChanges, OnDestroy {
   @Input()
   public diaryEntry!: DiaryEntry;
 
@@ -79,9 +78,6 @@ export class DiaryEntryEditForm implements OnChanges {
   // Base data from the server — legitimately refreshed by any background reload, in-progress
   // draft below is never touched by it, only by the user's own input/reset/submit.
   private readonly foodWeightInitial$$: WritableSignal<number> = signal(0);
-  private readonly selectedDaysTargetKcals$$: WritableSignal<number> = signal(0);
-  private readonly selectedDaysConsumedPercent$$: WritableSignal<number> = signal(0);
-  private readonly selectedFoodPersonalKcalsPer100g$$: WritableSignal<number> = signal(0);
 
   // The user's in-progress, unsubmitted draft — set only from onNewWeightInput/onChangeWeightInput
   // and the reset handlers below, mutually exclusive (setting one clears the other).
@@ -90,13 +86,11 @@ export class DiaryEntryEditForm implements OnChanges {
 
   protected readonly foodWeightFinal$$ = computed(() => this.computeFoodWeightFinal());
 
-  protected readonly projectedSelectedDaysConsumedPercentNum$$ = computed(() =>
-    projectDaysConsumedPercent(
-      this.foodWeightFinal$$() - this.foodWeightInitial$$(),
-      this.selectedFoodPersonalKcalsPer100g$$(),
-      this.selectedDaysTargetKcals$$(),
-      this.selectedDaysConsumedPercent$$(),
-    ),
+  // Mirrors the day's kcal-percent counter shown everywhere else (top bar, nutrition-summary) —
+  // draft-aware via FoodDiaryService.setDraftEntryWeight, so this and the top bar are always the
+  // same number, and it's already the exact figure the server will confirm on save.
+  protected readonly projectedSelectedDaysConsumedPercentNum$$ = computed(
+    () => this.foodDiaryService.selectedDayTotals$$().kcalsPercent,
   );
   protected readonly projectedSelectedDaysConsumedPercentPadded$$ = computed(() =>
     this.projectedSelectedDaysConsumedPercentNum$$().toFixed(1),
@@ -164,17 +158,6 @@ export class DiaryEntryEditForm implements OnChanges {
     }, 50); // Waiting for the panel to close, otherwise the reset is visually janky
   });
 
-  private totalsUpdateEffect$$ = effect(() => {
-    const totals = this.foodDiaryService.selectedDayTotals$$();
-    this.selectedDaysConsumedPercent$$.set(totals.kcalsPercent);
-    this.selectedDaysTargetKcals$$.set(totals.targetKcals);
-    this.selectedFoodPersonalKcalsPer100g$$.set(
-      this.foodPersonalKcalsService.personalKcals$$()?.[this.diaryEntry.foodCatalogueId] ??
-        this.foodCatalogueService.catalogue$$()?.[this.diaryEntry.foodCatalogueId]?.kcals ??
-        0,
-    );
-  });
-
   protected get selectedFoodName() {
     return this.foodCatalogueService.catalogue$$()?.[this.diaryEntry.foodCatalogueId]?.name;
   }
@@ -182,7 +165,6 @@ export class DiaryEntryEditForm implements OnChanges {
   protected readonly deviceInfoService = inject(DeviceInfoService);
   private readonly foodDiaryService = inject(FoodDiaryService);
   private readonly foodCatalogueService = inject(FoodCatalogueService);
-  private readonly foodPersonalKcalsService = inject(FoodPersonalKcalsService);
 
   public ngOnChanges(): void {
     if (this.diaryEntry) {
@@ -191,6 +173,10 @@ export class DiaryEntryEditForm implements OnChanges {
       });
       this.foodWeightInitial$$.set(this.diaryEntry.foodWeight);
     }
+  }
+
+  public ngOnDestroy(): void {
+    this.foodDiaryService.clearDraftEntryWeight(this.diaryEntry.id);
   }
 
   protected isFormValid(): boolean {
@@ -219,22 +205,26 @@ export class DiaryEntryEditForm implements OnChanges {
 
     const newWeight = this.diaryEntryForm.controls.foodWeightNew.value;
     this.foodWeightDraftNew$$.set(this.newWeightPattern.test(String(newWeight)) ? parseInt(String(newWeight)) : null);
+    this.syncDraftWithService();
   }
 
   protected onWeightNewResetClick(): void {
     this.foodWeightNewControl.setValue(null);
     this.foodWeightDraftNew$$.set(null);
+    this.syncDraftWithService();
   }
 
   protected onChangeWeightInput() {
     this.diaryEntryForm.controls.foodWeightNew.setValue(null);
     this.foodWeightDraftNew$$.set(null);
     this.foodWeightDraftChangeRaw$$.set(this.foodWeightChangeControl.value);
+    this.syncDraftWithService();
   }
 
   protected onWeightChangeResetClick(): void {
     this.foodWeightChangeControl.setValue(null);
     this.foodWeightDraftChangeRaw$$.set(null);
+    this.syncDraftWithService();
   }
 
   public async onSubmit(): Promise<void> {
@@ -273,6 +263,7 @@ export class DiaryEntryEditForm implements OnChanges {
     };
 
     await this.foodDiaryService.editDiaryEntry(preppedFormValues);
+    this.foodDiaryService.clearDraftEntryWeight(this.diaryEntry.id);
     this.diaryEntryForm.enable();
     this.diaryEntryForm.reset();
     this.onServerSuccessfullEditResponse.emit();
@@ -352,6 +343,7 @@ export class DiaryEntryEditForm implements OnChanges {
 
   private async deleteDiaryEntry(): Promise<void> {
     this.diaryEntryForm.disable();
+    this.foodDiaryService.clearDraftEntryWeight(this.diaryEntry.id);
     await this.foodDiaryService.deleteDiaryEntry(this.diaryEntryForm.getRawValue().id);
     this.diaryEntryForm.enable();
     this.diaryEntryForm.reset();
@@ -385,6 +377,24 @@ export class DiaryEntryEditForm implements OnChanges {
     this.foodWeightChangeControl.setValue(null);
     this.foodWeightDraftNew$$.set(null);
     this.foodWeightDraftChangeRaw$$.set(null);
+    this.syncDraftWithService();
+  }
+
+  // final === initial whenever there's no genuine in-progress edit (including right after
+  // resetForm) — in that case we drop the projection override entirely rather than push a
+  // no-op draft, so the counters fall back to the plain server truth.
+  private syncDraftWithService(): void {
+    const final = this.foodWeightFinal$$();
+    if (final === this.foodWeightInitial$$()) {
+      this.foodDiaryService.clearDraftEntryWeight(this.diaryEntry.id);
+    } else {
+      this.foodDiaryService.setDraftEntryWeight(
+        this.diaryEntry.dateISO,
+        this.diaryEntry.id,
+        this.diaryEntry.foodCatalogueId,
+        final,
+      );
+    }
   }
 
   private closePanels(): void {

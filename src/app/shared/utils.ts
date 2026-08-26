@@ -21,19 +21,6 @@ export function epochToIsoNoTimeNoTZ(tsMs: number): string {
 //   return date.getFullYear() + '-' + ('0' + (date.getMonth() + 1)).slice(-2) + '-' + ('0' + date.getDate()).slice(-2);
 // }
 
-export function projectDaysConsumedPercent(
-  weightDeltaGrams: number,
-  personalKcalsPer100g: number,
-  targetKcals: number,
-  currentPercent: number,
-): number {
-  if (!personalKcalsPer100g || !targetKcals) return currentPercent;
-
-  const weightKcalsTotal = (weightDeltaGrams / 100) * personalKcalsPer100g;
-  const deltaInPercent = (weightKcalsTotal / targetKcals) * 100;
-
-  return currentPercent + deltaInPercent;
-}
 
 export function calcDateWithUserTimeShift(date: Date): Date {
   const adjustedDate = new Date(date.getTime());
