@@ -8,6 +8,7 @@ import { MEGAAPP_METRICS_DEFINITION } from '@app/shared/metrics-catalog.megaapp'
 import { SOZVON_KONSPEKT_METRICS_DEFINITION } from '@app/shared/metrics-catalog.sozvon-konspekt';
 import { SPREAD_CAPTURE_BOT_METRICS_DEFINITION } from '@app/shared/metrics-catalog.spread-capture-bot';
 import { SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION } from '@app/shared/metrics-catalog.spread-capture-bot-v4';
+import { TG_TRANSCRIBER_BOT_METRICS_DEFINITION } from '@app/shared/metrics-catalog.tg-transcriber-bot';
 
 export type { MetricsGroupDefinition, MetricsServiceDefinition } from '@app/shared/metrics-catalog-metric';
 
@@ -44,6 +45,7 @@ const STATIC_CATALOGS: ResolvedCatalog[] = [
   buildCatalog(SOZVON_KONSPEKT_METRICS_DEFINITION),
   buildCatalog(CYCLE_BOOKS_FETCHER_BOT_METRICS_DEFINITION),
   buildCatalog(LIVE_BOOKS_FETCHER_BOT_METRICS_DEFINITION),
+  buildCatalog(TG_TRANSCRIBER_BOT_METRICS_DEFINITION),
 ];
 
 const STATIC_CATALOG_BY_SERVICE = new Map<string, ResolvedCatalog>(
