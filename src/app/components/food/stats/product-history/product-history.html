@@ -1,0 +1,88 @@
+<v-card class="v-theme-transition"
+        [borderRadius]="2"
+        [padding]="2">
+  <div class="flex flex-col gap-3">
+    <div class="flex items-center justify-between gap-2">
+      <div class="text-lg font-semibold">История продукта</div>
+      <food-stats-help-icon>
+        <div class="flex flex-col gap-2">
+          <div>Добавьте один или несколько продуктов, чтобы увидеть все дни, когда вы их ели: сколько грамм и какой это
+            был процент от суточной нормы.</div>
+        </div>
+      </food-stats-help-icon>
+    </div>
+
+    <div class="flex flex-wrap items-center gap-2 text-sm">
+      @for (product of trackedProducts$$(); track product.id) {
+        <v-chip (onRemove)="state.removeProduct(product.id)">{{ product.name }}</v-chip>
+      }
+      <v-button surface="flat"
+                class="ml-auto"
+                [paddingX]="2"
+                paddingY="2px"
+                (onClick)="openPicker()">
+        <v-icon v-prefix
+                [name]="Icon.Add"
+                [size]="6" />
+        {{ trackedProducts$$().length === 0 ? 'Выбрать' : 'Добавить' }}
+      </v-button>
+    </div>
+
+    @if (error$$()) {
+      <div class="text-sm text-[color:var(--v-color-danger)]">{{ error$$() }}</div>
+    } @else if (isLoading$$() || entries$$().length > 0) {
+      <div class="relative">
+        @if (isLoading$$()) {
+          <div class="loading-overlay flex items-center justify-center">
+            <div class="animate-spin w-6 h-6 border-2 rounded-full"
+                 style="border-color: var(--v-color-primary); border-top-color: transparent;"></div>
+          </div>
+        }
+
+        @if (entries$$().length > 0) {
+          <div class="history-grid text-sm"
+               [class.with-product-col]="trackedProducts$$().length > 1">
+            <div class="history-header text-[color:var(--v-color-text-muted)]">Дата</div>
+            @if (trackedProducts$$().length > 1) {
+              <div class="history-header text-[color:var(--v-color-text-muted)]">Продукт</div>
+            }
+            <div class="history-header text-[color:var(--v-color-text-muted)] text-right">Граммы</div>
+            <div class="history-header text-[color:var(--v-color-text-muted)] text-right">% от нормы</div>
+            <div class="history-header history-header-empty"></div>
+
+            @for (entry of entries$$(); track entry.dateISO + '-' + entry.foodCatalogueId + '-' + $index) {
+              <div class="history-cell">{{ formatDate(entry.dateISO) }}</div>
+              @if (trackedProducts$$().length > 1) {
+                <div class="history-cell">{{ productNameById$$().get(entry.foodCatalogueId) }}</div>
+              }
+              <div class="history-cell text-right">{{ entry.foodWeight }} г.</div>
+              <div class="history-cell text-right">{{ entry.percentOfNorm }}%</div>
+              <div class="history-cell text-right">
+                <v-button surface="link"
+                          [isLinkStatic]="true"
+                          [isLabelHidden]="true"
+                          class="rotate-45"
+                          [paddingX]="1"
+                          [paddingY]="1"
+                          [bgOpacity]="0"
+                          (onClick)="goToDate(entry.dateISO)">
+                  <v-icon v-prefix
+                          [name]="Icon.SwitchAccessShortcut"
+                          [size]="4" />
+                </v-button>
+              </div>
+            }
+          </div>
+
+          <div #sentinel
+               class="flex items-center justify-center py-2">
+            @if (isLoadingMore$$()) {
+              <div class="animate-spin w-4 h-4 border-2 rounded-full"
+                   style="border-color: var(--v-color-primary); border-top-color: transparent;"></div>
+            }
+          </div>
+        }
+      </div>
+    }
+  </div>
+</v-card>

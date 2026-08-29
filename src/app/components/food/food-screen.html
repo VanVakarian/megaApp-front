@@ -9,7 +9,37 @@
               style="grid-row: 1"
               [style.grid-column]="diaryColumnIndex$$()" />
   <food-stats-columns [columnCountInput]="statsColumnCount$$()"
-                       [gridColumnsInput]="statsGridColumns$$()" />
+                      [gridColumnsInput]="statsGridColumns$$()" />
 }
 
 <food-mode-toggle-fab />
+
+<v-modal [deviceType]="deviceInfoService.isMobileScreen$$() ? 'mobile' : 'desktop'"
+         [isOpen]="foodAddModalService.currentState$$() !== ModalState.CLOSED"
+         mobileWidth="100vw"
+         desktopWidth="min(100vw, 577px)"
+         [borderRadius]="3"
+         [padding]="0"
+         (onClose)="closeAddFoodModal()">
+  @switch (foodAddModalService.currentState$$()) {
+    @case (ModalState.SEARCH) {
+      <food-search />
+    }
+
+    @case (ModalState.CAMERA_PREVIEW) {
+      <camera-preview />
+    }
+
+    @case (ModalState.ADD_DIARY_ENTRY) {
+      <diary-entry-add-form />
+    }
+
+    @case (ModalState.CREATE_NEW_PRODUCT) {
+      <catalogue-entry-edit-form />
+    }
+
+    @case (ModalState.EDIT_PRODUCT) {
+      <catalogue-entry-edit-form />
+    }
+  }
+</v-modal>

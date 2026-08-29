@@ -46,101 +46,89 @@
 
   @if (m.minWeight || m.maxWeight || m.mostCaloricDay || m.leastCaloricDay) {
     <div class="mb-1 text-xs font-bold uppercase text-[color:var(--v-color-text-muted)]">Рекорды за всё время</div>
-    <div class="flex flex-col mb-3 text-sm">
+    <div class="records-grid mb-3 text-sm">
       @if (m.minWeight) {
-        <div
-             class="flex justify-between items-center border-b border-dashed border-[color:var(--v-color-surface-accent)] py-1 last:border-b-0">
-          <span class="text-[color:var(--v-color-text-muted)]">Минимальный вес</span>
-          <span class="flex items-center gap-1 font-semibold">
-            {{ m.minWeight.weight }} кг
-            <span class="text-[10px] font-normal text-[color:var(--v-color-text-muted)]">{{
-              formatDate(m.minWeight.dateISO)
-            }}</span>
-            <v-button surface="link"
-                      class="rotate-45"
-                      [isLinkStatic]="true"
-                      [isLabelHidden]="true"
-                      [paddingX]="1"
-                      [paddingY]="0"
-                      [bgOpacity]="0"
-                      (onClick)="goToDate(m.minWeight.dateISO)">
-              <v-icon v-prefix
-                      [name]="Icon.SwitchAccessShortcut"
-                      [size]="4" />
-            </v-button>
-          </span>
+        <div class="records-cell text-[color:var(--v-color-text-muted)]">Минимальный вес</div>
+        <div class="records-cell text-right font-semibold">{{ m.minWeight.weight }} кг</div>
+        <div class="records-cell text-right text-[10px] text-[color:var(--v-color-text-muted)]">{{
+          formatDate(m.minWeight.dateISO)
+        }}</div>
+        <div class="records-cell text-right">
+          <v-button surface="link"
+                    class="rotate-45"
+                    [isLinkStatic]="true"
+                    [isLabelHidden]="true"
+                    [paddingX]="1"
+                    [paddingY]="0"
+                    [bgOpacity]="0"
+                    (onClick)="goToDate(m.minWeight.dateISO)">
+            <v-icon v-prefix
+                    [name]="Icon.SwitchAccessShortcut"
+                    [size]="4" />
+          </v-button>
         </div>
       }
       @if (m.maxWeight) {
-        <div
-             class="flex justify-between items-center border-b border-dashed border-[color:var(--v-color-surface-accent)] py-1 last:border-b-0">
-          <span class="text-[color:var(--v-color-text-muted)]">Максимальный вес</span>
-          <span class="flex items-center gap-1 font-semibold">
-            {{ m.maxWeight.weight }} кг
-            <span class="text-[10px] font-normal text-[color:var(--v-color-text-muted)]">{{
-              formatDate(m.maxWeight.dateISO)
-            }}</span>
-            <v-button surface="link"
-                      class="rotate-45"
-                      [isLinkStatic]="true"
-                      [isLabelHidden]="true"
-                      [paddingX]="1"
-                      [paddingY]="0"
-                      [bgOpacity]="0"
-                      (onClick)="goToDate(m.maxWeight.dateISO)">
-              <v-icon v-prefix
-                      [name]="Icon.SwitchAccessShortcut"
-                      [size]="4" />
-            </v-button>
-          </span>
+        <div class="records-cell text-[color:var(--v-color-text-muted)]">Максимальный вес</div>
+        <div class="records-cell text-right font-semibold">{{ m.maxWeight.weight }} кг</div>
+        <div class="records-cell text-right text-[10px] text-[color:var(--v-color-text-muted)]">{{
+          formatDate(m.maxWeight.dateISO)
+        }}</div>
+        <div class="records-cell text-right">
+          <v-button surface="link"
+                    class="rotate-45"
+                    [isLinkStatic]="true"
+                    [isLabelHidden]="true"
+                    [paddingX]="1"
+                    [paddingY]="0"
+                    [bgOpacity]="0"
+                    (onClick)="goToDate(m.maxWeight.dateISO)">
+            <v-icon v-prefix
+                    [name]="Icon.SwitchAccessShortcut"
+                    [size]="4" />
+          </v-button>
         </div>
       }
       @if (m.mostCaloricDay) {
-        <div
-             class="flex justify-between items-center border-b border-dashed border-[color:var(--v-color-surface-accent)] py-1 last:border-b-0">
-          <span class="text-[color:var(--v-color-text-muted)]">Самый калорийный день</span>
-          <span class="flex items-center gap-1 font-semibold">
-            {{ m.mostCaloricDay.percent }}%
-            <span class="text-[10px] font-normal text-[color:var(--v-color-text-muted)]">{{
-              formatDate(m.mostCaloricDay.dateISO)
-            }}</span>
-            <v-button surface="link"
-                      class="rotate-45"
-                      [isLinkStatic]="true"
-                      [isLabelHidden]="true"
-                      [paddingX]="1"
-                      [paddingY]="0"
-                      [bgOpacity]="0"
-                      (onClick)="goToDate(m.mostCaloricDay.dateISO)">
-              <v-icon v-prefix
-                      [name]="Icon.SwitchAccessShortcut"
-                      [size]="4" />
-            </v-button>
-          </span>
+        <div class="records-cell text-[color:var(--v-color-text-muted)]">Самый калорийный день</div>
+        <div class="records-cell text-right font-semibold">{{ m.mostCaloricDay.percent }}%</div>
+        <div class="records-cell text-right text-[10px] text-[color:var(--v-color-text-muted)]">{{
+          formatDate(m.mostCaloricDay.dateISO)
+        }}</div>
+        <div class="records-cell text-right">
+          <v-button surface="link"
+                    class="rotate-45"
+                    [isLinkStatic]="true"
+                    [isLabelHidden]="true"
+                    [paddingX]="1"
+                    [paddingY]="0"
+                    [bgOpacity]="0"
+                    (onClick)="goToDate(m.mostCaloricDay.dateISO)">
+            <v-icon v-prefix
+                    [name]="Icon.SwitchAccessShortcut"
+                    [size]="4" />
+          </v-button>
         </div>
       }
       @if (m.leastCaloricDay) {
-        <div
-             class="flex justify-between items-center border-b border-dashed border-[color:var(--v-color-surface-accent)] py-1 last:border-b-0">
-          <span class="text-[color:var(--v-color-text-muted)]">Самый низкокалорийный день</span>
-          <span class="flex items-center gap-1 font-semibold">
-            {{ m.leastCaloricDay.percent }}%
-            <span class="text-[10px] font-normal text-[color:var(--v-color-text-muted)]">{{
-              formatDate(m.leastCaloricDay.dateISO)
-            }}</span>
-            <v-button surface="link"
-                      class="rotate-45"
-                      [isLinkStatic]="true"
-                      [isLabelHidden]="true"
-                      [paddingX]="1"
-                      [paddingY]="0"
-                      [bgOpacity]="0"
-                      (onClick)="goToDate(m.leastCaloricDay.dateISO)">
-              <v-icon v-prefix
-                      [name]="Icon.SwitchAccessShortcut"
-                      [size]="4" />
-            </v-button>
-          </span>
+        <div class="records-cell text-[color:var(--v-color-text-muted)]">Самый низкокалорийный день</div>
+        <div class="records-cell text-right font-semibold">{{ m.leastCaloricDay.percent }}%</div>
+        <div class="records-cell text-right text-[10px] text-[color:var(--v-color-text-muted)]">{{
+          formatDate(m.leastCaloricDay.dateISO)
+        }}</div>
+        <div class="records-cell text-right">
+          <v-button surface="link"
+                    class="rotate-45"
+                    [isLinkStatic]="true"
+                    [isLabelHidden]="true"
+                    [paddingX]="1"
+                    [paddingY]="0"
+                    [bgOpacity]="0"
+                    (onClick)="goToDate(m.leastCaloricDay.dateISO)">
+            <v-icon v-prefix
+                    [name]="Icon.SwitchAccessShortcut"
+                    [size]="4" />
+          </v-button>
         </div>
       }
     </div>

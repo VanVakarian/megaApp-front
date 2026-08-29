@@ -3,6 +3,7 @@ export const FoodStatsBlock = {
   TopProducts: 'topProducts',
   Milestones: 'milestones',
   Charts: 'charts',
+  ProductHistory: 'productHistory',
 } as const;
 
 export type FoodStatsBlock = (typeof FoodStatsBlock)[keyof typeof FoodStatsBlock];
@@ -11,6 +12,7 @@ const SINGLE_COLUMN_ORDER: FoodStatsBlock[] = [
   FoodStatsBlock.Streak,
   FoodStatsBlock.Milestones,
   FoodStatsBlock.Charts,
+  FoodStatsBlock.ProductHistory,
   FoodStatsBlock.TopProducts,
 ];
 
@@ -20,14 +22,14 @@ export function getFoodStatsBlockOrder(): FoodStatsBlock[] {
 }
 
 const TWO_COLUMN_LAYOUT: FoodStatsBlock[][] = [
-  [FoodStatsBlock.Streak, FoodStatsBlock.Milestones],
-  [FoodStatsBlock.Charts, FoodStatsBlock.TopProducts],
+  [FoodStatsBlock.Streak, FoodStatsBlock.Milestones, FoodStatsBlock.TopProducts],
+  [FoodStatsBlock.Charts, FoodStatsBlock.ProductHistory],
 ];
 
 const THREE_COLUMN_LAYOUT: FoodStatsBlock[][] = [
   [FoodStatsBlock.Streak, FoodStatsBlock.Milestones],
   [FoodStatsBlock.Charts],
-  [FoodStatsBlock.TopProducts],
+  [FoodStatsBlock.ProductHistory, FoodStatsBlock.TopProducts],
 ];
 
 // Desktop grid layout, one entry per stats column (see food-stats-columns). Fixed per column

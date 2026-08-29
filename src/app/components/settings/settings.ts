@@ -2,6 +2,7 @@ import { Component, effect, inject } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 
 import { AuthService } from '@app/services/auth.service';
+import { DeviceInfoService } from '@app/services/device-info.service';
 import { SettingsService } from '@app/services/settings.service';
 import { KeyOfUserSettings, UserSettings } from '@app/shared/types';
 import { VButton } from '@ui-kit/components/v-button/v-button';
@@ -31,6 +32,7 @@ export class Settings {
   });
 
   protected readonly authService = inject(AuthService);
+  protected readonly deviceInfoService = inject(DeviceInfoService);
   protected readonly settingsService = inject(SettingsService);
 
   private readonly syncSettingsEffect = effect(() => {

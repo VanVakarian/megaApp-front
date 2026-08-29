@@ -48,6 +48,11 @@ export class FoodAddModalService {
 
   public readonly selectedProduct$$: WritableSignal<CatalogueEntry | null> = signal(null);
 
+  // Set by callers that want to reuse this same search modal for something other than the default
+  // "select a product → add a diary entry" flow (e.g. product-history's "track this product" picker).
+  // When set, FoodSearch routes the picked product here instead of transitioning to ADD_DIARY_ENTRY.
+  public readonly productSelectionCallback$$: WritableSignal<((product: CatalogueEntry) => void) | null> = signal(null);
+
   private readonly stateTransitions: StateTransitionMap = {
     [ModalState.CLOSED]: {
       [ModalEvent.OPEN]: ModalState.SEARCH,
@@ -128,11 +133,21 @@ export class FoodAddModalService {
       case ModalState.CLOSED:
         this.searchQuery$$.set('');
         this.selectedProduct$$.set(null);
+        this.productSelectionCallback$$.set(null);
         break;
     }
   }
 
   public openModal(): void {
+    this.productSelectionCallback$$.set(null);
+    this.transition(ModalEvent.OPEN);
+  }
+
+  // Opens the same search modal but redirects the picked product to onSelect instead of the
+  // default add-diary-entry flow. Closed the same way as any other modal state (X button, backdrop,
+  // Escape) — the callback is cleared on close regardless of how it was reached.
+  public openForProductSelection(onSelect: (product: CatalogueEntry) => void): void {
+    this.productSelectionCallback$$.set(onSelect);
     this.transition(ModalEvent.OPEN);
   }
 

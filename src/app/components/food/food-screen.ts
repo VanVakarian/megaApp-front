@@ -10,15 +10,23 @@ import {
   signal,
   WritableSignal,
 } from '@angular/core';
+import { CameraPreview } from '@app/components/food/diary/camera-preview/camera-preview';
+import { CatalogueEntryEditForm } from '@app/components/food/diary/catalogue-entry-edit-form/catalogue-entry-edit-form';
+import { DiaryEntryAddForm } from '@app/components/food/diary/diary-entry-add-form/diary-entry-add-form';
 import { FoodDiary } from '@app/components/food/diary/food-diary';
+import { FoodSearch } from '@app/components/food/diary/food-search/food-search';
 import { FoodModeToggleFab } from '@app/components/food/food-mode-toggle-fab/food-mode-toggle-fab';
 import { FoodStatsAccordion } from '@app/components/food/stats/food-stats-accordion/food-stats-accordion';
 import { FoodStatsColumns } from '@app/components/food/stats/food-stats-columns/food-stats-columns';
 import { DeviceInfoService } from '@app/services/device-info.service';
+import { FoodAddModalService, ModalState } from '@app/services/food/food-add-modal.service';
+import { FoodCatalogueService } from '@app/services/food/food-catalogue.service';
+import { FoodProductHistoryStateService } from '@app/services/food/food-product-history-state.service';
 import { FoodScreenMobileTab, FoodScreenModeService } from '@app/services/food/food-screen-mode.service';
 import { FoodSyncCoordinatorService } from '@app/services/food/food-sync-coordinator.service';
 import { PerformanceMetricsService } from '@app/services/performance-metrics.service';
 import { fitColumnsToWidth } from '@app/shared/utils';
+import { VModal } from '@ui-kit/components/v-modal/v-modal';
 
 const TARGET_COLUMN_WIDTH_PX = 400;
 const COLUMN_GAP_PX = 8;
@@ -28,8 +36,18 @@ const HOST_HORIZONTAL_PADDING_PX = 16;
 @Component({
   selector: 'food-screen',
   templateUrl: './food-screen.html',
-  imports: [FoodDiary, FoodStatsAccordion, FoodStatsColumns, FoodModeToggleFab],
-  providers: [FoodScreenModeService],
+  imports: [
+    FoodDiary,
+    FoodStatsAccordion,
+    FoodStatsColumns,
+    FoodModeToggleFab,
+    VModal,
+    FoodSearch,
+    CameraPreview,
+    DiaryEntryAddForm,
+    CatalogueEntryEditForm,
+  ],
+  providers: [FoodScreenModeService, FoodProductHistoryStateService],
   host: {
     class: 'mt-2 px-2 w-full items-stretch gap-3',
     '[class.flex]': 'totalColumnCount$$() === 1',
@@ -41,10 +59,13 @@ const HOST_HORIZONTAL_PADDING_PX = 16;
 })
 export class FoodScreen implements OnInit, OnDestroy {
   private readonly foodSyncCoordinatorService = inject(FoodSyncCoordinatorService);
-  private readonly deviceInfoService = inject(DeviceInfoService);
+  protected readonly deviceInfoService = inject(DeviceInfoService);
   private readonly performanceMetrics = inject(PerformanceMetricsService);
+  private readonly foodCatalogueService = inject(FoodCatalogueService);
   protected readonly foodScreenModeService = inject(FoodScreenModeService);
+  protected readonly foodAddModalService = inject(FoodAddModalService);
   protected readonly Tab = FoodScreenMobileTab;
+  protected readonly ModalState = ModalState;
 
   // Raw window width — deliberately NOT this component's own (sidebar-shrunk) container width.
   // Deciding column count from the real container would make the sidebar's own visibility depend
@@ -109,5 +130,10 @@ export class FoodScreen implements OnInit, OnDestroy {
   public ngOnDestroy(): void {
     window.removeEventListener('resize', this.onWindowResize);
     this.deviceInfoService.setMobileOverride(null);
+  }
+
+  protected closeAddFoodModal(): void {
+    this.foodAddModalService.closeModal();
+    this.foodCatalogueService.clearSearch();
   }
 }

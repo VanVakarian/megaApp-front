@@ -13,11 +13,8 @@ import {
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { BMI } from '@app/components/food/diary/bmi/bmi';
 import { BodyWeight } from '@app/components/food/diary/body-weight/body-weight';
-import { CameraPreview } from '@app/components/food/diary/camera-preview/camera-preview';
-import { DiaryEntryAddForm } from '@app/components/food/diary/diary-entry-add-form/diary-entry-add-form';
 import { DiaryEntryEditForm } from '@app/components/food/diary/diary-entry-edit-form/diary-entry-edit-form';
 import { DiaryNavButtons } from '@app/components/food/diary/diary-nav/diary-nav-buttons';
-import { FoodSearch } from '@app/components/food/diary/food-search/food-search';
 import { DeviceInfoService } from '@app/services/device-info.service';
 import { FoodAddModalService, ModalState } from '@app/services/food/food-add-modal.service';
 import { FoodCatalogueService } from '@app/services/food/food-catalogue.service';
@@ -29,7 +26,6 @@ import { VExpand } from '@ui-kit/components/v-expand/v-expand';
 import { IconName, VIcon } from '@ui-kit/components/v-icon/v-icon';
 import { VModal } from '@ui-kit/components/v-modal/v-modal';
 import { AccordionGroupService } from '@ui-kit/services/accordion-group.service';
-import { CatalogueEntryEditForm } from './catalogue-entry-edit-form/catalogue-entry-edit-form';
 import { NutritionSummary } from './nutrition-summary/nutrition-summary';
 
 @Component({
@@ -40,11 +36,7 @@ import { NutritionSummary } from './nutrition-summary/nutrition-summary';
     NgStyle,
     DiaryNavButtons,
     DiaryEntryEditForm,
-    DiaryEntryAddForm,
     BMI,
-    CameraPreview,
-    FoodSearch,
-    CatalogueEntryEditForm,
     BodyWeight,
     NutritionSummary,
     VButton,
@@ -69,8 +61,6 @@ export class FoodDiary {
     weight: null,
     percent: null,
   });
-
-  protected readonly ModalViewMode = ModalState;
 
   protected readonly selectedDayDiaryEntries$$ = computed(() => {
     const selectedDay = this.foodDiaryService.selectedDayIso$$();
@@ -121,9 +111,7 @@ export class FoodDiary {
       this.selectedDayDiaryEntries$$();
 
       const weightWidths = this.weightMeasureElems().map((elem) => elem.nativeElement.getBoundingClientRect().width);
-      const percentWidths = this.percentMeasureElems().map(
-        (elem) => elem.nativeElement.getBoundingClientRect().width,
-      );
+      const percentWidths = this.percentMeasureElems().map((elem) => elem.nativeElement.getBoundingClientRect().width);
       if (weightWidths.length === 0) return;
 
       const nextWeight = Math.ceil(Math.max(...weightWidths));
@@ -172,11 +160,6 @@ export class FoodDiary {
     return {
       background: `linear-gradient(${dir}, var(--gradient-color) ${percentCapped}%, var(--gradient-bg) ${percentCapped}%)`,
     };
-  }
-
-  protected closeModal() {
-    this.foodAddModalService.closeModal();
-    this.foodCatalogueService.clearSearch();
   }
 
   protected openAddFoodModal() {

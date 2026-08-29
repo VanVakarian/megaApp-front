@@ -62,12 +62,12 @@
             <span class="readable-text-bg py-[1px] px-[6px]">{{ food.foodName }}</span>
           </div>
 
-          <div class="col-animated-width overflow-hidden whitespace-nowrap text-right"
+          <div class="col-animated-width whitespace-nowrap overflow-hidden text-right"
                [style.width.px]="columnWidths$$().weight">
             <span #foodWeightMeasureElem>{{ food.foodWeight }} <span class="text-xs"> Г.</span></span>
           </div>
 
-          <div class="col-animated-width overflow-hidden whitespace-nowrap ml-2 text-right"
+          <div class="col-animated-width whitespace-nowrap ml-2 overflow-hidden text-right"
                [style.width.px]="columnWidths$$().percent">
             <span #foodPercentMeasureElem>{{ food.foodPercent }} <span class="text-xs">%</span></span>
           </div>
@@ -129,37 +129,8 @@
 }
 
 <div class="h-[50vh]"
+     [class.hidden]="deviceInfoService.isDesktopScreen$$()"
      (click)="closeAllAccordions()"></div>
-
-<v-modal [deviceType]="deviceInfoService.isMobileScreen$$() ? 'mobile' : 'desktop'"
-         [isOpen]="foodAddModalService.currentState$$() !== ModalViewMode.CLOSED"
-         mobileWidth="100vw"
-         desktopWidth="min(100vw, 577px)"
-         [borderRadius]="3"
-         [padding]="0"
-         (onClose)="closeModal()">
-  @switch (foodAddModalService.currentState$$()) {
-    @case (ModalViewMode.SEARCH) {
-      <food-search />
-    }
-
-    @case (ModalViewMode.CAMERA_PREVIEW) {
-      <camera-preview />
-    }
-
-    @case (ModalViewMode.ADD_DIARY_ENTRY) {
-      <diary-entry-add-form />
-    }
-
-    @case (ModalViewMode.CREATE_NEW_PRODUCT) {
-      <catalogue-entry-edit-form />
-    }
-
-    @case (ModalViewMode.EDIT_PRODUCT) {
-      <catalogue-entry-edit-form />
-    }
-  }
-</v-modal>
 
 <v-modal [deviceType]="deviceInfoService.isMobileScreen$$() ? 'mobile' : 'desktop'"
          [isOpen]="isDeleteDayConfirmOpen"

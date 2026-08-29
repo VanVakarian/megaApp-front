@@ -2,13 +2,14 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
 import { FoodStatsBlock, getFoodStatsColumns } from '@app/components/food/stats/food-stats-block';
 import { FoodStatsCharts } from '@app/components/food/stats/food-stats-charts/food-stats-charts';
 import { Milestones } from '@app/components/food/stats/milestones/milestones';
+import { ProductHistory } from '@app/components/food/stats/product-history/product-history';
 import { Streak } from '@app/components/food/stats/streak/streak';
 import { TopProducts } from '@app/components/food/stats/top-products/top-products';
 
 @Component({
   selector: 'food-stats-columns',
   templateUrl: './food-stats-columns.html',
-  imports: [Streak, TopProducts, Milestones, FoodStatsCharts],
+  imports: [Streak, TopProducts, Milestones, FoodStatsCharts, ProductHistory],
   host: {
     class: 'contents',
   },

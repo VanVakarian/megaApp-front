@@ -11,6 +11,7 @@ import { VCard } from '@ui-kit/components/v-card/v-card';
 @Component({
   selector: 'food-stats-milestones',
   templateUrl: './milestones.html',
+  styleUrl: './milestones.scss',
   imports: [VCard, StatsHelpIcon, VButton, VIcon],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
