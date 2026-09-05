@@ -343,6 +343,50 @@ export function valueCorridor(values: number[], percent: number): ValueCorridor 
   return { min: sorted[lowIndex], max: sorted[highIndex] };
 }
 
+// How close a candidate rounded value must land to its ideal evenly-spaced position
+// (as a fraction of the axis's min..max span) to be accepted at that rounding — wide
+// enough that "nice" numbers snap in on most real metric ranges (ms, %, money, counts),
+// tight enough that ticks still read as evenly spaced rather than clustering.
+const Y_TICK_SNAP_TOLERANCE_RATIO = 0.05;
+
+// Rounds toward a "nice" value near idealValue: whole number first, then one decimal,
+// then two — each only accepted if it lands within tolerance of the ideal position.
+// Falls back to two decimals unconditionally so the axis never shows a long float.
+function snapYTickValue(idealValue: number, span: number): number {
+  const tolerance = span * Y_TICK_SNAP_TOLERANCE_RATIO;
+  for (const decimals of [0, 1, 2]) {
+    const factor = 10 ** decimals;
+    const candidate = Math.round(idealValue * factor) / factor;
+    if (Math.abs(candidate - idealValue) <= tolerance) {
+      return candidate;
+    }
+  }
+  return Math.round(idealValue * 100) / 100;
+}
+
+// Y-axis ticks between the corridor's min and max (exclusive): `count` values spaced
+// evenly across the span, each snapped to the nearest "nice" round number that stays
+// close to its ideal position (see snapYTickValue). Guards against a snap collapsing
+// into a neighboring tick (or min/max) by falling back to the unsnapped ideal value.
+export function buildIntermediateYTicks(min: number, max: number, count: number): number[] {
+  const span = max - min;
+  if (span <= 0 || count <= 0) {
+    return [];
+  }
+
+  const segments = count + 1;
+  const ticks: number[] = [];
+  let previous = min;
+  for (let index = 1; index <= count; index++) {
+    const idealValue = min + (span * index) / segments;
+    const snapped = snapYTickValue(idealValue, span);
+    const value = snapped > previous && snapped < max ? snapped : idealValue;
+    ticks.push(value);
+    previous = value;
+  }
+  return ticks;
+}
+
 export class MinuteMetricCollapseCache {
   private readonly cache = new Map<string, MinuteCollapseCacheEntry>();
 

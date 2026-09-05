@@ -32,20 +32,29 @@ describe('formatMetricUnitValue', () => {
   });
 
   describe('durationMs', () => {
-    it('formats sub-second durations in ms', () => {
-      expect(formatMetricUnitValue('durationMs', 500)).toBe('500 мс');
+    it('formats durations below 500ms in ms', () => {
+      expect(formatMetricUnitValue('durationMs', 320)).toBe('320 мс');
     });
 
-    it('formats durations >= 1s in seconds and ms', () => {
-      expect(formatMetricUnitValue('durationMs', 1500)).toBe('1 с 500 мс');
+    it('switches to seconds with 1 decimal at and above 500ms', () => {
+      expect(formatMetricUnitValue('durationMs', 500)).toBe('0.5 с');
+      expect(formatMetricUnitValue('durationMs', 3600)).toBe('3.6 с');
     });
 
-    it('omits the ms part when it is exactly 0', () => {
+    it('omits the decimal when the seconds value is whole', () => {
       expect(formatMetricUnitValue('durationMs', 2000)).toBe('2 с');
     });
 
+    it('switches to minutes and seconds at and above 60s', () => {
+      expect(formatMetricUnitValue('durationMs', 61000)).toBe('1 м 1 с');
+    });
+
+    it('omits the seconds part when it is exactly 0', () => {
+      expect(formatMetricUnitValue('durationMs', 60000)).toBe('1 м');
+    });
+
     it('preserves the sign for negative durations', () => {
-      expect(formatMetricUnitValue('durationMs', -1500)).toBe('-1 с 500 мс');
+      expect(formatMetricUnitValue('durationMs', -1500)).toBe('-1.5 с');
     });
   });
 

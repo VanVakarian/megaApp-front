@@ -64,6 +64,12 @@ const DEFAULT_FORCE_ZERO_BASELINE_ENABLED = false;
 const ANOMALY_CORRIDOR_ENABLED_STORAGE_KEY = 'metrics_anomaly_corridor_enabled';
 const DEFAULT_ANOMALY_CORRIDOR_ENABLED = false;
 const DEFAULT_ANOMALY_CORRIDOR_PERCENT = 95;
+// Extra horizontal gridlines drawn between a chart's Y-axis min/max labels — see
+// buildIntermediateYTicks in metrics-series.ts for how their values are chosen.
+const Y_TICK_COUNT_CARD_STORAGE_KEY = 'metrics_y_tick_count_card';
+const DEFAULT_Y_TICK_COUNT_CARD = 1;
+const Y_TICK_COUNT_FULL_WIDTH_STORAGE_KEY = 'metrics_y_tick_count_full_width';
+const DEFAULT_Y_TICK_COUNT_FULL_WIDTH = 2;
 const DEFAULT_CARD_WIDTH_PX = 304;
 const DEFAULT_CARD_HEIGHT_PX = 112;
 const DEFAULT_CARD_EXPANDED_HEIGHT_PX = 400;
@@ -144,6 +150,14 @@ export class MetricsSettingsService {
     ANOMALY_CORRIDOR_ENABLED_STORAGE_KEY,
     DEFAULT_ANOMALY_CORRIDOR_ENABLED,
   );
+  public readonly yTickCountCard$$: WritableSignal<number> = persistedSignal(
+    Y_TICK_COUNT_CARD_STORAGE_KEY,
+    DEFAULT_Y_TICK_COUNT_CARD,
+  );
+  public readonly yTickCountFullWidth$$: WritableSignal<number> = persistedSignal(
+    Y_TICK_COUNT_FULL_WIDTH_STORAGE_KEY,
+    DEFAULT_Y_TICK_COUNT_FULL_WIDTH,
+  );
 
   public setCardWidthPx(value: number): void {
     this.updateCardSize({ widthPx: value });
@@ -195,6 +209,14 @@ export class MetricsSettingsService {
 
   public setAnomalyCorridorPercent(value: number): void {
     this.store.stage('anomalyCorridorPercent', value);
+  }
+
+  public setYTickCountCard(value: number): void {
+    this.yTickCountCard$$.set(value);
+  }
+
+  public setYTickCountFullWidth(value: number): void {
+    this.yTickCountFullWidth$$.set(value);
   }
 
   public setDashboardSelection(value: DashboardMetricSelection): void {

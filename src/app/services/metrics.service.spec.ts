@@ -22,8 +22,9 @@ function setup() {
     isConnected$$: signal(false),
     sendMessage: vi.fn(() => true),
   };
-  const notificationServiceFake: Pick<NotificationService, 'addNotification'> = {
+  const notificationServiceFake: Pick<NotificationService, 'addNotification' | 'removeNotification'> = {
     addNotification: vi.fn(() => 'notification-id'),
+    removeNotification: vi.fn(),
   };
   const indexedDbCacheFake: Pick<IndexedDbCacheService, 'get' | 'set' | 'remove'> = {
     get: vi.fn(() => Promise.resolve(null)),

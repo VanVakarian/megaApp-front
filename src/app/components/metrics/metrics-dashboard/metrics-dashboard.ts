@@ -141,6 +141,8 @@ export class MetricsDashboard implements OnInit, OnDestroy {
   protected readonly forceZeroBaselineEnabled$$ = this.metricsSettingsService.forceZeroBaselineEnabled$$;
   protected readonly anomalyCorridorEnabled$$ = this.metricsSettingsService.anomalyCorridorEnabled$$;
   protected readonly anomalyCorridorPercent$$ = this.metricsSettingsService.anomalyCorridorPercent$$;
+  protected readonly yTickCountCard$$ = this.metricsSettingsService.yTickCountCard$$;
+  protected readonly yTickCountFullWidth$$ = this.metricsSettingsService.yTickCountFullWidth$$;
   protected readonly dashboardSelection$$ = this.metricsSettingsService.dashboardSelection$$;
   protected readonly dashboardServiceSelection$$ = this.metricsSettingsService.dashboardServiceSelection$$;
   protected readonly isSavingSettings$$ = this.metricsSettingsService.isSaving$$;
@@ -688,6 +690,18 @@ export class MetricsDashboard implements OnInit, OnDestroy {
     const value = Number(rawValue);
     if (!Number.isFinite(value) || value <= 0 || value > 100) return;
     this.metricsSettingsService.setAnomalyCorridorPercent(value);
+  }
+
+  protected onYTickCountCardChange(rawValue: string): void {
+    const value = Number(rawValue);
+    if (!Number.isInteger(value) || value < 0) return;
+    this.metricsSettingsService.setYTickCountCard(value);
+  }
+
+  protected onYTickCountFullWidthChange(rawValue: string): void {
+    const value = Number(rawValue);
+    if (!Number.isInteger(value) || value < 0) return;
+    this.metricsSettingsService.setYTickCountFullWidth(value);
   }
 
   protected saveSettings(): void {

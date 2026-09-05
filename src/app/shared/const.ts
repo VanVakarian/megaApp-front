@@ -85,6 +85,8 @@ export const CACHE_KEY_VERSIONS: Readonly<Record<string, number>> = {
   metrics_active_tooltip_mode: 4,
   metrics_force_zero_baseline_enabled: 4,
   metrics_anomaly_corridor_enabled: 4,
+  metrics_y_tick_count_card: 1,
+  metrics_y_tick_count_full_width: 1,
   performance_metrics_queue: 1,
   sync_pending_operation: 4,
   food_sync_checkpoint: 1,

@@ -67,6 +67,7 @@ export class MetricsService {
   private retryAfterMs = 0;
   private cacheWriteTimeoutId: ReturnType<typeof setTimeout> | null = null;
   private refreshCheckTimeoutId: ReturnType<typeof setTimeout> | null = null;
+  private pendingRefreshNotificationId: string | null = null;
 
   private readonly resubscribeOnReconnectEffect = effect(() => {
     const isConnected = this.networkService.isConnected$$();
@@ -163,6 +164,12 @@ export class MetricsService {
     this.isRefreshing$$.set(true);
     if (showNotification) {
       this.retryAfterMs = 0;
+      // Shown immediately, not after the usual pending-feedback delay (see SyncEngineService) —
+      // that delay exists to skip the flash for requests that usually resolve fast, but a manual
+      // history refresh is known to be slow, so the spinner should show right away.
+      this.pendingRefreshNotificationId = this.notificationService.addNotification('warning', 'Refreshing metrics…', {
+        persistent: true,
+      });
     }
 
     const params = new HttpParams()
@@ -197,6 +204,7 @@ export class MetricsService {
           retainedPoints: this.pointsByKey.size,
         });
         if (showNotification) {
+          this.resolvePendingRefreshNotification();
           this.notificationService.addNotification('success', 'Metrics refreshed');
         }
       },
@@ -204,6 +212,7 @@ export class MetricsService {
         this.retryAfterMs = Date.now() + REFRESH_RETRY_DELAY_MS;
         this.isRefreshing$$.set(false);
         if (showNotification) {
+          this.resolvePendingRefreshNotification();
           this.notificationService.addNotification('error', 'Failed to refresh metrics');
         }
         this.performanceMetrics.record(
@@ -373,6 +382,12 @@ export class MetricsService {
           }),
         );
     }, CACHE_WRITE_DELAY_MS);
+  }
+
+  private resolvePendingRefreshNotification(): void {
+    if (this.pendingRefreshNotificationId === null) return;
+    this.notificationService.removeNotification(this.pendingRefreshNotificationId);
+    this.pendingRefreshNotificationId = null;
   }
 
   private isValidGranularity(value: unknown): value is MetricGranularity {

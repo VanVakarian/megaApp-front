@@ -24,6 +24,7 @@ import {
 import { formatMetricUnitValue, MetricUnit } from '@app/shared/metric-units';
 import { DEFAULT_METRIC_CHART_MODE, MetricChartMode } from '@app/shared/metrics-chart-mode';
 import {
+  buildIntermediateYTicks,
   buildPaddedTickBuckets,
   buildRoundDayTickBuckets,
   buildRoundTickBuckets,
@@ -121,6 +122,11 @@ export class MetricChartCard implements OnInit, OnDestroy {
   public readonly forceZeroBaselineInput = input<boolean>(false);
   public readonly anomalyCorridorEnabledInput = input<boolean>(false);
   public readonly anomalyCorridorPercentInput = input<number>(95);
+  // Extra horizontal gridlines drawn between the Y-axis min/max labels, in addition to those
+  // two — see buildIntermediateYTicks in metrics-series.ts for how their values are chosen
+  // (evenly spaced, snapped to nice round numbers). Defaults match MetricsSettingsService's.
+  public readonly yTickCountCardInput = input<number>(1);
+  public readonly yTickCountFullWidthInput = input<number>(2);
   public readonly tooltipModeInput = input<TooltipMode>(TooltipMode.Nearest);
   public readonly descriptionInput = input<string>('');
   public readonly heightPxInput = input<number>(DEFAULT_CHART_HEIGHT_PX);
@@ -263,6 +269,8 @@ export class MetricChartCard implements OnInit, OnDestroy {
     this.forceZeroBaselineInput();
     this.anomalyCorridorEnabledInput();
     this.anomalyCorridorPercentInput();
+    this.yTickCountCardInput();
+    this.yTickCountFullWidthInput();
     // This chart's own dataset color comes from colorInput, not the theme — colors$$ is only
     // needed to detect a theme switch and recreate the chart so its grid/tick colors repaint
     // (see createChartConfig/ensureChart: Chart.js doesn't reliably repaint a scale's cached
@@ -431,8 +439,12 @@ export class MetricChartCard implements OnInit, OnDestroy {
     }
     this.chart!.options.scales!['y']!.min = min;
     this.chart!.options.scales!['y']!.max = max;
+    const intermediateTickCount = this.isFullWidthInput()
+      ? this.yTickCountFullWidthInput()
+      : this.yTickCountCardInput();
+    const yTickValues = [min, ...buildIntermediateYTicks(min, max, intermediateTickCount), max];
     this.chart!.options.scales!['y']!.afterBuildTicks = (axis) => {
-      axis.ticks = [{ value: min }, { value: max }];
+      axis.ticks = yTickValues.map((value) => ({ value }));
     };
   }
 

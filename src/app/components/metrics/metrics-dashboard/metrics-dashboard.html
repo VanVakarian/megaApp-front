@@ -14,7 +14,9 @@
           <v-button [class.v-primary]="isServiceExpanded(entry.service)"
                     [surface]="isServiceExpanded(entry.service) ? 'raised' : 'flat'"
                     (onClick)="toggleServiceExpanded(entry.service)">
-            @if (hasHoverExpandableServiceLabel(entry.service)) {<span class="header-label-short">{{ resolvedServiceShortLabel(entry.service) }}</span><span class="header-label-long">{{ resolvedServiceLabel(entry.service) }}</span>} @else {
+            @if (hasHoverExpandableServiceLabel(entry.service)) {<span
+                    class="header-label-short">{{ resolvedServiceShortLabel(entry.service) }}</span><span
+                    class="header-label-long">{{ resolvedServiceLabel(entry.service) }}</span>} @else {
               {{ resolvedServiceLabel(entry.service) }}
             }
           </v-button>
@@ -23,7 +25,9 @@
                     [surface]="isServiceExpanded(entry.service) ? 'raised' : 'flat'"
                     [color]="sectionButtonColor(entry.service)"
                     (onClick)="toggleServiceExpanded(entry.service)">
-            @if (hasHoverExpandableServiceLabel(entry.service)) {<span class="header-label-short">{{ resolvedServiceShortLabel(entry.service) }}</span><span class="header-label-long">{{ resolvedServiceLabel(entry.service) }}</span>} @else {
+            @if (hasHoverExpandableServiceLabel(entry.service)) {<span
+                    class="header-label-short">{{ resolvedServiceShortLabel(entry.service) }}</span><span
+                    class="header-label-long">{{ resolvedServiceLabel(entry.service) }}</span>} @else {
               {{ resolvedServiceLabel(entry.service) }}
             }
           </v-button>
@@ -181,6 +185,22 @@
                      inputmode="numeric"
                      label="Высота развёрнутой, px"
                      [isDisabled]="isSavingSettings$$()"
+                     textAlign="right" />
+          </div>
+          <div class="flex flex-wrap items-end gap-3 pl-2">
+            <v-input class="w-32"
+                     [value]="yTickCountCard$$().toString()"
+                     (valueChange)="onYTickCountCardChange($event)"
+                     type="number"
+                     inputmode="numeric"
+                     label="Насечек на карточке"
+                     textAlign="right" />
+            <v-input class="w-32"
+                     [value]="yTickCountFullWidth$$().toString()"
+                     (valueChange)="onYTickCountFullWidthChange($event)"
+                     type="number"
+                     inputmode="numeric"
+                     label="Насечек на большом графике"
                      textAlign="right" />
           </div>
         </div>
@@ -448,30 +468,31 @@
                 [padding]="0">
           <div class="flex flex-col gap-4 py-3 pl-2 pr-3">
             <div class="flex gap-2">
-              <div class="relative shrink-0 w-6">
-                <div
-                     class="absolute inset-y-0 left-0 overflow-hidden [writing-mode:vertical-rl] [text-align:end] rotate-180 whitespace-nowrap font-semibold opacity-70 leading-none"
+              <div class="shrink-0 relative w-6">
+                <div class="absolute inset-y-0 left-0 overflow-hidden [writing-mode:vertical-rl] [text-align:end] rotate-180 whitespace-nowrap font-semibold opacity-70 leading-none"
                      fitTextOnOverflow
                      fitTextOnOverflowAxis="height"
                      [fullText]="row.label"
                      [shortText]="row.shortLabel"></div>
               </div>
               <metric-card-grid class="grow min-w-0"
-                                 [cardsInput]="row.cards"
-                                 [targetWidthPxInput]="targetWidthPx$$()"
-                                 [heightPxInput]="heightPx$$()"
-                                 [expandedHeightPxInput]="expandedHeightPx$$()"
-                                 [layoutModeInput]="cardLayoutMode$$()"
-                                 [syncCrosshairEnabledInput]="syncCrosshairEnabled$$()"
-                                 [forceZeroBaselineInput]="forceZeroBaselineEnabled$$()"
-                                 [anomalyCorridorEnabledInput]="anomalyCorridorEnabled$$()"
-                                 [anomalyCorridorPercentInput]="anomalyCorridorPercent$$()"
-                                 [tooltipModeInput]="activeTooltipMode$$()"
-                                 [isEditModeInput]="isCardEditMode$$()"
-                                 [isSelectionDisabledInput]="isSavingSettings$$()"
-                                 (cardDashboardEnabledChangeOutput)="toggleDashboardMetric(row.id, $event.technicalName, $event.enabled)"
-                                 (cardDashboardOrderChangeOutput)="setDashboardMetricOrder(row.id, $event.technicalName, $event.order)"
-                                 (cardChartModeChangeOutput)="setMetricChartMode(row.id, $event.technicalName, $event.chartMode)" />
+                                [cardsInput]="row.cards"
+                                [targetWidthPxInput]="targetWidthPx$$()"
+                                [heightPxInput]="heightPx$$()"
+                                [expandedHeightPxInput]="expandedHeightPx$$()"
+                                [layoutModeInput]="cardLayoutMode$$()"
+                                [syncCrosshairEnabledInput]="syncCrosshairEnabled$$()"
+                                [forceZeroBaselineInput]="forceZeroBaselineEnabled$$()"
+                                [anomalyCorridorEnabledInput]="anomalyCorridorEnabled$$()"
+                                [anomalyCorridorPercentInput]="anomalyCorridorPercent$$()"
+                                [yTickCountCardInput]="yTickCountCard$$()"
+                                [yTickCountFullWidthInput]="yTickCountFullWidth$$()"
+                                [tooltipModeInput]="activeTooltipMode$$()"
+                                [isEditModeInput]="isCardEditMode$$()"
+                                [isSelectionDisabledInput]="isSavingSettings$$()"
+                                (cardDashboardEnabledChangeOutput)="toggleDashboardMetric(row.id, $event.technicalName, $event.enabled)"
+                                (cardDashboardOrderChangeOutput)="setDashboardMetricOrder(row.id, $event.technicalName, $event.order)"
+                                (cardChartModeChangeOutput)="setMetricChartMode(row.id, $event.technicalName, $event.chartMode)" />
             </div>
           </div>
         </v-card>
@@ -500,6 +521,8 @@
                                 [forceZeroBaselineInput]="forceZeroBaselineEnabled$$()"
                                 [anomalyCorridorEnabledInput]="anomalyCorridorEnabled$$()"
                                 [anomalyCorridorPercentInput]="anomalyCorridorPercent$$()"
+                                [yTickCountCardInput]="yTickCountCard$$()"
+                                [yTickCountFullWidthInput]="yTickCountFullWidth$$()"
                                 [tooltipModeInput]="activeTooltipMode$$()"
                                 [isEditModeInput]="isCardEditMode$$()"
                                 [isSelectionDisabledInput]="isSavingSettings$$()"
@@ -533,6 +556,8 @@
                               [forceZeroBaselineInput]="forceZeroBaselineEnabled$$()"
                               [anomalyCorridorEnabledInput]="anomalyCorridorEnabled$$()"
                               [anomalyCorridorPercentInput]="anomalyCorridorPercent$$()"
+                              [yTickCountCardInput]="yTickCountCard$$()"
+                              [yTickCountFullWidthInput]="yTickCountFullWidth$$()"
                               [tooltipModeInput]="activeTooltipMode$$()"
                               [isEditModeInput]="isCardEditMode$$()"
                               [hideDashboardControlsInput]="true"
