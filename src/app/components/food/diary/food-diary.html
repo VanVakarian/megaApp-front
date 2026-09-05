@@ -17,9 +17,18 @@
   <v-expand class="BMI mb-3"
             (onOpened)="onBMIExpandOpened($event)">
     <div v-header
-         class="v-header v-theme-transition w-full p-2 text-center"
-         [ngStyle]="setBackgroundStyle(selectedDaysKcalsPercent$$(), true)">
-      <span class=" font-normal">{{ caloriesDisplayText$$() }}</span>
+         class="v-header v-theme-transition day-progress w-full p-2 text-center">
+      <div class="day-progress-fill"
+           [style.width.%]="dayProgressFillPercent$$()"></div>
+
+      @for (tick of dayProgressTicks$$(); track tick.value) {
+        <div class="day-progress-tick"
+             [style.left.%]="tick.position">
+          <span class="day-progress-tick-label">{{ tick.value }}%</span>
+        </div>
+      }
+
+      <span class="day-progress-label font-normal">{{ caloriesDisplayText$$() }}</span>
     </div>
 
     <div v-body

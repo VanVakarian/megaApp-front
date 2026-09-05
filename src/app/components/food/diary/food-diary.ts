@@ -83,6 +83,31 @@ export class FoodDiary {
     return Math.round(this.foodDiaryService.selectedDayTotals$$().kcalsPercent * 10) / 10;
   });
 
+  // Bar scale sits at 100% until consumption overflows it, then jumps to the next
+  // 25%-multiple ceiling (125, 150, ...) so the fill never clips past the bar's edge.
+  protected readonly dayProgressScale$$ = computed(() => {
+    const percent = this.selectedDaysKcalsPercent$$();
+    if (percent <= 100) return 100;
+    return Math.ceil(percent / FoodDiary.DAY_PROGRESS_STEP) * FoodDiary.DAY_PROGRESS_STEP;
+  });
+
+  protected readonly dayProgressFillPercent$$ = computed(() => {
+    return (this.selectedDaysKcalsPercent$$() / this.dayProgressScale$$()) * 100;
+  });
+
+  // One dashed marker per 25%-multiple the current scale has absorbed (100, then 125, ...),
+  // positioned as a fraction of the current scale so they slide left as the scale grows.
+  protected readonly dayProgressTicks$$ = computed(() => {
+    const scale = this.dayProgressScale$$();
+    const ticks: { value: number; position: number }[] = [];
+
+    for (let threshold = 100; threshold < scale; threshold += FoodDiary.DAY_PROGRESS_STEP) {
+      ticks.push({ value: threshold, position: (threshold / scale) * 100 });
+    }
+
+    return ticks;
+  });
+
   protected readonly hasSelectedDayDiaryEntries$$ = computed(() => this.selectedDayDiaryEntries$$().length > 0);
   protected readonly canRestoreSelectedDay$$ = computed(
     () => this.foodDiaryService.selectedDayDeletedSnapshot$$() !== null,
@@ -102,6 +127,8 @@ export class FoodDiary {
 
   protected isDeleteDayConfirmOpen = false;
   protected readonly Icon = IconName;
+
+  private static readonly DAY_PROGRESS_STEP = 25;
 
   // Measures natural content width from the unconstrained inner spans (unaffected by
   // whatever width is currently applied to their parent), so recalculation never needs
@@ -154,11 +181,10 @@ export class FoodDiary {
       this.openAddFoodModal();
     });
 
-  protected setBackgroundStyle(percent: number, ltr = false): { [key: string]: string } {
+  protected setBackgroundStyle(percent: number): { [key: string]: string } {
     const percentCapped = percent <= 100 ? percent : 100;
-    const dir = ltr ? 'to right' : 'to left';
     return {
-      background: `linear-gradient(${dir}, var(--gradient-color) ${percentCapped}%, var(--gradient-bg) ${percentCapped}%)`,
+      background: `linear-gradient(to left, var(--gradient-color) ${percentCapped}%, var(--gradient-bg) ${percentCapped}%)`,
     };
   }
 
