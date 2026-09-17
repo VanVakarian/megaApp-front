@@ -84,6 +84,7 @@ export class MetricCardGrid implements OnInit, OnDestroy {
   public readonly anomalyCorridorPercentInput = input<number>(95);
   public readonly yTickCountCardInput = input<number>(1);
   public readonly yTickCountFullWidthInput = input<number>(2);
+  public readonly yTickSnapTolerancePercentInput = input<number>(5);
   public readonly tooltipModeInput = input<TooltipMode>(TooltipMode.Nearest);
   public readonly isEditModeInput = input<boolean>(false);
   public readonly hideDashboardControlsInput = input<boolean>(false);

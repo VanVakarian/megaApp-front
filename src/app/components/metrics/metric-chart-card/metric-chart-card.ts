@@ -136,6 +136,9 @@ export class MetricChartCard implements OnInit, OnDestroy {
   // (evenly spaced, snapped to nice round numbers). Defaults match MetricsSettingsService's.
   public readonly yTickCountCardInput = input<number>(1);
   public readonly yTickCountFullWidthInput = input<number>(2);
+  // How close a candidate rounded tick must land to its ideal position (% of axis span)
+  // to snap to a "nice" round number — see snapYTickValue in metrics-series.ts.
+  public readonly yTickSnapTolerancePercentInput = input<number>(5);
   public readonly tooltipModeInput = input<TooltipMode>(TooltipMode.Nearest);
   public readonly descriptionInput = input<string>('');
   public readonly heightPxInput = input<number>(DEFAULT_CHART_HEIGHT_PX);
@@ -314,6 +317,7 @@ export class MetricChartCard implements OnInit, OnDestroy {
     this.anomalyCorridorPercentInput();
     this.yTickCountCardInput();
     this.yTickCountFullWidthInput();
+    this.yTickSnapTolerancePercentInput();
     // This chart's own dataset color comes from colorInput, not the theme — colors$$ is only
     // needed to detect a theme switch and recreate the chart so its grid/tick colors repaint
     // (see createChartConfig/ensureChart: Chart.js doesn't reliably repaint a scale's cached
@@ -492,7 +496,8 @@ export class MetricChartCard implements OnInit, OnDestroy {
     const intermediateTickCount = this.isFullWidthInput()
       ? this.yTickCountFullWidthInput()
       : this.yTickCountCardInput();
-    const yTickValues = [min, ...buildIntermediateYTicks(min, max, intermediateTickCount), max];
+    const snapToleranceRatio = this.yTickSnapTolerancePercentInput() / 100;
+    const yTickValues = [min, ...buildIntermediateYTicks(min, max, intermediateTickCount, snapToleranceRatio), max];
     this.chart!.options.scales!['y']!.afterBuildTicks = (axis) => {
       axis.ticks = yTickValues.map((value) => ({ value }));
     };

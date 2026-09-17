@@ -343,32 +343,75 @@ export function valueCorridor(values: number[], percent: number): ValueCorridor 
   return { min: sorted[lowIndex], max: sorted[highIndex] };
 }
 
-// How close a candidate rounded value must land to its ideal evenly-spaced position
-// (as a fraction of the axis's min..max span) to be accepted at that rounding — wide
-// enough that "nice" numbers snap in on most real metric ranges (ms, %, money, counts),
-// tight enough that ticks still read as evenly spaced rather than clustering.
-const Y_TICK_SNAP_TOLERANCE_RATIO = 0.05;
+// A metric's own value never needs more precision than hundredths for tick-rounding purposes —
+// matches the two decimal places money/ratio/duration formatting already caps out at (see
+// formatMetricUnitValue in metric-units.ts) — so the search never goes finer than this.
+const FINEST_STEP_EXPONENT = -2;
 
-// Rounds toward a "nice" value near idealValue: whole number first, then one decimal,
-// then two — each only accepted if it lands within tolerance of the ideal position.
-// Falls back to two decimals unconditionally so the axis never shows a long float.
-function snapYTickValue(idealValue: number, span: number): number {
-  const tolerance = span * Y_TICK_SNAP_TOLERANCE_RATIO;
-  for (const decimals of [0, 1, 2]) {
-    const factor = 10 ** decimals;
-    const candidate = Math.round(idealValue * factor) / factor;
-    if (Math.abs(candidate - idealValue) <= tolerance) {
-      return candidate;
+// How far a tick may drift from its ideal evenly-spaced position, as a fraction of the axis span.
+// 0 means no drift at all (locked to the ideal position, i.e. the exact midpoint for a single
+// intermediate tick); 0.5 already lets it drift the full half-span in either direction, which
+// reaches the axis's own min/max — there's nothing beyond that left to reach, so this is the
+// designed ceiling for the ratio, not an accident of the window check below. Exported so
+// MetricsSettingsService can clamp its 0–50% user-facing knob to the same number instead of
+// duplicating it. See MetricsSettingsService.yTickSnapTolerancePercent$$.
+export const MAX_SNAP_TOLERANCE_RATIO = 0.5;
+
+// The largest multiple of `step` that lies strictly inside (lo, hi), picking whichever multiple
+// is closest to idealValue when the window is wide enough to fit more than one — null if the
+// window is empty or too narrow to fit any multiple of `step` at all.
+function nearestStepMultipleInWindow(idealValue: number, step: number, lo: number, hi: number): number | null {
+  if (lo >= hi) return null;
+  const minMultiplier = Math.floor(lo / step) + 1;
+  const maxMultiplier = Math.ceil(hi / step) - 1;
+  if (minMultiplier > maxMultiplier) return null;
+
+  const idealMultiplier = Math.round(idealValue / step);
+  const multiplier = Math.min(Math.max(idealMultiplier, minMultiplier), maxMultiplier);
+  return multiplier * step;
+}
+
+// Finds the roundest tick value inside the corridor `idealValue ± span×snapToleranceRatio`
+// (capped at MAX_SNAP_TOLERANCE_RATIO, clamped to the axis's open (previous, max) window): builds
+// the corridor once up front, then searches power-of-ten steps coarsest-first (nearest thousand,
+// then hundred, then ten, …) so the roundest value that actually fits the corridor always wins —
+// unlike guessing a candidate first and only checking the window afterwards, which either misses
+// a valid coarser candidate that isn't the single nearest guess, or throws away all rounding the
+// moment that guess falls outside the window. Falls back to the unsnapped idealValue only when
+// even the finest step (hundredths) has no multiple inside the corridor, which happens only once
+// snapToleranceRatio is at or near 0.
+function snapYTickValue(
+  idealValue: number,
+  span: number,
+  snapToleranceRatio: number,
+  previous: number,
+  max: number,
+): number {
+  const halfWidth = span * Math.min(snapToleranceRatio, MAX_SNAP_TOLERANCE_RATIO);
+  const windowLo = Math.max(idealValue - halfWidth, previous);
+  const windowHi = Math.min(idealValue + halfWidth, max);
+
+  const magnitude = Math.max(Math.abs(idealValue), span);
+  const topExponent = Math.max(Math.ceil(Math.log10(magnitude)) + 1, FINEST_STEP_EXPONENT);
+
+  for (let exponent = topExponent; exponent >= FINEST_STEP_EXPONENT; exponent--) {
+    const step = 10 ** exponent;
+    const candidate = nearestStepMultipleInWindow(idealValue, step, windowLo, windowHi);
+    if (candidate !== null) {
+      // Cleans float dust (e.g. 1470.0000000000002 from step=0.1 arithmetic) — done once, only
+      // for the winning candidate, not on every rejected step of the search above.
+      return Number(candidate.toFixed(Math.max(0, -exponent)));
     }
   }
-  return Math.round(idealValue * 100) / 100;
+  return idealValue;
 }
 
 // Y-axis ticks between the corridor's min and max (exclusive): `count` values spaced
 // evenly across the span, each snapped to the nearest "nice" round number that stays
-// close to its ideal position (see snapYTickValue). Guards against a snap collapsing
-// into a neighboring tick (or min/max) by falling back to the unsnapped ideal value.
-export function buildIntermediateYTicks(min: number, max: number, count: number): number[] {
+// close to its ideal position (see snapYTickValue). snapYTickValue itself guards against
+// a snap collapsing into a neighboring tick (or min/max), falling back to the unsnapped
+// ideal value only once no round-enough candidate fits the window at all.
+export function buildIntermediateYTicks(min: number, max: number, count: number, snapToleranceRatio: number): number[] {
   const span = max - min;
   if (span <= 0 || count <= 0) {
     return [];
@@ -379,8 +422,7 @@ export function buildIntermediateYTicks(min: number, max: number, count: number)
   let previous = min;
   for (let index = 1; index <= count; index++) {
     const idealValue = min + (span * index) / segments;
-    const snapped = snapYTickValue(idealValue, span);
-    const value = snapped > previous && snapped < max ? snapped : idealValue;
+    const value = snapYTickValue(idealValue, span, snapToleranceRatio, previous, max);
     ticks.push(value);
     previous = value;
   }

@@ -169,6 +169,7 @@ export class MetricsDashboard implements OnInit, AfterViewInit, OnDestroy {
   protected readonly anomalyCorridorPercent$$ = this.metricsSettingsService.anomalyCorridorPercent$$;
   protected readonly yTickCountCard$$ = this.metricsSettingsService.yTickCountCard$$;
   protected readonly yTickCountFullWidth$$ = this.metricsSettingsService.yTickCountFullWidth$$;
+  protected readonly yTickSnapTolerancePercent$$ = this.metricsSettingsService.yTickSnapTolerancePercent$$;
   protected readonly dashboardSelection$$ = this.metricsSettingsService.dashboardSelection$$;
   protected readonly dashboardServiceSelection$$ = this.metricsSettingsService.dashboardServiceSelection$$;
   protected readonly isSavingSettings$$ = this.metricsSettingsService.isSaving$$;
@@ -825,6 +826,14 @@ export class MetricsDashboard implements OnInit, AfterViewInit, OnDestroy {
     const value = Number(rawValue);
     if (!Number.isInteger(value) || value < 0) return;
     this.metricsSettingsService.setYTickCountFullWidth(value);
+  }
+
+  protected onYTickSnapTolerancePercentChange(rawValue: string): void {
+    const value = Number(rawValue);
+    if (!Number.isFinite(value) || value <= 0) return;
+    // Upper clamp (50%) lives in MetricsSettingsService — it's the same ceiling
+    // the rounding search itself is built around, not just input sanitization.
+    this.metricsSettingsService.setYTickSnapTolerancePercent(value);
   }
 
   protected saveSettings(): void {

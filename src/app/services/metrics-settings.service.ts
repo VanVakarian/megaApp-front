@@ -2,6 +2,7 @@ import { computed, Injectable, Signal, WritableSignal } from '@angular/core';
 import { NamespaceSettingsStore } from '@app/services/settings/namespace-settings-store';
 import { persistedSignal } from '@app/services/settings/persisted-signal';
 import { DEFAULT_METRIC_CHART_MODE, MetricChartMode } from '@app/shared/metrics-chart-mode';
+import { MAX_SNAP_TOLERANCE_RATIO } from '@app/shared/metrics-series';
 import { SeverityThresholds } from '@app/shared/metrics-severity';
 import { CompositeMetricDefinition, MetricGranularity } from '@app/shared/types';
 
@@ -70,6 +71,12 @@ const Y_TICK_COUNT_CARD_STORAGE_KEY = 'metrics_y_tick_count_card';
 const DEFAULT_Y_TICK_COUNT_CARD = 1;
 const Y_TICK_COUNT_FULL_WIDTH_STORAGE_KEY = 'metrics_y_tick_count_full_width';
 const DEFAULT_Y_TICK_COUNT_FULL_WIDTH = 2;
+// How far a tick may drift from its ideal evenly-spaced position, as % of the axis's min..max
+// span — see snapYTickValue in metrics-series.ts. Capped at MAX_SNAP_TOLERANCE_RATIO (50%):
+// beyond that the drift already reaches the axis's own min/max, so there's nothing more to gain.
+const Y_TICK_SNAP_TOLERANCE_PERCENT_STORAGE_KEY = 'metrics_y_tick_snap_tolerance_percent';
+const DEFAULT_Y_TICK_SNAP_TOLERANCE_PERCENT = 5;
+const MAX_Y_TICK_SNAP_TOLERANCE_PERCENT = MAX_SNAP_TOLERANCE_RATIO * 100;
 const DEFAULT_CARD_WIDTH_PX = 304;
 const DEFAULT_CARD_HEIGHT_PX = 112;
 const DEFAULT_CARD_EXPANDED_HEIGHT_PX = 400;
@@ -158,6 +165,10 @@ export class MetricsSettingsService {
     Y_TICK_COUNT_FULL_WIDTH_STORAGE_KEY,
     DEFAULT_Y_TICK_COUNT_FULL_WIDTH,
   );
+  public readonly yTickSnapTolerancePercent$$: WritableSignal<number> = persistedSignal(
+    Y_TICK_SNAP_TOLERANCE_PERCENT_STORAGE_KEY,
+    DEFAULT_Y_TICK_SNAP_TOLERANCE_PERCENT,
+  );
 
   public setCardWidthPx(value: number): void {
     this.updateCardSize({ widthPx: value });
@@ -217,6 +228,14 @@ export class MetricsSettingsService {
 
   public setYTickCountFullWidth(value: number): void {
     this.yTickCountFullWidth$$.set(value);
+  }
+
+  public setYTickSnapTolerancePercent(value: number): void {
+    const clamped = Math.min(value, MAX_Y_TICK_SNAP_TOLERANCE_PERCENT);
+    // Skips the write once already at the ceiling — holding the input's increment key past 50%
+    // would otherwise keep re-triggering every visible chart's tick recompute for no visual change.
+    if (clamped === this.yTickSnapTolerancePercent$$()) return;
+    this.yTickSnapTolerancePercent$$.set(clamped);
   }
 
   public setDashboardSelection(value: DashboardMetricSelection): void {

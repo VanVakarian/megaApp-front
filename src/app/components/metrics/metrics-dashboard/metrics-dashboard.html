@@ -205,6 +205,13 @@
                      inputmode="numeric"
                      label="Насечек на большом графике"
                      textAlign="right" />
+            <v-input class="w-32"
+                     [value]="yTickSnapTolerancePercent$$().toString()"
+                     (valueChange)="onYTickSnapTolerancePercentChange($event)"
+                     type="number"
+                     inputmode="numeric"
+                     label="Допуск округления насечек, % (0–50)"
+                     textAlign="right" />
           </div>
         </div>
 
@@ -504,6 +511,7 @@
                                 [anomalyCorridorPercentInput]="anomalyCorridorPercent$$()"
                                 [yTickCountCardInput]="yTickCountCard$$()"
                                 [yTickCountFullWidthInput]="yTickCountFullWidth$$()"
+                                [yTickSnapTolerancePercentInput]="yTickSnapTolerancePercent$$()"
                                 [tooltipModeInput]="activeTooltipMode$$()"
                                 [isEditModeInput]="isCardEditMode$$()"
                                 [isSelectionDisabledInput]="isSavingSettings$$()"
@@ -540,6 +548,7 @@
                                 [anomalyCorridorPercentInput]="anomalyCorridorPercent$$()"
                                 [yTickCountCardInput]="yTickCountCard$$()"
                                 [yTickCountFullWidthInput]="yTickCountFullWidth$$()"
+                                [yTickSnapTolerancePercentInput]="yTickSnapTolerancePercent$$()"
                                 [tooltipModeInput]="activeTooltipMode$$()"
                                 [isEditModeInput]="isCardEditMode$$()"
                                 [isSelectionDisabledInput]="isSavingSettings$$()"
@@ -575,6 +584,7 @@
                               [anomalyCorridorPercentInput]="anomalyCorridorPercent$$()"
                               [yTickCountCardInput]="yTickCountCard$$()"
                               [yTickCountFullWidthInput]="yTickCountFullWidth$$()"
+                              [yTickSnapTolerancePercentInput]="yTickSnapTolerancePercent$$()"
                               [tooltipModeInput]="activeTooltipMode$$()"
                               [isEditModeInput]="isCardEditMode$$()"
                               [hideDashboardControlsInput]="true"
