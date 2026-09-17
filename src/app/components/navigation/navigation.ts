@@ -1,5 +1,15 @@
 import { NgClass } from '@angular/common';
-import { Component, computed, effect, ElementRef, inject, OnInit, signal, viewChild } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  ElementRef,
+  inject,
+  OnInit,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService } from '@app/services/auth.service';
 import { DeviceInfoService } from '@app/services/device-info.service';
@@ -14,6 +24,7 @@ import { DarkSwitch } from '../settings/dark-switch/dark-switch';
   selector: 'navigation',
   templateUrl: './navigation.html',
   styleUrl: './navigation.scss',
+  changeDetection: ChangeDetectionStrategy.Eager,
   imports: [VButton, VIcon, NgClass, DarkSwitch, MetricsHealthDot],
 })
 export class Navigation implements OnInit {

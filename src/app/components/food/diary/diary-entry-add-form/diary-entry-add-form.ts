@@ -1,4 +1,12 @@
-import { AfterViewInit, Component, computed, inject, OnDestroy, viewChild } from '@angular/core';
+import {
+  AfterViewInit,
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+  OnDestroy,
+  viewChild,
+} from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { FoodAddModalService } from '@app/services/food/food-add-modal.service';
 import { FoodCatalogueService } from '@app/services/food/food-catalogue.service';
@@ -14,6 +22,7 @@ import { UiProgressIcon } from '@ui-kit/progress-icon/progress-icon.component';
 @Component({
   selector: 'diary-entry-add-form',
   templateUrl: './diary-entry-add-form.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   imports: [ReactiveFormsModule, UiProgressIcon, VButton, VIcon, VInput, VRollingNumber],
 })
 export class DiaryEntryAddForm implements AfterViewInit, OnDestroy {

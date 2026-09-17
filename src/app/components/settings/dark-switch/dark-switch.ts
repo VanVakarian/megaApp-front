@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { SettingsService } from '@app/services/settings.service';
 import { VButton } from '@ui-kit/components/v-button/v-button';
 import { IconName, VIcon } from '@ui-kit/components/v-icon/v-icon';
@@ -7,6 +7,7 @@ import { IconName, VIcon } from '@ui-kit/components/v-icon/v-icon';
 @Component({
   selector: 'dark-switch',
   templateUrl: './dark-switch.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   imports: [CommonModule, VButton, VIcon],
 })
 export class DarkSwitch {

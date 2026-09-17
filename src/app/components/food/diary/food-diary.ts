@@ -1,6 +1,7 @@
 import { NgStyle } from '@angular/common';
 import {
   afterRenderEffect,
+  ChangeDetectionStrategy,
   Component,
   computed,
   effect,
@@ -34,6 +35,7 @@ import { NutritionSummary } from './nutrition-summary/nutrition-summary';
   selector: 'food-diary',
   templateUrl: './food-diary.html',
   styleUrl: './food-diary.scss',
+  changeDetection: ChangeDetectionStrategy.Eager,
   imports: [
     NgStyle,
     DiaryNavButtons,

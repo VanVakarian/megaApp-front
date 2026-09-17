@@ -1,4 +1,4 @@
-import { Component, computed, inject, OnInit, Signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, OnInit, Signal } from '@angular/core';
 import { FoodDiaryService } from '@app/services/food/food-diary.service';
 import { IconName, VIcon } from '@ui-kit/components/v-icon/v-icon';
 
@@ -10,6 +10,7 @@ interface BmiSegment {
 @Component({
   selector: 'bmi',
   templateUrl: './bmi.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   imports: [VIcon],
 })
 export class BMI implements OnInit {

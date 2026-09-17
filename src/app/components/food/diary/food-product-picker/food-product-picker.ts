@@ -1,5 +1,15 @@
 import { NgClass } from '@angular/common';
-import { Component, computed, effect, inject, input, model, output, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  inject,
+  input,
+  model,
+  output,
+  signal,
+} from '@angular/core';
 import { DeviceInfoService } from '@app/services/device-info.service';
 import { FoodCatalogueService } from '@app/services/food/food-catalogue.service';
 import { ANIMATION_CLASSES } from '@app/shared/animations';
@@ -23,6 +33,7 @@ export interface ProductPickerSelection {
   selector: 'food-product-picker',
   templateUrl: './food-product-picker.html',
   styleUrl: './food-product-picker.scss',
+  changeDetection: ChangeDetectionStrategy.Eager,
   imports: [VInput, VButton, VIcon, VCard, FlipAnimateDirective, NgClass],
 })
 export class FoodProductPicker {

@@ -1,4 +1,4 @@
-import { Component, computed, inject, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
 import { FoodCatalogueService } from '@app/services/food/food-catalogue.service';
 import { FoodDiaryService } from '@app/services/food/food-diary.service';
 import { DayTotals, DiaryEntry } from '@app/shared/types';
@@ -21,6 +21,7 @@ export type NutrientType = (typeof NutrientType)[keyof typeof NutrientType];
 @Component({
   selector: 'nutrition-summary',
   templateUrl: './nutrition-summary.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   imports: [VProgress],
 })
 export class NutritionSummary {
