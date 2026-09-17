@@ -1,4 +1,4 @@
-import { HTTP_INTERCEPTORS, provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
+import { HTTP_INTERCEPTORS, provideHttpClient, withInterceptorsFromDi, withXhr } from '@angular/common/http';
 import { ErrorHandler, inject, provideZoneChangeDetection } from '@angular/core';
 import { bootstrapApplication } from '@angular/platform-browser';
 import { NavigationError, provideRouter, withNavigationErrorHandler } from '@angular/router';
@@ -29,7 +29,7 @@ function handleNavigationError(error: NavigationError): void {
 bootstrapApplication(MainAppComponent, {
   providers: [
     provideZoneChangeDetection(),
-    provideHttpClient(withInterceptorsFromDi()),
+    provideHttpClient(withXhr(), withInterceptorsFromDi()),
     provideRouter(routes, withNavigationErrorHandler(handleNavigationError)),
     { provide: HTTP_INTERCEPTORS, useClass: AuthInterceptor, multi: true },
     { provide: ErrorHandler, useClass: TelemetryErrorHandler },

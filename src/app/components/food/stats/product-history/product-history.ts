@@ -1,4 +1,4 @@
-import { Component, ElementRef, effect, inject, OnDestroy, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, effect, ElementRef, inject, OnDestroy, viewChild } from '@angular/core';
 import { StatsHelpIcon } from '@app/components/food/stats/stats-help-icon/stats-help-icon';
 import { FoodAddModalService } from '@app/services/food/food-add-modal.service';
 import { FoodDiaryService } from '@app/services/food/food-diary.service';
@@ -18,6 +18,7 @@ import { IconName, VIcon } from '@ui-kit/components/v-icon/v-icon';
   selector: 'food-stats-product-history',
   templateUrl: './product-history.html',
   styleUrl: './product-history.scss',
+  changeDetection: ChangeDetectionStrategy.Eager,
   imports: [VCard, VButton, VIcon, VChip, StatsHelpIcon],
 })
 export class ProductHistory implements OnDestroy {

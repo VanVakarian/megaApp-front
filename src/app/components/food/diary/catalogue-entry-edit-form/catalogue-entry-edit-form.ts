@@ -1,4 +1,4 @@
-import { Component, computed, inject, OnInit, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, OnInit, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { FoodAddModalService } from '@app/services/food/food-add-modal.service';
 import { FoodCatalogueService } from '@app/services/food/food-catalogue.service';
@@ -22,6 +22,7 @@ const POSITIVE_DECIMAL_PATTERN = /^\d*[.,]?\d*$/;
 @Component({
   selector: 'catalogue-entry-edit-form',
   templateUrl: './catalogue-entry-edit-form.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   imports: [DefaultModal, ReactiveFormsModule, VButton, VIcon, VInput],
 })
 export class CatalogueEntryEditForm implements OnInit {
@@ -209,7 +210,10 @@ export class CatalogueEntryEditForm implements OnInit {
         this.foodCatalogueService.searchProducts(this.searchQuery$$());
       }
 
-      this.notificationService.addNotification('success', mode === this.formMode.Create ? 'Продукт добавлен' : 'Продукт обновлён');
+      this.notificationService.addNotification(
+        'success',
+        mode === this.formMode.Create ? 'Продукт добавлен' : 'Продукт обновлён',
+      );
       this.foodAddModalService.submitSuccess();
     } catch (error: any) {
       console.error('Failed to save product:', error);

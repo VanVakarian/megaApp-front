@@ -9,6 +9,7 @@ import {
   inject,
   signal,
   viewChild,
+  ChangeDetectionStrategy,
 } from '@angular/core';
 import { StatsHelpIcon } from '@app/components/food/stats/stats-help-icon/stats-help-icon';
 import { ChartThemeService } from '@app/services/chart-theme.service';
@@ -69,6 +70,7 @@ Chart.register(
 @Component({
   selector: 'food-stats-charts',
   templateUrl: './food-stats-charts.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   imports: [VButton, VCard, VSlider, StatsHelpIcon],
 })
 export class FoodStatsCharts implements OnInit, AfterViewInit, OnDestroy {

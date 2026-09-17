@@ -1,4 +1,5 @@
 import {
+  ChangeDetectionStrategy,
   Component,
   computed,
   effect,
@@ -47,6 +48,7 @@ interface DiaryEntryFormModel {
   host: {
     style: 'display: flex; flex-direction: column;',
   },
+  changeDetection: ChangeDetectionStrategy.Eager,
   imports: [
     ReactiveFormsModule,
     UiProgressIcon,

@@ -1,5 +1,14 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, effect, ElementRef, inject, Signal, viewChild } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  ElementRef,
+  inject,
+  Signal,
+  viewChild,
+} from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { FOOD_DIARY_ACCORDION_GROUP_ID } from '@app/components/food/diary/food-diary-accordion';
 import { FOOD_FAB_ROW_RIGHT_INSET_PX, FoodFabLayer, foodFabStackBottomPx } from '@app/components/food/food-fab-layout';
@@ -17,6 +26,7 @@ import { AccordionGroupService } from '@ui-kit/services/accordion-group.service'
   selector: 'diary-nav-buttons',
   templateUrl: './diary-nav-buttons.html',
   styleUrl: './diary-nav-buttons.scss',
+  changeDetection: ChangeDetectionStrategy.Eager,
   imports: [CommonModule, ReactiveFormsModule, FitTextOnOverflowDirective, VButton, VIcon],
 })
 export class DiaryNavButtons {

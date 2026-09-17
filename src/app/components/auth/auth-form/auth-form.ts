@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from '@app/services/auth.service';
@@ -13,6 +13,7 @@ import { firstValueFrom } from 'rxjs';
 @Component({
   selector: 'auth-form',
   templateUrl: './auth-form.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   imports: [ReactiveFormsModule, VCard, VInput, VButton],
 })
 export class AuthForm {

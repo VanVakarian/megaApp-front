@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, OnInit } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { Navigation } from '@app/components/navigation/navigation';
 import { Notifications } from '@app/components/notifications/notifications';
@@ -9,6 +9,7 @@ import { TelemetryService } from '@app/services/telemetry.service';
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   imports: [Navigation, RouterOutlet, Notifications],
 })
 export class MainAppComponent implements OnInit {

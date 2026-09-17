@@ -1,4 +1,4 @@
-import { Component, effect, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, effect, inject } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 
 import { AuthService } from '@app/services/auth.service';
@@ -20,6 +20,7 @@ type FormFields = keyof SettingsForm;
 @Component({
   selector: 'settings',
   templateUrl: './settings.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   imports: [ReactiveFormsModule, VButton, VCard, VCheckbox],
 })
 export class Settings {

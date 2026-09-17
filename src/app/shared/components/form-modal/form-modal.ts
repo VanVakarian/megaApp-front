@@ -1,10 +1,11 @@
-import { Component, inject, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, input, output } from '@angular/core';
 import { DeviceInfoService } from '@app/services/device-info.service';
 import { VModal } from '@ui-kit/components/v-modal/v-modal';
 
 @Component({
   selector: 'form-modal',
   templateUrl: './form-modal.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   imports: [VModal],
 })
 export class FormModal {

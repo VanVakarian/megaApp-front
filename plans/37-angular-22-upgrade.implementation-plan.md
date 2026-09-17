@@ -1,0 +1,204 @@
+# Апгрейд Angular 21 → 22 и выравнивание с философией фреймворка — Design Doc
+
+## Суть
+
+Проект на Angular 21.1.0, уже signal-first. Angular 22 (stable, 2026-06-03) — не косметика, а консолидационный релиз: то, что раньше было experimental (Signal Forms, zoneless, Angular Aria, `resource()`/`httpResource()`), стало stable и default. Следующий мажор (v23) — не раньше середины 2027 (Angular перешёл на годовой цикл релизов), так что v22 — целевая версия на обозримое время, спешить рискованно, но и тянуть незачем.
+
+Задача этого документа — не просто "поднять циферку", а: где конкретно код проекта расходится с текущей философией Angular, и какого объёма рефакторинг нужен, чтобы дотянуть каждое место до актуального идиоматичного стандарта. Так как продакшена с оплатой нет — ограничений на смелость рефакторинга нет.
+
+## Сделано (2026-09-17) — базовый `ng update` 21→22
+
+- ✅ `ng update @angular/cli@22 @angular/core@22` — все пакеты `@angular/*` → `22.1.7`, `@angular/cli`/`@angular/build` → `22.1.8`, `typescript` → авто-подобрано CLI на `6.0.3` (единственная версия, совместимая с `@angular/compiler-cli@22`, которая требует строго `>=6.0 <6.1` — новее ставить нельзя, latest на npm сейчас `7.0.2`, он несовместим)
+- ✅ Авто-миграции CLI применились: `ChangeDetectionStrategy.Eager` расставлен явно на 42 компонентах без прежней явной стратегии; `withXhr()` добавлен в `provideHttpClient()` в `main.ts` (миграция сохранила старое поведение через XHR, не переключила на Fetch — переход на Fetch намеренно отложен, это отдельное идиоматичное решение, не часть авто-апдейта); в `tsconfig.app.json`/`tsconfig.spec.json` добавлено подавление `nullishCoalescingNotNullable`/`optionalChainNotNullable`, чтобы сохранить старую семантику optional chaining
+- ✅ Проверка после апгрейда: `tsc --noEmit` — 0 ошибок, `ng build --configuration dev` — чисто, `vitest` — 212/212 тестов, 23/23 файлов
+- ⚠️ **`src/ui-kit` — git submodule** (`angular-ui-kit`, branch `release`). Авто-миграция `Eager` задела и его — 20 файлов внутри submodule изменены и не закоммичены. Это отдельный репозиторий, нужно отдельно просмотреть и закоммитить там же.
+- ⏳ Ручной прогон приложения по экранам (food/money/settings/metrics) — сознательно не делал сам, по договорённости это делает пользователь
+- Не трогал: `@angular/cdk` в `overrides` остался на `21.1.0` — сейчас это не проблема (peer-диапазон `^21.0.0 || ^22.0.0` покрывает текущий core), но при следующем мажоре потребует ручного bump
+
+## `angular-ui-kit` — где используется и что с ним
+
+Сабмодуль (`git@github.com:VanVakarian/angular-ui-kit.git`) подключён в 5 проектах, каждый закреплён на своём коммите:
+
+| Проект | Angular | Commit ui-kit |
+|---|---|---|
+| `megaapp/megaapp-front` | `22.1.7` ✅ | `e500275…` + локальные несохранённые правки (Eager) |
+| `ui-kit-showcase` | `22.1.7` ✅ (обновлено 2026-09-17) | `82e5c06…` + локальные несохранённые правки (Eager) |
+| `tg-app/tg-app-front` | `21.2.6` — не трогаем, не прод | `1ba4b28…` |
+| `polybot/polybot-front` | `21.2.4` — не трогаем, не прод | `f9e7ac6…` |
+| `polybot/old-projects-for-reference/tg-app-front` | `21.x` — архив | — |
+
+`ChangeDetectionStrategy.Eager` (то, что расставила авто-миграция) существует уже в Angular 21 как замена `@deprecated`-`Default` — проверено напрямую в установленном `@angular/core@21.2.6`. На v21-проекты это **не повлияет**, даже если туда попадёт.
+
+⚠️ **Сабмодуль сейчас разъехался на два несовместимых локальных состояния** — в `megaapp-front` (база `e500275`) и в `ui-kit-showcase` (база `82e5c06`, там же заодно поправил устаревший `baseUrl` в `tsconfig.json` — TS 6.0 депрекейтит его в паре с `paths`, без правки `tsc --noEmit` падал с `TS5090`). Оба — независимые несохранённые правки одного и того же файла-набора, не закоммичены никуда. Перед коммитом в `angular-ui-kit` нужно решить, какую версию считать канонической (скорее всего — из `megaapp-front`, она новее по базе) и синхронизировать остальные, а не коммитить обе параллельно.
+
+## Куда движется Angular (синтез roadmap + v20/21/22)
+
+- **Signals — единственная модель реактивности.** `signal`/`computed`/`effect`/`linkedSignal` — stable с v20. `resource()`/`httpResource()`/`rxResource()` — stable с v22, замена ручных `subscribe()`-паттернов для async-данных.
+- **Zoneless — stable, default для новых приложений с v21.** Zone.js — опциональный legacy-слой, а не основа CD.
+- **`OnPush` — новый default для новых компонентов** (v22). Старый безымянный default переименован в `ChangeDetectionStrategy.Eager`.
+- **Signal Forms (`@angular/forms/signals`) — stable с v22.** Заявлены как замена и Reactive, и Template-driven forms: типобезопасность реактивных форм + эргономика template-driven в одном declarative API (`form()` + schema-функция для валидации).
+- **Функциональный стиль — идиома, а не альтернатива.** Guards/interceptors/resolvers как функции (`CanActivateFn`, `HttpInterceptorFn`) — стандарт с v15, class-based — legacy-путь.
+- **`@Service()` (v22)** — упрощённая альтернатива `@Injectable({ providedIn: 'root' })` для synchronous-singleton сервисов.
+- **Angular Aria (`@angular/aria`) — stable с v22.** Headless доступные примитивы (accordion, menu/dropdown, listbox, tree и др.) — не переизобретать keyboard-nav/focus-trap/ARIA внутри своих компонентов.
+- **HttpClient — Fetch API под капотом по умолчанию**, XHR — legacy-путь.
+- **Тестирование — Vitest через `@angular/build:unit-test`**, Karma официально угасает.
+- **AI-tooling (WebMCP, Agent Skills, MCP dev server)** — experimental, ориентировано на агентные workflow вокруг Angular-приложений. Для одиночного pet-проекта не приоритет, но зафиксировано на будущее.
+- Не relevant для этого проекта: SSR/hydration-градации, token-based Material theming (нет Angular Material) — чистый CSR SPA, это архитектурный выбор, не отставание.
+
+## Аудит текущего состояния проекта (факт, 2026-09-17)
+
+### Версии и инструментарий
+- Angular/CLI/build/compiler-cli/forms/router/platform-*: единообразно `22.1.7` (`@angular/cli`/`@angular/build` — `22.1.8`) — обновлено 2026-09-17, см. «Сделано» выше.
+- TypeScript `6.0.3` (обновлено вместе с Angular). Node локально `24.19.0` — выше любого минимума.
+- `zone.js 0.16.0`, `rxjs 7.8.1` — без изменений, обе версии входят в peer-диапазон `@angular/core@22`.
+- Тесты: `@angular/build:unit-test` (нативный Vitest-builder) + `vitest ^4.0.8`, Karma/Jasmine как прямые зависимости отсутствуют — **уже полностью смигрировано**, ничего делать не нужно.
+- ESLint + `@html-eslint` в devDependencies, но конфиг-файла (`eslint.config.*`/`.eslintrc*`) в репозитории не найдено — линтер по факту не запускается, мёртвый вес в зависимостях. Не про Angular-апгрейд, но стоит либо настроить, либо убрать при следующей уборке зависимостей.
+
+### Change detection
+- 72 компонента всего (51 в `app`, 21 в `ui-kit`), из них `ChangeDetectionStrategy.OnPush` явно стоит только у 29. Оставшиеся 42 после `ng update` получили явный `ChangeDetectionStrategy.Eager` (авто-миграция) — раньше это был неявный default, теперь стратегия явная, но всё ещё не `OnPush`.
+- `main.ts`: `provideZoneChangeDetection()` явно, `zone.js` в `angular.json` polyfills — zoneless не включён.
+
+### Signals и component API
+- `signal()` — 167 вызовов, `computed()` — 356, `effect()` — 60. Кодовая база насквозь signal-first на уровне state/derived-state.
+- Новые signal-based I/O почти не приняты: `input()` — 4 файла, `viewChild()`/`contentChildren()` — по 1, `output()`/`model()`/`linkedSignal()` — 0 файлов.
+- Легаси-декораторы почти изжиты, но не до конца: `@Input()`/`@Output()`/`@ViewChild()` — по 1 файлу (`diary-entry-edit-form.ts`, `camera-preview.ts`), `@HostListener()` — 2 файла (`v-modal`, `v-wheel-select`), `@HostBinding()` — 0.
+- 4 файла с явным `standalone: true` (`flip-animate.directive.ts` ×2, `diary-entry-product-info.ts`, `v-accordion.ts`) — избыточно, standalone — default с v19.
+- `NgModule` — 0 использований во всём проекте, архитектура полностью standalone.
+
+### Control flow и шаблоны
+- Legacy `*ngIf`/`*ngFor`/`*ngSwitch` — **0 файлов**, полностью на `@if`/`@for`/`@switch` (46/31/2 файла). Уже соответствует стандарту v18+.
+- `@defer` — только 1 использование (`food-diary.html`, `on timer(300)`), `@let` — 2 файла. Потенциал `@defer` для тяжёлых веток (графики, модалки) почти не раскрыт.
+- `ngClass`/`ngStyle` — по 2 файла, вместо `[class.x]`/`[style.x]` — небольшой хвост, легко зачистить.
+
+### Формы
+- Reactive Forms: `FormGroup` — 7 файлов, `FormControl` — 8, `FormBuilder` — 0 (собирают группы вручную, не через builder). `ReactiveFormsModule` — 8 файлов.
+- Template-driven: `ngModel`/`FormsModule` — 7/15 файлов — оба подхода живут параллельно.
+- Signal Forms (`@angular/forms/signals`) — 0 использований. Это самый прямой философский разрыв: именно формы Angular теперь продвигает как единый signal-native API, а у нас — оба старых подхода одновременно.
+
+### Data fetching и RxJS
+- `.subscribe()` — 49 вызовов, сосредоточены в ~14 сервисах (`food-diary.service`, `food-catalogue.service`, `metrics.service`, `money.service`, `telemetry.service`, `router.service`, `navigation.service`, `device-info.service`, `namespace-settings-store`, `food-sync-coordinator.service`, `food-stats.service`, `food-product-history-state.service`, `metrics-health.service`, плюс `v-dropdown` в ui-kit).
+- `resource()`/`rxResource()`/`httpResource()` — 0 использований.
+- `BehaviorSubject` — 1 файл, `new Subject` — 8 файлов.
+- `AsyncPipe`/`| async` — **0 использований во всём проекте.** RxJS полностью инкапсулирован внутри сервисов, наружу в шаблоны никогда не течёт — хорошая дисциплина, снижает риск при будущей миграции на `resource()`.
+
+### DI и routing
+- `inject()` — 229 использований, constructor-DI ещё встречается в 39 файлах. `providedIn: 'root'` — 32 файла (кандидаты на `@Service()`).
+- Guards — **полностью функциональные** (`CanActivateFn`): `auth.guard.ts`, `admin-only.guard.ts`, `guest-only.guard.ts`, `settings-ready.guard.ts`, `root-redirect.guard.ts`, `is-chapter-selected.guard.ts`. Уже соответствует стандарту.
+- Interceptor — ровно 1 (`auth.interceptor.ts`), но **class-based** (`implements HttpInterceptor`, `@Injectable()`, регистрация через `HTTP_INTERCEPTORS` multi-provider + `withInterceptorsFromDi()`) — единственный legacy-паттерн в этом слое.
+- Роуты (`app-routes.ts`) — 5 верхнеуровневых, все через `loadComponent` (lazy). Параметризованных путей (`:id`) нет — смена дефолта `paramsInheritanceStrategy` на v22 проекту не угрожает.
+
+### SSR и рендеринг
+- Чистый CSR SPA: `bootstrapApplication`, `server.ts`/hydration нет. Это осознанный архитектурный выбор для one-user приложения, не технический долг — трогать не нужно.
+
+### Доступность (ui-kit)
+- `aria-*` атрибутов во всём `ui-kit` — всего 7 уникальных, на 18 интерактивных компонентов (`v-modal`, `v-dropdown`, `v-expand`/accordion, `v-wheel-select`, `v-slider`, `v-toast`, `v-tooltip`, `v-checkbox`, `v-toggle`, `v-color-picker`, `v-date-wheel-input`, `v-wheel-input`, `v-input`, `v-card`, `v-chip`, `v-icon`, `v-button`, `v-progress`, `v-rolling-number`). Keyboard-nav/focus-trap/ARIA-роли в основном самописные или отсутствуют — прямое попадание в назначение Angular Aria.
+
+### Графики (chart.js/ng2-charts)
+- 8 файлов интеграции. Hover-highlight уже реализован как Chart.js plugin (`category-hover-highlight.ts`), а не через `NgZone.runOutsideAngular()`/ручные listener'ы — снижает риск при переходе на zoneless (известная точка боли ng2-charts в чужих проектах — здесь её нет).
+
+## Расхождения с философией Angular — сводка приоритетов
+
+| # | Разрыв | Масштаб | Риск |
+|---|---|---|---|
+| 1 | Zoneless не включён (`zone.js` + `provideZoneChangeDetection()`) | 1 файл конфигурации + аудит всего проекта | Высокий — требует ручного smoke-теста CD везде |
+| 2 | 42/72 компонента на явном `Eager`, не `OnPush` | 42 файла | Низкий, механический |
+| 3 | Signal Forms не используются, 2 старых подхода к формам параллельно | ~15 файлов форм | Средний — реальный рерайт форм |
+| 4 | `resource()`/`httpResource()` не используются, 49 `subscribe()` в сервисах | ~14 сервисов | Средний-высокий, делать поэтапно |
+| 5 | Interceptor class-based вместо functional | 1 файл + `main.ts` | Низкий |
+| 6 | `@Injectable({providedIn:'root'})` вместо `@Service()` | 32 файла | Низкий, механический |
+| 7 | Angular Aria не используется, ui-kit почти без ARIA | 18 компонентов | Средний, но растянут во времени |
+| 8 | Остаточные легаси-декораторы (`@Input`/`@Output`/`@ViewChild`/`@HostListener`) | 4 файла | Низкий |
+| 9 | Явный `standalone: true` | 4 файла | Тривиальный |
+| 10 | `ngClass`/`ngStyle` вместо `[class.]`/`[style.]` | 2+2 файла | Тривиальный |
+| 11 | ~~TypeScript 5.9.3 → нужен 6.x~~ | package.json | ✅ сделано 2026-09-17 |
+
+## Группы работ и рекомендуемая последовательность
+
+### Группа 0 — уже соответствует, трогать не нужно
+- ✅ (для справки) Control flow — 0 legacy `*ngIf`/`*ngFor`/`*ngSwitch`
+- ✅ (для справки) Guards — все функциональные
+- ✅ (для справки) Standalone-архитектура — 0 `NgModule`
+- ✅ (для справки) Тесты — уже на `@angular/build:unit-test` + Vitest, Karma не тянется
+- ✅ (для справки) RxJS изолирован в сервисах, `AsyncPipe` в шаблонах не используется — облегчает будущий переход на `resource()`
+
+### Группа 1 — обязательные технические правки под `ng update` 21→22
+- ✅ Поднять TypeScript до `6.x` (`6.0.3`, авто-подобрано `ng update`)
+- ✅ Прогнать `ng update @angular/core@22 @angular/cli@22` + все авто-миграции CLI (в т.ч. простановка `ChangeDetectionStrategy.Eager` на 42 компонентах без явной стратегии — временно, до Группы 2)
+- ✅ `HttpClient`/`AuthInterceptor` — авто-миграция добавила `withXhr()`, поведение сохранено как было (переход на Fetch — осознанное решение, не часть авто-апдейта, см. Группа 2/3)
+- ✅ Optional chaining на строгих `=== null` — авто-миграция подавила `nullishCoalescingNotNullable`/`optionalChainNotNullable` в `tsconfig.app.json`/`tsconfig.spec.json`, старая семантика сохранена без ручной правки шаблонов
+- ✅ `vitest`-сьют — 212/212 тестов, `tsc --noEmit` и `ng build` чистые
+- ⭕ Ручной smoke-тест ключевых экранов (food/money/settings/metrics) — за пользователем
+
+### Группа 2 — идиоматический синтаксис, низкий риск, точечно
+- ⭕ Заменить авто-`Eager` на осознанный `OnPush` во всех 43 компонентах (или наоборот — `Eager` там, где обоснованно, но по умолчанию — `OnPush`)
+- ⭕ Домигрировать `@Input()`/`@Output()`/`@ViewChild()`/`@HostListener()` (4 файла) на `input()`/`output()`/`viewChild()`/`host: {}` — готовые CLI-миграции
+- ⭕ Убрать избыточный явный `standalone: true` (4 файла)
+- ⭕ Заменить `ngClass`/`ngStyle` на `[class.]`/`[style.]` (по 2 файла)
+- ⭕ Точечно применить новый шаблонный синтаксис v22 (spread/rest в шаблонных выражениях, exhaustive `@switch` с `@default never`, инлайн-стрелочные обработчики событий) — там, где реально упрощает код, не ради самого факта
+
+### Группа 3 — глубокое выравнивание с философией (основной объём рефакторинга)
+- ⭕ **Zoneless**: включить `provideZonelessChangeDetection()`, убрать `zone.js` из `angular.json` polyfills и из package.json, пройти по всем 60 `effect()` и 49 `subscribe()` и убедиться, что запись состояния всегда идёт через `signal.set()/update()`, а не через мутацию plain-полей; отдельно смоук-тест графиков (chart.js callbacks) и `v-dropdown`/`v-wheel-select` (используют `subscribe()`/`@HostListener` вне сигнального графа)
+- ⭕ **Signal Forms**: перевести все ~15 файлов на `@angular/forms/signals` (`form()` + schema-валидация), убрать `ReactiveFormsModule`/`FormsModule`/`ngModel`/`FormBuilder` — один способ работы с формами вместо двух
+- ⭕ **Functional interceptor**: переписать `auth.interceptor.ts` на `HttpInterceptorFn`, заменить `withInterceptorsFromDi()` на `withInterceptors([...])` в `main.ts`, убрать `HTTP_INTERCEPTORS`-provider
+- ⭕ **`@Service()`**: перевести 32 файла с `@Injectable({ providedIn: 'root' })` на `@Service()` (механическая замена, можно скриптом-подсказкой + ручная проверка)
+- ⭕ **`resource()`/`httpResource()`**: поэтапно (не разом) перевести HTTP-ориентированные сервисы с ручного `subscribe()` — начать с самых простых read-only сценариев (`metrics-health.service`, `device-info.service`), затем сложные с ретраями/дебаунсом (`food-diary.service`, `food-catalogue.service`) в последнюю очередь
+- ⭕ **Angular Aria**: подключить для новых/пересматриваемых ui-kit компонентов, начиная с самых слабых по a11y — `v-dropdown` (menu/listbox pattern), `v-expand` (accordion pattern), `v-modal` (dialog pattern) — не переписывать всё сразу, встраивать по мере доработки каждого компонента
+
+### Группа 4 — опционально, без срочности
+- ⭕ Оценить selectorless components для точечных wrapper/одноразовых компонентов (stable в v22, но выгода для этого проекта неочевидна — компонентов мало и они переиспользуемые)
+- ⭕ Оценить `injectAsync()` вокруг тяжёлых зависимостей (`chart.js`) для доп. code-splitting
+- ⭕ Присмотреться к WebMCP/Angular Agent Skills/MCP dev server — экспериментально, польза для solo-проекта не приоритет, но бесплатно и не мешает переоценить через пару релизов
+- ⭕ Настроить или снести неиспользуемый ESLint (конфига нет, но зависимость висит) — не про Angular, но всплыло при аудите
+
+## Источники
+- [Angular v22 Release](https://angular.dev/events/v22)
+- [Roadmap • Angular](https://angular.dev/roadmap)
+- [Angular v22 Released — InfoQ](https://www.infoq.com/news/2026/08/angular-v22-released/)
+- [What's New in Angular v22](https://blog.codewithahsan.dev/whats-new-angular-v22/)
+- [Forms with signals — angular.dev](https://angular.dev/essentials/signal-forms)
+- [Zoneless — angular.dev](https://angular.dev/guide/zoneless)
+- [@Service vs @Injectable — ITNEXT](https://itnext.io/angular-22-service-vs-injectable-what-you-need-to-know-22d3e8c80f9c)
+
+## Порядок переноса по разделам
+
+Аудиторы разные — риск разный. Порядок переноса по числу зависимых пользователей:
+
+1. **Метрики** — только я. Полигон для всего рискованного (zoneless, апгрейд ядра).
+2. **Деньги** — пара человек.
+3. **Настройки/навигация/общая инфраструктура** — по мере необходимости, не отдельным заходом.
+4. **Еда** — несколько пользователей, трогаем последней, когда остальное уже обкатано.
+
+Важный нюанс: не все пункты делимы по разделам.
+
+- **Инфраструктурные (общие на весь проект, делаются один раз)**: `ng update` до 22, TypeScript 6.x, включение zoneless (`provideZonelessChangeDetection()` в `main.ts` — это один глобальный provider, не переключается по разделам), functional interceptor. Их нельзя внедрить "только для метрик" — они бьют по всему приложению сразу. Но именно раздел метрик (только свой трафик, наименьшая цена ошибки) — правильное место, чтобы **первым** пройти эти изменения вручную и убедиться, что ничего не сломалось, перед тем как доверить их деньгам и еде.
+- **Модульные (реально делимы по разделам)**: Signal Forms, `resource()`/`httpResource()`, `@Service()`, доразметка `input()`/`output()`, Angular Aria — их можно и нужно катить раздел за разделом, начиная с метрик.
+
+## Блок 1 — раздел «Метрики»: полное приведение к Angular 22
+
+Аудит (2026-09-17) специально по файлам раздела: 4 компонента (`metric-card-grid`, `metric-chart-card`, `metrics-dashboard`, `metrics-health-dot`), 5 сервисов (`metrics.service`, `metrics-health.service`, `composite-metrics-settings.service`, `metrics-settings.service`, `metric-card-expansion.service`), общие типы/утилиты в `shared/metrics-*`.
+
+### Уже соответствует — трогать не нужно
+- ✅ (для справки) Все 4 компонента раздела уже на явном `ChangeDetectionStrategy.OnPush`
+- ✅ (для справки) Легаси-декораторов (`@Input`/`@Output`/`@ViewChild`/`@HostListener`) в разделе нет
+- ✅ (для справки) Angular Forms (Reactive/Template-driven) в разделе не используются — настройки идут через сигналы и uikit-компоненты напрямую, Signal Forms сюда мигрировать не с чего
+- ✅ (для справки) `ngClass`/`ngStyle` в разделе не встречаются
+- ✅ (для справки) `ResizeObserver`/`IntersectionObserver`/`effect()`-коллбэки в `metric-card-grid.ts` и `metric-chart-card.ts` уже пишут состояние через `signal.set()` — хорошая база для zoneless, без переписывания логики
+
+### Инфраструктурные шаги — делать здесь первыми (полигон для всего проекта)
+- ✅ `ng update @angular/core@22 @angular/cli@22`, TypeScript → 6.x, прогнать авто-миграции (сделано 2026-09-17 для всего проекта, включая метрики — build/tsc/vitest чистые, ждём ручной прогон экранов)
+- ⭕ Переписать `auth.interceptor.ts` на `HttpInterceptorFn` + `withInterceptors()` в `main.ts` (задействовано всеми HTTP-запросами метрик)
+- ⭕ Включить `provideZonelessChangeDetection()`, убрать `zone.js` из `angular.json` polyfills и package.json
+- ⭕ Целевой ручной smoke-тест zoneless именно на экране метрик, по каждому механизму отдельно:
+  - `ResizeObserver` в `metric-card-grid.ts`/`metric-chart-card.ts` (ресайз карточек/графиков)
+  - `IntersectionObserver` в `metric-chart-card.ts` (`isVisible$$`, скролл дашборда)
+  - `chartUpdateEffect` и `resetExpandedOnDisableEffect` в этих же файлах
+  - WebSocket-поток `metricsBinaryFrames$` (`metrics.service.ts`, `metrics-health.service.ts`) — приход бинарных фреймов в реальном времени
+  - Chart.js перерисовка/hover (`category-hover-highlight.ts`, `metrics-sync-crosshair.ts`)
+
+### Модульные шаги — специфичные доработки раздела
+- ⭕ Перевести 5 сервисов раздела с `@Injectable({ providedIn: 'root' })` на `@Service()`
+- ⭕ `metric-card-grid.ts`/`metric-chart-card.ts`: заменить constructor-инъекцию `ElementRef` на `inject(ElementRef)`
+- ⭕ `metrics.service.ts` (~строка 287): одноразовый `POST /api/metrics/history` (`arraybuffer`, ручной `.subscribe({...})`) — кандидат на `httpResource()`/`resource()`. Внутри коллбэка сейчас нетривиальные побочные эффекty (merge точек, продвижение курсоров, уведомления, запись в кэш) — при миграции вынести их в `effect()`, реагирующий на статус ресурса, а не переносить как есть
+- ⭕ `metricsBinaryFrames$`-подписки (`metrics.service.ts`, `metrics-health.service.ts`) — оставить на RxJS: это continuous WebSocket-поток, а не request/response, под `resource()` не подходит по форме API
+- ⭕ Оценить `@defer` для `metric-chart-card` внутри `metrics-dashboard.html` — сейчас грузится сразу вместе с chart.js, тяжёлый компонент, потенциальный выигрыш по first paint дашборда
+- ⭕ Angular Aria — отдельно не внедрять именно в метриках: expand/collapse панелей идёт через общий `ui-kit`-компонент `v-expand`, доработка попадёт туда одним заходом для всех разделов сразу
