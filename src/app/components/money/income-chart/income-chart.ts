@@ -65,7 +65,15 @@ export class IncomeChart implements AfterViewInit, OnDestroy {
   // cheap in-place mutation.
   private lastColors: ChartColors | null = null;
   private yearBoundaries: { year: string; startIdx: number; endIdx: number }[] = [];
-  private readonly categoryHighlight = createCategoryHoverHighlight();
+  protected readonly hoveredCategoryName$$ = signal<string | null>(null);
+  private readonly categoryHighlight = createCategoryHoverHighlight(this.hoveredCategoryName$$);
+  // The dataset colors are scriptable functions Chart.js only re-evaluates on an explicit
+  // update, so any hoveredCategoryName$$ write — from the canvas or from a legend row below —
+  // needs one to actually repaint the bars.
+  private readonly repaintOnHoverEffect = effect(() => {
+    this.hoveredCategoryName$$();
+    this.chart$$()?.update('none');
+  });
 
   protected readonly activeCategorySeries$$ = computed(() => {
     const series = this.dataInput().categorySeries;
@@ -218,6 +226,14 @@ export class IncomeChart implements AfterViewInit, OnDestroy {
     return !this.disabledCategoryIds$$().has(categoryId);
   }
 
+  protected onCategoryMouseEnter(categoryName: string): void {
+    this.hoveredCategoryName$$.set(categoryName);
+  }
+
+  protected onCategoryMouseLeave(): void {
+    this.hoveredCategoryName$$.set(null);
+  }
+
   protected getCategoryColor(categoryId: number | null): string {
     const series = this.dataInput().categorySeries.find((s) => s.categoryId === categoryId);
     return incomeCategoricalPalette.getColor(
@@ -298,7 +314,10 @@ export class IncomeChart implements AfterViewInit, OnDestroy {
     const datasets: ChartDataset<'bar'>[] = activeSeries.map((series) => {
       const color = incomeCategoricalPalette.getColor(series.categoryName, colors);
       const dimColor = incomeCategoricalPalette.getColor(series.categoryName, colors, CATEGORY_DIM_ALPHA);
-      const resolveColor = () => this.categoryHighlight.colorFor(series.categoryName, color, dimColor);
+      const resolveColor = () => {
+        const hovered = this.hoveredCategoryName$$();
+        return hovered === null || hovered === series.categoryName ? color : dimColor;
+      };
       const monthlyValues =
         effectiveData.categorySeries.find((s) => s.categoryId === series.categoryId)?.values ?? series.values;
       return {

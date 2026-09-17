@@ -1,37 +1,23 @@
+import { WritableSignal } from '@angular/core';
 import { Chart, Plugin } from 'chart.js';
 
-export interface CategoryHoverHighlightPlugin extends Plugin {
-  // Full color when nothing is hovered or `label` is the hovered category, dimmed otherwise.
-  colorFor(label: string, fullColor: string, dimmedColor: string): string;
-}
-
-// Hovering one category's bar segment keeps its own color everywhere that category appears
-// (every bar/month) and mutes every other category's segments everywhere else — not just the
-// bar under the cursor. Chart.js's own per-element hover state (hoverBackgroundColor) only ever
-// targets the single segment directly under the pointer, so it's unused here; this plugin tracks
-// the *category* (dataset label) as closure state, read from `chart.getActiveElements()` — the
-// same active-element list Chart.js already resolves via its hover interaction mode on every
-// relevant event (mousemove, mouseout included) before any plugin's afterEvent runs. Dataset-
-// level scriptable colors in rebuildChartDatasets call colorFor() to render against it.
-// One instance per chart — hover state must not leak between independent charts (Expense/Income).
-export function createCategoryHoverHighlight(): CategoryHoverHighlightPlugin {
-  let hoveredLabel: string | null = null;
-
-  function setHovered(chart: Chart, label: string | null): void {
-    if (label === hoveredLabel) return;
-    hoveredLabel = label;
-    chart.update('none');
-  }
-
+// Hovering one category — a bar segment on the chart, or its entry in the legend below it —
+// keeps that category's own color everywhere it appears and mutes every other category
+// everywhere else. `hoveredCategory$$` is the single source of truth for "which category is
+// hovered": the plugin below is the canvas-side writer (via chart.getActiveElements(), the same
+// active-element list Chart.js already resolves through its hover interaction mode on every
+// relevant event before any plugin's afterEvent runs), the legend rows are the DOM-side writer
+// (mouseenter/mouseleave), and both the dataset's scriptable colors and the legend's own opacity
+// binding read the same signal — no separate state to keep in sync between the two hover sources
+// or the two rendered surfaces (canvas + DOM).
+// One signal per chart — hover state must not leak between independent charts (Expense/Income).
+export function createCategoryHoverHighlight(hoveredCategory$$: WritableSignal<string | null>): Plugin {
   return {
     id: 'categoryHoverHighlight',
-    afterEvent(chart) {
+    afterEvent(chart: Chart) {
       const active = chart.getActiveElements();
       const label = active.length ? (chart.data.datasets[active[0].datasetIndex]?.label ?? null) : null;
-      setHovered(chart, label);
-    },
-    colorFor(label, fullColor, dimmedColor) {
-      return hoveredLabel === null || hoveredLabel === label ? fullColor : dimmedColor;
+      hoveredCategory$$.set(label);
     },
   };
 }
