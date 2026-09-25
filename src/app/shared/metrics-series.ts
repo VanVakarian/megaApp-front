@@ -1,15 +1,10 @@
 import { aggregateMetricValues, MetricAggregation } from '@app/shared/metrics-aggregation';
+import { MetricWindow } from '@app/shared/metrics-granularity';
 import { MetricGranularity, MetricPoint } from '@app/shared/types';
 
 export interface MetricSeriesPoint {
   bucket: number;
   value: number | null;
-}
-
-export interface MetricWindow {
-  startBucket: number;
-  endBucket: number;
-  bucketCount: number;
 }
 
 interface CollapsedBucketState {
@@ -25,101 +20,8 @@ interface MinuteCollapseCacheEntry {
   collapsedPoints: MetricPoint[];
 }
 
-export function previousCompletedBucket(epochMs: number, stepSeconds: number): number {
-  const flooredSeconds = Math.floor(epochMs / 1000 / stepSeconds) * stepSeconds;
-  return flooredSeconds - stepSeconds;
-}
-
-export function buildMetricWindow(endBucket: number, windowPeriods: number, stepSeconds: number): MetricWindow {
-  const bucketCount = Math.max(1, windowPeriods);
-  return {
-    startBucket: endBucket - (bucketCount - 1) * stepSeconds,
-    endBucket,
-    bucketCount,
-  };
-}
-
-export function buildServiceMetricWindow(
-  points: MetricPoint[],
-  fallbackEndBucket: number,
-  windowPeriods: number,
-  stepSeconds: number,
-): MetricWindow {
-  if (points.length === 0) {
-    return buildMetricWindow(fallbackEndBucket, windowPeriods, stepSeconds);
-  }
-
-  const latestBucket = points.reduce((max, point) => Math.max(max, point.bucket), points[0].bucket);
-  const earliestAllowedBucket = latestBucket - (Math.max(1, windowPeriods) - 1) * stepSeconds;
-  const startBucket = points.reduce((min, point) => {
-    if (point.bucket < earliestAllowedBucket) {
-      return min;
-    }
-    return Math.min(min, point.bucket);
-  }, latestBucket);
-
-  return {
-    startBucket,
-    endBucket: latestBucket,
-    bucketCount: Math.floor((latestBucket - startBucket) / stepSeconds) + 1,
-  };
-}
-
-export function zeroFillMetricSeries(
-  points: MetricPoint[],
-  service: string,
-  name: string,
-  buckets: number[],
-): MetricSeriesPoint[] {
-  const valueByBucket = new Map(
-    points
-      .filter((point) => point.service === service && point.name === name)
-      .map((point) => [point.bucket, point.value]),
-  );
-  return buckets.map((bucket) => ({ bucket, value: valueByBucket.get(bucket) ?? 0 }));
-}
-
 export function metricPointsIndexKey(service: string, name: string): string {
   return `${service}:${name}`;
-}
-
-export function buildMetricPointsIndex(
-  points: MetricPoint[],
-  windowStartBucket: number,
-  windowEndBucket: number,
-): Map<string, MetricPoint[]> {
-  const result = new Map<string, MetricPoint[]>();
-  for (const point of points) {
-    if (point.bucket < windowStartBucket || point.bucket > windowEndBucket) {
-      continue;
-    }
-    const key = metricPointsIndexKey(point.service, point.name);
-    const metricPoints = result.get(key);
-    if (metricPoints) {
-      metricPoints.push(point);
-      continue;
-    }
-    result.set(key, [point]);
-  }
-  return result;
-}
-
-function filterSortedMetricPoints(
-  points: MetricPoint[],
-  service: string,
-  name: string,
-  windowStartBucket: number,
-  windowEndBucket: number,
-): MetricPoint[] {
-  return points
-    .filter(
-      (point) =>
-        point.service === service &&
-        point.name === name &&
-        point.bucket >= windowStartBucket &&
-        point.bucket <= windowEndBucket,
-    )
-    .sort((a, b) => a.bucket - b.bucket);
 }
 
 export function buildSparseBarSeriesFromPoints(points: MetricPoint[]): MetricSeriesPoint[] {
@@ -127,18 +29,6 @@ export function buildSparseBarSeriesFromPoints(points: MetricPoint[]): MetricSer
     bucket: point.bucket,
     value: point.value,
   }));
-}
-
-export function buildSparseBarSeries(
-  points: MetricPoint[],
-  service: string,
-  name: string,
-  windowStartBucket: number,
-  windowEndBucket: number,
-): MetricSeriesPoint[] {
-  return buildSparseBarSeriesFromPoints(
-    filterSortedMetricPoints(points, service, name, windowStartBucket, windowEndBucket),
-  );
 }
 
 // A gap is "real" (worth visually breaking the line for) once more than one
@@ -160,20 +50,6 @@ export function buildSparseLineSeriesFromPoints(
   return series;
 }
 
-export function buildSparseLineSeries(
-  points: MetricPoint[],
-  service: string,
-  name: string,
-  windowStartBucket: number,
-  windowEndBucket: number,
-  gapThresholdSeconds: number,
-): MetricSeriesPoint[] {
-  return buildSparseLineSeriesFromPoints(
-    filterSortedMetricPoints(points, service, name, windowStartBucket, windowEndBucket),
-    gapThresholdSeconds,
-  );
-}
-
 function pad2(value: number): string {
   return String(value).padStart(2, '0');
 }
@@ -187,9 +63,8 @@ export function formatMetricBucketLabel(bucketSeconds: number, granularity: Metr
 }
 
 // On the hour granularity, ticks sit days apart — showing the time alongside the
-// date is both unnecessary and, at 5 ticks across a narrow chart, wide enough to
-// overlap — so the axis only shows the date, same as the day granularity already
-// does. On other granularities, a tick landing exactly on local midnight already
+// date is both unnecessary and, across a narrow chart, wide enough to overlap — so
+// the axis only shows the date, same as the day granularity already does. On other granularities, a tick landing exactly on local midnight already
 // tells you the time (00:00), so the date alone is enough there too.
 export function formatMetricTickLabel(bucketSeconds: number, granularity: MetricGranularity = 'minute'): string {
   const date = new Date(bucketSeconds * 1000);
@@ -199,17 +74,48 @@ export function formatMetricTickLabel(bucketSeconds: number, granularity: Metric
   return formatMetricBucketLabel(bucketSeconds, granularity);
 }
 
-// Every bucket in [windowStartBucket, windowEndBucket] that lands exactly on an
-// interval boundary (e.g. 3600 for round hours) — unlike buildPaddedTickBuckets,
-// tick count varies with window length instead of being fixed.
+const SECONDS_PER_HOUR = 60 * 60;
+const SECONDS_PER_DAY = 24 * SECONDS_PER_HOUR;
+
+// Round tick intervals to pick from, smallest first. Minute charts tick on whole local hours:
+// every entry divides 24, so every choice lands on local midnight. Hour/day charts tick on
+// days: the longer entries keep a year-long window readable without a label per day.
+const MINUTE_TICK_HOUR_STRIDES = [1, 2, 3, 4, 6, 12, 24];
+const DAY_TICK_DAY_STRIDES = [1, 2, 3, 5, 7, 10, 14, 30, 60, 90, 180, 365];
+
+// The smallest stride whose on-screen spacing still fits a label; the largest one when none does.
+function pickTickStride(strides: number[], unitSeconds: number, minSpacingSeconds: number): number {
+  return strides.find((stride) => stride * unitSeconds >= minSpacingSeconds) ?? strides[strides.length - 1];
+}
+
+// Round ticks for a time axis, thinned to what fits: `minSpacingSeconds` is how much time one
+// label slot spans on screen (window span * label slot px / chart width px), 0 when the chart's
+// width isn't known yet (every round tick then).
+//
+// Ticks sit on absolute round times (local hours divisible by the stride, day numbers divisible
+// by the stride), never counted from the window's first tick — so as the window slides, each
+// tick stays exactly where it was and labels don't flip between alternating sets.
 export function buildRoundTickBuckets(
-  windowStartBucket: number,
-  windowEndBucket: number,
-  intervalSeconds: number,
+  window: MetricWindow,
+  granularity: MetricGranularity,
+  minSpacingSeconds: number,
 ): number[] {
-  const firstTick = Math.ceil(windowStartBucket / intervalSeconds) * intervalSeconds;
+  if (granularity === 'minute') {
+    const stride = pickTickStride(MINUTE_TICK_HOUR_STRIDES, SECONDS_PER_HOUR, minSpacingSeconds);
+    return buildHourTickBuckets(window).filter((bucket) => new Date(bucket * 1000).getHours() % stride === 0);
+  }
+
+  const stride = pickTickStride(DAY_TICK_DAY_STRIDES, SECONDS_PER_DAY, minSpacingSeconds);
+  return buildDayTickBuckets(window).filter((bucket) => Math.round(bucket / SECONDS_PER_DAY) % stride === 0);
+}
+
+function buildHourTickBuckets(window: MetricWindow): number[] {
   const buckets: number[] = [];
-  for (let bucket = firstTick; bucket <= windowEndBucket; bucket += intervalSeconds) {
+  for (
+    let bucket = Math.ceil(window.startBucket / SECONDS_PER_HOUR) * SECONDS_PER_HOUR;
+    bucket <= window.endBucket;
+    bucket += SECONDS_PER_HOUR
+  ) {
     buckets.push(bucket);
   }
   return buckets;
@@ -230,10 +136,10 @@ export function buildRoundTickBuckets(
 const ALIGN_DAY_TICKS_TO_UTC_BUCKET = true;
 
 // LOAD-BEARING: Every midnight (00:00, UTC or local per ALIGN_DAY_TICKS_TO_UTC_BUCKET above) in
-// [windowStartBucket, windowEndBucket] — steps by calendar day via Date instead of a
-// flat 86400s stride, so a DST transition inside the window can't drift a later tick.
-export function buildRoundDayTickBuckets(windowStartBucket: number, windowEndBucket: number): number[] {
-  const cursor = new Date(windowStartBucket * 1000);
+// the window — steps by calendar day via Date instead of a flat 86400s stride, so a DST
+// transition inside the window can't drift a later tick.
+function buildDayTickBuckets(window: MetricWindow): number[] {
+  const cursor = new Date(window.startBucket * 1000);
   const setMidnight = ALIGN_DAY_TICKS_TO_UTC_BUCKET
     ? () => cursor.setUTCHours(0, 0, 0, 0)
     : () => cursor.setHours(0, 0, 0, 0);
@@ -242,37 +148,16 @@ export function buildRoundDayTickBuckets(windowStartBucket: number, windowEndBuc
     : () => cursor.setDate(cursor.getDate() + 1);
 
   setMidnight();
-  if (cursor.getTime() < windowStartBucket * 1000) {
+  if (cursor.getTime() < window.startBucket * 1000) {
     stepDay();
   }
 
   const buckets: number[] = [];
-  while (cursor.getTime() <= windowEndBucket * 1000) {
+  while (cursor.getTime() <= window.endBucket * 1000) {
     buckets.push(Math.floor(cursor.getTime() / 1000));
     stepDay();
   }
   return buckets;
-}
-
-// `segments + 1` buckets, evenly spaced from start to end (both included).
-function buildEvenTickBuckets(startBucket: number, endBucket: number, segments: number): number[] {
-  const span = endBucket - startBucket;
-  const buckets: number[] = [];
-  for (let index = 0; index <= segments; index++) {
-    buckets.push(Math.round(startBucket + (span * index) / segments));
-  }
-  return buckets;
-}
-
-// Fraction of the window trimmed off each side before placing ticks — keeps the
-// outer ticks a bit inset from the window edges instead of sitting exactly on them.
-const TICK_EDGE_PADDING_FRACTION = 2 / 24;
-const TICK_COUNT = 5;
-
-export function buildPaddedTickBuckets(windowStartBucket: number, windowEndBucket: number): number[] {
-  const span = windowEndBucket - windowStartBucket;
-  const edgePadding = span * TICK_EDGE_PADDING_FRACTION;
-  return buildEvenTickBuckets(windowStartBucket + edgePadding, windowEndBucket - edgePadding, TICK_COUNT - 1);
 }
 
 // Binary search: series is always bucket-sorted ascending (builders above guarantee it).
@@ -307,11 +192,7 @@ export function alignBucketDown(bucketSeconds: number, stepSeconds: number): num
 export function buildCollapsedMetricWindow(window: MetricWindow, stepSeconds: number): MetricWindow {
   const startBucket = alignBucketDown(window.startBucket, stepSeconds);
   const endBucket = alignBucketDown(window.endBucket, stepSeconds);
-  return {
-    startBucket,
-    endBucket,
-    bucketCount: Math.max(1, Math.floor((endBucket - startBucket) / stepSeconds) + 1),
-  };
+  return { startBucket, endBucket };
 }
 
 export function filterMetricPointsByWindow(

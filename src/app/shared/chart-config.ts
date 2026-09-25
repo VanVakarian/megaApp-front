@@ -459,19 +459,6 @@ export function createExpenseChartConfig(colors: ChartColors): ChartConfiguratio
   };
 }
 
-export const METRICS_GRANULARITY_STEP_SECONDS: Record<MetricGranularity, number> = {
-  minute: 60,
-  hour: 3600,
-  day: 86400,
-};
-
-// How many periods the display window covers per granularity.
-export const METRICS_GRANULARITY_WINDOW_PERIODS: Record<MetricGranularity, number> = {
-  minute: 24 * 60,
-  hour: 30 * 24,
-  day: 365,
-};
-
 export function createMetricSparklineConfig(color: string, colors: ChartColors): ChartConfiguration<'line'> {
   return {
     type: 'line',

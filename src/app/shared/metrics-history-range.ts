@@ -1,18 +1,5 @@
+import { METRIC_GRANULARITIES, METRIC_GRANULARITY_SPECS } from '@app/shared/metrics-granularity';
 import { MetricGranularity } from '@app/shared/types';
-
-export const METRIC_GRANULARITIES: readonly MetricGranularity[] = ['minute', 'hour', 'day'];
-
-const HISTORY_STEP_SECONDS: Record<MetricGranularity, number> = {
-  minute: 60,
-  hour: 60 * 60,
-  day: 24 * 60 * 60,
-};
-
-const HISTORY_PERIODS: Record<MetricGranularity, number> = {
-  minute: 24 * 60,
-  hour: 30 * 24,
-  day: 365,
-};
 
 export type MetricsHistoryWatermarks = Record<MetricGranularity, number>;
 
@@ -40,13 +27,13 @@ export function parseMetricsHistoryWatermarks(value: unknown): MetricsHistoryWat
 
 export function latestClosedHistoryBucket(granularity: MetricGranularity, latestMinuteBucket: number): number {
   if (granularity === 'minute') return latestMinuteBucket;
-  const step = HISTORY_STEP_SECONDS[granularity];
+  const step = METRIC_GRANULARITY_SPECS[granularity].stepSeconds;
   return Math.max(0, Math.floor(latestMinuteBucket / step) * step - step);
 }
 
 export function earliestHistoryBucket(granularity: MetricGranularity, latestBucket: number): number {
-  const step = HISTORY_STEP_SECONDS[granularity];
-  return latestBucket - (HISTORY_PERIODS[granularity] - 1) * step;
+  const { stepSeconds, periods } = METRIC_GRANULARITY_SPECS[granularity];
+  return latestBucket - (periods - 1) * stepSeconds;
 }
 
 // Per-metric cursor replaces bucket-scanning entirely (not a per-service patch
@@ -61,7 +48,7 @@ export function nextHistorySinceBucket(
   latestBucket: number,
 ): number {
   if (checkedThrough <= 0) return earliestHistoryBucket(granularity, latestBucket);
-  return checkedThrough + HISTORY_STEP_SECONDS[granularity];
+  return checkedThrough + METRIC_GRANULARITY_SPECS[granularity].stepSeconds;
 }
 
 // Cursor is on the (service, metric) pair, not the view — a metric shown in

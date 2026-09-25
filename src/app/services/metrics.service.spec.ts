@@ -7,7 +7,7 @@ import { IndexedDbCacheService } from '@app/services/indexed-db-cache.service';
 import { MetricsBinaryFrame, MetricsBinaryFrameType, NetworkService } from '@app/services/network.service';
 import { NotificationService } from '@app/services/notification.service';
 import { TelemetryService } from '@app/services/telemetry.service';
-import { METRICS_GRANULARITY_WINDOW_PERIODS } from '@app/shared/chart-config';
+import { METRIC_GRANULARITY_SPECS } from '@app/shared/metrics-granularity';
 import { MetricRingBuffer } from '@app/shared/metrics-ring-buffer';
 import { MetricPoint } from '@app/shared/types';
 import { encodeMetricsWireFixture } from '@app/testing/metrics-wire.fake';
@@ -114,7 +114,7 @@ describe('MetricsService — point dedup (bufferFor/insertPoint)', () => {
 describe('MetricsService — ring buffer capacity eviction (MetricRingBuffer)', () => {
   it('evicts the oldest point of a series once more than the granularity capacity of newer buckets have arrived', () => {
     const { service, metricsBinaryFrames$ } = setup();
-    const capacity = METRICS_GRANULARITY_WINDOW_PERIODS.minute; // 1440
+    const capacity = METRIC_GRANULARITY_SPECS.minute.periods; // 1440
     const stepSeconds = 60;
     const firstBucket = 60;
 
@@ -170,7 +170,7 @@ describe('MetricsService — per-series IndexedDB persistence (scheduleCacheWrit
 
 describe('MetricsService — hydration from persisted series (constructor)', () => {
   it('rebuilds a series from a persisted MetricRingBuffer snapshot and exposes it via seriesFor', async () => {
-    const capacity = METRICS_GRANULARITY_WINDOW_PERIODS.minute;
+    const capacity = METRIC_GRANULARITY_SPECS.minute.periods;
     const seedBuffer = new MetricRingBuffer(capacity, 60);
     seedBuffer.insert(1_000_000, 42);
     const record = {

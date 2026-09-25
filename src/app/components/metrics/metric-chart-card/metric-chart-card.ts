@@ -25,8 +25,6 @@ import { formatMetricUnitValue, MetricUnit } from '@app/shared/metric-units';
 import { DEFAULT_METRIC_CHART_MODE, MetricChartMode } from '@app/shared/metrics-chart-mode';
 import {
   buildIntermediateYTicks,
-  buildPaddedTickBuckets,
-  buildRoundDayTickBuckets,
   buildRoundTickBuckets,
   findNearestSeriesPoint,
   formatMetricBucketLabel,
@@ -79,15 +77,6 @@ export const DEFAULT_CHART_HEIGHT_PX = 112;
 // captures a point up to 15 minutes to either side. Hardcoded on purpose, not a
 // user setting.
 const CROSSHAIR_CAPTURE_STEP_MULTIPLIER = 3;
-
-// On a full-width chart, ticks land on round time values instead of being evenly
-// spaced across the window: round hours for minute granularity, local day starts
-// (00:00) for hour/day granularity.
-const ROUND_HOUR_TICK_INTERVAL_SECONDS = 3600;
-// Only used to estimate on-screen tick spacing for the day-tick thinning below —
-// actual tick positions still come from buildRoundDayTickBuckets, which steps by
-// calendar day (not a flat 86400s) so DST doesn't drift them off local midnight.
-const ROUND_DAY_TICK_INTERVAL_SECONDS = 86400;
 
 // Canvas text can't be measured without a real render, so tick label width is
 // estimated instead of measured: both "HH:MM" and "DD.MM" are 4 digits plus one
@@ -426,33 +415,18 @@ export class MetricChartCard implements OnInit, OnDestroy {
     );
   }
 
+  // How much time one label slot spans on screen follows from the card's own rendered
+  // width without ever touching the canvas: window span * label slot px / card width px.
+  // Both card and full-width modes tick the same way — round times, as sparse as needed
+  // for the labels not to crowd.
   private buildTickBuckets(windowStart: number, windowEnd: number): number[] {
-    if (!this.isFullWidthInput()) {
-      return buildPaddedTickBuckets(windowStart, windowEnd);
-    }
-    if (this.granularityInput() === 'minute') {
-      const ticks = buildRoundTickBuckets(windowStart, windowEnd, ROUND_HOUR_TICK_INTERVAL_SECONDS);
-      return this.thinTicksToFit(ticks, ROUND_HOUR_TICK_INTERVAL_SECONDS, windowStart, windowEnd);
-    }
-    const ticks = buildRoundDayTickBuckets(windowStart, windowEnd);
-    return this.thinTicksToFit(ticks, ROUND_DAY_TICK_INTERVAL_SECONDS, windowStart, windowEnd);
-  }
-
-  // Full-density ticks are evenly spaced by `intervalSeconds`, so their on-screen
-  // spacing is derivable from the card's own rendered width without ever touching
-  // the canvas: pixels-per-tick = cardWidthPx * intervalSeconds / windowSpanSeconds.
-  // The smallest stride whose spacing still clears TICK_LABEL_SLOT_PX is kept —
-  // 1 (every tick) when there's room, rising only as far as actually needed.
-  private thinTicksToFit(ticks: number[], intervalSeconds: number, windowStart: number, windowEnd: number): number[] {
     const cardWidthPx = this.cardWidthPx$$();
-    const windowSpanSeconds = windowEnd - windowStart;
-    if (cardWidthPx <= 0 || windowSpanSeconds <= 0) {
-      return ticks;
-    }
-
-    const fullDensitySpacingPx = (cardWidthPx * intervalSeconds) / windowSpanSeconds;
-    const stride = Math.max(1, Math.ceil(TICK_LABEL_SLOT_PX / fullDensitySpacingPx));
-    return ticks.filter((_, index) => index % stride === 0);
+    const minSpacingSeconds = cardWidthPx > 0 ? ((windowEnd - windowStart) * TICK_LABEL_SLOT_PX) / cardWidthPx : 0;
+    return buildRoundTickBuckets(
+      { startBucket: windowStart, endBucket: windowEnd },
+      this.granularityInput(),
+      minSpacingSeconds,
+    );
   }
 
   private updateSparseChart(series: MetricSeriesPoint[]): void {

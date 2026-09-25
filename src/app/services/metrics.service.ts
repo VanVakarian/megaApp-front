@@ -5,12 +5,11 @@ import { IndexedDbCacheService } from '@app/services/indexed-db-cache.service';
 import { MetricsBinaryFrameType, NetworkService } from '@app/services/network.service';
 import { NotificationService } from '@app/services/notification.service';
 import { TelemetryService } from '@app/services/telemetry.service';
-import { METRICS_GRANULARITY_STEP_SECONDS, METRICS_GRANULARITY_WINDOW_PERIODS } from '@app/shared/chart-config';
+import { METRIC_GRANULARITIES, METRIC_GRANULARITY_SPECS } from '@app/shared/metrics-granularity';
 import {
   emptyMetricsCursorMap,
   emptyMetricsHistoryWatermarks,
   latestClosedHistoryBucket,
-  METRIC_GRANULARITIES,
   metricCursorKey,
   MetricsCursorMap,
   MetricsHistoryWatermarks,
@@ -229,10 +228,7 @@ export class MetricsService {
   // the SAME signal instance notifies that computed correctly.
   private resetAllState(): void {
     for (const entry of this.buffers.values()) {
-      entry.buffer = new MetricRingBuffer(
-        METRICS_GRANULARITY_WINDOW_PERIODS[entry.granularity],
-        METRICS_GRANULARITY_STEP_SECONDS[entry.granularity],
-      );
+      entry.buffer = this.createBuffer(entry.granularity);
       entry.pointsSignal.set([]);
     }
     this.knownServicesInternal.clear();
@@ -395,15 +391,17 @@ export class MetricsService {
     const key = this.seriesKey(service, name, granularity);
     let entry = this.buffers.get(key);
     if (!entry) {
-      const buffer = new MetricRingBuffer(
-        METRICS_GRANULARITY_WINDOW_PERIODS[granularity],
-        METRICS_GRANULARITY_STEP_SECONDS[granularity],
-      );
+      const buffer = this.createBuffer(granularity);
       const pointsSignal = signal<MetricPoint[]>([]);
       entry = { service, name, granularity, buffer, pointsSignal, readonlyPointsSignal: pointsSignal.asReadonly() };
       this.buffers.set(key, entry);
     }
     return entry;
+  }
+
+  private createBuffer(granularity: MetricGranularity): MetricRingBuffer {
+    const { periods, stepSeconds } = METRIC_GRANULARITY_SPECS[granularity];
+    return new MetricRingBuffer(periods, stepSeconds);
   }
 
   // Reuses entryFor() rather than building its own SeriesBuffer — hydration runs async
@@ -416,11 +414,8 @@ export class MetricsService {
   // writing through its existing pointsSignal keeps that identity intact instead.
   private hydrateSeries(record: MetricSeriesRecord): void {
     if (!this.isValidGranularity(record.granularity)) return;
-    const buffer = MetricRingBuffer.fromSnapshot(
-      METRICS_GRANULARITY_WINDOW_PERIODS[record.granularity],
-      METRICS_GRANULARITY_STEP_SECONDS[record.granularity],
-      record.snapshot,
-    );
+    const { periods, stepSeconds } = METRIC_GRANULARITY_SPECS[record.granularity];
+    const buffer = MetricRingBuffer.fromSnapshot(periods, stepSeconds, record.snapshot);
     if (!buffer) return;
 
     const entry = this.entryFor(record.service, record.name, record.granularity);
