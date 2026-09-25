@@ -1,7 +1,5 @@
-import { metricWindowAt } from '@app/shared/metrics-granularity';
 import {
   buildCollapsedMetricWindow,
-  buildRoundTickBuckets,
   buildSparseBarSeriesFromPoints,
   buildSparseLineSeriesFromPoints,
   filterMetricPointsByWindow,
@@ -31,72 +29,6 @@ describe('buildCollapsedMetricWindow', () => {
       startBucket: 0,
       endBucket: 900,
     });
-  });
-});
-
-// 2026-09-26T15:30:45Z
-const NOW_SECONDS = Date.UTC(2026, 8, 26, 15, 30, 45) / 1000;
-const HOUR = 3600;
-const DAY = 86400;
-
-describe('buildRoundTickBuckets', () => {
-  it('minute: every hour of the 24h window when there is room for a label per hour', () => {
-    const window = metricWindowAt('minute', NOW_SECONDS);
-    const ticks = buildRoundTickBuckets(window, 'minute', 0);
-
-    expect(ticks.length).toBe(24);
-    expect(ticks.every((bucket) => bucket % HOUR === 0)).toBe(true);
-    expect(ticks[0]).toBeGreaterThanOrEqual(window.startBucket);
-    expect(ticks[ticks.length - 1]).toBeLessThanOrEqual(window.endBucket);
-  });
-
-  it.each([
-    [2 * HOUR, 2],
-    [3.7 * HOUR, 4],
-    [5 * HOUR, 6],
-    [7 * HOUR, 12],
-    [13 * HOUR, 24],
-  ])('minute: needing %s seconds per label picks a %s-hour stride on local hours', (minSpacingSeconds, stride) => {
-    const window = metricWindowAt('minute', NOW_SECONDS);
-    const ticks = buildRoundTickBuckets(window, 'minute', minSpacingSeconds);
-
-    expect(ticks.length).toBeGreaterThan(0);
-    expect(ticks.every((bucket) => new Date(bucket * 1000).getHours() % stride === 0)).toBe(true);
-    expect(ticks.slice(1).every((bucket, index) => bucket - ticks[index] === stride * HOUR)).toBe(true);
-  });
-
-  it('minute: keeps every tick in place when the window slides, only the edges change', () => {
-    const now = NOW_SECONDS;
-    const before = buildRoundTickBuckets(metricWindowAt('minute', now), 'minute', 3.7 * HOUR);
-    const after = buildRoundTickBuckets(metricWindowAt('minute', now + 2 * HOUR), 'minute', 3.7 * HOUR);
-    const shared = before.filter((bucket) => after.includes(bucket));
-
-    expect(shared.length).toBeGreaterThanOrEqual(before.length - 1);
-    expect(after.filter((bucket) => bucket >= before[0] && bucket <= before[before.length - 1])).toEqual(shared);
-  });
-
-  it('hour: a tick per UTC midnight when there is room, at most one per day', () => {
-    const window = metricWindowAt('hour', NOW_SECONDS);
-    const ticks = buildRoundTickBuckets(window, 'hour', 0);
-
-    expect(ticks.length).toBe(30);
-    expect(ticks.every((bucket) => bucket % DAY === 0)).toBe(true);
-  });
-
-  it('day: thins a year-long window to a stride from the ladder, anchored to absolute day numbers', () => {
-    const window = metricWindowAt('day', NOW_SECONDS);
-    const ticks = buildRoundTickBuckets(window, 'day', 56 * DAY);
-
-    expect(ticks.length).toBeGreaterThan(3);
-    expect(ticks.length).toBeLessThan(8);
-    expect(ticks.every((bucket) => Math.round(bucket / DAY) % 60 === 0)).toBe(true);
-  });
-
-  it('falls back to the sparsest stride when even that does not fit', () => {
-    const window = metricWindowAt('minute', NOW_SECONDS);
-    const ticks = buildRoundTickBuckets(window, 'minute', 1000 * HOUR);
-
-    expect(ticks.every((bucket) => new Date(bucket * 1000).getHours() === 0)).toBe(true);
   });
 });
 

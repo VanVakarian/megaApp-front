@@ -63,8 +63,9 @@ export function formatMetricBucketLabel(bucketSeconds: number, granularity: Metr
 }
 
 // On the hour granularity, ticks sit days apart — showing the time alongside the
-// date is both unnecessary and, across a narrow chart, wide enough to overlap — so
-// the axis only shows the date, same as the day granularity already does. On other granularities, a tick landing exactly on local midnight already
+// date is both unnecessary and, at 5 ticks across a narrow chart, wide enough to
+// overlap — so the axis only shows the date, same as the day granularity already
+// does. On other granularities, a tick landing exactly on local midnight already
 // tells you the time (00:00), so the date alone is enough there too.
 export function formatMetricTickLabel(bucketSeconds: number, granularity: MetricGranularity = 'minute'): string {
   const date = new Date(bucketSeconds * 1000);
@@ -74,48 +75,17 @@ export function formatMetricTickLabel(bucketSeconds: number, granularity: Metric
   return formatMetricBucketLabel(bucketSeconds, granularity);
 }
 
-const SECONDS_PER_HOUR = 60 * 60;
-const SECONDS_PER_DAY = 24 * SECONDS_PER_HOUR;
-
-// Round tick intervals to pick from, smallest first. Minute charts tick on whole local hours:
-// every entry divides 24, so every choice lands on local midnight. Hour/day charts tick on
-// days: the longer entries keep a year-long window readable without a label per day.
-const MINUTE_TICK_HOUR_STRIDES = [1, 2, 3, 4, 6, 12, 24];
-const DAY_TICK_DAY_STRIDES = [1, 2, 3, 5, 7, 10, 14, 30, 60, 90, 180, 365];
-
-// The smallest stride whose on-screen spacing still fits a label; the largest one when none does.
-function pickTickStride(strides: number[], unitSeconds: number, minSpacingSeconds: number): number {
-  return strides.find((stride) => stride * unitSeconds >= minSpacingSeconds) ?? strides[strides.length - 1];
-}
-
-// Round ticks for a time axis, thinned to what fits: `minSpacingSeconds` is how much time one
-// label slot spans on screen (window span * label slot px / chart width px), 0 when the chart's
-// width isn't known yet (every round tick then).
-//
-// Ticks sit on absolute round times (local hours divisible by the stride, day numbers divisible
-// by the stride), never counted from the window's first tick — so as the window slides, each
-// tick stays exactly where it was and labels don't flip between alternating sets.
+// Every bucket in [windowStartBucket, windowEndBucket] that lands exactly on an
+// interval boundary (e.g. 3600 for round hours) — unlike buildPaddedTickBuckets,
+// tick count varies with window length instead of being fixed.
 export function buildRoundTickBuckets(
-  window: MetricWindow,
-  granularity: MetricGranularity,
-  minSpacingSeconds: number,
+  windowStartBucket: number,
+  windowEndBucket: number,
+  intervalSeconds: number,
 ): number[] {
-  if (granularity === 'minute') {
-    const stride = pickTickStride(MINUTE_TICK_HOUR_STRIDES, SECONDS_PER_HOUR, minSpacingSeconds);
-    return buildHourTickBuckets(window).filter((bucket) => new Date(bucket * 1000).getHours() % stride === 0);
-  }
-
-  const stride = pickTickStride(DAY_TICK_DAY_STRIDES, SECONDS_PER_DAY, minSpacingSeconds);
-  return buildDayTickBuckets(window).filter((bucket) => Math.round(bucket / SECONDS_PER_DAY) % stride === 0);
-}
-
-function buildHourTickBuckets(window: MetricWindow): number[] {
+  const firstTick = Math.ceil(windowStartBucket / intervalSeconds) * intervalSeconds;
   const buckets: number[] = [];
-  for (
-    let bucket = Math.ceil(window.startBucket / SECONDS_PER_HOUR) * SECONDS_PER_HOUR;
-    bucket <= window.endBucket;
-    bucket += SECONDS_PER_HOUR
-  ) {
+  for (let bucket = firstTick; bucket <= windowEndBucket; bucket += intervalSeconds) {
     buckets.push(bucket);
   }
   return buckets;
@@ -136,10 +106,10 @@ function buildHourTickBuckets(window: MetricWindow): number[] {
 const ALIGN_DAY_TICKS_TO_UTC_BUCKET = true;
 
 // LOAD-BEARING: Every midnight (00:00, UTC or local per ALIGN_DAY_TICKS_TO_UTC_BUCKET above) in
-// the window — steps by calendar day via Date instead of a flat 86400s stride, so a DST
-// transition inside the window can't drift a later tick.
-function buildDayTickBuckets(window: MetricWindow): number[] {
-  const cursor = new Date(window.startBucket * 1000);
+// [windowStartBucket, windowEndBucket] — steps by calendar day via Date instead of a
+// flat 86400s stride, so a DST transition inside the window can't drift a later tick.
+export function buildRoundDayTickBuckets(windowStartBucket: number, windowEndBucket: number): number[] {
+  const cursor = new Date(windowStartBucket * 1000);
   const setMidnight = ALIGN_DAY_TICKS_TO_UTC_BUCKET
     ? () => cursor.setUTCHours(0, 0, 0, 0)
     : () => cursor.setHours(0, 0, 0, 0);
@@ -148,16 +118,37 @@ function buildDayTickBuckets(window: MetricWindow): number[] {
     : () => cursor.setDate(cursor.getDate() + 1);
 
   setMidnight();
-  if (cursor.getTime() < window.startBucket * 1000) {
+  if (cursor.getTime() < windowStartBucket * 1000) {
     stepDay();
   }
 
   const buckets: number[] = [];
-  while (cursor.getTime() <= window.endBucket * 1000) {
+  while (cursor.getTime() <= windowEndBucket * 1000) {
     buckets.push(Math.floor(cursor.getTime() / 1000));
     stepDay();
   }
   return buckets;
+}
+
+// `segments + 1` buckets, evenly spaced from start to end (both included).
+function buildEvenTickBuckets(startBucket: number, endBucket: number, segments: number): number[] {
+  const span = endBucket - startBucket;
+  const buckets: number[] = [];
+  for (let index = 0; index <= segments; index++) {
+    buckets.push(Math.round(startBucket + (span * index) / segments));
+  }
+  return buckets;
+}
+
+// Fraction of the window trimmed off each side before placing ticks — keeps the
+// outer ticks a bit inset from the window edges instead of sitting exactly on them.
+const TICK_EDGE_PADDING_FRACTION = 2 / 24;
+const TICK_COUNT = 5;
+
+export function buildPaddedTickBuckets(windowStartBucket: number, windowEndBucket: number): number[] {
+  const span = windowEndBucket - windowStartBucket;
+  const edgePadding = span * TICK_EDGE_PADDING_FRACTION;
+  return buildEvenTickBuckets(windowStartBucket + edgePadding, windowEndBucket - edgePadding, TICK_COUNT - 1);
 }
 
 // Binary search: series is always bucket-sorted ascending (builders above guarantee it).
