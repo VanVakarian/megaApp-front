@@ -12,7 +12,6 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
-import { CompositeMetricsSettingsService } from '@app/services/composite-metrics-settings.service';
 import { DeviceInfoService } from '@app/services/device-info.service';
 import { MetricCardExpansionService } from '@app/services/metric-card-expansion.service';
 import { MetricsHealthService } from '@app/services/metrics-health.service';
@@ -78,6 +77,56 @@ const SETTINGS_PANEL_KEY = '__settings__';
 const DASHBOARD_PANEL_KEY = '__dashboard__';
 const DEFAULT_COMPOSITE_LABEL = 'Составные метрики';
 const COLLAPSED_MINUTE_STEP_SECONDS = 5 * 60;
+
+// Hardcoded — was a user-editable list (add/remove sum, per-sum "treat missing as 0"
+// checkbox); that settings UI is gone, this is now the fixed set. serviceB always mirrors
+// serviceA's metric name (there's only one metric per sum, see compositeCardLive).
+const COMPOSITE_METRIC_DEFINITIONS: CompositeMetricDefinition[] = [
+  { id: 'free_cash', metricName: 'free_cash', serviceA: 'spread-capture-bot-v3', serviceB: 'spread-capture-bot-v4' },
+  {
+    id: 'estimated_open_positions_value',
+    metricName: 'estimated_open_positions_value',
+    serviceA: 'spread-capture-bot-v3',
+    serviceB: 'spread-capture-bot-v4',
+  },
+  {
+    id: 'estimated_account_value',
+    metricName: 'estimated_account_value',
+    serviceA: 'spread-capture-bot-v3',
+    serviceB: 'spread-capture-bot-v4',
+  },
+  {
+    id: 'orders_buy',
+    metricName: 'orders_buy',
+    serviceA: 'spread-capture-bot-v3',
+    serviceB: 'spread-capture-bot-v4',
+    treatMissingAsZero: true,
+  },
+  {
+    id: 'orders_sell',
+    metricName: 'orders_sell',
+    serviceA: 'spread-capture-bot-v3',
+    serviceB: 'spread-capture-bot-v4',
+  },
+];
+
+// Step correction for money moved in/out of the account that isn't trading P&L (a withdrawal,
+// a deposit) — added to one composite definition's value for every bucket at/after the moment it
+// happened, so the sum keeps reading as if that transfer never occurred. A withdrawal needs a
+// positive delta (compensates the drop), a deposit a negative one. `sinceUnixSeconds` compares
+// directly against MetricPoint.bucket, which is epoch seconds floor-aligned to the selected
+// granularity's step (see metricWindowAt in metrics-granularity.ts) — the same threshold works
+// unchanged across minute/hour/day.
+interface CompositeMetricAdjustment {
+  definitionId: string;
+  sinceUnixSeconds: number;
+  delta: number;
+  note: string;
+}
+
+// Add one entry per real transfer, e.g.:
+// { definitionId: 'estimated_account_value', sinceUnixSeconds: 1735689600, delta: 1000, note: 'Вывод $1000, 2025-01-01' }
+const COMPOSITE_METRIC_ADJUSTMENTS: CompositeMetricAdjustment[] = [];
 
 // The 5-minute view exists only to declutter a compact card, not to change what a
 // metric means (that's still decided by its own `aggregation` for hour/day rollup
@@ -150,7 +199,6 @@ export class MetricsDashboard implements OnInit, AfterViewInit, OnDestroy {
   protected readonly compositeServiceKey = COMPOSITE_SERVICE_KEY;
 
   private readonly metricsSettingsService = inject(MetricsSettingsService);
-  private readonly compositeMetricsSettingsService = inject(CompositeMetricsSettingsService);
   private readonly telemetry = inject(TelemetryService);
 
   private readonly now$$ = signal(Date.now());
@@ -184,7 +232,6 @@ export class MetricsDashboard implements OnInit, AfterViewInit, OnDestroy {
   protected readonly dashboardServiceSelection$$ = this.metricsSettingsService.dashboardServiceSelection$$;
   protected readonly isSavingSettings$$ = this.metricsSettingsService.isSaving$$;
   protected readonly hasUnsavedSettings$$ = this.metricsSettingsService.isDirty$$;
-  protected readonly compositeDefinitions$$ = this.compositeMetricsSettingsService.definitions$$;
   private nowTickIntervalId: ReturnType<typeof setInterval> | null = null;
   private readonly minuteMetricCollapseCache = new MinuteMetricCollapseCache();
   private readonly isPageScrolled$$ = signal(window.scrollY > 0);
@@ -218,10 +265,7 @@ export class MetricsDashboard implements OnInit, AfterViewInit, OnDestroy {
   private readonly expandedPanel$$ = signal<string>(DASHBOARD_PANEL_KEY);
   private readonly isSettingsPanelExpanded$$ = signal(false);
 
-  // Transient — every page load opens with the composite editor collapsed.
-  protected readonly isCompositeSettingsExpanded$$ = signal(false);
-
-  // Transient too — every page load opens with cards in their normal display mode.
+  // Transient — every page load opens with cards in their normal display mode.
   protected readonly isCardEditMode$$ = signal(false);
 
   protected readonly serviceOptions$$ = computed<MetricsServiceOption[]>(() => {
@@ -334,10 +378,14 @@ export class MetricsDashboard implements OnInit, AfterViewInit, OnDestroy {
     const cached = this.cardLiveSignalsCache.get(cacheKey);
     if (cached) return cached;
 
+    const adjustments = COMPOSITE_METRIC_ADJUSTMENTS.filter(
+      (adjustment) => adjustment.definitionId === definition.id,
+    );
     const chartMode = computed(() =>
       this.metricsSettingsService.metricChartMode(definition.serviceA, definition.metricName),
     );
-    // Combines two independent series (A + B) at matching buckets.
+    // Combines two independent series (A + B) at matching buckets, then applies any step
+    // corrections for money transfers at/after their own moment (see COMPOSITE_METRIC_ADJUSTMENTS).
     const points = computed<MetricPoint[]>(() => {
       const granularity = this.selectedGranularity$$();
       const pointsA = this.metricsService.seriesFor(definition.serviceA, definition.metricName, granularity)();
@@ -349,13 +397,19 @@ export class MetricsDashboard implements OnInit, AfterViewInit, OnDestroy {
         : new Set(Array.from(valuesA.keys()).filter((bucket) => valuesB.has(bucket)));
       return Array.from(buckets)
         .sort((left, right) => left - right)
-        .map((bucket) => ({
-          service: COMPOSITE_SERVICE_KEY,
-          name: definition.id,
-          granularity,
-          bucket,
-          value: (valuesA.get(bucket) ?? 0) + (valuesB.get(bucket) ?? 0),
-        }));
+        .map((bucket) => {
+          const adjustment = adjustments.reduce(
+            (sum, entry) => (bucket >= entry.sinceUnixSeconds ? sum + entry.delta : sum),
+            0,
+          );
+          return {
+            service: COMPOSITE_SERVICE_KEY,
+            name: definition.id,
+            granularity,
+            bucket,
+            value: (valuesA.get(bucket) ?? 0) + (valuesB.get(bucket) ?? 0) + adjustment,
+          };
+        });
     });
     const entry = this.buildCardLive(
       cacheKey,
@@ -501,9 +555,9 @@ export class MetricsDashboard implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private compositeCards(): MetricChartCardData[] {
-    return this.compositeDefinitions$$()
-      .map((definition) => this.compositeCardData(definition))
-      .filter((card): card is MetricChartCardData => card !== null);
+    return COMPOSITE_METRIC_DEFINITIONS.map((definition) => this.compositeCardData(definition)).filter(
+      (card): card is MetricChartCardData => card !== null,
+    );
   }
 
   // Only the currently-expanded single-service settings panel needs its full catalog
@@ -976,34 +1030,6 @@ export class MetricsDashboard implements OnInit, AfterViewInit, OnDestroy {
     this.metricsSettingsService.setServiceCustomLabel(service, { long: value });
   }
 
-  protected toggleCompositeSettingsExpanded(): void {
-    this.isCompositeSettingsExpanded$$.update((value) => !value);
-  }
-
-  protected addCompositeDefinition(): void {
-    this.compositeMetricsSettingsService.addDefinition();
-  }
-
-  protected removeCompositeDefinition(id: string): void {
-    this.compositeMetricsSettingsService.removeDefinition(id);
-  }
-
-  protected setCompositeMetricName(id: string, value: string): void {
-    this.compositeMetricsSettingsService.setMetricName(id, value);
-  }
-
-  protected setCompositeServiceA(id: string, value: string): void {
-    this.compositeMetricsSettingsService.setServiceA(id, value);
-  }
-
-  protected setCompositeServiceB(id: string, value: string): void {
-    this.compositeMetricsSettingsService.setServiceB(id, value);
-  }
-
-  protected setCompositeTreatMissingAsZero(id: string, value: boolean): void {
-    this.compositeMetricsSettingsService.setTreatMissingAsZero(id, value);
-  }
-
   private nextDashboardOrder(service: string): number {
     const orders = Object.values(this.dashboardSelection$$()[service] ?? {});
     return orders.length > 0 ? Math.max(...orders) + 1 : 1;
@@ -1046,13 +1072,13 @@ export class MetricsDashboard implements OnInit, AfterViewInit, OnDestroy {
     return DASHBOARD_PANEL_KEY;
   }
 
-  // Union of every metric compositeDefinitions$$ references — the same set
+  // Union of every metric COMPOSITE_METRIC_DEFINITIONS references — the same set
   // whether reached via the Dashboard rows or the standalone composite panel,
   // since composite cards have no per-card dashboard toggle (see the comment
   // on isDashboardEnabled in buildCompositeCard above).
   private compositeScopeEntries(): MetricsScopeEntry[] {
     const namesByService = new Map<string, Set<string>>();
-    for (const definition of this.compositeDefinitions$$()) {
+    for (const definition of COMPOSITE_METRIC_DEFINITIONS) {
       if (!definition.metricName || !definition.serviceA || !definition.serviceB) continue;
       for (const service of [definition.serviceA, definition.serviceB]) {
         const names = namesByService.get(service) ?? new Set<string>();
