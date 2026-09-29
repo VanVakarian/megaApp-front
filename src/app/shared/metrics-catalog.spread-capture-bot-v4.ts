@@ -246,7 +246,39 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
           aggregation: 'sum',
           integerValued: true,
           description:
-            'Сколько раз за эту минуту токен был поставлен на паузу из-за неподтверждённого исхода отмены/замены ордера (биржа не подтвердила отмену, транспортная ошибка) — реальное состояние заявки неизвестно, и бот временно перестаёт трогать этот токен в очередном round-robin проходе до следующего полного обновления account-state. Раньше (до plans/31) этот случай не был виден вообще никак.',
+            'Сколько раз за эту минуту токен был поставлен на паузу из-за неподтверждённого исхода постановки/отмены/замены ордера (нет внятного ответа биржи: обрыв, таймаут, голая 500) — реальное состояние заявки неизвестно, и бот временно перестаёт трогать этот токен в round-robin проходе. Пауза снимается по WS-событию именно об этом ордере либо точечной проверкой на бирже (см. pending_confirmation_resolved_by_check); явный отказ биржи (4xx, 429, 503 с известным телом) паузу не ставит. Сколько токенов на паузе прямо сейчас — pending_confirmation_tokens.',
+        }),
+        metric('pending_confirmation_tokens', {
+          label: 'Tokens Pending Confirmation',
+          color: MetricColor.Amber600,
+          aggregation: 'last',
+          integerValued: true,
+          description:
+            'Сколько токенов прямо сейчас заморожено паузой из-за неизвестного исхода ордера (см. account_state_pending_confirmation_total). В норме единицы; всплеск до сотен и тысяч — массовый сбой биржи (27.09: до ~1000 за минуту), который должен рассосаться за минуты. Если число не падает — пауза не снимается ни WS-событиями, ни точечной проверкой.',
+        }),
+        metric('pending_confirmation_resolved_by_check', {
+          label: 'Pause Resolved By Check',
+          color: MetricColor.Blue600,
+          aggregation: 'sum',
+          integerValued: true,
+          description:
+            'Сколько пауз токенов за эту минуту снято точечной проверкой на бирже (запрос по ID ордера или по токену примерно через 30 секунд после паузы), а не WS-событием. Ноль — норма: WS-событие обычно приходит раньше. Стабильно ненулевое значение значит, что WS-события теряются.',
+        }),
+        metric('pending_confirmation_check_failed', {
+          label: 'Pause Check Failed',
+          color: MetricColor.Red600,
+          aggregation: 'sum',
+          integerValued: true,
+          description:
+            'Сколько точечных проверок токена на паузе за эту минуту не получили ответа от биржи (ошибка или таймаут чтения). Пауза при этом остаётся, проверка повторится через ~30 секунд; при сбое биржи растёт вместе с pending_confirmation_tokens.',
+        }),
+        metric('order_events_unknown_status', {
+          label: 'Order Events: Unknown Status',
+          color: MetricColor.Amber600,
+          aggregation: 'sum',
+          integerValued: true,
+          description:
+            'Сколько WS-событий по ордерам за эту минуту пришло со статусом, которого бот не знает (не LIVE/DELAYED, не MATCHED/INVALID и не CANCELED*). Такое событие ничего не меняет в кэше ордеров; сырой кадр пишется в лог (ws_order_event_unknown_status). Ноль — норма.',
         }),
         metric('ws_user_connected_total', {
           label: 'User WS Connected',
@@ -501,7 +533,7 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
           aggregation: 'last',
           integerValued: true,
           description:
-            'Сколько ордеров (заявок на покупку или продажу) сейчас реально стоит у бота на бирже Polymarket, по данным самой биржи. Это общее число открытых заявок прямо сейчас; разбивка на покупку и продажу — в orders_buy и orders_sell.',
+            'Сколько ордеров (заявок на покупку или продажу) бот сейчас считает открытыми на бирже Polymarket. Это память бота, а не ответ биржи: она меняется по WS-событиям, по точным ответам биржи на постановку/отмену и по точечной проверке; периодический REST-обход её только сверяет (см. orders_audit_extra_in_cache и orders_audit_missing_in_cache). Разбивка на покупку и продажу — в orders_buy и orders_sell.',
         }),
         metric('orders_buy', {
           label: 'Buy Orders',
@@ -592,7 +624,39 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
           aggregation: 'sum',
           integerValued: true,
           description:
-            'Сколько попыток отменить обнаруженный дублирующий ордер биржа не подтвердила (запрос прошёл, но статус остался неясен). Токен в этом случае временно приостанавливается для hot-batch до следующего полного обновления account-state (см. account_state_pending_confirmation_total) — реальное состояние неизвестно, полагаться на локальный кэш нельзя.',
+            'Сколько попыток отменить обнаруженный дублирующий ордер биржа не подтвердила (запрос прошёл, но статус остался неясен). Токен в этом случае временно приостанавливается до WS-события по этому ордеру или точечной проверки на бирже (см. account_state_pending_confirmation_total) — реальное состояние неизвестно, полагаться на локальный кэш нельзя.',
+        }),
+        metric('duplicate_orders_cancel_refused', {
+          label: 'Duplicate Orders Cancel Refused',
+          color: MetricColor.Amber600,
+          aggregation: 'sum',
+          integerValued: true,
+          description:
+            'Сколько попыток отменить дублирующий ордер биржа явно отклонила (HTTP 4xx/429, 503 «cancels are disabled») либо отмена была придержана локальными воротами на время остановки отмен. Это точное «нет»: ордер остался как был, токен не паузится. Дубль будет отменён при ближайшей возможности.',
+        }),
+        metric('duplicate_orders_already_gone', {
+          label: 'Duplicate Orders Already Gone',
+          color: MetricColor.Blue600,
+          aggregation: 'sum',
+          integerValued: true,
+          description:
+            'Сколько «дублей» биржа назвала уже несуществующими («order can\'t be found» — отменён или исполнен раньше). Запись просто убирается из кэша: это была устаревшая запись в памяти бота, а не реальный второй ордер.',
+        }),
+        metric('orders_audit_extra_in_cache', {
+          label: 'Orders Audit: Extra In Cache',
+          color: MetricColor.Amber600,
+          aggregation: 'last',
+          integerValued: true,
+          description:
+            'Итог последнего REST-аудита (раз в 4 часа и после реконнекта WS): сколько ордеров бот держит в памяти всё время обхода, а биржа в списке открытых их не показала. Аудит только сверяет и ничего не меняет. Устойчиво ненулевое значение — потерянные WS-события; такой ордер уйдёт при первой отмене по нему («can\'t be found»).',
+        }),
+        metric('orders_audit_missing_in_cache', {
+          label: 'Orders Audit: Missing In Cache',
+          color: MetricColor.Red600,
+          aggregation: 'last',
+          integerValued: true,
+          description:
+            'Итог последнего REST-аудита: сколько ордеров биржа показала открытыми, а в памяти бота их не было. Ноль — норма. Ненулевое значение — бот не знает о части своих ордеров (потерянное WS-событие или потерянный ответ на постановку); ID-примеры пишутся в лог (orders_audited, missing_sample). Список биржи под нагрузкой отстаёт, поэтому единичные значения — не повод для тревоги.',
         }),
         metric('duplicate_orders_cancel_failed', {
           label: 'Duplicate Orders Cancel Failed',
@@ -647,6 +711,46 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
           integerValued: true,
           description:
             'Сколько заявок на покупку бот в этом цикле отменил полностью, потому что покупать дальше уже не нужно или нельзя — например, нужный размер позиции уже набран, рынок выпал из списка кандидатов или попал в чёрный список. Точная причина — в группе Buy: Reasons.',
+        }),
+        metric('buy_place_refused', {
+          label: 'Buy Place Refused',
+          color: MetricColor.Amber600,
+          aggregation: 'sum',
+          integerValued: true,
+          description:
+            'Сколько раз биржа явно отказала в постановке заявки на покупку (HTTP 4xx/429, 503 с известным телом про остановку торгов) — точное «нет»: ничего не выставлено, токен не паузится и не уходит в backoff, торговля продолжится сразу после сбоя. Отличается от buy_place_not_confirmed, где ответа нет вовсе.',
+        }),
+        metric('buy_place_not_confirmed', {
+          label: 'Buy Place Not Confirmed',
+          color: MetricColor.Red600,
+          aggregation: 'sum',
+          integerValued: true,
+          description:
+            'Сколько раз постановка заявки на покупку закончилась без внятного ответа биржи (обрыв, таймаут, голая 500) — ордер мог быть принят. Токен ставится на паузу до WS-события или точечной проверки на бирже (см. account_state_pending_confirmation_total).',
+        }),
+        metric('buy_cancel_refused', {
+          label: 'Buy Cancel Refused',
+          color: MetricColor.Amber600,
+          aggregation: 'sum',
+          integerValued: true,
+          description:
+            'Сколько раз биржа явно отказала в отмене заявки на покупку, либо отмена была придержана локальными воротами на время «cancels are disabled». Ордер остался как был, токен не паузится.',
+        }),
+        metric('buy_cancel_not_confirmed', {
+          label: 'Buy Cancel Not Confirmed',
+          color: MetricColor.Red600,
+          aggregation: 'sum',
+          integerValued: true,
+          description:
+            'Сколько раз отмена заявки на покупку не получила внятного ответа (обрыв, таймаут, голая 500, отмена не подтверждена по ID) — ордер мог остаться живым. Токен ставится на паузу до WS-события или точечной проверки на бирже.',
+        }),
+        metric('buy_cancel_already_gone', {
+          label: 'Buy Cancel Already Gone',
+          color: MetricColor.Blue600,
+          aggregation: 'sum',
+          integerValued: true,
+          description:
+            'Сколько раз при отмене заявки на покупку биржа ответила «order can\'t be found» — ордер уже отменён или исполнен. Запись убирается из кэша, а замена (если она была) ставится дальше.',
         }),
         metric('buy_backoff_active', {
           label: 'Buy Backoff Active',
@@ -842,6 +946,46 @@ export const SPREAD_CAPTURE_BOT_V4_METRICS_DEFINITION: MetricsServiceDefinition 
           integerValued: true,
           description:
             'Сколько заявок на продажу бот в этом цикле отменил полностью, без переустановки, потому что продавать больше нечего — позиция уже распродана. Это ожидаемое завершение жизненного цикла позиции, а не сбой.',
+        }),
+        metric('sell_place_refused', {
+          label: 'Sell Place Refused',
+          color: MetricColor.Amber600,
+          aggregation: 'sum',
+          integerValued: true,
+          description:
+            'Сколько раз биржа явно отказала в постановке заявки на продажу (HTTP 4xx/429, 503 с известным телом про остановку торгов) — точное «нет»: ничего не выставлено, токен не паузится и не уходит в backoff. Отличается от sell_place_not_confirmed, где ответа нет вовсе.',
+        }),
+        metric('sell_place_not_confirmed', {
+          label: 'Sell Place Not Confirmed',
+          color: MetricColor.Red600,
+          aggregation: 'sum',
+          integerValued: true,
+          description:
+            'Сколько раз постановка заявки на продажу закончилась без внятного ответа биржи (обрыв, таймаут, голая 500) — ордер мог быть принят. Токен ставится на паузу до WS-события или точечной проверки на бирже (см. account_state_pending_confirmation_total).',
+        }),
+        metric('sell_cancel_refused', {
+          label: 'Sell Cancel Refused',
+          color: MetricColor.Amber600,
+          aggregation: 'sum',
+          integerValued: true,
+          description:
+            'Сколько раз биржа явно отказала в отмене заявки на продажу, либо отмена была придержана локальными воротами на время «cancels are disabled». Ордер остался как был, токен не паузится.',
+        }),
+        metric('sell_cancel_not_confirmed', {
+          label: 'Sell Cancel Not Confirmed',
+          color: MetricColor.Red600,
+          aggregation: 'sum',
+          integerValued: true,
+          description:
+            'Сколько раз отмена заявки на продажу не получила внятного ответа (обрыв, таймаут, голая 500, отмена не подтверждена по ID) — ордер мог остаться живым. Токен ставится на паузу до WS-события или точечной проверки на бирже.',
+        }),
+        metric('sell_cancel_already_gone', {
+          label: 'Sell Cancel Already Gone',
+          color: MetricColor.Blue600,
+          aggregation: 'sum',
+          integerValued: true,
+          description:
+            'Сколько раз при отмене заявки на продажу биржа ответила «order can\'t be found» — ордер уже отменён или исполнен (в том числе снят биржей при закрытии рынка). Запись убирается из кэша, а замена (если она была) ставится дальше.',
         }),
         metric('sell_backoff_active', {
           label: 'Sell Backoff Active',
