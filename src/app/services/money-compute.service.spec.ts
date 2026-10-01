@@ -110,6 +110,20 @@ describe('MoneyComputeService.balanceChartData$$', () => {
     ]);
   });
 
+  it('does not move the balance or add months for a zero expense', () => {
+    const service = setup({
+      currencies: [RUB],
+      accounts: [account({ id: 1 })],
+      transactions: [
+        tx({ id: 1, dateISO: '2026-01-10', kind: TransactionKind.INCOME, amount: 1000 }),
+        tx({ id: 2, dateISO: '2026-03-05', kind: TransactionKind.EXPENSE, amount: 0 }),
+      ],
+    });
+    const result = service.balanceChartData$$();
+    expect(result.dates).toEqual(['2026-01-31']);
+    expect(result.totals).toEqual([1000]);
+  });
+
   it('excludes an account whose balance stays zero across every month', () => {
     const service = setup({
       currencies: [RUB],
@@ -225,6 +239,38 @@ describe('MoneyComputeService.expenseChartData$$', () => {
     ]);
   });
 
+  it('ignores a zero expense: no phantom category series and no month row', () => {
+    const categories: Category[] = [{ id: 3, name: 'Еда', categoryType: CategoryType.EXPENSE, parentId: null }];
+    const service = setup({
+      currencies: [RUB],
+      accounts: [account({ id: 1 })],
+      categories,
+      transactions: [
+        tx({ id: 1, dateISO: '2026-01-10', kind: TransactionKind.EXPENSE, amount: 0, categoryId: 3, notes: 'refunded' }),
+      ],
+    });
+    expect(service.expenseChartData$$()).toEqual({ categories: [], monthRows: [] });
+  });
+
+  it('leaves totals untouched when a zero expense sits next to a real one', () => {
+    const categories: Category[] = [{ id: 3, name: 'Еда', categoryType: CategoryType.EXPENSE, parentId: null }];
+    const service = setup({
+      currencies: [RUB],
+      accounts: [account({ id: 1 })],
+      categories,
+      transactions: [
+        tx({ id: 1, dateISO: '2026-01-10', kind: TransactionKind.EXPENSE, amount: 200, categoryId: 3 }),
+        tx({ id: 2, dateISO: '2026-01-11', kind: TransactionKind.EXPENSE, amount: 0, categoryId: 3 }),
+        tx({ id: 3, dateISO: '2026-02-11', kind: TransactionKind.EXPENSE, amount: 0, categoryId: null }),
+      ],
+    });
+    const result = service.expenseChartData$$();
+    expect(result.categories).toEqual([{ id: 3, name: 'Еда' }]);
+    expect(result.monthRows).toEqual([
+      { period: '2026-01', categoryAmounts: { 3: 200 }, total: 200, uncategorizedAmount: 0 },
+    ]);
+  });
+
   it('redirects gift expenses to the "Подарок" category regardless of their original category', () => {
     const categories: Category[] = [
       { id: 1, name: 'Подарок', categoryType: CategoryType.EXPENSE, parentId: null },
@@ -263,6 +309,21 @@ describe('MoneyComputeService.incomeChartData$$', () => {
     const names = result.categorySeries.map((s) => s.categoryName);
     expect(names).toContain('Зарплата');
     expect(names).not.toContain('Возврат долга');
+  });
+
+  it('ignores a zero allow-listed income: no extra month and no extra value', () => {
+    const service = setup({
+      currencies: [RUB],
+      accounts: [account({ id: 1 })],
+      categories: [{ id: 1, name: 'Зарплата', categoryType: CategoryType.INCOME, parentId: null }],
+      transactions: [
+        tx({ id: 1, dateISO: '2026-01-10', kind: TransactionKind.INCOME, amount: 1000, categoryId: 1 }),
+        tx({ id: 2, dateISO: '2026-03-10', kind: TransactionKind.INCOME, amount: 0, categoryId: 1 }),
+      ],
+    });
+    const result = service.incomeChartData$$();
+    expect(result.months).toEqual(['2026-01-31']);
+    expect(result.categorySeries.find((s) => s.categoryName === 'Зарплата')!.values).toEqual([1000]);
   });
 
   it('always includes a Дивиденды series, even when it is all zero', () => {

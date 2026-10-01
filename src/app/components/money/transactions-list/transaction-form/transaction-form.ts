@@ -404,7 +404,7 @@ export class TransactionForm {
 
     const amount = this.parseAmount(this.amount$$());
     const normalizedAmount = amount === null ? null : this.normalizeAmount(amount);
-    return Boolean(this.dateISO$$() && this.accountId$$() && normalizedAmount && normalizedAmount > 0 && this.kind$$());
+    return Boolean(this.dateISO$$() && this.accountId$$() && normalizedAmount !== null && this.kind$$());
   }
 
   protected accountItems(): DropdownItem[] {

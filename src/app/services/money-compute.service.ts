@@ -127,6 +127,8 @@ export class MoneyComputeService {
 
     for (const tx of transactions) {
       const { accountId, amount, kind } = tx;
+      // A zero income/expense (e.g. a refunded order) carries nothing: no balance delta, no phantom chart series.
+      if (amount === 0 && (kind === TransactionKind.INCOME || kind === TransactionKind.EXPENSE)) continue;
       const month = tx.dateISO.substring(0, 7);
 
       const cashDelta = this.getTxCashDelta(tx);
