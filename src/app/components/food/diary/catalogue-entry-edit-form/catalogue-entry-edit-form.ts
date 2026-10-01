@@ -1,11 +1,13 @@
 import { ChangeDetectionStrategy, Component, computed, inject, OnInit, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { AuthService } from '@app/services/auth.service';
 import { FoodAddModalService } from '@app/services/food/food-add-modal.service';
 import { FoodCatalogueService } from '@app/services/food/food-catalogue.service';
 import { NotificationService } from '@app/services/notification.service';
 import { DefaultModal } from '@app/shared/components/default-modal/default-modal';
 import { CatalogueEntry, ProductPreviewData, ProductSaveRequest } from '@app/shared/types';
 import { VButton } from '@ui-kit/components/v-button/v-button';
+import { VCheckbox } from '@ui-kit/components/v-checkbox/v-checkbox';
 import { IconName, VIcon } from '@ui-kit/components/v-icon/v-icon';
 import { VInput } from '@ui-kit/components/v-input/v-input';
 
@@ -23,11 +25,12 @@ const POSITIVE_DECIMAL_PATTERN = /^\d*[.,]?\d*$/;
   selector: 'catalogue-entry-edit-form',
   templateUrl: './catalogue-entry-edit-form.html',
   changeDetection: ChangeDetectionStrategy.Eager,
-  imports: [DefaultModal, ReactiveFormsModule, VButton, VIcon, VInput],
+  imports: [DefaultModal, ReactiveFormsModule, VButton, VCheckbox, VIcon, VInput],
 })
 export class CatalogueEntryEditForm implements OnInit {
   protected readonly Icon = IconName;
 
+  private readonly authService = inject(AuthService);
   private readonly foodAddModalService = inject(FoodAddModalService);
   private readonly foodCatalogueService = inject(FoodCatalogueService);
   private readonly notificationService = inject(NotificationService);
@@ -39,6 +42,12 @@ export class CatalogueEntryEditForm implements OnInit {
   });
 
   protected readonly productToEdit$$ = computed(() => this.foodAddModalService.selectedProduct$$());
+
+  // Only an admin may archive, and only an existing product (a new one starts not archived).
+  protected readonly canEditArchive$$ = computed(
+    () => this.authService.isAdmin$$() && this.mode$$() === this.formMode.Edit,
+  );
+  protected readonly isArchived$$ = signal(false);
 
   protected readonly isLoadingPreview$$ = signal(false);
   protected readonly isSaving$$ = signal(false);
@@ -128,6 +137,7 @@ export class CatalogueEntryEditForm implements OnInit {
       fiber: String(product.fiber),
       description: product.description,
     });
+    this.isArchived$$.set(Boolean(product.archived));
 
     console.log('[CatalogueEditForm] Form values after patching:', this.catalogueEditForm.value);
   }
@@ -197,6 +207,10 @@ export class CatalogueEntryEditForm implements OnInit {
 
       if (mode === this.formMode.Edit && productToEdit) {
         productData.id = productToEdit.id;
+      }
+
+      if (this.canEditArchive$$()) {
+        productData.archived = this.isArchived$$();
       }
 
       const savedProduct = await this.foodCatalogueService.saveProduct(productData);

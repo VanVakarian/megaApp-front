@@ -17,7 +17,8 @@
     </div> -->
 
     @if (error$$()) {
-      <div class="v-theme-transition p-3 text-sm rounded-lg text-[var(--v-color-danger)] bg-[color-mix(in_oklch,var(--v-color-danger)_14%,var(--v-color-surface)_86%)]">
+      <div
+           class="v-theme-transition p-3 text-sm rounded-lg text-[var(--v-color-danger)] bg-[color-mix(in_oklch,var(--v-color-danger)_14%,var(--v-color-surface)_86%)]">
         {{ error$$() }}
       </div>
     }
@@ -66,6 +67,13 @@
                placeholder="Введите описание продукта для улучшения результатов поиска"
                [isTextarea]="true"
                [rows]="3" />
+
+      @if (canEditArchive$$()) {
+        <v-checkbox class="mt-2"
+                    [(value)]="isArchived$$">
+          Архивный
+        </v-checkbox>
+      }
     </div>
 
     <div class="flex justify-between gap-4 mt-0">

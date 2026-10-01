@@ -1,5 +1,6 @@
-import { Injectable, signal, WritableSignal } from '@angular/core';
+import { inject, Injectable, signal, WritableSignal } from '@angular/core';
 import { CatalogueEntry } from '@app/shared/types';
+import { FoodCatalogueService } from './food-catalogue.service';
 
 export const ModalState = {
   CLOSED: 'CLOSED',
@@ -42,6 +43,8 @@ type StateTransitionMap = {
   providedIn: 'root',
 })
 export class FoodAddModalService {
+  private readonly foodCatalogueService = inject(FoodCatalogueService);
+
   public readonly currentState$$: WritableSignal<ModalState> = signal(ModalState.CLOSED);
 
   public readonly searchQuery$$: WritableSignal<string> = signal('');
@@ -134,6 +137,8 @@ export class FoodAddModalService {
         this.searchQuery$$.set('');
         this.selectedProduct$$.set(null);
         this.productSelectionCallback$$.set(null);
+        // The archive search mode lasts for one modal session, so a modal opened later never starts in it.
+        this.foodCatalogueService.setArchiveSearch(false);
         break;
     }
   }

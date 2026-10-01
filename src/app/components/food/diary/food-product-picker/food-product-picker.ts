@@ -10,6 +10,7 @@ import {
   output,
   signal,
 } from '@angular/core';
+import { AuthService } from '@app/services/auth.service';
 import { DeviceInfoService } from '@app/services/device-info.service';
 import { FoodCatalogueService } from '@app/services/food/food-catalogue.service';
 import { ANIMATION_CLASSES } from '@app/shared/animations';
@@ -39,6 +40,7 @@ export interface ProductPickerSelection {
 export class FoodProductPicker {
   public readonly query = model<string>('');
   public readonly allowCreateNewProduct = input<boolean>(true);
+  public readonly allowArchiveSearch = input<boolean>(false);
 
   public readonly productSelected = output<ProductPickerSelection>();
   public readonly createNewProductRequested = output<void>();
@@ -48,6 +50,10 @@ export class FoodProductPicker {
   protected readonly AnimationClass = ANIMATION_CLASSES;
   protected readonly deviceInfoService = inject(DeviceInfoService);
   protected readonly isLegacySearch$$ = computed(() => this.foodCatalogueService.isLegacySearch$$());
+  protected readonly isArchiveSearch$$ = computed(() => this.foodCatalogueService.isArchiveSearch$$());
+  protected readonly isArchiveSearchAvailable$$ = computed(
+    () => this.allowArchiveSearch() && this.authService.isAdmin$$(),
+  );
   protected readonly searchResults$$ = computed(() =>
     this.isLegacySearch$$()
       ? this.foodCatalogueService.legacySearchResults$$()
@@ -55,10 +61,12 @@ export class FoodProductPicker {
   );
   protected readonly extractedWeight$$ = signal<number | null>(null);
 
+  private readonly authService = inject(AuthService);
   private readonly foodCatalogueService = inject(FoodCatalogueService);
   private readonly searchEffect$$ = effect(() => {
     const query = this.query();
     const isLegacy = this.isLegacySearch$$();
+    this.isArchiveSearch$$(); // read to re-run the search when the archive mode is switched
 
     if (query && query.trim()) {
       const { text, weight } = this.parseQuery(query);
@@ -81,7 +89,11 @@ export class FoodProductPicker {
   }
 
   protected toggleLegacySearch(): void {
-    this.foodCatalogueService.isLegacySearch$$.update((val) => !val);
+    this.foodCatalogueService.toggleLegacySearch();
+  }
+
+  protected toggleArchiveSearch(): void {
+    this.foodCatalogueService.toggleArchiveSearch();
   }
 
   protected onClearClick(): void {

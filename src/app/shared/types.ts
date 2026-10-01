@@ -129,6 +129,7 @@ export interface BodyWeightUpdatedWsMessage {
 export interface SearchQueryWsMessage {
   type: typeof WebSocketMessageType.SEARCH_QUERY;
   query: string;
+  archived: boolean;
   sequenceNumber: number;
 }
 
@@ -136,6 +137,8 @@ export interface SearchResultsWsMessage {
   type: typeof WebSocketMessageType.SEARCH_RESULTS;
   payload: {
     query: string;
+    // The mode the server actually applied: an archive request from a non-admin is answered as normal.
+    archived?: boolean;
     catalogueIds: number[];
     timestamp: number;
     sequenceNumber: number;
@@ -353,6 +356,8 @@ export interface ProductSaveRequest {
   carbs: number;
   fiber: number;
   description: string;
+  // Sent only by an admin editing an existing product; the server rejects anyone else who sends it.
+  archived?: boolean;
 }
 
 export interface ServerResponseProductSave extends ServerResponseBasic {
@@ -429,6 +434,7 @@ export interface DiarySegment {
 
 export interface DiaryEntryWithFullData extends DiaryEntry {
   foodName: string;
+  isFoodArchived: boolean;
   foodKcals: number;
   foodPercent: string;
   foodKcalPercentageOfDaysNorm: number;
@@ -482,6 +488,8 @@ export interface CatalogueEntry {
   carbs: number;
   fiber: number;
   description: string;
+  // Absent in a catalogue cached before the archive feature — treated as not archived.
+  archived?: boolean;
   imageVersion?: number;
   canDelete?: boolean;
 }

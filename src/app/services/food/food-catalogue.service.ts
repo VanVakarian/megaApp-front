@@ -47,6 +47,11 @@ export class FoodCatalogueService extends BaseFoodService {
   public readonly isLegacySearch$$: WritableSignal<boolean> = signal(false);
   public readonly legacySearchResults$$: WritableSignal<CatalogueEntry[]> = signal([]);
 
+  // Admin-only search mode that lists archived products instead of the regular ones. Changed only
+  // through setArchiveSearch, which keeps results of one mode from showing under the other.
+  private readonly archiveSearch$$: WritableSignal<boolean> = signal(false);
+  public readonly isArchiveSearch$$ = this.archiveSearch$$.asReadonly();
+
   private searchCache: Record<string, number[]> = {};
   private searchSequenceNumber: number = 0;
   private lastDisplayedSequenceNumber: number = 0;
@@ -85,6 +90,7 @@ export class FoodCatalogueService extends BaseFoodService {
     this.searchResults$$.set([]);
     this.isLegacySearch$$.set(false);
     this.legacySearchResults$$.set([]);
+    this.archiveSearch$$.set(false);
     this.searchCache = {};
     this.searchSequenceNumber = 0;
     this.lastDisplayedSequenceNumber = 0;
@@ -134,6 +140,23 @@ export class FoodCatalogueService extends BaseFoodService {
     this.localStorageService.setUserScoped(this.CATALOGUE_VERSION_STORAGE_KEY, version);
   }
 
+  // The legacy (local) and archive (server) searches exclude each other.
+  public toggleLegacySearch(): void {
+    this.setArchiveSearch(false);
+    this.isLegacySearch$$.update((isLegacy) => !isLegacy);
+  }
+
+  public toggleArchiveSearch(): void {
+    this.isLegacySearch$$.set(false);
+    this.setArchiveSearch(!this.archiveSearch$$());
+  }
+
+  public setArchiveSearch(isArchive: boolean): void {
+    if (this.archiveSearch$$() === isArchive) return;
+    this.archiveSearch$$.set(isArchive);
+    this.searchResults$$.set([]);
+  }
+
   public searchProducts(query: string): void {
     this.searchQuery$$.set(query);
 
@@ -147,7 +170,8 @@ export class FoodCatalogueService extends BaseFoodService {
     this.searchSequenceNumber++;
     this.searchStartedAt = performance.now();
 
-    const cachedIds = this.getSearchCachedResults(query);
+    // Archive searches are rare: their results are neither read from nor written to the cache.
+    const cachedIds = this.archiveSearch$$() ? null : this.getSearchCachedResults(query);
     if (cachedIds) {
       this.displaySearchResults(cachedIds);
       this.lastDisplayedSequenceNumber = this.searchSequenceNumber;
@@ -184,6 +208,7 @@ export class FoodCatalogueService extends BaseFoodService {
     const allEntries = Object.values(catalogue);
 
     const results = allEntries.filter((food) => {
+      if (food.archived) return false;
       const legacyNameLower = food.legacyName?.toLowerCase() || '';
       return (
         searchTerms.every((term) => legacyNameLower.includes(term)) ||
@@ -212,6 +237,7 @@ export class FoodCatalogueService extends BaseFoodService {
     const message: SearchQueryWsMessage = {
       type: WebSocketMessageType.SEARCH_QUERY,
       query: query,
+      archived: this.archiveSearch$$(),
       sequenceNumber: sequenceNumber,
     };
     this.networkService.sendMessage(message);
@@ -268,18 +294,23 @@ export class FoodCatalogueService extends BaseFoodService {
     const results = msg.payload.catalogueIds;
     const queryFromMessage = msg.payload.query;
     const sequenceFromMessage = msg.payload.sequenceNumber;
+    // The reply belongs to the mode the server applied, which can differ from the one on screen:
+    // the user may have switched meanwhile, or the server may have fallen back to normal.
+    const isArchiveReply = msg.payload.archived === true;
 
     if (!queryFromMessage || !Array.isArray(results)) {
       return;
     }
 
-    const cacheKey = queryFromMessage;
-    const cachedIds = this.getSearchCachedResults(cacheKey);
+    const cachedIds = isArchiveReply ? null : this.getSearchCachedResults(queryFromMessage);
+    const isChanged = !cachedIds || !this.arraysEqual(cachedIds, results);
 
-    if (!cachedIds || !this.arraysEqual(cachedIds, results)) {
-      this.setSearchCachedResults(cacheKey, results);
+    if (isChanged) {
+      if (!isArchiveReply) {
+        this.setSearchCachedResults(queryFromMessage, results);
+      }
 
-      if (sequenceFromMessage > this.lastDisplayedSequenceNumber) {
+      if (isArchiveReply === this.archiveSearch$$() && sequenceFromMessage > this.lastDisplayedSequenceNumber) {
         this.displaySearchResults(results);
         this.lastDisplayedSequenceNumber = sequenceFromMessage;
       }
@@ -338,8 +369,14 @@ export class FoodCatalogueService extends BaseFoodService {
       return;
     }
 
-    const results = ids.map((id) => catalogue[id]).filter(Boolean);
+    // Single place that applies the mode: it also drops ids from a stale cache, so the cache
+    // itself never needs cleaning when a product is archived or restored.
+    const results = ids.map((id) => catalogue[id]).filter((entry) => entry && this.matchesSearchMode(entry));
     this.searchResults$$.set(results);
+  }
+
+  private matchesSearchMode(entry: CatalogueEntry): boolean {
+    return Boolean(entry.archived) === this.archiveSearch$$();
   }
 
   private arraysEqual(a: number[], b: number[]): boolean {
@@ -487,8 +524,13 @@ export class FoodCatalogueService extends BaseFoodService {
     this.catalogue$$.set(updatedCatalogue);
     this.saveToLocalStorage(updatedCatalogue);
 
-    this.searchResults$$.update((results) => results.map((item) => (item.id === entry.id ? entry : item)));
-    this.legacySearchResults$$.update((results) => results.map((item) => (item.id === entry.id ? entry : item)));
+    // A product whose archive flag changed no longer belongs to the results of the current mode.
+    this.searchResults$$.update((results) =>
+      results.map((item) => (item.id === entry.id ? entry : item)).filter((item) => this.matchesSearchMode(item)),
+    );
+    this.legacySearchResults$$.update((results) =>
+      results.map((item) => (item.id === entry.id ? entry : item)).filter((item) => !item.archived),
+    );
   }
 
   private removeCatalogueEntry(catalogueId: number): void {

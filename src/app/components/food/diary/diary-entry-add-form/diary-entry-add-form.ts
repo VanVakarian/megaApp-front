@@ -41,6 +41,10 @@ export class DiaryEntryAddForm implements AfterViewInit, OnDestroy {
     () => `${this.projectedSelectedDaysConsumedPercentPadded$$()}%`,
   );
 
+  protected readonly isProductArchived$$ = computed(() =>
+    Boolean(this.foodAddModalService.selectedProduct$$()?.archived),
+  );
+
   protected readonly foodWeightInput = viewChild.required(VInput);
 
   protected readonly foodCatalogueService = inject(FoodCatalogueService);
@@ -81,7 +85,7 @@ export class DiaryEntryAddForm implements AfterViewInit, OnDestroy {
   }
 
   protected async submitForm(): Promise<void> {
-    if (!this.diaryEntryForm.valid) return;
+    if (!this.diaryEntryForm.valid || this.isProductArchived$$()) return;
 
     this.diaryEntryForm.disable();
     const { foodWeight } = this.diaryEntryForm.value;
