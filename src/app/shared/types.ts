@@ -234,7 +234,8 @@ export interface MetricsUnsubscribeWsMessage {
 
 //                                                                     TELEMETRY
 
-// Single unified shape for performance/error/log events sent to POST /api/telemetry/events.
+// Single unified shape for performance/error/log events, queued here and sent to the `telemetry` source of
+// the backend's event intake (POST /api/ingest/telemetry, see IngestRequest).
 // No discriminant field: the event's kind is read off the `operation` namespace prefix
 // (`app.*`/`money.*`/... for performance, `error.*` for errors, `log.*` for structured logs).
 export interface TelemetryEvent {
@@ -268,9 +269,27 @@ export interface TelemetryEvent {
   };
 }
 
-export interface TelemetryEventsRequest {
-  events: TelemetryEvent[];
+// The backend's event-intake contract (backend plan 42): the same envelope for every source.
+// `id` is stable across retries of the same event (the server does not deduplicate), `stream` is a short
+// lowercase label the server can filter by, `at` is Unix milliseconds, `data` is the client's own object.
+export interface IngestEvent {
+  id: string;
+  stream: string;
+  at: number;
+  data: Record<string, unknown>;
+}
+
+export interface IngestRequest {
+  events: IngestEvent[];
+  // events lost on this side (queue overflow) before this batch
   dropped: number;
+}
+
+// 200 means the request was processed; individual events may still be rejected, by index.
+export interface IngestResponse {
+  received: number;
+  stored: number;
+  rejected: { index: number; code: string; message: string }[];
 }
 
 export interface SettingsUpdatedWsMessage {
