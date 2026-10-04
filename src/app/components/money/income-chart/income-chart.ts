@@ -12,16 +12,12 @@ import {
   viewChild,
 } from '@angular/core';
 import { ChartThemeService } from '@app/services/chart-theme.service';
+import { MoneyComputeService } from '@app/services/money-compute.service';
 import { MoneyService } from '@app/services/money.service';
 import { TelemetryService } from '@app/services/telemetry.service';
-import { CATEGORY_DIM_ALPHA } from '@app/shared/categorical-palette';
+import { CATEGORY_DIM_ALPHA, hueToColor } from '@app/shared/categorical-palette';
 import { createCategoryHoverHighlight } from '@app/shared/category-hover-highlight';
-import {
-  ChartColors,
-  createIncomeChartConfig,
-  formatMonthYearLabel,
-  incomeCategoricalPalette,
-} from '@app/shared/chart-config';
+import { ChartColors, createIncomeChartConfig, formatMonthYearLabel } from '@app/shared/chart-config';
 import { IncomeChartCategorySeries, IncomeChartData } from '@app/shared/types';
 import { VButton } from '@ui-kit/components/v-button/v-button';
 import { VCheckbox } from '@ui-kit/components/v-checkbox/v-checkbox';
@@ -52,11 +48,12 @@ export class IncomeChart implements AfterViewInit, OnDestroy {
 
   protected readonly chartCanvas = viewChild.required<ElementRef<HTMLCanvasElement>>('chartCanvas');
   protected readonly chart$$ = signal<Chart | null>(null);
-  protected readonly disabledCategoryIds$$ = computed(() => this.moneyService.disabledIncomeCategoryIds$$());
+  protected readonly enabledIds$$ = computed(() => this.moneyService.enabledIncomeSeriesIds$$());
   protected readonly yearlyMode$$ = computed(() => this.moneyService.yearlyMode$$());
 
   private readonly chartThemeService = inject(ChartThemeService);
   private readonly moneyService = inject(MoneyService);
+  private readonly moneyComputeService = inject(MoneyComputeService);
   private readonly telemetry = inject(TelemetryService);
   // Chart.js caches a scale's resolved grid/border/ticks color internally — mutating
   // chart.data and calling chart.update('none') doesn't reliably repaint it after a theme
@@ -77,8 +74,8 @@ export class IncomeChart implements AfterViewInit, OnDestroy {
 
   protected readonly activeCategorySeries$$ = computed(() => {
     const series = this.dataInput().categorySeries;
-    const disabled = this.disabledCategoryIds$$();
-    return series.filter((s) => !disabled.has(s.categoryId));
+    const enabled = this.enabledIds$$();
+    return series.filter((s) => enabled.has(s.categoryId));
   });
 
   private readonly chartUpdateEffect = effect(() => {
@@ -86,6 +83,7 @@ export class IncomeChart implements AfterViewInit, OnDestroy {
     const activeSeries = this.activeCategorySeries$$();
     const yearly = this.yearlyMode$$();
     const monthRange = this.monthRangeInput();
+    const hues = this.moneyComputeService.incomeSeriesHues$$();
     // Dataset colors here are category-identity colors, not theme colors — colors$$ is only
     // needed to detect a theme switch and recreate the chart so its grid/tick colors repaint.
     const colors = this.chartThemeService.colors$$();
@@ -100,7 +98,7 @@ export class IncomeChart implements AfterViewInit, OnDestroy {
         }
         this.lastColors = colors;
         if (!chart) return;
-        this.rebuildChartDatasets(chart, data, activeSeries, yearly, monthRange, colors);
+        this.rebuildChartDatasets(chart, data, activeSeries, yearly, monthRange, colors, hues);
       },
       () => ({ months: data.months.length, series: activeSeries.length, yearly }),
     );
@@ -195,35 +193,30 @@ export class IncomeChart implements AfterViewInit, OnDestroy {
   }
 
   protected readonly allEnabled$$ = computed(() => {
-    const series = this.dataInput().categorySeries;
-    const disabled = this.disabledCategoryIds$$();
-    return series.every((s) => !disabled.has(s.categoryId));
+    const enabled = this.enabledIds$$();
+    return this.dataInput().categorySeries.every((s) => enabled.has(s.categoryId));
   });
 
   protected readonly allNoneLabel$$ = computed(() => (this.allEnabled$$() ? 'None' : 'All'));
 
   protected toggleAll(): void {
-    const series = this.dataInput().categorySeries;
-    if (this.allEnabled$$()) {
-      this.moneyService.setDisabledIncomeCategoryIds(new Set(series.map((s) => s.categoryId)));
-    } else {
-      this.moneyService.setDisabledIncomeCategoryIds(new Set());
-    }
+    this.moneyService.setEnabledIncomeSeriesIds(
+      this.allEnabled$$() ? new Set() : new Set(this.dataInput().categorySeries.map((s) => s.categoryId)),
+    );
   }
 
-  protected toggleCategory(categoryId: number | null, checked: boolean): void {
-    const current = this.disabledCategoryIds$$();
-    const updated = new Set(current);
+  protected toggleCategory(categoryId: number, checked: boolean): void {
+    const updated = new Set(this.enabledIds$$());
     if (checked) {
-      updated.delete(categoryId);
-    } else {
       updated.add(categoryId);
+    } else {
+      updated.delete(categoryId);
     }
-    this.moneyService.setDisabledIncomeCategoryIds(updated);
+    this.moneyService.setEnabledIncomeSeriesIds(updated);
   }
 
-  protected isCategoryEnabled(categoryId: number | null): boolean {
-    return !this.disabledCategoryIds$$().has(categoryId);
+  protected isCategoryEnabled(categoryId: number): boolean {
+    return this.enabledIds$$().has(categoryId);
   }
 
   protected onCategoryMouseEnter(categoryName: string): void {
@@ -234,10 +227,9 @@ export class IncomeChart implements AfterViewInit, OnDestroy {
     this.hoveredCategoryName$$.set(null);
   }
 
-  protected getCategoryColor(categoryId: number | null): string {
-    const series = this.dataInput().categorySeries.find((s) => s.categoryId === categoryId);
-    return incomeCategoricalPalette.getColor(
-      series?.categoryName ?? String(categoryId),
+  protected getCategoryColor(categoryId: number): string {
+    return hueToColor(
+      this.moneyComputeService.incomeSeriesHues$$().get(categoryId) ?? 0,
       this.chartThemeService.colors$$(),
     );
   }
@@ -249,6 +241,7 @@ export class IncomeChart implements AfterViewInit, OnDestroy {
     yearly: boolean,
     monthRange: [string, string] | null,
     colors: ChartColors,
+    hues: ReadonlyMap<number, number>,
   ): void {
     const effectiveData: IncomeChartData =
       !yearly && monthRange !== null
@@ -269,7 +262,7 @@ export class IncomeChart implements AfterViewInit, OnDestroy {
           })()
         : data;
     let labels: string[];
-    let yearlyValues: Map<number | null, number[]> | null = null;
+    let yearlyValues: Map<number, number[]> | null = null;
 
     if (yearly) {
       const yearLabels: string[] = [];
@@ -312,8 +305,9 @@ export class IncomeChart implements AfterViewInit, OnDestroy {
       : () => '';
 
     const datasets: ChartDataset<'bar'>[] = activeSeries.map((series) => {
-      const color = incomeCategoricalPalette.getColor(series.categoryName, colors);
-      const dimColor = incomeCategoricalPalette.getColor(series.categoryName, colors, CATEGORY_DIM_ALPHA);
+      const hue = hues.get(series.categoryId) ?? 0;
+      const color = hueToColor(hue, colors);
+      const dimColor = hueToColor(hue, colors, CATEGORY_DIM_ALPHA);
       const resolveColor = () => {
         const hovered = this.hoveredCategoryName$$();
         return hovered === null || hovered === series.categoryName ? color : dimColor;

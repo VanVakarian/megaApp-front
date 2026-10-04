@@ -663,6 +663,10 @@ export interface Category {
   name: string;
   parentId?: number | null;
   categoryType: CategoryType;
+  // Chart-related properties. Optional only because a snapshot cached before they existed lacks
+  // them (read as: shown on charts, automatic color).
+  hiddenOnCharts?: boolean;
+  hue?: number | null;
 }
 
 export const AccountKind = {
@@ -721,20 +725,6 @@ export const TransactionKind = {
 
 export type TransactionKind = (typeof TransactionKind)[keyof typeof TransactionKind];
 
-export interface InvestAssetTrade {
-  id: number;
-  dateISO: string;
-  accountId: number;
-  amount: number;
-  kind: typeof TransactionKind.INVEST_BUY | typeof TransactionKind.INVEST_SELL;
-  notes?: string | null;
-  detailsJSON?: any;
-  assetId?: number | null;
-  assetTitle?: string | null;
-  assetTicker?: string | null;
-  assetType?: AssetType | null;
-}
-
 export interface Transaction {
   id?: number;
   dateISO: string;
@@ -770,7 +760,8 @@ export interface BalanceChartData {
 }
 
 export interface IncomeChartCategorySeries {
-  categoryId: number | null;
+  // Series id: a category id, or a negative virtual series id (see money-series.ts).
+  categoryId: number;
   categoryName: string;
   values: number[];
 }
@@ -778,15 +769,6 @@ export interface IncomeChartCategorySeries {
 export interface DividendRow {
   dateISO: string;
   amount: number;
-}
-
-export interface PositionLotRow {
-  status: 'closed' | 'open';
-  assetType: AssetType | null;
-  buyDateISO: string;
-  sellDateISO: string | null;
-  pnl: number | null;
-  openMonths: string[];
 }
 
 export interface IncomeChartData {

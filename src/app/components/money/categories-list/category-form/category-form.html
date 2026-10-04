@@ -12,6 +12,7 @@
                 [placeholder]="'Select type'"
                 [items]="categoryTypeItems()"
                 [isRequired]="true"
+                [isDisabled]="isTypeLocked$$()"
                 [ngModel]="categoryType$$()"
                 (ngModelChange)="categoryType$$.set($event); onCategoryTypeChange()"></v-dropdown>
 
@@ -21,6 +22,37 @@
                 [items]="parentCategoryItems()"
                 [ngModel]="parentId$$()"
                 (ngModelChange)="parentId$$.set($event)"></v-dropdown>
+  </div>
+
+  <v-checkbox [value]="hiddenOnCharts$$()"
+              [size]="5"
+              [gap]="2"
+              [checkIconSize]="4"
+              (onChanged)="hiddenOnCharts$$.set($event)">
+    <span class="text-sm">Hide on charts</span>
+  </v-checkbox>
+
+  <div class="flex flex-col gap-2">
+    <div class="flex items-center justify-between">
+      <span class="text-sm text-gray-400">Chart color</span>
+      <div class="flex items-center gap-2">
+        @if (hueSwatchColor$$(); as swatchColor) {
+          <span class="inline-block w-4 h-4 rounded-sm"
+                [style.background]="swatchColor"></span>
+        }
+        <v-button surface="flat"
+                  [class.v-primary]="hue$$() === null"
+                  [padding]="1"
+                  (onClick)="hue$$.set(null)">Auto</v-button>
+      </div>
+    </div>
+    <v-slider [min]="0"
+              [max]="360"
+              [value]="hue$$() ?? 0"
+              [trackColor]="hueTrackGradient$$()"
+              fillColor="transparent"
+              [style.opacity]="hue$$() === null ? 0.5 : 1"
+              (valueChange)="onHueChange($event)" />
   </div>
 
   <div class="flex justify-end gap-2">

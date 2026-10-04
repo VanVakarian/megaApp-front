@@ -1,5 +1,6 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { EXPENSE_VIRTUAL_SERIES, INCOME_VIRTUAL_SERIES } from '@app/shared/money-series';
 import {
   Account,
   AccountKind,
@@ -8,7 +9,6 @@ import {
   Category,
   CategoryType,
   Currency,
-  InvestAssetTrade,
   SymbolPosition,
   Transaction,
   TransactionKind,
@@ -24,7 +24,6 @@ interface MoneyServiceFakeInput {
   currencies?: Currency[];
   categories?: Category[];
   assets?: Asset[];
-  investAssetTrades?: InvestAssetTrade[];
   displayCurrency?: string;
   rates?: Record<string, number> | null;
 }
@@ -36,7 +35,6 @@ function createMoneyServiceFake(input: MoneyServiceFakeInput = {}) {
     currencies$$: signal(input.currencies ?? []),
     categories$$: signal(input.categories ?? []),
     assets$$: signal(input.assets ?? []),
-    investAssetTrades$$: signal(input.investAssetTrades ?? []),
     displayCurrency$$: signal(input.displayCurrency ?? 'RUB'),
     getRatesForDate: (_dateISO: string) => input.rates ?? null,
   };
@@ -217,9 +215,9 @@ describe('MoneyComputeService.expenseChartData$$', () => {
     ]);
   });
 
-  it('excludes an entire category subtree rooted at an excluded name (e.g. Налог)', () => {
+  it('leaves out a category hidden on charts, without hiding its subcategories', () => {
     const categories: Category[] = [
-      { id: 1, name: 'Налог', categoryType: CategoryType.EXPENSE, parentId: null },
+      { id: 1, name: 'Налог', categoryType: CategoryType.EXPENSE, parentId: null, hiddenOnCharts: true },
       { id: 2, name: 'НДФЛ', categoryType: CategoryType.EXPENSE, parentId: 1 },
       { id: 3, name: 'Еда', categoryType: CategoryType.EXPENSE, parentId: null },
     ];
@@ -228,14 +226,18 @@ describe('MoneyComputeService.expenseChartData$$', () => {
       accounts: [account({ id: 1 })],
       categories,
       transactions: [
-        tx({ id: 1, dateISO: '2026-01-10', kind: TransactionKind.EXPENSE, amount: 500, categoryId: 2 }),
+        tx({ id: 1, dateISO: '2026-01-10', kind: TransactionKind.EXPENSE, amount: 500, categoryId: 1 }),
         tx({ id: 2, dateISO: '2026-01-11', kind: TransactionKind.EXPENSE, amount: 200, categoryId: 3 }),
+        tx({ id: 3, dateISO: '2026-01-12', kind: TransactionKind.EXPENSE, amount: 70, categoryId: 2 }),
       ],
     });
     const result = service.expenseChartData$$();
-    expect(result.categories).toEqual([{ id: 3, name: 'Еда' }]);
+    expect(result.categories).toEqual([
+      { id: 3, name: 'Еда' },
+      { id: 2, name: 'НДФЛ' },
+    ]);
     expect(result.monthRows).toEqual([
-      { period: '2026-01', categoryAmounts: { 3: 200 }, total: 200, uncategorizedAmount: 0 },
+      { period: '2026-01', categoryAmounts: { 2: 70, 3: 200 }, total: 270, uncategorizedAmount: 0 },
     ]);
   });
 
@@ -288,13 +290,47 @@ describe('MoneyComputeService.expenseChartData$$', () => {
     expect(result.categories).toEqual([{ id: 1, name: 'Подарок' }]);
     expect(result.monthRows[0].categoryAmounts).toEqual({ 1: 300 });
   });
+
+  it('keeps a gift expense in its own category when there is no "Подарок" category', () => {
+    const service = setup({
+      currencies: [RUB],
+      accounts: [account({ id: 1 })],
+      categories: [
+        { id: 1, name: 'Развлечения', categoryType: CategoryType.EXPENSE, parentId: null },
+        { id: 2, name: 'Еда', categoryType: CategoryType.EXPENSE, parentId: null },
+      ],
+      transactions: [
+        tx({ id: 1, dateISO: '2026-01-10', kind: TransactionKind.EXPENSE, amount: 300, categoryId: 2, isGift: true }),
+      ],
+    });
+    expect(service.expenseChartData$$().monthRows[0].categoryAmounts).toEqual({ 2: 300 });
+  });
+});
+
+describe('MoneyComputeService series hues', () => {
+  it('keeps a category hue as chosen and gives every other series a distinct automatic one', () => {
+    const service = setup({
+      categories: [
+        { id: 1, name: 'Еда', categoryType: CategoryType.EXPENSE, hue: 142 },
+        { id: 2, name: 'Связь', categoryType: CategoryType.EXPENSE, hue: null },
+        { id: 3, name: 'Зарплата', categoryType: CategoryType.INCOME },
+      ],
+    });
+    const expenseHues = service.expenseSeriesHues$$();
+    expect(expenseHues.get(1)).toBe(142);
+    expect(expenseHues.has(2)).toBe(true);
+    expect(expenseHues.has(EXPENSE_VIRTUAL_SERIES.UNCATEGORIZED)).toBe(true);
+    expect(expenseHues.has(3)).toBe(false);
+    expect(service.incomeSeriesHues$$().has(3)).toBe(true);
+    expect(service.incomeSeriesHues$$().has(INCOME_VIRTUAL_SERIES.DIVIDENDS)).toBe(true);
+  });
 });
 
 describe('MoneyComputeService.incomeChartData$$', () => {
-  it('only includes income categories on the allow-list', () => {
+  it('leaves out income categories hidden on charts, gift incomes and incomes without a category', () => {
     const categories: Category[] = [
       { id: 1, name: 'Зарплата', categoryType: CategoryType.INCOME, parentId: null },
-      { id: 2, name: 'Возврат долга', categoryType: CategoryType.INCOME, parentId: null },
+      { id: 2, name: 'Возврат долга', categoryType: CategoryType.INCOME, parentId: null, hiddenOnCharts: true },
     ];
     const service = setup({
       currencies: [RUB],
@@ -303,12 +339,28 @@ describe('MoneyComputeService.incomeChartData$$', () => {
       transactions: [
         tx({ id: 1, dateISO: '2026-01-10', kind: TransactionKind.INCOME, amount: 1000, categoryId: 1 }),
         tx({ id: 2, dateISO: '2026-01-11', kind: TransactionKind.INCOME, amount: 500, categoryId: 2 }),
+        tx({ id: 3, dateISO: '2026-01-12', kind: TransactionKind.INCOME, amount: 300, categoryId: 1, isGift: true }),
+        tx({ id: 4, dateISO: '2026-01-13', kind: TransactionKind.INCOME, amount: 200, categoryId: null }),
       ],
     });
     const result = service.incomeChartData$$();
     const names = result.categorySeries.map((s) => s.categoryName);
     expect(names).toContain('Зарплата');
     expect(names).not.toContain('Возврат долга');
+    expect(result.categorySeries.find((s) => s.categoryName === 'Зарплата')!.values).toEqual([1000]);
+  });
+
+  it('puts dividends into the Дивиденды series', () => {
+    const service = setup({
+      currencies: [RUB],
+      accounts: [account({ id: 1 })],
+      transactions: [
+        tx({ id: 1, dateISO: '2026-01-10', kind: TransactionKind.INVEST_DIVIDEND, amount: 15 }),
+        tx({ id: 2, dateISO: '2026-02-10', kind: TransactionKind.INVEST_DIVIDEND, amount: 25 }),
+      ],
+    });
+    const result = service.incomeChartData$$();
+    expect(result.categorySeries.find((s) => s.categoryName === 'Дивиденды')!.values).toEqual([15, 25]);
   });
 
   it('ignores a zero allow-listed income: no extra month and no extra value', () => {
@@ -343,40 +395,29 @@ describe('MoneyComputeService.incomeChartData$$', () => {
     const service = setup({
       currencies: [RUB],
       accounts: [account({ id: 1, kind: AccountKind.BROKERAGE })],
-      investAssetTrades: [
-        {
+      assets: [{ id: 10, title: 'Actual', ticker: 'ACT', type: AssetType.STOCK, accountIds: [1] }],
+      transactions: [
+        tx({
           id: 1,
           dateISO: '2026-01-05',
-          accountId: 1,
           amount: 1000,
           kind: TransactionKind.INVEST_BUY,
-          assetId: 10,
-          assetTicker: 'ACT',
-          assetType: AssetType.STOCK,
           detailsJSON: { assetId: 10, quantity: 10 },
-        },
-        {
+        }),
+        tx({
           id: 2,
           dateISO: '2026-02-05',
-          accountId: 1,
           amount: 1200,
           kind: TransactionKind.INVEST_BUY,
-          assetId: 10,
-          assetTicker: 'ACT',
-          assetType: AssetType.STOCK,
           detailsJSON: { assetId: 10, quantity: 10 },
-        },
-        {
+        }),
+        tx({
           id: 3,
           dateISO: '2026-03-05',
-          accountId: 1,
           amount: 1800,
           kind: TransactionKind.INVEST_SELL,
-          assetId: 10,
-          assetTicker: 'ACT',
-          assetType: AssetType.STOCK,
           detailsJSON: { assetId: 10, quantity: 15 },
-        },
+        }),
       ],
     });
     const result = service.incomeChartData$$();

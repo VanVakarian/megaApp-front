@@ -19,6 +19,10 @@ const STATUS_EXCLUDED_HUE_RANGES: readonly [number, number][] = [
 // unique against the rest of the chart.
 const PIN_EXCLUSION_RADIUS_DEG = 35;
 
+// The golden-angle scan lands within ~1deg of any point after this many steps, so if none of them
+// is allowed, no hue is.
+const MAX_AUTO_HUE_ATTEMPTS = 360;
+
 function isStatusExcluded(hue: number): boolean {
   return STATUS_EXCLUDED_HUE_RANGES.some(([start, end]) => hue >= start && hue <= end);
 }
@@ -26,6 +30,23 @@ function isStatusExcluded(hue: number): boolean {
 function circularHueDistance(a: number, b: number): number {
   const diff = Math.abs(a - b) % 360;
   return Math.min(diff, 360 - diff);
+}
+
+// Next golden-angle hue that is neither a status color nor close to a pinned one. `cursor` is the
+// caller's scan position, so a palette keeps drawing from where it left off.
+function scanAutoHue(cursor: { step: number }, pinnedHues: readonly number[]): number {
+  const isExcluded = (candidate: number): boolean =>
+    isStatusExcluded(candidate) ||
+    pinnedHues.some((pinnedHue) => circularHueDistance(candidate, pinnedHue) < PIN_EXCLUSION_RADIUS_DEG);
+  const nextCandidate = (): number => (cursor.step++ * GOLDEN_ANGLE_DEG) % 360;
+
+  for (let attempt = 0; attempt < MAX_AUTO_HUE_ATTEMPTS; attempt++) {
+    const hue = nextCandidate();
+    if (!isExcluded(hue)) return hue;
+  }
+  // Pins chosen by the user plus the status bands can cover the whole circle; take the next hue
+  // as it is rather than scan forever.
+  return nextCandidate();
 }
 
 // Same lightness-inversion logic as CHART_COLORS_LIGHT/DARK's main/secondary/virtual roles,
@@ -37,42 +58,41 @@ const LIGHTNESS_CHROMA_BY_THEME = {
   dark: { lightness: 0.7, chroma: 0.2 },
 };
 
-// Named reference points on the hue circle, for pin() calls that want a recognizable color
-// instead of a bare degree number. Red/Orange/Green intentionally sit at the same hues as the
-// app's status colors (danger/warning/success) — pin() deliberately bypasses
-// STATUS_EXCLUDED_HUE_RANGES, so picking e.g. CategoricalHue.Green is exactly "the green
-// everyone already expects", not an approximation of it.
-export const CategoricalHue = {
-  Red: 20,
-  Orange: 40,
-  Yellow: 75,
-  Green: 142,
-  Teal: 180,
-  Blue: 250,
-  Purple: 280,
-  Lilac: 300,
-  Pink: 330,
-} as const;
-
-export type CategoricalHue = (typeof CategoricalHue)[keyof typeof CategoricalHue];
-
 // Alpha for a muted (non-hovered) category segment when another category is highlighted across
 // a stacked-bar chart (see category-hover-highlight.ts). One value for both themes: the OKLCH
 // lightness/chroma recipe above already normalizes perceived weight per theme, so the same alpha
 // reads as an equivalently muted tone against either theme's chart background.
 export const CATEGORY_DIM_ALPHA = 0.25;
 
-function toColorString(hue: number, colors: ChartColors, alpha: number | undefined): string {
+export function hueToColor(hue: number, colors: ChartColors, alpha?: number): string {
   const { lightness, chroma } = colors.isDark ? LIGHTNESS_CHROMA_BY_THEME.dark : LIGHTNESS_CHROMA_BY_THEME.light;
   const h = hue.toFixed(1);
   return alpha === undefined ? `oklch(${lightness} ${chroma} ${h})` : `oklch(${lightness} ${chroma} ${h} / ${alpha})`;
 }
 
+export interface SeriesHueInput {
+  id: number;
+  // A hue the user picked for this series, or null for "pick one automatically".
+  hue: number | null;
+}
+
+// Hue of every series of one chart. Pinned series keep their hue; the rest get golden-angle hues
+// that avoid status colors and pinned neighbours, handed out in ascending id order. The result
+// depends only on the set of series — not on render order, enabled checkboxes or data — so a new
+// series (highest id) never recolors the others.
+export function assignSeriesHues(series: readonly SeriesHueInput[]): Map<number, number> {
+  const hues = new Map<number, number>();
+  for (const item of series) {
+    if (item.hue !== null) hues.set(item.id, item.hue);
+  }
+  const pinnedHues = Array.from(hues.values());
+  const cursor = { step: 0 };
+  const auto = series.filter((item) => item.hue === null).sort((a, b) => a.id - b.id);
+  for (const item of auto) hues.set(item.id, scanAutoHue(cursor, pinnedHues));
+  return hues;
+}
+
 export interface CategoricalPalette {
-  // Reserves `hue` for `key` (e.g. a category name). Call this for every pin before the first
-  // getColor() of the palette — pins steer auto-picked hues away from themselves, so pinning
-  // after auto colors already landed nearby won't retroactively move those.
-  pin(key: string, hue: number): void;
   // Stable per-identity categorical color: same `key` always yields the same hue, independent
   // of call order or how many other keys exist. Falls back to the next unclaimed hue in a
   // continuous golden-angle scan the first time a key is seen, shared across every key in this
@@ -80,47 +100,22 @@ export interface CategoricalPalette {
   getColor(key: string, colors: ChartColors, alpha?: number): string;
 }
 
-// One palette = one independent hue pool. Chart domains (expense categories, income sources,
-// balance accounts) each get their own instance so a pin in one domain doesn't eat into another
-// domain's available hue space.
+// One palette = one independent hue pool (the balance chart's accounts have their own instance).
 export function createCategoricalPalette(): CategoricalPalette {
-  const pinnedHues = new Map<string, number>();
   const assignedHues = new Map<string, number>();
-  let nextRawStep = 0;
-
-  function isAutoExcluded(hue: number): boolean {
-    if (isStatusExcluded(hue)) return true;
-    for (const pinnedHue of pinnedHues.values()) {
-      if (circularHueDistance(hue, pinnedHue) < PIN_EXCLUSION_RADIUS_DEG) return true;
-    }
-    return false;
-  }
-
-  function nextAutoHue(): number {
-    let hue: number;
-    do {
-      hue = (nextRawStep * GOLDEN_ANGLE_DEG) % 360;
-      nextRawStep++;
-    } while (isAutoExcluded(hue));
-    return hue;
-  }
-
-  function pin(key: string, hue: number): void {
-    pinnedHues.set(key, hue);
-    assignedHues.set(key, hue);
-  }
+  const cursor = { step: 0 };
 
   function hueForKey(key: string): number {
     const existing = assignedHues.get(key);
     if (existing !== undefined) return existing;
-    const hue = nextAutoHue();
+    const hue = scanAutoHue(cursor, []);
     assignedHues.set(key, hue);
     return hue;
   }
 
   function getColor(key: string, colors: ChartColors, alpha?: number): string {
-    return toColorString(hueForKey(key), colors, alpha);
+    return hueToColor(hueForKey(key), colors, alpha);
   }
 
-  return { pin, getColor };
+  return { getColor };
 }

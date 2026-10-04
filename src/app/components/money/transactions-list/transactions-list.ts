@@ -1,10 +1,22 @@
-import { ChangeDetectionStrategy, Component, ElementRef, computed, inject, signal, viewChild } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  ElementRef,
+  computed,
+  effect,
+  inject,
+  signal,
+  untracked,
+  viewChild,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { KeyboardService } from '@app/services/keyboard.service';
+import { MoneyComputeService } from '@app/services/money-compute.service';
 import { MoneyService } from '@app/services/money.service';
 import { TelemetryService } from '@app/services/telemetry.service';
 import { DefaultModal } from '@app/shared/components/default-modal/default-modal';
 import { FormModal } from '@app/shared/components/form-modal/form-modal';
+import { SeriesChart, filterByEnabledSeries } from '@app/shared/money-series';
 import { convertAmount } from '@app/shared/money-utils';
 import { groupNumberText } from '@app/shared/number-format';
 import { AccountKind, Asset, Organization, SymbolPosition, Transaction, TransactionKind } from '@app/shared/types';
@@ -36,6 +48,7 @@ export class TransactionsList {
   protected readonly Icon = IconName;
 
   private readonly moneyService = inject(MoneyService);
+  private readonly moneyComputeService = inject(MoneyComputeService);
   private readonly keyboardService = inject(KeyboardService);
   private readonly telemetry = inject(TelemetryService);
 
@@ -57,6 +70,27 @@ export class TransactionsList {
   private readonly displayCurrency$$ = computed(() => this.moneyService.displayCurrency$$());
   protected readonly isRatesReady$$ = computed(() => this.moneyService.isChartDataReady$$());
   protected readonly convertToUnifiedCurrency$$ = this.moneyService.convertToUnifiedCurrency$$;
+
+  protected readonly isLinkedToCharts$$ = computed(() => this.moneyService.linkTransactionsToCharts$$());
+
+  // With the "follow charts" mode on, only transactions feeding a checked chart series are listed —
+  // the same series resolver the charts are built with. Off: the very same array, no copy.
+  private readonly visibleTransactions$$ = computed(() => {
+    const transactions = this.moneyService.transactions$$();
+    if (!this.isLinkedToCharts$$()) return transactions;
+    return filterByEnabledSeries(transactions, this.moneyComputeService.seriesResolver$$(), {
+      [SeriesChart.EXPENSE]: this.moneyService.enabledExpenseSeriesIds$$(),
+      [SeriesChart.INCOME]: this.moneyService.enabledIncomeSeriesIds$$(),
+    });
+  });
+
+  // A shorter list can leave the scroll window past its end; start from the top after any filter change.
+  private readonly scrollToTopOnFilterChange = effect(() => {
+    if (!this.isLinkedToCharts$$()) return;
+    this.moneyService.enabledExpenseSeriesIds$$();
+    this.moneyService.enabledIncomeSeriesIds$$();
+    untracked(() => this.scrollContainerElem()?.nativeElement.scrollTo({ top: 0 }));
+  });
 
   protected readonly groupedTransactions$$ = computed(() =>
     this.telemetry.measure(
@@ -451,7 +485,7 @@ export class TransactionsList {
   }
 
   private groupTransactionsByDate(): TransactionGroup[] {
-    const transactions = this.moneyService.transactions$$();
+    const transactions = this.visibleTransactions$$();
     const transactionsByDateMap = new Map<string, TransactionGroup>();
 
     transactions.forEach((transaction) => {

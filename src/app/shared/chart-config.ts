@@ -1,4 +1,4 @@
-import { CategoricalHue, createCategoricalPalette } from '@app/shared/categorical-palette';
+import { createCategoricalPalette } from '@app/shared/categorical-palette';
 import { formatMetricUnitValue, MetricUnit } from '@app/shared/metric-units';
 import { formatMetricTickLabel } from '@app/shared/metrics-series';
 import { MetricGranularity } from '@app/shared/types';
@@ -307,16 +307,6 @@ export function createBalanceChartConfig(colors: ChartColors): ChartConfiguratio
   };
 }
 
-export const INCOME_CHART_ALLOWED_CATEGORIES: ReadonlySet<string> = new Set(['Зарплата', 'Проекты', 'Проценты']);
-
-export const INCOME_VIRTUAL_SERIES = {
-  DIVIDENDS: -1,
-  CB_CLOSED_PNL: -2,
-  CB_OPEN_PNL: -3,
-  CRYPTO_CLOSED_PNL: -4,
-  CRYPTO_OPEN_PNL: -5,
-} as const;
-
 // Same explicit-color rationale as createBalanceChartConfig above.
 export function createIncomeChartConfig(colors: ChartColors): ChartConfiguration<'bar'> {
   return {
@@ -361,48 +351,42 @@ export function createIncomeChartConfig(colors: ChartColors): ChartConfiguration
   };
 }
 
-export interface ExpenseCategoryConfig {
-  name: string;
-  // Optional fixed hue for categories that should always render in a specific color instead of
-  // the auto-generated one — e.g. a category people already associate with a color from outside
-  // the app. Pick from CategoricalHue (Red/Orange/Yellow/Green/Teal/Blue/Purple/Pink) or any raw
-  // 0-360 degree value for a finer shade. Unpinned categories get an auto hue from
-  // expenseCategoricalPalette that's kept clear of every pinned one (see PIN_EXCLUSION_RADIUS_DEG
-  // in categorical-palette.ts).
-  hue?: CategoricalHue | number;
-}
-
-// Display order, and optionally a pinned color (CategoricalHue.Red/Orange/Yellow/Green/Teal/
-// Blue/Purple/Pink, see categorical-palette.ts) — see ExpenseCategoryConfig. Auto colors for the
-// rest come from expenseCategoricalPalette.getColor(), keyed by category name (see
-// ExpenseChart.getCategoryColor / rebuildChartDatasets).
-export const EXPENSE_CATEGORY_CONFIG: ExpenseCategoryConfig[] = [
-  { name: 'Еда', hue: CategoricalHue.Green },
-  { name: 'Алкоголь', hue: CategoricalHue.Yellow },
-  { name: 'Квартплата', hue: CategoricalHue.Blue },
-  { name: 'Развл.' },
-  { name: 'Отдых' },
-  { name: 'Проезд' },
-  { name: 'Одежда' },
-  { name: 'Связь' },
-  { name: 'Рекуррентка', hue: CategoricalHue.Red },
-  { name: 'Лекарства' },
-  { name: 'Хоз.товары' },
-  { name: 'Запчасти' },
-  { name: 'Прочее', hue: CategoricalHue.Orange },
-  { name: 'Подарок', hue: CategoricalHue.Lilac },
-  { name: 'Техника' },
+// Legend and stack order of the expense and income series, by name; a series that is not listed
+// goes last. Category colors are not here: they are a property of the category (its hue).
+export const EXPENSE_SERIES_ORDER: readonly string[] = [
+  'Еда',
+  'Алкоголь',
+  'Квартплата',
+  'Развл.',
+  'Отдых',
+  'Проезд',
+  'Одежда',
+  'Связь',
+  'Рекуррентка',
+  'Лекарства',
+  'Хоз.товары',
+  'Запчасти',
+  'Прочее',
+  'Подарок',
+  'Техника',
 ];
 
-// One independent hue pool per chart domain — a pin in one (e.g. Food=green here) doesn't eat
-// into the other two domains' available hue space. Pins must be registered before any getColor()
-// call for that palette (see CategoricalPalette.pin doc), which module-eval order guarantees here.
-export const expenseCategoricalPalette = createCategoricalPalette();
-EXPENSE_CATEGORY_CONFIG.forEach((c) => {
-  if (c.hue !== undefined) expenseCategoricalPalette.pin(c.name, c.hue);
-});
+export const INCOME_SERIES_ORDER: readonly string[] = [
+  'Зарплата',
+  'Проекты',
+  'Проценты',
+  'Дивиденды',
+  'ЦБ закрытые',
+  'ЦБ открытые',
+  'Крипта закрытые',
+  'Крипта открытые',
+];
 
-export const incomeCategoricalPalette = createCategoricalPalette();
+export function seriesOrderIndex(order: readonly string[], name: string): number {
+  const index = order.indexOf(name);
+  return index === -1 ? Number.MAX_SAFE_INTEGER : index;
+}
+
 export const balanceCategoricalPalette = createCategoricalPalette();
 
 export function rgbToRgba(rgb: string, alpha: number): string {

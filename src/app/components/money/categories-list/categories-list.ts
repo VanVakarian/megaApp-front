@@ -1,5 +1,8 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChartThemeService } from '@app/services/chart-theme.service';
+import { MoneyComputeService } from '@app/services/money-compute.service';
 import { MoneyService } from '@app/services/money.service';
+import { hueToColor } from '@app/shared/categorical-palette';
 import { DefaultModal } from '@app/shared/components/default-modal/default-modal';
 import { FormModal } from '@app/shared/components/form-modal/form-modal';
 import { Category, CategoryType } from '@app/shared/types';
@@ -20,6 +23,8 @@ export class CategoriesList {
   protected readonly iconButton = ICON_BUTTON;
 
   private readonly moneyService = inject(MoneyService);
+  private readonly moneyComputeService = inject(MoneyComputeService);
+  private readonly chartThemeService = inject(ChartThemeService);
 
   protected readonly categories$$ = computed(() => this.moneyService.categories$$());
   private readonly transactions$$ = computed(() => this.moneyService.transactions$$());
@@ -87,6 +92,15 @@ export class CategoriesList {
       default:
         return categoryType;
     }
+  }
+
+  // The color the category's chart series actually gets (its own hue, or the automatic one).
+  protected getCategoryColor(category: Category): string {
+    const hues =
+      category.categoryType === CategoryType.EXPENSE
+        ? this.moneyComputeService.expenseSeriesHues$$()
+        : this.moneyComputeService.incomeSeriesHues$$();
+    return hueToColor(hues.get(category.id!) ?? 0, this.chartThemeService.colors$$());
   }
 
   protected getRootCategories(categoryType: CategoryType): Category[] {

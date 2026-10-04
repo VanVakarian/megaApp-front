@@ -137,7 +137,11 @@
             </div>
           } @else {
             <div class="opacity-70 py-8 text-center">
-              No transactions found.
+              @if (isLinkedToCharts$$()) {
+                No transactions match the checked chart categories.
+              } @else {
+                No transactions found.
+              }
             </div>
           }
         }
