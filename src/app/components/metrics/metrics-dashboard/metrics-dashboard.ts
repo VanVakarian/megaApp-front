@@ -492,6 +492,7 @@ export class MetricsDashboard implements OnInit, AfterViewInit, OnDestroy {
         : buildSparseLineSeriesFromPoints(displayPoints, displayStepSeconds);
     return {
       series,
+      scalePoints: windowedPoints,
       windowStartBucket: displayWindow.startBucket,
       windowEndBucket: displayWindow.endBucket,
       displayStepSeconds,
