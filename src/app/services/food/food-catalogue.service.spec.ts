@@ -7,6 +7,7 @@ import { LocalStorageService } from '@app/services/local-storage.service';
 import { NetworkService } from '@app/services/network.service';
 import { SyncEngineService } from '@app/services/sync-engine.service';
 import { TelemetryService } from '@app/services/telemetry.service';
+import { FOOD_SEARCH_SEND_DEBOUNCE_MS } from '@app/shared/const';
 import { CatalogueEntry, WebSocketMessageType } from '@app/shared/types';
 import { Subject } from 'rxjs';
 import { FoodCatalogueService } from './food-catalogue.service';
@@ -28,10 +29,11 @@ function entry(id: number, name: string, archived?: boolean): CatalogueEntry {
   };
 }
 
-function setup() {
+function setup(cachedSearches: Record<string, number[]> | null = null) {
   const wsMessages$ = new Subject<any>();
   const sendMessage = vi.fn();
   const setUserScoped = vi.fn();
+  const getUserScoped = vi.fn((key: string) => (key === SEARCH_CACHE_KEY ? cachedSearches : null));
 
   TestBed.configureTestingModule({
     providers: [
@@ -39,7 +41,7 @@ function setup() {
       provideHttpClientTesting(),
       { provide: NetworkService, useValue: { wsMessages$, connected$: new Subject<void>(), sendMessage } },
       { provide: SyncEngineService, useValue: { addOperation: vi.fn() } },
-      { provide: LocalStorageService, useValue: { getUserScoped: vi.fn(() => null), setUserScoped } },
+      { provide: LocalStorageService, useValue: { getUserScoped, setUserScoped } },
       { provide: AuthService, useValue: { sessionState$$: signal(AuthSessionState.Authenticated) } },
       { provide: TelemetryService, useValue: { record: vi.fn(), recordAfterPaint: vi.fn(() => Promise.resolve()) } },
     ],
@@ -47,53 +49,66 @@ function setup() {
 
   const service = TestBed.inject(FoodCatalogueService);
   service.catalogue$$.set({
-    1: entry(1, 'Apple'),
-    2: entry(2, 'Apple pie'),
-    3: entry(3, 'Old apple', true),
+    1: entry(1, 'Яблоко'),
+    2: entry(2, 'Яблоко пирог'),
+    3: entry(3, 'Старое яблоко', true),
   });
 
-  const reply = (payload: { archived?: boolean; catalogueIds: number[]; sequenceNumber: number }) =>
+  const reply = (payload: { archived?: boolean; catalogueIds: number[]; sequenceNumber: number; query?: string }) =>
     wsMessages$.next({
       type: WebSocketMessageType.SEARCH_RESULTS,
-      payload: { query: 'apple', timestamp: 0, ...payload },
+      payload: { query: 'яблоко', timestamp: 0, ...payload },
     });
   const searchCacheWrites = () => setUserScoped.mock.calls.filter(([key]) => key === SEARCH_CACHE_KEY);
   const ids = () => service.searchResults$$().map((item) => item.id);
+  const waitForSend = () => vi.advanceTimersByTime(FOOD_SEARCH_SEND_DEBOUNCE_MS);
 
-  return { service, wsMessages$, sendMessage, reply, searchCacheWrites, ids };
+  return { service, wsMessages$, sendMessage, reply, searchCacheWrites, ids, waitForSend };
 }
 
 describe('FoodCatalogueService archive search', () => {
-  it('shows only regular products in the normal mode, dropping archived ids from a reply', () => {
-    const { service, sendMessage, reply, ids } = setup();
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
 
-    service.searchProducts('apple');
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('shows only regular products in the normal mode, dropping archived ids from a reply', () => {
+    const { service, sendMessage, reply, ids, waitForSend } = setup();
+
+    service.searchProducts('яблоко');
+    waitForSend();
     reply({ catalogueIds: [1, 3, 2], sequenceNumber: 1 });
 
-    expect(sendMessage).toHaveBeenCalledWith(expect.objectContaining({ query: 'apple', archived: false }));
+    expect(sendMessage).toHaveBeenCalledWith(expect.objectContaining({ query: 'яблоко', archived: false }));
     expect(ids()).toEqual([1, 2]);
   });
 
   it('asks the server for the archive mode and shows only archived products', () => {
-    const { service, sendMessage, reply, ids } = setup();
+    const { service, sendMessage, reply, ids, waitForSend } = setup();
 
     service.toggleArchiveSearch();
-    service.searchProducts('apple');
+    service.searchProducts('яблоко');
+    waitForSend();
     reply({ archived: true, catalogueIds: [3, 1], sequenceNumber: 1 });
 
-    expect(sendMessage).toHaveBeenLastCalledWith(expect.objectContaining({ query: 'apple', archived: true }));
+    expect(sendMessage).toHaveBeenLastCalledWith(expect.objectContaining({ query: 'яблоко', archived: true }));
     expect(ids()).toEqual([3]);
   });
 
   it('neither reads nor writes the results cache in the archive mode', () => {
-    const { service, reply, searchCacheWrites, ids } = setup();
+    const { service, reply, searchCacheWrites, ids, waitForSend } = setup();
 
-    service.searchProducts('apple');
+    service.searchProducts('яблоко');
+    waitForSend();
     reply({ catalogueIds: [1, 2], sequenceNumber: 1 });
     expect(searchCacheWrites()).toHaveLength(1);
 
     service.toggleArchiveSearch();
-    service.searchProducts('apple');
+    service.searchProducts('яблоко');
+    waitForSend();
     expect(ids()).toEqual([]); // the cached normal ids are not shown under the archive mode
 
     reply({ archived: true, catalogueIds: [3], sequenceNumber: 2 });
@@ -102,21 +117,24 @@ describe('FoodCatalogueService archive search', () => {
   });
 
   it('ignores a reply that was applied in a mode other than the one on screen', () => {
-    const { service, reply, ids } = setup();
+    const { service, reply, ids, waitForSend } = setup();
 
     service.toggleArchiveSearch();
-    service.searchProducts('apple');
+    service.searchProducts('яблоко');
+    waitForSend();
     reply({ archived: false, catalogueIds: [1, 2], sequenceNumber: 1 }); // the server fell back to normal
 
     expect(ids()).toEqual([]);
   });
 
   it('keeps caching the normal reply that arrives after the user switched to the archive mode', () => {
-    const { service, reply, searchCacheWrites, ids } = setup();
+    const { service, reply, searchCacheWrites, ids, waitForSend } = setup();
 
-    service.searchProducts('apple');
+    service.searchProducts('яблоко');
+    waitForSend();
     service.toggleArchiveSearch();
-    service.searchProducts('apple');
+    service.searchProducts('яблоко');
+    waitForSend();
     reply({ archived: false, catalogueIds: [1, 2], sequenceNumber: 1 });
 
     expect(searchCacheWrites()).toHaveLength(1);
@@ -126,7 +144,7 @@ describe('FoodCatalogueService archive search', () => {
   it('excludes archived products from the legacy search', () => {
     const { service } = setup();
 
-    service.legacySearchProducts('apple');
+    service.legacySearchProducts('яблоко');
 
     expect(service.legacySearchResults$$().map((item) => item.id)).toEqual([1, 2]);
   });
@@ -145,25 +163,27 @@ describe('FoodCatalogueService archive search', () => {
   });
 
   it('drops a product from the archive results when another client restores it', () => {
-    const { service, wsMessages$, reply, ids } = setup();
+    const { service, wsMessages$, reply, ids, waitForSend } = setup();
 
     service.toggleArchiveSearch();
-    service.searchProducts('apple');
+    service.searchProducts('яблоко');
+    waitForSend();
     reply({ archived: true, catalogueIds: [3], sequenceNumber: 1 });
     expect(ids()).toEqual([3]);
 
-    wsMessages$.next({ type: WebSocketMessageType.CATALOGUE_ENTRY_SAVED, payload: entry(3, 'Old apple', false) });
+    wsMessages$.next({ type: WebSocketMessageType.CATALOGUE_ENTRY_SAVED, payload: entry(3, 'Старое яблоко', false) });
 
     expect(ids()).toEqual([]);
   });
 
   it('drops a product from the normal results when another client archives it', () => {
-    const { service, wsMessages$, reply, ids } = setup();
+    const { service, wsMessages$, reply, ids, waitForSend } = setup();
 
-    service.searchProducts('apple');
+    service.searchProducts('яблоко');
+    waitForSend();
     reply({ catalogueIds: [1, 2], sequenceNumber: 1 });
 
-    wsMessages$.next({ type: WebSocketMessageType.CATALOGUE_ENTRY_SAVED, payload: entry(2, 'Apple pie', true) });
+    wsMessages$.next({ type: WebSocketMessageType.CATALOGUE_ENTRY_SAVED, payload: entry(2, 'Яблоко пирог', true) });
 
     expect(ids()).toEqual([1]);
   });
@@ -175,5 +195,126 @@ describe('FoodCatalogueService archive search', () => {
     service.setArchiveSearch(false);
 
     expect(service.isArchiveSearch$$()).toBe(false);
+  });
+});
+
+describe('FoodCatalogueService keyboard layout', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('sends the retyped Russian query and caches the reply under it', () => {
+    const { service, sendMessage, reply, searchCacheWrites, ids, waitForSend } = setup();
+
+    service.searchProducts('Z,kjrj');
+    waitForSend();
+    reply({ catalogueIds: [1, 2], sequenceNumber: 1, query: 'яблоко' });
+
+    expect(sendMessage).toHaveBeenCalledWith(expect.objectContaining({ query: 'яблоко' }));
+    expect(searchCacheWrites()).toHaveLength(1);
+    expect(searchCacheWrites()[0][1]).toEqual({ яблоко: [1, 2] });
+    expect(ids()).toEqual([1, 2]);
+  });
+
+  it('shows a wrong-layout query from the cache of its Russian text, without waiting for the server', () => {
+    const { service, sendMessage, ids } = setup({ яблоко: [1, 2] });
+
+    service.searchProducts('Z,kjrj');
+
+    expect(ids()).toEqual([1, 2]);
+    expect(sendMessage).not.toHaveBeenCalled();
+  });
+
+  it('runs the legacy search on the retyped Russian query', () => {
+    const { service } = setup();
+
+    service.legacySearchProducts('Z,kjrj');
+
+    expect(service.legacySearchResults$$().map((item) => item.id)).toEqual([1, 2]);
+  });
+});
+
+describe('FoodCatalogueService search send debounce', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('sends only the final text of a burst of keystrokes, with its sequence number', () => {
+    const { service, sendMessage, waitForSend } = setup();
+
+    service.searchProducts('я');
+    service.searchProducts('яб');
+    service.searchProducts('ябл');
+    expect(sendMessage).not.toHaveBeenCalled();
+
+    waitForSend();
+
+    expect(sendMessage).toHaveBeenCalledTimes(1);
+    expect(sendMessage).toHaveBeenCalledWith(expect.objectContaining({ query: 'ябл', sequenceNumber: 3 }));
+  });
+
+  it('shows cached results immediately and still asks the server after the pause', () => {
+    const { service, sendMessage, ids, waitForSend } = setup({ ябл: [2] });
+
+    service.searchProducts('ябл');
+    expect(ids()).toEqual([2]);
+    expect(sendMessage).not.toHaveBeenCalled();
+
+    waitForSend();
+    expect(sendMessage).toHaveBeenCalledTimes(1);
+  });
+
+  it('replaces the cached results with a different reply to the same query', () => {
+    const { service, ids, reply, searchCacheWrites, waitForSend } = setup({ ябл: [2] });
+
+    service.searchProducts('ябл');
+    waitForSend();
+    expect(ids()).toEqual([2]);
+
+    reply({ catalogueIds: [1, 2], sequenceNumber: 1, query: 'ябл' });
+
+    expect(ids()).toEqual([1, 2]);
+    expect(searchCacheWrites()).toHaveLength(1);
+  });
+
+  it('drops a reply to an earlier query once a later one is on screen', () => {
+    const { service, ids, reply, waitForSend } = setup();
+
+    service.searchProducts('ябл');
+    waitForSend();
+    service.searchProducts('яблок');
+    waitForSend();
+    reply({ catalogueIds: [1], sequenceNumber: 2, query: 'яблок' });
+    reply({ catalogueIds: [2], sequenceNumber: 1, query: 'ябл' });
+
+    expect(ids()).toEqual([1]);
+  });
+
+  it('sends nothing for a query that was cleared before the pause ended', () => {
+    const { service, sendMessage, waitForSend } = setup();
+
+    service.searchProducts('яблоко');
+    service.clearSearch();
+    waitForSend();
+
+    expect(sendMessage).not.toHaveBeenCalled();
+  });
+
+  it('sends nothing for a query that was emptied before the pause ended', () => {
+    const { service, sendMessage, waitForSend } = setup();
+
+    service.searchProducts('яблоко');
+    service.searchProducts('');
+    waitForSend();
+
+    expect(sendMessage).not.toHaveBeenCalled();
   });
 });

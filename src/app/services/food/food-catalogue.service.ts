@@ -1,7 +1,9 @@
 import { HttpClient } from '@angular/common/http';
 import { effect, inject, Injectable, signal, WritableSignal } from '@angular/core';
 import { AuthService, AuthSessionState } from '@app/services/auth.service';
+import { FOOD_SEARCH_SEND_DEBOUNCE_MS } from '@app/shared/const';
 import { exhaustRequest } from '@app/shared/decorators/exhaust-request.decorator';
+import { fixKeyboardLayout } from '@app/shared/keyboard-layout';
 import {
   Catalogue,
   CatalogueEntry,
@@ -19,7 +21,6 @@ import {
   ServerResponseWithData,
   WebSocketMessageType,
 } from '@app/shared/types';
-import { transliterateEnToRu } from '@app/shared/utils';
 import { firstValueFrom } from 'rxjs';
 import { filter } from 'rxjs/operators';
 import { LocalStorageService } from '../local-storage.service';
@@ -56,6 +57,7 @@ export class FoodCatalogueService extends BaseFoodService {
   private searchSequenceNumber: number = 0;
   private lastDisplayedSequenceNumber: number = 0;
   private searchStartedAt: number | null = null;
+  private searchSendTimer: ReturnType<typeof setTimeout> | null = null;
 
   protected getStorageKey(): string {
     return this.CATALOGUE_STORAGE_KEY;
@@ -95,6 +97,7 @@ export class FoodCatalogueService extends BaseFoodService {
     this.searchSequenceNumber = 0;
     this.lastDisplayedSequenceNumber = 0;
     this.searchStartedAt = null;
+    this.cancelScheduledSearchQuery();
   }
 
   @exhaustRequest()
@@ -157,10 +160,14 @@ export class FoodCatalogueService extends BaseFoodService {
     this.searchResults$$.set([]);
   }
 
-  public searchProducts(query: string): void {
+  // The query is retyped to the Russian layout here, once, so the local cache, the server, its caches and the
+  // embeddings only ever see the Russian text. The input field keeps showing what the user typed.
+  public searchProducts(typedQuery: string): void {
+    const query = fixKeyboardLayout(typedQuery);
     this.searchQuery$$.set(query);
 
     if (!query.trim()) {
+      this.cancelScheduledSearchQuery();
       this.searchResults$$.set([]);
       this.searchSequenceNumber = 0;
       this.lastDisplayedSequenceNumber = 0;
@@ -182,11 +189,12 @@ export class FoodCatalogueService extends BaseFoodService {
       });
     }
 
-    this.sendSearchQuery(query, this.searchSequenceNumber);
+    this.scheduleSearchQuery(query, this.searchSequenceNumber);
   }
 
-  public legacySearchProducts(query: string): void {
+  public legacySearchProducts(typedQuery: string): void {
     const startedAt = performance.now();
+    const query = fixKeyboardLayout(typedQuery);
     this.searchQuery$$.set(query);
 
     if (!query.trim()) {
@@ -199,21 +207,13 @@ export class FoodCatalogueService extends BaseFoodService {
       .split(' ')
       .filter((term) => term.length > 0);
 
-    const transliteratedTerms = query
-      .split(' ')
-      .filter((term) => term.length > 0)
-      .map(transliterateEnToRu);
-
     const catalogue = this.catalogue$$();
     const allEntries = Object.values(catalogue);
 
     const results = allEntries.filter((food) => {
       if (food.archived) return false;
       const legacyNameLower = food.legacyName?.toLowerCase() || '';
-      return (
-        searchTerms.every((term) => legacyNameLower.includes(term)) ||
-        transliteratedTerms.every((term) => legacyNameLower.includes(term))
-      );
+      return searchTerms.every((term) => legacyNameLower.includes(term));
     });
 
     this.legacySearchResults$$.set(results);
@@ -231,6 +231,21 @@ export class FoodCatalogueService extends BaseFoodService {
   private setSearchCachedResults(query: string, ids: number[]): void {
     this.searchCache[query] = ids;
     this.saveSearchCacheToLocalStorage();
+  }
+
+  // A burst of keystrokes sends only the final text: every call replaces the pending send.
+  private scheduleSearchQuery(query: string, sequenceNumber: number): void {
+    this.cancelScheduledSearchQuery();
+    this.searchSendTimer = setTimeout(() => {
+      this.searchSendTimer = null;
+      this.sendSearchQuery(query, sequenceNumber);
+    }, FOOD_SEARCH_SEND_DEBOUNCE_MS);
+  }
+
+  private cancelScheduledSearchQuery(): void {
+    if (this.searchSendTimer === null) return;
+    clearTimeout(this.searchSendTimer);
+    this.searchSendTimer = null;
   }
 
   private sendSearchQuery(query: string, sequenceNumber: number): void {
@@ -310,7 +325,9 @@ export class FoodCatalogueService extends BaseFoodService {
         this.setSearchCachedResults(queryFromMessage, results);
       }
 
-      if (isArchiveReply === this.archiveSearch$$() && sequenceFromMessage > this.lastDisplayedSequenceNumber) {
+      // The last displayed number is the query on screen; its own reply (equal number) refines what the local
+      // cache showed, while a reply to an earlier query (smaller number) is dropped.
+      if (isArchiveReply === this.archiveSearch$$() && sequenceFromMessage >= this.lastDisplayedSequenceNumber) {
         this.displaySearchResults(results);
         this.lastDisplayedSequenceNumber = sequenceFromMessage;
       }
@@ -404,6 +421,7 @@ export class FoodCatalogueService extends BaseFoodService {
   }
 
   public clearSearch(): void {
+    this.cancelScheduledSearchQuery();
     this.searchQuery$$.set('');
     this.searchResults$$.set([]);
     this.legacySearchResults$$.set([]);

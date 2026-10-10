@@ -2,42 +2,6 @@ import { UserSettings } from './types';
 
 export const FETCH_DAYS_RANGE_OFFSET: number = 10; // TODO: create settings item out of this constant
 
-export const enToRuTransliterationRules: { [key: string]: string } = {
-  '`': 'ё',
-  q: 'й',
-  w: 'ц',
-  e: 'у',
-  r: 'к',
-  t: 'е',
-  y: 'н',
-  u: 'г',
-  i: 'ш',
-  o: 'щ',
-  p: 'з',
-  '[': 'х',
-  ']': 'ъ',
-  a: 'ф',
-  s: 'ы',
-  d: 'в',
-  f: 'а',
-  g: 'п',
-  h: 'р',
-  j: 'о',
-  k: 'л',
-  l: 'д',
-  ';': 'ж',
-  "'": 'э',
-  z: 'я',
-  x: 'ч',
-  c: 'с',
-  v: 'м',
-  b: 'и',
-  n: 'т',
-  m: 'ь',
-  ',': 'б',
-  '.': 'ю',
-};
-
 export const USER_PREFERRED_MIDNIGHT_OFFSET_HOURS: number = 4;
 
 export const DEFAULT_INPUT_FIELD_PROGRESS_TIMER: number = 2000;
@@ -58,6 +22,10 @@ export const BACKGROUND_SYNC_TIMEOUT_MS: number = 8000;
 // before flushing its buffered field changes as a single PUT — collapses a burst of rapid changes
 // (e.g. dragging a range slider) into one request instead of one per intermediate value.
 export const SETTINGS_AUTO_SAVE_DEBOUNCE_MS: number = 500;
+
+// How long the food search waits for a pause in typing before asking the server — a burst of keystrokes
+// becomes one request for the final text. Results already in the local cache are shown without waiting.
+export const FOOD_SEARCH_SEND_DEBOUNCE_MS: number = 200;
 
 // Registered cache entities and their current schema version. Bumping one key's version
 // invalidates only that key — unlike the old single global CACHE_SCHEMA_VERSION, which
