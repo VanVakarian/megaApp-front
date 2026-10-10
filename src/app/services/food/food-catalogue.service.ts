@@ -1,7 +1,8 @@
 import { HttpClient } from '@angular/common/http';
 import { effect, inject, Injectable, signal, WritableSignal } from '@angular/core';
 import { AuthService, AuthSessionState } from '@app/services/auth.service';
-import { FOOD_SEARCH_SEND_DEBOUNCE_MS } from '@app/shared/const';
+import { NotificationService } from '@app/services/notification.service';
+import { FOOD_IMAGE_GENERATION_FALLBACK_MS, FOOD_SEARCH_SEND_DEBOUNCE_MS } from '@app/shared/const';
 import { exhaustRequest } from '@app/shared/decorators/exhaust-request.decorator';
 import { fixKeyboardLayout } from '@app/shared/keyboard-layout';
 import {
@@ -9,6 +10,7 @@ import {
   CatalogueEntry,
   CatalogueEntryDeletedWsMessage,
   CatalogueEntrySavedWsMessage,
+  CatalogueImageFailedWsMessage,
   CatalogueImageGeneratedWsMessage,
   CatalogueListResponse,
   ProductPreviewData,
@@ -53,6 +55,11 @@ export class FoodCatalogueService extends BaseFoodService {
   private readonly archiveSearch$$: WritableSignal<boolean> = signal(false);
   public readonly isArchiveSearch$$ = this.archiveSearch$$.asReadonly();
 
+  // Products whose image generation this client asked for and has no result for yet: id → the image version at
+  // the time of the request (0 for none). Cleared by the result event, or by the fallback timer if it is lost.
+  private readonly imageGenerating$$: WritableSignal<Record<number, number>> = signal({});
+  private readonly imageGenerationTimers = new Map<number, ReturnType<typeof setTimeout>>();
+
   private searchCache: Record<string, number[]> = {};
   private searchSequenceNumber: number = 0;
   private lastDisplayedSequenceNumber: number = 0;
@@ -65,6 +72,7 @@ export class FoodCatalogueService extends BaseFoodService {
 
   private readonly authService = inject(AuthService);
   private readonly telemetry = inject(TelemetryService);
+  private readonly notificationService = inject(NotificationService);
 
   private readonly resetOnAuthLossEffect$$ = effect(() => {
     if (this.authService.sessionState$$() === AuthSessionState.Guest) {
@@ -82,7 +90,13 @@ export class FoodCatalogueService extends BaseFoodService {
     this.loadCatalogueFromLocalStorage();
     this.loadSearchCacheFromLocalStorage();
     this.setupSearchWebSocketListener();
-    this.networkService.connected$.subscribe(() => this.replaySearchQuery());
+    this.networkService.connected$.subscribe(() => {
+      this.replaySearchQuery();
+      // A result event may have been lost while the socket was down (or the server restarted and dropped its
+      // in-memory queue): let the user ask again instead of waiting out the fallback timer. If the server is
+      // still generating, the repeated request is answered "already queued" and the state comes back.
+      this.resetImageGenerating();
+    });
   }
 
   public reset(): void {
@@ -98,6 +112,13 @@ export class FoodCatalogueService extends BaseFoodService {
     this.lastDisplayedSequenceNumber = 0;
     this.searchStartedAt = null;
     this.cancelScheduledSearchQuery();
+    this.resetImageGenerating();
+  }
+
+  private resetImageGenerating(): void {
+    this.imageGenerationTimers.forEach((timer) => clearTimeout(timer));
+    this.imageGenerationTimers.clear();
+    this.imageGenerating$$.set({});
   }
 
   @exhaustRequest()
@@ -299,6 +320,15 @@ export class FoodCatalogueService extends BaseFoodService {
           this.handleCatalogueImageGenerated(typed);
         }
       });
+
+    this.networkService.wsMessages$
+      .pipe(filter((msg) => msg.type === WebSocketMessageType.CATALOGUE_IMAGE_FAILED))
+      .subscribe((msg) => {
+        const typed = msg as CatalogueImageFailedWsMessage;
+        if (typed.payload && typeof typed.payload.catalogueId === 'number') {
+          this.handleCatalogueImageFailed(typed);
+        }
+      });
   }
 
   private isValidCatalogueEntry(entry: CatalogueEntry): entry is CatalogueEntry {
@@ -348,10 +378,31 @@ export class FoodCatalogueService extends BaseFoodService {
     this.upsertCatalogueEntry(msg.payload);
   }
 
+  private handleCatalogueImageFailed(msg: CatalogueImageFailedWsMessage): void {
+    const catalogueId = msg.payload.catalogueId;
+    // Another device's failure is none of this client's business: only a generation requested here is reported.
+    if (!(catalogueId in this.imageGenerating$$())) {
+      return;
+    }
+
+    this.stopImageGenerating(catalogueId);
+    const name = this.catalogue$$()[catalogueId]?.name;
+    this.notificationService.addNotification(
+      'error',
+      name ? `Не удалось сгенерировать картинку: ${name}` : 'Не удалось сгенерировать картинку',
+    );
+  }
+
   private handleCatalogueImageGenerated(msg: CatalogueImageGeneratedWsMessage): void {
     const catalogueId = msg.payload.catalogueId;
     const imageVersion = msg.payload.imageVersion;
     const catalogue = this.catalogue$$();
+
+    const requestedAtVersion = this.imageGenerating$$()[catalogueId];
+    if (requestedAtVersion !== undefined && imageVersion > requestedAtVersion) {
+      this.stopImageGenerating(catalogueId);
+    }
+
     const existingEntry = catalogue[catalogueId];
 
     if (existingEntry) {
@@ -560,6 +611,57 @@ export class FoodCatalogueService extends BaseFoodService {
 
     this.searchResults$$.update((results) => results.filter((item) => item.id !== catalogueId));
     this.legacySearchResults$$.update((results) => results.filter((item) => item.id !== catalogueId));
+  }
+
+  public isImageGenerating(catalogueId: number): boolean {
+    return catalogueId in this.imageGenerating$$();
+  }
+
+  // Asks the server to generate (or replace) the product image; the result arrives as a WebSocket event. A plain
+  // request, not a sync operation: generation costs money and must neither queue up offline nor repeat by itself.
+  public async regenerateProductImage(catalogueId: number): Promise<void> {
+    if (this.isImageGenerating(catalogueId)) {
+      return;
+    }
+
+    this.startImageGenerating(catalogueId, this.catalogue$$()[catalogueId]?.imageVersion ?? 0);
+    try {
+      await firstValueFrom(
+        this.http.post<ServerResponseWithData<{ status: string }>>(
+          `/api/food/catalogue/${catalogueId}/regenerate-image`,
+          {},
+        ),
+      );
+    } catch (error) {
+      this.stopImageGenerating(catalogueId);
+      throw error;
+    }
+  }
+
+  private startImageGenerating(catalogueId: number, imageVersion: number): void {
+    this.imageGenerating$$.update((current) => ({ ...current, [catalogueId]: imageVersion }));
+    this.imageGenerationTimers.set(
+      catalogueId,
+      setTimeout(() => this.stopImageGenerating(catalogueId), FOOD_IMAGE_GENERATION_FALLBACK_MS),
+    );
+  }
+
+  private stopImageGenerating(catalogueId: number): void {
+    clearTimeout(this.imageGenerationTimers.get(catalogueId));
+    this.imageGenerationTimers.delete(catalogueId);
+    this.imageGenerating$$.update((current) => {
+      const next = { ...current };
+      delete next[catalogueId];
+      return next;
+    });
+  }
+
+  public getThumbImageUrl(catalogueId: number): string | undefined {
+    const catalogueEntry = this.catalogue$$()[catalogueId];
+    if (!catalogueEntry?.imageVersion) {
+      return undefined;
+    }
+    return `/api/images/food/${catalogueId}-thumb-v${catalogueEntry.imageVersion}.webp`;
   }
 
   public getSquircleImageUrl(catalogueId: number): string | undefined {

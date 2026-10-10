@@ -128,10 +128,7 @@ export class FoodProductPicker {
   }
 
   protected getImageUrl(catalogueEntry: CatalogueEntry): string | null {
-    if (!catalogueEntry.imageVersion) {
-      return null;
-    }
-    return `/api/images/food/${catalogueEntry.id}-thumb-v${catalogueEntry.imageVersion}.webp`;
+    return this.foodCatalogueService.getThumbImageUrl(catalogueEntry.id) ?? null;
   }
 
   private parseQuery(query: string): { text: string; weight: number | null } {

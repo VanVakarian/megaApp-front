@@ -31,6 +31,7 @@ export const WebSocketMessageType = {
   CATALOGUE_ENTRY_SAVED: 'CATALOGUE_ENTRY_SAVED',
   CATALOGUE_ENTRY_DELETED: 'CATALOGUE_ENTRY_DELETED',
   CATALOGUE_IMAGE_GENERATED: 'CATALOGUE_IMAGE_GENERATED',
+  CATALOGUE_IMAGE_FAILED: 'CATALOGUE_IMAGE_FAILED',
   METRICS_HEALTH: 'METRICS_HEALTH',
   METRICS_SUBSCRIBE: 'METRICS_SUBSCRIBE',
   METRICS_UNSUBSCRIBE: 'METRICS_UNSUBSCRIBE',
@@ -162,6 +163,13 @@ export interface CatalogueImageGeneratedWsMessage {
   payload: {
     catalogueId: number;
     imageVersion: number;
+  };
+}
+
+export interface CatalogueImageFailedWsMessage {
+  type: typeof WebSocketMessageType.CATALOGUE_IMAGE_FAILED;
+  payload: {
+    catalogueId: number;
   };
 }
 
@@ -316,6 +324,7 @@ export type IncomingWsMessage =
   | CatalogueEntrySavedWsMessage
   | CatalogueEntryDeletedWsMessage
   | CatalogueImageGeneratedWsMessage
+  | CatalogueImageFailedWsMessage
   | SettingsUpdatedWsMessage;
 
 export type OutgoingWsMessage = SearchQueryWsMessage | MetricsSubscribeWsMessage | MetricsUnsubscribeWsMessage;

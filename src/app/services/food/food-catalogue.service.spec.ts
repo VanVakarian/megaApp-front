@@ -1,13 +1,14 @@
 import { provideHttpClient, withXhr } from '@angular/common/http';
-import { provideHttpClientTesting } from '@angular/common/http/testing';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { AuthService, AuthSessionState } from '@app/services/auth.service';
 import { LocalStorageService } from '@app/services/local-storage.service';
 import { NetworkService } from '@app/services/network.service';
+import { NotificationService } from '@app/services/notification.service';
 import { SyncEngineService } from '@app/services/sync-engine.service';
 import { TelemetryService } from '@app/services/telemetry.service';
-import { FOOD_SEARCH_SEND_DEBOUNCE_MS } from '@app/shared/const';
+import { FOOD_IMAGE_GENERATION_FALLBACK_MS, FOOD_SEARCH_SEND_DEBOUNCE_MS } from '@app/shared/const';
 import { CatalogueEntry, WebSocketMessageType } from '@app/shared/types';
 import { Subject } from 'rxjs';
 import { FoodCatalogueService } from './food-catalogue.service';
@@ -31,6 +32,7 @@ function entry(id: number, name: string, archived?: boolean): CatalogueEntry {
 
 function setup(cachedSearches: Record<string, number[]> | null = null) {
   const wsMessages$ = new Subject<any>();
+  const connected$ = new Subject<void>();
   const sendMessage = vi.fn();
   const setUserScoped = vi.fn();
   const getUserScoped = vi.fn((key: string) => (key === SEARCH_CACHE_KEY ? cachedSearches : null));
@@ -39,7 +41,7 @@ function setup(cachedSearches: Record<string, number[]> | null = null) {
     providers: [
       provideHttpClient(withXhr()),
       provideHttpClientTesting(),
-      { provide: NetworkService, useValue: { wsMessages$, connected$: new Subject<void>(), sendMessage } },
+      { provide: NetworkService, useValue: { wsMessages$, connected$, sendMessage } },
       { provide: SyncEngineService, useValue: { addOperation: vi.fn() } },
       { provide: LocalStorageService, useValue: { getUserScoped, setUserScoped } },
       { provide: AuthService, useValue: { sessionState$$: signal(AuthSessionState.Authenticated) } },
@@ -63,7 +65,7 @@ function setup(cachedSearches: Record<string, number[]> | null = null) {
   const ids = () => service.searchResults$$().map((item) => item.id);
   const waitForSend = () => vi.advanceTimersByTime(FOOD_SEARCH_SEND_DEBOUNCE_MS);
 
-  return { service, wsMessages$, sendMessage, reply, searchCacheWrites, ids, waitForSend };
+  return { service, wsMessages$, connected$, sendMessage, reply, searchCacheWrites, ids, waitForSend };
 }
 
 describe('FoodCatalogueService archive search', () => {
@@ -316,5 +318,135 @@ describe('FoodCatalogueService search send debounce', () => {
     waitForSend();
 
     expect(sendMessage).not.toHaveBeenCalled();
+  });
+});
+
+describe('FoodCatalogueService image regeneration', () => {
+  const REGENERATE_URL = '/api/food/catalogue/1/regenerate-image';
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  function setupRegeneration() {
+    const base = setup();
+    const httpMock = TestBed.inject(HttpTestingController);
+    const notifications = () => TestBed.inject(NotificationService).notifications$$();
+    const generated = (catalogueId: number, imageVersion: number) =>
+      base.wsMessages$.next({
+        type: WebSocketMessageType.CATALOGUE_IMAGE_GENERATED,
+        payload: { catalogueId, imageVersion },
+      });
+    const failed = (catalogueId: number) =>
+      base.wsMessages$.next({ type: WebSocketMessageType.CATALOGUE_IMAGE_FAILED, payload: { catalogueId } });
+    const request = async (catalogueId = 1) => {
+      const promise = base.service.regenerateProductImage(catalogueId);
+      httpMock.expectOne(`/api/food/catalogue/${catalogueId}/regenerate-image`).flush({
+        result: true,
+        data: { status: 'queued' },
+      });
+      await promise;
+    };
+
+    return { ...base, httpMock, notifications, generated, failed, request };
+  }
+
+  it('is generating from the request until a newer image arrives, which also shows the new picture', async () => {
+    const { service, request, generated } = setupRegeneration();
+    service.catalogue$$.update((catalogue) => ({ ...catalogue, 1: { ...catalogue[1], imageVersion: 2 } }));
+
+    await request();
+    expect(service.isImageGenerating(1)).toBe(true);
+
+    generated(1, 3);
+
+    expect(service.isImageGenerating(1)).toBe(false);
+    expect(service.getThumbImageUrl(1)).toBe('/api/images/food/1-thumb-v3.webp');
+  });
+
+  it('keeps waiting when the arriving image is not newer than the one at the time of the request', async () => {
+    const { service, request, generated } = setupRegeneration();
+    service.catalogue$$.update((catalogue) => ({ ...catalogue, 1: { ...catalogue[1], imageVersion: 2 } }));
+
+    await request();
+    generated(1, 2);
+
+    expect(service.isImageGenerating(1)).toBe(true);
+  });
+
+  it('stops and reports a failure of a generation requested here, by the product name', async () => {
+    const { service, request, failed, notifications } = setupRegeneration();
+
+    await request();
+    failed(1);
+
+    expect(service.isImageGenerating(1)).toBe(false);
+    expect(notifications()).toEqual([expect.objectContaining({ type: 'error', message: expect.stringContaining('Яблоко') })]);
+  });
+
+  it('stays silent about a failure of a generation requested elsewhere', () => {
+    const { service, failed, notifications } = setupRegeneration();
+
+    failed(1);
+
+    expect(service.isImageGenerating(1)).toBe(false);
+    expect(notifications()).toEqual([]);
+  });
+
+  it('stops being in progress and passes the error on when the request is refused', async () => {
+    const { service, httpMock } = setupRegeneration();
+
+    const promise = service.regenerateProductImage(1);
+    const assertion = expect(promise).rejects.toMatchObject({ status: 429 });
+    httpMock.expectOne(REGENERATE_URL).flush({ result: false }, { status: 429, statusText: 'Too Many Requests' });
+
+    await assertion;
+    expect(service.isImageGenerating(1)).toBe(false);
+  });
+
+  it('sends no second request while one is in progress', async () => {
+    const { service, httpMock, request } = setupRegeneration();
+
+    await request();
+    await service.regenerateProductImage(1);
+
+    httpMock.expectNone(REGENERATE_URL);
+  });
+
+  it('lets the user try again once the result event is lost for too long', async () => {
+    const { service, request } = setupRegeneration();
+
+    await request();
+    vi.advanceTimersByTime(FOOD_IMAGE_GENERATION_FALLBACK_MS);
+
+    expect(service.isImageGenerating(1)).toBe(false);
+  });
+
+  it('lets the user ask again after the socket reconnects, since the result event may have been lost', async () => {
+    const { service, request, connected$ } = setupRegeneration();
+
+    await request();
+    connected$.next();
+
+    expect(service.isImageGenerating(1)).toBe(false);
+  });
+
+  it('forgets generations in progress when the session is reset', async () => {
+    const { service, request } = setupRegeneration();
+
+    await request();
+    service.reset();
+
+    expect(service.isImageGenerating(1)).toBe(false);
+  });
+
+  it('has no thumbnail URL for a product without an image', () => {
+    const { service } = setupRegeneration();
+
+    expect(service.getThumbImageUrl(1)).toBeUndefined();
   });
 });

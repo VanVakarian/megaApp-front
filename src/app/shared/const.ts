@@ -27,6 +27,11 @@ export const SETTINGS_AUTO_SAVE_DEBOUNCE_MS: number = 500;
 // becomes one request for the final text. Results already in the local cache are shown without waiting.
 export const FOOD_SEARCH_SEND_DEBOUNCE_MS: number = 200;
 
+// How long a requested image generation may stay "in progress" without a result event before the client lets
+// the user try again — the live event can be lost (socket drop). Exceeds the server's longest run: three
+// attempts of up to two minutes each plus the waits between them.
+export const FOOD_IMAGE_GENERATION_FALLBACK_MS: number = 8 * 60 * 1000;
+
 // Registered cache entities and their current schema version. Bumping one key's version
 // invalidates only that key — unlike the old single global CACHE_SCHEMA_VERSION, which
 // invalidated everything at once whenever any one entity's format changed.
