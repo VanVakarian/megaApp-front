@@ -14,9 +14,11 @@ import {
 import { StatsHelpIcon } from '@app/components/food/stats/stats-help-icon/stats-help-icon';
 import { ChartThemeService } from '@app/services/chart-theme.service';
 import { DeviceInfoService } from '@app/services/device-info.service';
+import { FoodSettingsService } from '@app/services/food/food-settings.service';
 import { FoodStatsService } from '@app/services/food/food-stats.service';
 import { TelemetryService } from '@app/services/telemetry.service';
 import { ANIMATION_DURATION_MS } from '@app/shared/animations';
+import { BmiBand, buildBmiBands } from '@app/shared/bmi-bands';
 import {
   ChartColors,
   FOOD_STATS_MONTH_LABELS_PADDING,
@@ -243,6 +245,7 @@ export class FoodStatsCharts implements OnInit, AfterViewInit, OnDestroy {
 
   protected readonly deviceInfoService = inject(DeviceInfoService);
   private readonly foodStatsService = inject(FoodStatsService);
+  private readonly foodSettingsService = inject(FoodSettingsService);
   private readonly telemetry = inject(TelemetryService);
   private readonly rangeAnimationDurationMs = ANIMATION_DURATION_MS.MEDIUM;
   private rangeAnimationFrameId: number | null = null;
@@ -254,9 +257,22 @@ export class FoodStatsCharts implements OnInit, AfterViewInit, OnDestroy {
   // and sidesteps the stale-repaint issue entirely; plain data updates stay a cheap mutation.
   private lastChartColors: ChartColors | null = null;
 
+  // Bands last handed to the weight chart's plugin options. They change only with height, the
+  // diary toggle or the theme, not on every slider-drag data update — and a freshly (re)created
+  // chart has none yet, hence the reset in initializeCharts().
+  private appliedBmiBands: BmiBand[] | null = null;
+
+  // No height or the diary toggle off — no bands; the weight chart then looks as it always did.
+  private readonly bmiBands$$ = computed(() => {
+    const height = this.foodSettingsService.height$$();
+    if (!height || !this.foodSettingsService.statsWeightBmiBands$$()) return [];
+    return buildBmiBands(height, this.chartThemeService.colors$$().isDark);
+  });
+
   private readonly chartsUpdateEffect = effect(() => {
     const data = this.foodStatsService.statsChartDataClipped$$();
     const colors = this.chartThemeService.colors$$();
+    const bmiBands = this.bmiBands$$();
     this.telemetry.measure(
       'food.stats_charts_render',
       () => {
@@ -264,7 +280,7 @@ export class FoodStatsCharts implements OnInit, AfterViewInit, OnDestroy {
           this.lastChartColors = colors;
           this.recreateCharts(colors);
         }
-        this.updateWeightChart(data, colors);
+        this.updateWeightChart(data, colors, bmiBands);
         this.updateKcalsChart(data, colors);
       },
       () => ({ points: data.dates.length }),
@@ -324,9 +340,14 @@ export class FoodStatsCharts implements OnInit, AfterViewInit, OnDestroy {
     this.animateRangeTo(targetRange);
   }
 
-  private updateWeightChart(data: StatsChartData, colors: ChartColors) {
+  private updateWeightChart(data: StatsChartData, colors: ChartColors, bmiBands: BmiBand[]) {
     const chart = this.weightChart$$();
     if (chart?.data) {
+      if (bmiBands !== this.appliedBmiBands) {
+        chart.options.plugins ??= {};
+        chart.options.plugins.bmiBands = { bands: bmiBands };
+        this.appliedBmiBands = bmiBands;
+      }
       chart.data.labels = data.dates;
       chart.data.datasets[0].data = data.weights;
       chart.data.datasets[0].borderColor = colors.main;
@@ -565,6 +586,7 @@ export class FoodStatsCharts implements OnInit, AfterViewInit, OnDestroy {
 
   private initializeCharts(colors: ChartColors): void {
     this.monthLabelsOptions = this.chartThemeService.monthLabelsOptions$$();
+    this.appliedBmiBands = null;
     this.weightChart$$.set(new Chart('WeightChart', this.createChartConfig(createWeightChartConfig(colors))));
     this.kcalsChart$$.set(new Chart('KcalsChart', this.createChartConfig(createKcalsChartConfig(colors))));
   }

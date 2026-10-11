@@ -1,3 +1,4 @@
+import { bmiBandsPlugin } from '@app/shared/bmi-bands-plugin';
 import { createCategoricalPalette } from '@app/shared/categorical-palette';
 import { formatMetricUnitValue, MetricUnit } from '@app/shared/metric-units';
 import { formatMetricTickLabel } from '@app/shared/metrics-series';
@@ -112,6 +113,7 @@ export function createWeightChartConfig(colors: ChartColors): ChartConfiguration
         },
       ],
     },
+    plugins: [bmiBandsPlugin],
     options: {
       animation: false,
       elements: { line: { tension: 0.5 } },
