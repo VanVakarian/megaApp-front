@@ -1,4 +1,8 @@
-import { splitScopeIntoBatches } from '@app/shared/metrics-history-range';
+import {
+  earliestHistoryBucket,
+  nextHistorySinceBucket,
+  splitScopeIntoBatches,
+} from '@app/shared/metrics-history-range';
 import { MetricsScopeEntry } from '@app/shared/types';
 
 function names(prefix: string, count: number): string[] {
@@ -61,4 +65,29 @@ describe('splitScopeIntoBatches', () => {
 
     expect(batches.map(metricCount)).toEqual([5, 1]);
   });
+});
+
+describe('nextHistorySinceBucket', () => {
+  const latest = 1_000_000 * 60;
+
+  it('starts at the window start for a metric that was never fetched', () => {
+    expect(nextHistorySinceBucket('minute', 0, latest)).toBe(earliestHistoryBucket('minute', latest));
+  });
+
+  it('resumes right after a cursor that is inside the window', () => {
+    const cursor = latest - 10 * 60;
+    expect(nextHistorySinceBucket('minute', cursor, latest)).toBe(cursor + 60);
+  });
+
+  it('reports nothing to fetch once the cursor has caught up', () => {
+    expect(nextHistorySinceBucket('minute', latest, latest)).toBe(latest + 60);
+  });
+
+  it.each(['minute', 'hour', 'day'] as const)(
+    'never reaches back past the window start for a stale %s cursor',
+    (granularity) => {
+      const staleCursor = latest - 10_000 * 86_400;
+      expect(nextHistorySinceBucket(granularity, staleCursor, latest)).toBe(earliestHistoryBucket(granularity, latest));
+    },
+  );
 });

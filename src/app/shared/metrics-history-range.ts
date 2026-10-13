@@ -42,13 +42,19 @@ export function earliestHistoryBucket(granularity: MetricGranularity, latestBuck
 // authoritative for the exact range it was asked for, so "checked through X"
 // can be trusted outright. Returns latestBucket+step (nothing to fetch) once
 // the cursor has caught up.
+//
+// Never reaches back past the window start: a cursor that went stale (persisted
+// in IndexedDB, then not advanced for days because the fetch kept failing) would
+// otherwise ask for everything Flatline retains — far more than the series
+// buffer can hold, and enough to trip the server's per-request point cap.
 export function nextHistorySinceBucket(
   granularity: MetricGranularity,
   checkedThrough: number,
   latestBucket: number,
 ): number {
-  if (checkedThrough <= 0) return earliestHistoryBucket(granularity, latestBucket);
-  return checkedThrough + METRIC_GRANULARITY_SPECS[granularity].stepSeconds;
+  const windowStart = earliestHistoryBucket(granularity, latestBucket);
+  if (checkedThrough <= 0) return windowStart;
+  return Math.max(windowStart, checkedThrough + METRIC_GRANULARITY_SPECS[granularity].stepSeconds);
 }
 
 // Cursor is on the (service, metric) pair, not the view — a metric shown in
