@@ -1,5 +1,5 @@
 import { METRIC_GRANULARITIES, METRIC_GRANULARITY_SPECS } from '@app/shared/metrics-granularity';
-import { MetricGranularity } from '@app/shared/types';
+import { MetricGranularity, MetricsScopeEntry } from '@app/shared/types';
 
 export type MetricsHistoryWatermarks = Record<MetricGranularity, number>;
 
@@ -58,6 +58,38 @@ export function nextHistorySinceBucket(
 // either name can never collide two distinct pairs onto the same key.
 export function metricCursorKey(service: string, name: string): string {
   return JSON.stringify([service, name]);
+}
+
+// One history request's size is bounded by metric count, not by scope size: Flatline's
+// cost per request grows with the number of series it reads, and it refuses outright
+// past 250k points per service. A fresh metric carries at most 2525 points (1440 minute
+// + 720 hour + 365 day), so 40 metrics stay near 100k — well under that cap and a
+// couple of seconds of server time, however large the whole scope is.
+export const HISTORY_BATCH_MAX_METRICS = 40;
+
+export function splitScopeIntoBatches(
+  scope: MetricsScopeEntry[],
+  maxMetrics = HISTORY_BATCH_MAX_METRICS,
+): MetricsScopeEntry[][] {
+  const batches: MetricsScopeEntry[][] = [];
+  let batch: MetricsScopeEntry[] = [];
+  let batchMetrics = 0;
+  for (const entry of scope) {
+    let start = 0;
+    while (start < entry.metricNames.length) {
+      const names = entry.metricNames.slice(start, start + maxMetrics - batchMetrics);
+      batch.push({ service: entry.service, metricNames: names });
+      batchMetrics += names.length;
+      start += names.length;
+      if (batchMetrics === maxMetrics) {
+        batches.push(batch);
+        batch = [];
+        batchMetrics = 0;
+      }
+    }
+  }
+  if (batch.length > 0) batches.push(batch);
+  return batches;
 }
 
 export type MetricsCursorMap = Record<string, MetricsHistoryWatermarks>;

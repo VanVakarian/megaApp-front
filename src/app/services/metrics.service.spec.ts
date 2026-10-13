@@ -222,6 +222,51 @@ describe('MetricsService.forceRefresh — refreshHistory (binary /api/metrics/hi
   });
 });
 
+describe('MetricsService.forceRefresh — batched history requests', () => {
+  const bigScope = [{ service: 'api', metricNames: Array.from({ length: 95 }, (_, index) => `m${index}`) }];
+
+  it('fetches a large scope as sequential bounded requests that together cover every metric once', () => {
+    const { service, httpMock } = setup();
+    service.setScope(bigScope);
+    service.forceRefresh();
+
+    const requested: string[] = [];
+    for (const expectedSize of [40, 40, 15]) {
+      const req = httpMock.expectOne((r) => r.url === '/api/metrics/history');
+      const names = req.request.body.scope.flatMap((entry: { metricNames: string[] }) => entry.metricNames);
+      expect(names).toHaveLength(expectedSize);
+      requested.push(...names);
+      req.flush(encodeMetricsWireFixture([]));
+    }
+
+    expect(requested).toEqual(bigScope[0].metricNames);
+    httpMock.expectNone('/api/metrics/history');
+    expect(service.isRefreshing$$()).toBe(false);
+  });
+
+  it('keeps the batches already fetched when a later batch fails and stops the chain', () => {
+    const { service, httpMock } = setup();
+    service.setScope(bigScope);
+    service.forceRefresh();
+
+    httpMock
+      .expectOne((r) => r.url === '/api/metrics/history')
+      .flush(
+        encodeMetricsWireFixture([
+          { service: 'api', metricName: 'm0', granularity: 'minute', points: [{ bucket: 1_000_000, value: 7 }] },
+        ]),
+      );
+    httpMock
+      .expectOne((r) => r.url === '/api/metrics/history')
+      .error(new ProgressEvent('error'), { status: 502, statusText: 'Bad Gateway' });
+
+    // The failing batch stops the chain: the third batch is never sent.
+    httpMock.expectNone('/api/metrics/history');
+    expect(service.isRefreshing$$()).toBe(false);
+    expect(service.seriesFor('api', 'm0', 'minute')()).toEqual([metricPoint({ name: 'm0', value: 7 })]);
+  });
+});
+
 describe('MetricsService — history heartbeat (subscriptionEffect/syncHistoryHeartbeat)', () => {
   it('fires an immediate history request as soon as connected with a scope, without waiting for the interval', async () => {
     const { service, httpMock, isConnected$$, appRef } = setup();
