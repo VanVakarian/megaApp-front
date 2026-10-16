@@ -1,6 +1,5 @@
 <food-product-picker [(query)]="foodAddModalService.searchQuery$$"
                      [allowCreateNewProduct]="!foodAddModalService.productSelectionCallback$$()"
-                     [allowArchiveSearch]="!foodAddModalService.productSelectionCallback$$()"
                      (productSelected)="onProductSelected($event)"
                      (createNewProductRequested)="addProduct()"
                      (closeRequested)="closeModal()" />

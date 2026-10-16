@@ -127,10 +127,19 @@ export interface BodyWeightUpdatedWsMessage {
   payload: BodyWeightToUpdate;
 }
 
+// The part of the catalogue a search covers. Archived is admin-only; All is the history picker's.
+export const SearchScope = {
+  Active: 'active',
+  Archived: 'archived',
+  All: 'all',
+} as const;
+
+export type SearchScope = (typeof SearchScope)[keyof typeof SearchScope];
+
 export interface SearchQueryWsMessage {
   type: typeof WebSocketMessageType.SEARCH_QUERY;
   query: string;
-  archived: boolean;
+  scope: SearchScope;
   sequenceNumber: number;
 }
 
@@ -138,8 +147,8 @@ export interface SearchResultsWsMessage {
   type: typeof WebSocketMessageType.SEARCH_RESULTS;
   payload: {
     query: string;
-    // The mode the server actually applied: an archive request from a non-admin is answered as normal.
-    archived?: boolean;
+    // The scope the server actually applied: an archived request from a non-admin is answered as active.
+    scope: SearchScope;
     catalogueIds: number[];
     timestamp: number;
     sequenceNumber: number;

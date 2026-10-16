@@ -1,5 +1,5 @@
 import { inject, Injectable, signal, WritableSignal } from '@angular/core';
-import { CatalogueEntry } from '@app/shared/types';
+import { CatalogueEntry, SearchScope } from '@app/shared/types';
 import { FoodCatalogueService } from './food-catalogue.service';
 
 export const ModalState = {
@@ -117,6 +117,11 @@ export class FoodAddModalService {
       case ModalState.SEARCH:
         if (from === ModalState.CLOSED) {
           this.searchQuery$$.set('');
+          // The search scope lasts for one modal session. Picking a product to track in the history may
+          // pick an archived one too, while a diary entry can only be added with a product in use.
+          this.foodCatalogueService.setSearchScope(
+            this.productSelectionCallback$$() ? SearchScope.All : SearchScope.Active,
+          );
         }
         if (
           from === ModalState.ADD_DIARY_ENTRY ||
@@ -137,8 +142,6 @@ export class FoodAddModalService {
         this.searchQuery$$.set('');
         this.selectedProduct$$.set(null);
         this.productSelectionCallback$$.set(null);
-        // The archive search mode lasts for one modal session, so a modal opened later never starts in it.
-        this.foodCatalogueService.setArchiveSearch(false);
         break;
     }
   }

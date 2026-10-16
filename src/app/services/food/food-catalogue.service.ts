@@ -17,6 +17,7 @@ import {
   ProductSaveRequest,
   SearchQueryWsMessage,
   SearchResultsWsMessage,
+  SearchScope,
   ServerResponseBasic,
   ServerResponseProductPreview,
   ServerResponseProductSave,
@@ -50,10 +51,11 @@ export class FoodCatalogueService extends BaseFoodService {
   public readonly isLegacySearch$$: WritableSignal<boolean> = signal(false);
   public readonly legacySearchResults$$: WritableSignal<CatalogueEntry[]> = signal([]);
 
-  // Admin-only search mode that lists archived products instead of the regular ones. Changed only
-  // through setArchiveSearch, which keeps results of one mode from showing under the other.
-  private readonly archiveSearch$$: WritableSignal<boolean> = signal(false);
-  public readonly isArchiveSearch$$ = this.archiveSearch$$.asReadonly();
+  // The part of the catalogue the search covers. The add-food modal sets it when its session opens; an admin
+  // switches it between Active and Archived. Changed only through setSearchScope, which keeps results of one
+  // scope from showing under another.
+  private readonly scope$$: WritableSignal<SearchScope> = signal(SearchScope.Active);
+  public readonly searchScope$$ = this.scope$$.asReadonly();
 
   // Products whose image generation this client asked for and has no result for yet: id → the image version at
   // the time of the request (0 for none). Cleared by the result event, or by the fallback timer if it is lost.
@@ -106,7 +108,7 @@ export class FoodCatalogueService extends BaseFoodService {
     this.searchResults$$.set([]);
     this.isLegacySearch$$.set(false);
     this.legacySearchResults$$.set([]);
-    this.archiveSearch$$.set(false);
+    this.scope$$.set(SearchScope.Active);
     this.searchCache = {};
     this.searchSequenceNumber = 0;
     this.lastDisplayedSequenceNumber = 0;
@@ -164,20 +166,22 @@ export class FoodCatalogueService extends BaseFoodService {
     this.localStorageService.setUserScoped(this.CATALOGUE_VERSION_STORAGE_KEY, version);
   }
 
-  // The legacy (local) and archive (server) searches exclude each other.
+  // The legacy (local) search and the admin's archived scope (server) exclude each other.
   public toggleLegacySearch(): void {
-    this.setArchiveSearch(false);
+    if (this.scope$$() === SearchScope.Archived) {
+      this.setSearchScope(SearchScope.Active);
+    }
     this.isLegacySearch$$.update((isLegacy) => !isLegacy);
   }
 
   public toggleArchiveSearch(): void {
     this.isLegacySearch$$.set(false);
-    this.setArchiveSearch(!this.archiveSearch$$());
+    this.setSearchScope(this.scope$$() === SearchScope.Archived ? SearchScope.Active : SearchScope.Archived);
   }
 
-  public setArchiveSearch(isArchive: boolean): void {
-    if (this.archiveSearch$$() === isArchive) return;
-    this.archiveSearch$$.set(isArchive);
+  public setSearchScope(scope: SearchScope): void {
+    if (this.scope$$() === scope) return;
+    this.scope$$.set(scope);
     this.searchResults$$.set([]);
   }
 
@@ -198,8 +202,7 @@ export class FoodCatalogueService extends BaseFoodService {
     this.searchSequenceNumber++;
     this.searchStartedAt = performance.now();
 
-    // Archive searches are rare: their results are neither read from nor written to the cache.
-    const cachedIds = this.archiveSearch$$() ? null : this.getSearchCachedResults(query);
+    const cachedIds = this.isScopeCached(this.scope$$()) ? this.getSearchCachedResults(query) : null;
     if (cachedIds) {
       this.displaySearchResults(cachedIds);
       this.lastDisplayedSequenceNumber = this.searchSequenceNumber;
@@ -232,7 +235,7 @@ export class FoodCatalogueService extends BaseFoodService {
     const allEntries = Object.values(catalogue);
 
     const results = allEntries.filter((food) => {
-      if (food.archived) return false;
+      if (!this.matchesSearchScope(food)) return false;
       const legacyNameLower = food.legacyName?.toLowerCase() || '';
       return searchTerms.every((term) => legacyNameLower.includes(term));
     });
@@ -273,7 +276,7 @@ export class FoodCatalogueService extends BaseFoodService {
     const message: SearchQueryWsMessage = {
       type: WebSocketMessageType.SEARCH_QUERY,
       query: query,
-      archived: this.archiveSearch$$(),
+      scope: this.scope$$(),
       sequenceNumber: sequenceNumber,
     };
     this.networkService.sendMessage(message);
@@ -339,25 +342,25 @@ export class FoodCatalogueService extends BaseFoodService {
     const results = msg.payload.catalogueIds;
     const queryFromMessage = msg.payload.query;
     const sequenceFromMessage = msg.payload.sequenceNumber;
-    // The reply belongs to the mode the server applied, which can differ from the one on screen:
-    // the user may have switched meanwhile, or the server may have fallen back to normal.
-    const isArchiveReply = msg.payload.archived === true;
+    // The reply belongs to the scope the server applied, which can differ from the one on screen:
+    // the user may have switched meanwhile, or the server may have fallen back to the active scope.
+    const replyScope = msg.payload.scope;
 
     if (!queryFromMessage || !Array.isArray(results)) {
       return;
     }
 
-    const cachedIds = isArchiveReply ? null : this.getSearchCachedResults(queryFromMessage);
+    const cachedIds = this.isScopeCached(replyScope) ? this.getSearchCachedResults(queryFromMessage) : null;
     const isChanged = !cachedIds || !this.arraysEqual(cachedIds, results);
 
     if (isChanged) {
-      if (!isArchiveReply) {
+      if (this.isScopeCached(replyScope)) {
         this.setSearchCachedResults(queryFromMessage, results);
       }
 
       // The last displayed number is the query on screen; its own reply (equal number) refines what the local
       // cache showed, while a reply to an earlier query (smaller number) is dropped.
-      if (isArchiveReply === this.archiveSearch$$() && sequenceFromMessage >= this.lastDisplayedSequenceNumber) {
+      if (replyScope === this.scope$$() && sequenceFromMessage >= this.lastDisplayedSequenceNumber) {
         this.displaySearchResults(results);
         this.lastDisplayedSequenceNumber = sequenceFromMessage;
       }
@@ -437,14 +440,26 @@ export class FoodCatalogueService extends BaseFoodService {
       return;
     }
 
-    // Single place that applies the mode: it also drops ids from a stale cache, so the cache
+    // Single place that applies the scope: it also drops ids from a stale cache, so the cache
     // itself never needs cleaning when a product is archived or restored.
-    const results = ids.map((id) => catalogue[id]).filter((entry) => entry && this.matchesSearchMode(entry));
+    const results = ids.map((id) => catalogue[id]).filter((entry) => entry && this.matchesSearchScope(entry));
     this.searchResults$$.set(results);
   }
 
-  private matchesSearchMode(entry: CatalogueEntry): boolean {
-    return Boolean(entry.archived) === this.archiveSearch$$();
+  private matchesSearchScope(entry: CatalogueEntry): boolean {
+    switch (this.scope$$()) {
+      case SearchScope.Archived:
+        return Boolean(entry.archived);
+      case SearchScope.All:
+        return true;
+      default:
+        return !entry.archived;
+    }
+  }
+
+  // Only the active scope has a results cache: the other scopes are searched rarely.
+  private isScopeCached(scope: SearchScope): boolean {
+    return scope === SearchScope.Active;
   }
 
   private arraysEqual(a: number[], b: number[]): boolean {
@@ -593,12 +608,12 @@ export class FoodCatalogueService extends BaseFoodService {
     this.catalogue$$.set(updatedCatalogue);
     this.saveToLocalStorage(updatedCatalogue);
 
-    // A product whose archive flag changed no longer belongs to the results of the current mode.
+    // A product whose archive flag changed may no longer belong to the results of the current scope.
     this.searchResults$$.update((results) =>
-      results.map((item) => (item.id === entry.id ? entry : item)).filter((item) => this.matchesSearchMode(item)),
+      results.map((item) => (item.id === entry.id ? entry : item)).filter((item) => this.matchesSearchScope(item)),
     );
     this.legacySearchResults$$.update((results) =>
-      results.map((item) => (item.id === entry.id ? entry : item)).filter((item) => !item.archived),
+      results.map((item) => (item.id === entry.id ? entry : item)).filter((item) => this.matchesSearchScope(item)),
     );
   }
 

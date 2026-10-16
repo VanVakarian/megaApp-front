@@ -102,6 +102,9 @@
           <div class="flex flex-col justify-between h-full">
             <div>
               <span class="catalogue-entry-name">{{ getDisplayName(catalogueEntry) }}</span>
+              @if (catalogueEntry.archived) {
+                <span class="catalogue-entry-badge ml-1">архив</span>
+              }
             </div>
             @if (extractedWeight$$() !== null) {
               <div class="flex justify-end">

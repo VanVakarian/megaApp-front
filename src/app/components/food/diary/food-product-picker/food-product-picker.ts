@@ -15,7 +15,7 @@ import { DeviceInfoService } from '@app/services/device-info.service';
 import { FoodCatalogueService } from '@app/services/food/food-catalogue.service';
 import { ANIMATION_CLASSES } from '@app/shared/animations';
 import { FlipAnimateDirective } from '@app/shared/directives/flip-animate.directive';
-import { CatalogueEntry } from '@app/shared/types';
+import { CatalogueEntry, SearchScope } from '@app/shared/types';
 import { VButton } from '@ui-kit/components/v-button/v-button';
 import { VCard } from '@ui-kit/components/v-card/v-card';
 import { IconName, VIcon } from '@ui-kit/components/v-icon/v-icon';
@@ -40,7 +40,6 @@ export interface ProductPickerSelection {
 export class FoodProductPicker {
   public readonly query = model<string>('');
   public readonly allowCreateNewProduct = input<boolean>(true);
-  public readonly allowArchiveSearch = input<boolean>(false);
 
   public readonly productSelected = output<ProductPickerSelection>();
   public readonly createNewProductRequested = output<void>();
@@ -50,9 +49,11 @@ export class FoodProductPicker {
   protected readonly AnimationClass = ANIMATION_CLASSES;
   protected readonly deviceInfoService = inject(DeviceInfoService);
   protected readonly isLegacySearch$$ = computed(() => this.foodCatalogueService.isLegacySearch$$());
-  protected readonly isArchiveSearch$$ = computed(() => this.foodCatalogueService.isArchiveSearch$$());
+  protected readonly searchScope$$ = computed(() => this.foodCatalogueService.searchScope$$());
+  protected readonly isArchiveSearch$$ = computed(() => this.searchScope$$() === SearchScope.Archived);
+  // The scope All already includes the archive, so there is nothing to switch to.
   protected readonly isArchiveSearchAvailable$$ = computed(
-    () => this.allowArchiveSearch() && this.authService.isAdmin$$(),
+    () => this.searchScope$$() !== SearchScope.All && this.authService.isAdmin$$(),
   );
   protected readonly searchResults$$ = computed(() =>
     this.isLegacySearch$$()
@@ -66,7 +67,7 @@ export class FoodProductPicker {
   private readonly searchEffect$$ = effect(() => {
     const query = this.query();
     const isLegacy = this.isLegacySearch$$();
-    this.isArchiveSearch$$(); // read to re-run the search when the archive mode is switched
+    this.searchScope$$(); // read to re-run the search when the search scope is switched
 
     if (query && query.trim()) {
       const { text, weight } = this.parseQuery(query);

@@ -17,6 +17,7 @@ interface ProductHistoryRow {
   dateIso: string;
   dateLabel: string;
   productName: string;
+  isProductArchived: boolean;
   foodWeight: number;
   percentOfNorm: number;
 }
@@ -46,14 +47,18 @@ export class ProductHistory {
 
   // Display strings are built once per data change here, not per row on every change detection pass.
   protected readonly rows$$ = computed<ProductHistoryRow[]>(() => {
-    const productNameById = this.state.productNameById$$();
-    return this.state.entries$$().map((entry) => ({
-      dateIso: entry.dateISO,
-      dateLabel: formatDateTicks(entry.dateISO),
-      productName: productNameById.get(entry.foodCatalogueId) ?? '',
-      foodWeight: entry.foodWeight,
-      percentOfNorm: entry.percentOfNorm,
-    }));
+    const productById = this.state.productById$$();
+    return this.state.entries$$().map((entry) => {
+      const product = productById.get(entry.foodCatalogueId);
+      return {
+        dateIso: entry.dateISO,
+        dateLabel: formatDateTicks(entry.dateISO),
+        productName: product?.name ?? '',
+        isProductArchived: Boolean(product?.archived),
+        foodWeight: entry.foodWeight,
+        percentOfNorm: entry.percentOfNorm,
+      };
+    });
   });
 
   private readonly foodDiaryService = inject(FoodDiaryService);

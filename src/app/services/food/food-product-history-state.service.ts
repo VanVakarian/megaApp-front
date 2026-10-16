@@ -1,4 +1,5 @@
 import { computed, inject, Injectable, OnDestroy, signal, WritableSignal } from '@angular/core';
+import { FoodCatalogueService } from '@app/services/food/food-catalogue.service';
 import { FoodProductHistoryService } from '@app/services/food/food-product-history.service';
 import { CatalogueEntry, ProductHistoryEntry } from '@app/shared/types';
 import { Subscription } from 'rxjs';
@@ -14,21 +15,27 @@ export const MAX_TRACKED_PRODUCTS = 20;
 @Injectable()
 export class FoodProductHistoryStateService implements OnDestroy {
   private readonly foodProductHistoryService = inject(FoodProductHistoryService);
+  private readonly foodCatalogueService = inject(FoodCatalogueService);
 
-  public readonly trackedProducts$$: WritableSignal<CatalogueEntry[]> = signal([]);
+  // Only the ids are stored: name and archive flag are read from the live catalogue, so a product renamed,
+  // archived or restored meanwhile (here or on another device) shows its current state.
+  private readonly trackedIds$$: WritableSignal<number[]> = signal([]);
+
+  public readonly trackedProducts$$ = computed(() => {
+    const catalogue = this.foodCatalogueService.catalogue$$();
+    return this.trackedIds$$()
+      .map((id) => catalogue[id])
+      .filter((product): product is CatalogueEntry => Boolean(product));
+  });
   public readonly entries$$: WritableSignal<ProductHistoryEntry[]> = signal([]);
   public readonly isLoading$$ = signal(false);
   public readonly error$$: WritableSignal<string | null> = signal(null);
 
   public readonly isLimitReached$$ = computed(() => this.trackedProducts$$().length >= MAX_TRACKED_PRODUCTS);
 
-  public readonly productNameById$$ = computed(() => {
-    const map = new Map<number, string>();
-    for (const product of this.trackedProducts$$()) {
-      map.set(product.id, product.name);
-    }
-    return map;
-  });
+  public readonly productById$$ = computed(
+    () => new Map(this.trackedProducts$$().map((product) => [product.id, product] as const)),
+  );
 
   private activeRequestSub: Subscription | null = null;
 
@@ -37,15 +44,15 @@ export class FoodProductHistoryStateService implements OnDestroy {
   }
 
   public addProduct(product: CatalogueEntry): void {
-    const alreadyTracked = this.trackedProducts$$().some((tracked) => tracked.id === product.id);
+    const alreadyTracked = this.trackedIds$$().includes(product.id);
     if (alreadyTracked || this.isLimitReached$$()) return;
 
-    this.trackedProducts$$.update((products) => [...products, product]);
+    this.trackedIds$$.update((ids) => [...ids, product.id]);
     this.reload();
   }
 
   public removeProduct(catalogueId: number): void {
-    this.trackedProducts$$.update((products) => products.filter((product) => product.id !== catalogueId));
+    this.trackedIds$$.update((ids) => ids.filter((id) => id !== catalogueId));
     this.reload();
   }
 

@@ -9,7 +9,7 @@ import { NotificationService } from '@app/services/notification.service';
 import { SyncEngineService } from '@app/services/sync-engine.service';
 import { TelemetryService } from '@app/services/telemetry.service';
 import { FOOD_IMAGE_GENERATION_FALLBACK_MS, FOOD_SEARCH_SEND_DEBOUNCE_MS } from '@app/shared/const';
-import { CatalogueEntry, WebSocketMessageType } from '@app/shared/types';
+import { CatalogueEntry, SearchScope, WebSocketMessageType } from '@app/shared/types';
 import { Subject } from 'rxjs';
 import { FoodCatalogueService } from './food-catalogue.service';
 
@@ -56,10 +56,10 @@ function setup(cachedSearches: Record<string, number[]> | null = null) {
     3: entry(3, 'Старое яблоко', true),
   });
 
-  const reply = (payload: { archived?: boolean; catalogueIds: number[]; sequenceNumber: number; query?: string }) =>
+  const reply = (payload: { scope?: SearchScope; catalogueIds: number[]; sequenceNumber: number; query?: string }) =>
     wsMessages$.next({
       type: WebSocketMessageType.SEARCH_RESULTS,
-      payload: { query: 'яблоко', timestamp: 0, ...payload },
+      payload: { query: 'яблоко', timestamp: 0, scope: SearchScope.Active, ...payload },
     });
   const searchCacheWrites = () => setUserScoped.mock.calls.filter(([key]) => key === SEARCH_CACHE_KEY);
   const ids = () => service.searchResults$$().map((item) => item.id);
@@ -68,7 +68,7 @@ function setup(cachedSearches: Record<string, number[]> | null = null) {
   return { service, wsMessages$, connected$, sendMessage, reply, searchCacheWrites, ids, waitForSend };
 }
 
-describe('FoodCatalogueService archive search', () => {
+describe('FoodCatalogueService search scope', () => {
   beforeEach(() => {
     vi.useFakeTimers();
   });
@@ -77,59 +77,76 @@ describe('FoodCatalogueService archive search', () => {
     vi.useRealTimers();
   });
 
-  it('shows only regular products in the normal mode, dropping archived ids from a reply', () => {
+  it('shows only regular products in the active scope, dropping archived ids from a reply', () => {
     const { service, sendMessage, reply, ids, waitForSend } = setup();
 
     service.searchProducts('яблоко');
     waitForSend();
     reply({ catalogueIds: [1, 3, 2], sequenceNumber: 1 });
 
-    expect(sendMessage).toHaveBeenCalledWith(expect.objectContaining({ query: 'яблоко', archived: false }));
+    expect(sendMessage).toHaveBeenCalledWith(expect.objectContaining({ query: 'яблоко', scope: SearchScope.Active }));
     expect(ids()).toEqual([1, 2]);
   });
 
-  it('asks the server for the archive mode and shows only archived products', () => {
+  it('asks the server for the archived scope and shows only archived products', () => {
     const { service, sendMessage, reply, ids, waitForSend } = setup();
 
     service.toggleArchiveSearch();
     service.searchProducts('яблоко');
     waitForSend();
-    reply({ archived: true, catalogueIds: [3, 1], sequenceNumber: 1 });
+    reply({ scope: SearchScope.Archived, catalogueIds: [3, 1], sequenceNumber: 1 });
 
-    expect(sendMessage).toHaveBeenLastCalledWith(expect.objectContaining({ query: 'яблоко', archived: true }));
+    expect(sendMessage).toHaveBeenLastCalledWith(
+      expect.objectContaining({ query: 'яблоко', scope: SearchScope.Archived }),
+    );
     expect(ids()).toEqual([3]);
   });
 
-  it('neither reads nor writes the results cache in the archive mode', () => {
-    const { service, reply, searchCacheWrites, ids, waitForSend } = setup();
+  it('asks the server for the all scope and shows archived products among the regular ones', () => {
+    const { service, sendMessage, reply, ids, waitForSend } = setup();
 
+    service.setSearchScope(SearchScope.All);
     service.searchProducts('яблоко');
     waitForSend();
-    reply({ catalogueIds: [1, 2], sequenceNumber: 1 });
-    expect(searchCacheWrites()).toHaveLength(1);
+    reply({ scope: SearchScope.All, catalogueIds: [3, 1, 2], sequenceNumber: 1 });
 
-    service.toggleArchiveSearch();
-    service.searchProducts('яблоко');
-    waitForSend();
-    expect(ids()).toEqual([]); // the cached normal ids are not shown under the archive mode
-
-    reply({ archived: true, catalogueIds: [3], sequenceNumber: 2 });
-    expect(ids()).toEqual([3]);
-    expect(searchCacheWrites()).toHaveLength(1);
+    expect(sendMessage).toHaveBeenLastCalledWith(expect.objectContaining({ query: 'яблоко', scope: SearchScope.All }));
+    expect(ids()).toEqual([3, 1, 2]);
   });
 
-  it('ignores a reply that was applied in a mode other than the one on screen', () => {
+  it.each([SearchScope.Archived, SearchScope.All])(
+    'neither reads nor writes the results cache in the %s scope',
+    (scope) => {
+      const { service, reply, searchCacheWrites, ids, waitForSend } = setup();
+
+      service.searchProducts('яблоко');
+      waitForSend();
+      reply({ catalogueIds: [1, 2], sequenceNumber: 1 });
+      expect(searchCacheWrites()).toHaveLength(1);
+
+      service.setSearchScope(scope);
+      service.searchProducts('яблоко');
+      waitForSend();
+      expect(ids()).toEqual([]); // the cached active ids are not shown under another scope
+
+      reply({ scope, catalogueIds: [3], sequenceNumber: 2 });
+      expect(ids()).toEqual([3]);
+      expect(searchCacheWrites()).toHaveLength(1);
+    },
+  );
+
+  it('ignores a reply that was applied in a scope other than the one on screen', () => {
     const { service, reply, ids, waitForSend } = setup();
 
     service.toggleArchiveSearch();
     service.searchProducts('яблоко');
     waitForSend();
-    reply({ archived: false, catalogueIds: [1, 2], sequenceNumber: 1 }); // the server fell back to normal
+    reply({ scope: SearchScope.Active, catalogueIds: [1, 2], sequenceNumber: 1 }); // the server fell back to active
 
     expect(ids()).toEqual([]);
   });
 
-  it('keeps caching the normal reply that arrives after the user switched to the archive mode', () => {
+  it('keeps caching the active reply that arrives after the user switched to the archived scope', () => {
     const { service, reply, searchCacheWrites, ids, waitForSend } = setup();
 
     service.searchProducts('яблоко');
@@ -137,13 +154,13 @@ describe('FoodCatalogueService archive search', () => {
     service.toggleArchiveSearch();
     service.searchProducts('яблоко');
     waitForSend();
-    reply({ archived: false, catalogueIds: [1, 2], sequenceNumber: 1 });
+    reply({ scope: SearchScope.Active, catalogueIds: [1, 2], sequenceNumber: 1 });
 
     expect(searchCacheWrites()).toHaveLength(1);
     expect(ids()).toEqual([]);
   });
 
-  it('excludes archived products from the legacy search', () => {
+  it('excludes archived products from the legacy search in the active scope', () => {
     const { service } = setup();
 
     service.legacySearchProducts('яблоко');
@@ -151,26 +168,45 @@ describe('FoodCatalogueService archive search', () => {
     expect(service.legacySearchResults$$().map((item) => item.id)).toEqual([1, 2]);
   });
 
-  it('keeps the legacy and archive modes mutually exclusive', () => {
+  it('includes archived products in the legacy search in the all scope', () => {
+    const { service } = setup();
+
+    service.setSearchScope(SearchScope.All);
+    service.legacySearchProducts('яблоко');
+
+    expect(service.legacySearchResults$$().map((item) => item.id)).toEqual([1, 2, 3]);
+  });
+
+  it('keeps the legacy search and the archived scope mutually exclusive', () => {
     const { service } = setup();
 
     service.toggleLegacySearch();
     service.toggleArchiveSearch();
     expect(service.isLegacySearch$$()).toBe(false);
-    expect(service.isArchiveSearch$$()).toBe(true);
+    expect(service.searchScope$$()).toBe(SearchScope.Archived);
 
     service.toggleLegacySearch();
     expect(service.isLegacySearch$$()).toBe(true);
-    expect(service.isArchiveSearch$$()).toBe(false);
+    expect(service.searchScope$$()).toBe(SearchScope.Active);
   });
 
-  it('drops a product from the archive results when another client restores it', () => {
+  it('keeps the all scope when the legacy search is switched on', () => {
+    const { service } = setup();
+
+    service.setSearchScope(SearchScope.All);
+    service.toggleLegacySearch();
+
+    expect(service.isLegacySearch$$()).toBe(true);
+    expect(service.searchScope$$()).toBe(SearchScope.All);
+  });
+
+  it('drops a product from the archived results when another client restores it', () => {
     const { service, wsMessages$, reply, ids, waitForSend } = setup();
 
     service.toggleArchiveSearch();
     service.searchProducts('яблоко');
     waitForSend();
-    reply({ archived: true, catalogueIds: [3], sequenceNumber: 1 });
+    reply({ scope: SearchScope.Archived, catalogueIds: [3], sequenceNumber: 1 });
     expect(ids()).toEqual([3]);
 
     wsMessages$.next({ type: WebSocketMessageType.CATALOGUE_ENTRY_SAVED, payload: entry(3, 'Старое яблоко', false) });
@@ -178,7 +214,7 @@ describe('FoodCatalogueService archive search', () => {
     expect(ids()).toEqual([]);
   });
 
-  it('drops a product from the normal results when another client archives it', () => {
+  it('drops a product from the active results when another client archives it', () => {
     const { service, wsMessages$, reply, ids, waitForSend } = setup();
 
     service.searchProducts('яблоко');
@@ -190,13 +226,30 @@ describe('FoodCatalogueService archive search', () => {
     expect(ids()).toEqual([1]);
   });
 
-  it('starts every modal session outside the archive mode', () => {
-    const { service } = setup();
+  it('keeps a product in the all results when another client archives it', () => {
+    const { service, wsMessages$, reply, ids, waitForSend } = setup();
 
-    service.toggleArchiveSearch();
-    service.setArchiveSearch(false);
+    service.setSearchScope(SearchScope.All);
+    service.searchProducts('яблоко');
+    waitForSend();
+    reply({ scope: SearchScope.All, catalogueIds: [1, 2], sequenceNumber: 1 });
 
-    expect(service.isArchiveSearch$$()).toBe(false);
+    wsMessages$.next({ type: WebSocketMessageType.CATALOGUE_ENTRY_SAVED, payload: entry(2, 'Яблоко пирог', true) });
+
+    expect(ids()).toEqual([1, 2]);
+  });
+
+  it('clears the results of another scope when the scope is switched', () => {
+    const { service, reply, ids, waitForSend } = setup();
+
+    service.searchProducts('яблоко');
+    waitForSend();
+    reply({ catalogueIds: [1, 2], sequenceNumber: 1 });
+    expect(ids()).toEqual([1, 2]);
+
+    service.setSearchScope(SearchScope.All);
+
+    expect(ids()).toEqual([]);
   });
 });
 
