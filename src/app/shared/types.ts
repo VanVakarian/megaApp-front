@@ -628,21 +628,11 @@ export interface FoodStatsResponse {
   totalEntries: number;
 }
 
-export interface ProductHistoryCursor {
-  dateISO: string;
-  id: number;
-}
-
 export interface ProductHistoryEntry {
   dateISO: string;
   foodCatalogueId: number;
   foodWeight: number;
   percentOfNorm: number;
-}
-
-export interface ProductHistoryPage {
-  entries: ProductHistoryEntry[];
-  nextCursor?: ProductHistoryCursor;
 }
 
 export interface StatsChartData {

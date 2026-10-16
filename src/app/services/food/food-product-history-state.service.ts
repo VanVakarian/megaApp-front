@@ -1,9 +1,10 @@
 import { computed, inject, Injectable, OnDestroy, signal, WritableSignal } from '@angular/core';
 import { FoodProductHistoryService } from '@app/services/food/food-product-history.service';
-import { CatalogueEntry, ProductHistoryCursor, ProductHistoryEntry } from '@app/shared/types';
+import { CatalogueEntry, ProductHistoryEntry } from '@app/shared/types';
 import { Subscription } from 'rxjs';
 
-const PAGE_SIZE = 30;
+// Mirrors the backend cap on catalogueIds per product-history request (megaapp-back, plan 31).
+export const MAX_TRACKED_PRODUCTS = 20;
 
 // Scoped to FoodScreen (provided there, not root), same pattern as FoodScreenModeService — food-stats-columns
 // remounts food-stats-product-history as a fresh instance whenever the layout crosses a column-count
@@ -17,8 +18,9 @@ export class FoodProductHistoryStateService implements OnDestroy {
   public readonly trackedProducts$$: WritableSignal<CatalogueEntry[]> = signal([]);
   public readonly entries$$: WritableSignal<ProductHistoryEntry[]> = signal([]);
   public readonly isLoading$$ = signal(false);
-  public readonly isLoadingMore$$ = signal(false);
   public readonly error$$: WritableSignal<string | null> = signal(null);
+
+  public readonly isLimitReached$$ = computed(() => this.trackedProducts$$().length >= MAX_TRACKED_PRODUCTS);
 
   public readonly productNameById$$ = computed(() => {
     const map = new Map<number, string>();
@@ -28,7 +30,6 @@ export class FoodProductHistoryStateService implements OnDestroy {
     return map;
   });
 
-  private nextCursor: ProductHistoryCursor | null = null;
   private activeRequestSub: Subscription | null = null;
 
   public ngOnDestroy(): void {
@@ -37,7 +38,7 @@ export class FoodProductHistoryStateService implements OnDestroy {
 
   public addProduct(product: CatalogueEntry): void {
     const alreadyTracked = this.trackedProducts$$().some((tracked) => tracked.id === product.id);
-    if (alreadyTracked) return;
+    if (alreadyTracked || this.isLimitReached$$()) return;
 
     this.trackedProducts$$.update((products) => [...products, product]);
     this.reload();
@@ -48,31 +49,8 @@ export class FoodProductHistoryStateService implements OnDestroy {
     this.reload();
   }
 
-  public loadMore(): void {
-    if (this.isLoading$$() || this.isLoadingMore$$() || !this.nextCursor) return;
-
-    const catalogueIds = this.trackedProducts$$().map((product) => product.id);
-    if (catalogueIds.length === 0) return;
-
-    this.isLoadingMore$$.set(true);
-    this.activeRequestSub = this.foodProductHistoryService
-      .getProductHistory(catalogueIds, this.nextCursor, PAGE_SIZE)
-      .subscribe({
-        next: (page) => {
-          this.entries$$.update((entries) => [...entries, ...page.entries]);
-          this.nextCursor = page.nextCursor ?? null;
-          this.isLoadingMore$$.set(false);
-        },
-        error: () => {
-          this.error$$.set('Не удалось загрузить следующую страницу');
-          this.isLoadingMore$$.set(false);
-        },
-      });
-  }
-
   private reload(): void {
     this.activeRequestSub?.unsubscribe();
-    this.nextCursor = null;
     this.error$$.set(null);
 
     const catalogueIds = this.trackedProducts$$().map((product) => product.id);
@@ -83,10 +61,9 @@ export class FoodProductHistoryStateService implements OnDestroy {
     }
 
     this.isLoading$$.set(true);
-    this.activeRequestSub = this.foodProductHistoryService.getProductHistory(catalogueIds, null, PAGE_SIZE).subscribe({
-      next: (page) => {
-        this.entries$$.set(page.entries);
-        this.nextCursor = page.nextCursor ?? null;
+    this.activeRequestSub = this.foodProductHistoryService.getProductHistory(catalogueIds).subscribe({
+      next: (entries) => {
+        this.entries$$.set(entries);
         this.isLoading$$.set(false);
       },
       error: () => {
