@@ -1,5 +1,10 @@
 import { bmiBandsPlugin } from '@app/shared/bmi-bands-plugin';
-import { createCategoricalPalette, DEFAULT_PALETTE_TUNING } from '@app/shared/categorical-palette';
+import {
+  createCategoricalPalette,
+  DEFAULT_PALETTE_TUNING,
+  hueToColor,
+  seriesColor,
+} from '@app/shared/categorical-palette';
 import { formatMetricUnitValue, MetricUnit } from '@app/shared/metric-units';
 import { formatMetricTickLabel } from '@app/shared/metrics-series';
 import { MetricGranularity, PaletteTuning } from '@app/shared/types';
@@ -10,8 +15,6 @@ export interface ChartColors {
   mainAlpha: string;
   secondary: string;
   secondaryAlpha: string;
-  virtual: string;
-  virtualAlpha: string;
   text: string;
   grid: string;
   isDark: boolean;
@@ -58,8 +61,8 @@ export interface MonthLabelsPluginOptions {
 
 // Same blue hue (~225°, matching --v-color-primary) in both palettes, but lightness ranking
 // is flipped: on a white surface a darker tone reads as the more prominent one, so light mode
-// goes secondary(darkest) > main > virtual(lightest); on a dark surface it's the opposite — a
-// lighter tone pops more — so dark mode goes secondary(lightest) > main > virtual(darkest),
+// goes secondary(darkest) > main; on a dark surface it's the opposite — a
+// lighter tone pops more — so dark mode goes secondary(lightest) > main,
 // keeping the same relative emphasis order in both themes instead of reusing light values as-is.
 // text/grid match --v-color-text-muted / --v-color-border-subtle from flat-blue.css, so
 // axis labels and gridlines read like the rest of the app's chrome instead of Chart.js's
@@ -69,8 +72,6 @@ export const CHART_COLORS_LIGHT: ChartColors = {
   mainAlpha: '#6278bc50',
   secondary: '#2d3f76',
   secondaryAlpha: '#2d3f7650',
-  virtual: '#a1acce',
-  virtualAlpha: '#a1acce80',
   text: '#64748b',
   grid: '#e2e8f0',
   isDark: false,
@@ -82,8 +83,6 @@ export const CHART_COLORS_DARK: ChartColors = {
   mainAlpha: '#545f8350',
   secondary: '#8d98b9',
   secondaryAlpha: '#8d98b950',
-  virtual: '#3f465a',
-  virtualAlpha: '#3f465a80',
   text: '#94a3b8',
   grid: '#334155',
   isDark: true,
@@ -143,6 +142,18 @@ export function createWeightChartConfig(colors: ChartColors): ChartConfiguration
   };
 }
 
+// Color of the part of the calories bar eaten from the products tracked in the product history: a
+// raspberry/magenta far from the chart's blue and outside the status bands (see
+// STATUS_EXCLUDED_HUE_RANGES in categorical-palette.ts), so it reads as "highlighted", never as an
+// error or a warning. The dark theme follows the user's palette tuning; the default palette is too
+// loud on white, so the light theme has its own fixed lightness and saturation.
+export function selectedProductsColor(colors: ChartColors): string {
+  return colors.isDark ? hueToColor(330, colors) : seriesColor({ hue: 345, lightness: 44, saturation: 90 }, colors);
+}
+
+// The bar is a two-segment stack: the tracked products at the base (a shared baseline makes their
+// height comparable from day to day), the rest of the day above. Their sum is the day's calories,
+// so the bar height and the target line keep their meaning with or without a selection.
 export function createKcalsChartConfig(colors: ChartColors): ChartConfiguration {
   return {
     type: 'bar',
@@ -150,23 +161,23 @@ export function createKcalsChartConfig(colors: ChartColors): ChartConfiguration 
       labels: [],
       datasets: [
         {
+          label: 'Выбранные продукты',
+          data: [],
+          order: 2,
+          stack: 'kcals',
+          borderColor: selectedProductsColor(colors),
+          backgroundColor: selectedProductsColor(colors),
+          borderWidth: 1,
+          barThickness: 'flex',
+          maxBarThickness: 30,
+        },
+        {
           label: 'Ккал за день',
           data: [],
           order: 2,
           stack: 'kcals',
           borderColor: colors.main,
           backgroundColor: colors.main,
-          borderWidth: 1,
-          barThickness: 'flex',
-          maxBarThickness: 30,
-        },
-        {
-          label: 'Виртуальные ккал',
-          data: [],
-          order: 2,
-          stack: 'kcals',
-          borderColor: colors.virtual,
-          backgroundColor: colors.virtual,
           borderWidth: 1,
           barThickness: 'flex',
           maxBarThickness: 30,

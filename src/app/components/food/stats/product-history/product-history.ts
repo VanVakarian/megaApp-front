@@ -22,10 +22,10 @@ interface ProductHistoryRow {
   percentOfNorm: number;
 }
 
-// State (tracked products, loaded entries) lives in FoodScreen-scoped
-// FoodProductHistoryStateService, not here — this component is remounted on every layout-form
-// change (mobile diary↔stats toggle, stats 2↔3 column boundary, see plan 31), and a component-local
-// signal would be wiped on each remount.
+// State (tracked products, loaded entries) lives in the root FoodProductHistoryStateService, not
+// here — this component is remounted on every layout-form change (mobile diary↔stats toggle, stats
+// 2↔3 column boundary, see plan 31), and a component-local signal would be wiped on each remount.
+// The same state feeds the calories chart (see plan 46).
 @Component({
   selector: 'food-stats-product-history',
   templateUrl: './product-history.html',

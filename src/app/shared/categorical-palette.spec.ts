@@ -15,8 +15,6 @@ const colors: ChartColors = {
   mainAlpha: '',
   secondary: '',
   secondaryAlpha: '',
-  virtual: '',
-  virtualAlpha: '',
   text: '',
   grid: '',
   isDark: false,

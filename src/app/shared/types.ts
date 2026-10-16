@@ -641,18 +641,22 @@ export interface ProductHistoryEntry {
   dateISO: string;
   foodCatalogueId: number;
   foodWeight: number;
+  kcal: number;
   percentOfNorm: number;
 }
 
-export interface StatsChartData {
+// Per-day numeric series of the food stats charts. The list is the single source of truth for the
+// series the generic slicing/aggregation in stats-chart-data.ts walks, so a new series is one
+// entry here (plus the code that fills and draws it) and never a new copy of the aggregation.
+// kcalsSelected is the part of kcalsFactual that comes from the products tracked in the product history.
+export const STATS_CHART_SERIES = ['weights', 'weightsAvg', 'kcalsFactual', 'kcalsSelected', 'kcalsTarget'] as const;
+
+export type StatsChartSeries = (typeof STATS_CHART_SERIES)[number];
+
+export type StatsChartData = Record<StatsChartSeries, number[]> & {
   dates: string[];
-  weights: number[];
-  weightsAvg: number[];
-  kcalsFactual: number[];
-  kcalsVirtual: number[];
-  kcalsTarget: number[];
   hasNoData: boolean[];
-}
+};
 
 //                                                                         MONEY
 

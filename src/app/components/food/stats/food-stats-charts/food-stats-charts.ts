@@ -14,6 +14,7 @@ import {
 import { StatsHelpIcon } from '@app/components/food/stats/stats-help-icon/stats-help-icon';
 import { ChartThemeService } from '@app/services/chart-theme.service';
 import { DeviceInfoService } from '@app/services/device-info.service';
+import { FoodProductHistoryStateService } from '@app/services/food/food-product-history-state.service';
 import { FoodSettingsService } from '@app/services/food/food-settings.service';
 import { FoodStatsService } from '@app/services/food/food-stats.service';
 import { TelemetryService } from '@app/services/telemetry.service';
@@ -25,7 +26,9 @@ import {
   MonthLabelsPluginOptions,
   createKcalsChartConfig,
   createWeightChartConfig,
+  selectedProductsColor,
 } from '@app/shared/chart-config';
+import { splitKcalsBySelection } from '@app/shared/stats-chart-data';
 import { StatsChartData } from '@app/shared/types';
 import { formatDateTicks, getRuDeclension } from '@app/shared/utils';
 import { VButton } from '@ui-kit/components/v-button/v-button';
@@ -66,6 +69,8 @@ Chart.register(
  * - The slider range and range buttons update start/end indices immediately; labels and day count are derived from those indices.
  * - Slider positions are based on the date index list to snap selection to existing days.
  * - Charts are updated from clipped datasets; updates are throttled with a trailing flush so the final fast-drag state is rendered.
+ * - Calories of the products tracked in the product history come as their own series (kcalsSelected, a part of
+ *   kcalsFactual) and are drawn as the base of the calorie bars; the rest of the day sits above it.
  * - Lite mode only toggles kcal axis ticks and tooltip visibility, without changing data.
  * - Charts are created once and then kept in sync through reactive updates.
  */
@@ -243,7 +248,12 @@ export class FoodStatsCharts implements OnInit, AfterViewInit, OnDestroy {
     return this.dates$$().length - 1;
   });
 
+  protected readonly hasSelection$$ = computed(() => this.productHistoryState.hasSelection$$());
+  protected readonly selectedColor$$ = computed(() => selectedProductsColor(this.chartThemeService.colors$$()));
+  protected readonly restColor$$ = computed(() => this.chartThemeService.colors$$().main);
+
   protected readonly deviceInfoService = inject(DeviceInfoService);
+  private readonly productHistoryState = inject(FoodProductHistoryStateService);
   private readonly foodStatsService = inject(FoodStatsService);
   private readonly foodSettingsService = inject(FoodSettingsService);
   private readonly telemetry = inject(TelemetryService);
@@ -359,16 +369,20 @@ export class FoodStatsCharts implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
+  // The bar is the tracked products' calories (base) plus the rest of the day in the chart's main color.
   private updateKcalsChart(data: StatsChartData, colors: ChartColors) {
     const chart = this.kcalsChart$$();
     if (chart?.data) {
+      const selectedColor = selectedProductsColor(colors);
+      const kcals = splitKcalsBySelection(data.kcalsFactual, data.kcalsSelected);
+
       chart.data.labels = data.dates;
-      chart.data.datasets[0].data = data.kcalsFactual;
-      chart.data.datasets[0].borderColor = colors.main;
-      chart.data.datasets[0].backgroundColor = colors.main;
-      chart.data.datasets[1].data = data.kcalsVirtual;
-      chart.data.datasets[1].borderColor = colors.virtual;
-      chart.data.datasets[1].backgroundColor = colors.virtual;
+      chart.data.datasets[0].data = kcals.selected;
+      chart.data.datasets[0].borderColor = selectedColor;
+      chart.data.datasets[0].backgroundColor = selectedColor;
+      chart.data.datasets[1].data = kcals.rest;
+      chart.data.datasets[1].borderColor = colors.main;
+      chart.data.datasets[1].backgroundColor = colors.main;
       chart.data.datasets[2].data = data.kcalsTarget;
       chart.data.datasets[2].borderColor = colors.secondary;
       chart.data.datasets[2].backgroundColor = colors.secondary;
