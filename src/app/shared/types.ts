@@ -397,9 +397,20 @@ export interface ServerResponseProductSave extends ServerResponseBasic {
 
 //                                                                      SETTINGS
 
+// Default lightness and saturation (both 0-100) of chart category colors in one theme; a category's
+// own values win over these (see categorical-palette.ts).
+export interface PaletteTuning {
+  lightness: number;
+  // Share of the most vivid chroma the screen can show at that lightness and hue.
+  saturation: number;
+}
+
 export interface UserSettings {
   selectedChapterFood: boolean;
   selectedChapterMoney: boolean;
+  // null = the built-in default tuning.
+  chartPaletteLight: PaletteTuning | null;
+  chartPaletteDark: PaletteTuning | null;
   userName: string;
   isUserAdmin?: boolean; // TODO[068]: Think of a better way to work with admin privileges
 }
@@ -407,6 +418,8 @@ export interface UserSettings {
 export const KeyOfUserSettings = {
   selectedChapterFood: 'selectedChapterFood',
   selectedChapterMoney: 'selectedChapterMoney',
+  chartPaletteLight: 'chartPaletteLight',
+  chartPaletteDark: 'chartPaletteDark',
   userName: 'userName',
   isUserAdmin: 'isUserAdmin',
 } as const;
@@ -675,7 +688,11 @@ export interface Category {
   // Chart-related properties. Optional only because a snapshot cached before they existed lacks
   // them (read as: shown on charts, automatic color).
   hiddenOnCharts?: boolean;
+  // Chart color: hue 0-360, lightness and saturation 0-100. null = automatic (hue) or the user's
+  // palette default (lightness, saturation).
   hue?: number | null;
+  lightness?: number | null;
+  saturation?: number | null;
 }
 
 export const AccountKind = {
@@ -800,6 +817,13 @@ export interface ExpenseRow {
 export interface ExpenseChartData {
   categories: ExpenseCategory[];
   monthRows: ExpenseRow[];
+}
+
+// One chart series' part of the whole (0-1), used to size its color in the category form preview.
+export interface SeriesShare {
+  id: number;
+  name: string;
+  share: number;
 }
 
 // export interface Notification {

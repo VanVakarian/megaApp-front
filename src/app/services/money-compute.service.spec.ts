@@ -248,7 +248,14 @@ describe('MoneyComputeService.expenseChartData$$', () => {
       accounts: [account({ id: 1 })],
       categories,
       transactions: [
-        tx({ id: 1, dateISO: '2026-01-10', kind: TransactionKind.EXPENSE, amount: 0, categoryId: 3, notes: 'refunded' }),
+        tx({
+          id: 1,
+          dateISO: '2026-01-10',
+          kind: TransactionKind.EXPENSE,
+          amount: 0,
+          categoryId: 3,
+          notes: 'refunded',
+        }),
       ],
     });
     expect(service.expenseChartData$$()).toEqual({ categories: [], monthRows: [] });
@@ -307,22 +314,102 @@ describe('MoneyComputeService.expenseChartData$$', () => {
   });
 });
 
-describe('MoneyComputeService series hues', () => {
-  it('keeps a category hue as chosen and gives every other series a distinct automatic one', () => {
+describe('MoneyComputeService series colors', () => {
+  it('keeps a category color as chosen and gives every other series a distinct automatic hue', () => {
     const service = setup({
       categories: [
-        { id: 1, name: 'Еда', categoryType: CategoryType.EXPENSE, hue: 142 },
+        { id: 1, name: 'Еда', categoryType: CategoryType.EXPENSE, hue: 142, lightness: 40, saturation: 80 },
         { id: 2, name: 'Связь', categoryType: CategoryType.EXPENSE, hue: null },
         { id: 3, name: 'Зарплата', categoryType: CategoryType.INCOME },
       ],
     });
-    const expenseHues = service.expenseSeriesHues$$();
-    expect(expenseHues.get(1)).toBe(142);
-    expect(expenseHues.has(2)).toBe(true);
-    expect(expenseHues.has(EXPENSE_VIRTUAL_SERIES.UNCATEGORIZED)).toBe(true);
-    expect(expenseHues.has(3)).toBe(false);
-    expect(service.incomeSeriesHues$$().has(3)).toBe(true);
-    expect(service.incomeSeriesHues$$().has(INCOME_VIRTUAL_SERIES.DIVIDENDS)).toBe(true);
+    const expenseColors = service.expenseSeriesColors$$();
+    expect(expenseColors.get(1)).toEqual({ hue: 142, lightness: 40, saturation: 80 });
+    expect(expenseColors.get(2)).toMatchObject({ lightness: null, saturation: null });
+    expect(expenseColors.has(EXPENSE_VIRTUAL_SERIES.UNCATEGORIZED)).toBe(true);
+    expect(expenseColors.has(3)).toBe(false);
+    expect(service.incomeSeriesColors$$().has(3)).toBe(true);
+    expect(service.incomeSeriesColors$$().has(INCOME_VIRTUAL_SERIES.DIVIDENDS)).toBe(true);
+  });
+
+  it('shows a color draft on the chart of its own type only, until it is cleared', () => {
+    const service = setup({
+      categories: [
+        { id: 1, name: 'Еда', categoryType: CategoryType.EXPENSE, hue: 142 },
+        { id: 3, name: 'Зарплата', categoryType: CategoryType.INCOME, hue: 50 },
+      ],
+    });
+
+    service.setColorDraft({ categoryType: CategoryType.EXPENSE, id: 1, hue: 10, lightness: 30, saturation: 40 });
+    expect(service.expenseSeriesColors$$().get(1)).toEqual({ hue: 10, lightness: 30, saturation: 40 });
+    expect(service.incomeSeriesColors$$().get(3)).toEqual({ hue: 50, lightness: null, saturation: null });
+
+    service.setColorDraft(null);
+    expect(service.expenseSeriesColors$$().get(1)).toEqual({ hue: 142, lightness: null, saturation: null });
+  });
+
+  it('previews an unsaved color instead of the stored one, and lets a new category join', () => {
+    const service = setup({
+      categories: [
+        { id: 1, name: 'Еда', categoryType: CategoryType.EXPENSE, hue: 142 },
+        { id: 2, name: 'Связь', categoryType: CategoryType.EXPENSE },
+      ],
+    });
+
+    const edited = service.previewSeriesColors(CategoryType.EXPENSE, { id: 1, hue: 10, lightness: 30, saturation: 20 });
+    expect(edited.get(1)).toEqual({ hue: 10, lightness: 30, saturation: 20 });
+    expect(edited.has(2)).toBe(true);
+
+    const withNew = service.previewSeriesColors(CategoryType.EXPENSE, {
+      id: Number.MAX_SAFE_INTEGER,
+      hue: null,
+      lightness: null,
+      saturation: null,
+    });
+    expect(withNew.get(1)?.hue).toBe(142);
+    expect(withNew.has(Number.MAX_SAFE_INTEGER)).toBe(true);
+  });
+});
+
+describe('MoneyComputeService series shares', () => {
+  const categories: Category[] = [
+    { id: 1, name: 'Связь', categoryType: CategoryType.EXPENSE, parentId: null },
+    { id: 2, name: 'Еда', categoryType: CategoryType.EXPENSE, parentId: null },
+    { id: 3, name: 'Зарплата', categoryType: CategoryType.INCOME, parentId: null },
+  ];
+
+  it('sizes expense series by their part of the last year and orders them like the chart stack', () => {
+    const service = setup({
+      currencies: [RUB],
+      accounts: [account({ id: 1 })],
+      categories,
+      transactions: [
+        tx({ id: 1, dateISO: '2026-01-10', kind: TransactionKind.EXPENSE, amount: 100, categoryId: 1 }),
+        tx({ id: 2, dateISO: '2026-02-10', kind: TransactionKind.EXPENSE, amount: 300, categoryId: 2 }),
+      ],
+    });
+
+    const shares = service.expenseSeriesShares$$();
+    expect(shares.map((series) => series.name)).toEqual(['Еда', 'Связь']);
+    expect(shares.map((series) => series.share)).toEqual([0.75, 0.25]);
+  });
+
+  it('counts only the last twelve months', () => {
+    const service = setup({
+      currencies: [RUB],
+      accounts: [account({ id: 1 })],
+      categories,
+      transactions: [
+        tx({ id: 1, dateISO: '2024-01-10', kind: TransactionKind.EXPENSE, amount: 1000, categoryId: 1 }),
+        tx({ id: 2, dateISO: '2026-02-10', kind: TransactionKind.EXPENSE, amount: 300, categoryId: 2 }),
+      ],
+    });
+
+    expect(service.expenseSeriesShares$$().map((series) => series.name)).toEqual(['Еда']);
+  });
+
+  it('is empty when there are no expenses', () => {
+    expect(setup({ categories }).expenseSeriesShares$$()).toEqual([]);
   });
 });
 

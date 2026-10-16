@@ -118,11 +118,14 @@
 </div>
 
 <form-modal [isModalOpen]="showForm$$()"
+            [isBackdropDimmed]="isBackdropDimmed$$()"
             (closeOutput)="onCancelled()">
   <category-form [categoryInput]="editingCategory$$()"
                  [categoriesInput]="categories$$()"
+                 [isOpenInput]="showForm$$()"
                  (savedOutput)="onSaved()"
-                 (cancelledOutput)="onCancelled()">
+                 (cancelledOutput)="onCancelled()"
+                 (sliderDragOutput)="isSliderHeld$$.set($event)">
   </category-form>
 </form-modal>
 

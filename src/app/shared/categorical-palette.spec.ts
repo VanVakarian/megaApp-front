@@ -1,5 +1,14 @@
 import type { ChartColors } from '@app/shared/chart-config';
-import { assignSeriesHues, createCategoricalPalette, hueToColor } from './categorical-palette';
+import {
+  assignSeriesColors,
+  assignSeriesHues,
+  createCategoricalPalette,
+  DEFAULT_PALETTE_TUNING,
+  hueToColor,
+  SeriesColor,
+  seriesColor,
+  seriesColorById,
+} from './categorical-palette';
 
 const colors: ChartColors = {
   main: '',
@@ -11,6 +20,7 @@ const colors: ChartColors = {
   text: '',
   grid: '',
   isDark: false,
+  palette: DEFAULT_PALETTE_TUNING,
 };
 
 // Mirrors the private STATUS_EXCLUDED_HUE_RANGES in categorical-palette.ts — kept in the test
@@ -121,5 +131,87 @@ describe('assignSeriesHues', () => {
   it('formats a hue as an oklch color with optional alpha', () => {
     expect(hueToColor(142, colors)).toMatch(/^oklch\([\d.]+ [\d.]+ 142\.0\)$/);
     expect(hueToColor(142, colors, 0.25)).toMatch(/^oklch\([\d.]+ [\d.]+ 142\.0 \/ 0\.25\)$/);
+  });
+});
+
+describe('seriesColor', () => {
+  function lightnessAndChroma(color: string): { lightness: number; chroma: number } {
+    const match = color.match(/^oklch\(([\d.]+) ([\d.]+) /);
+    if (!match) throw new Error(`unexpected color string format: ${color}`);
+    return { lightness: Number(match[1]), chroma: Number(match[2]) };
+  }
+
+  const withPalette = (lightness: number, saturation: number): ChartColors => ({
+    ...colors,
+    palette: { lightness, saturation },
+  });
+  const own = (hue: number, lightness: number | null, saturation: number | null): SeriesColor => ({
+    hue,
+    lightness,
+    saturation,
+  });
+
+  it('gives every hue the same default lightness: the default is one value, not a per-hue table', () => {
+    for (let hue = 0; hue < 360; hue += 15) {
+      expect(lightnessAndChroma(hueToColor(hue, colors)).lightness).toBe(DEFAULT_PALETTE_TUNING.lightness / 100);
+    }
+  });
+
+  it('follows the palette default for lightness and saturation a series leaves unset', () => {
+    const defaulted = seriesColor(own(262, null, null), withPalette(40, 50));
+    expect(defaulted).toBe(hueToColor(262, withPalette(40, 50)));
+    expect(lightnessAndChroma(defaulted).lightness).toBe(0.4);
+  });
+
+  it('lets a series override the palette default per value', () => {
+    const colorsWithDefault = withPalette(70, 100);
+    const ownLightness = lightnessAndChroma(seriesColor(own(262, 40, null), colorsWithDefault));
+    const ownSaturation = lightnessAndChroma(seriesColor(own(262, null, 30), colorsWithDefault));
+    const base = lightnessAndChroma(seriesColor(own(262, null, null), colorsWithDefault));
+
+    expect(ownLightness.lightness).toBe(0.4);
+    expect(ownSaturation.lightness).toBe(base.lightness);
+    expect(ownSaturation.chroma).toBeLessThan(base.chroma);
+  });
+
+  it('scales chroma with saturation and gives grey at zero', () => {
+    const full = lightnessAndChroma(seriesColor(own(262, 60, 100), colors)).chroma;
+    const half = lightnessAndChroma(seriesColor(own(262, 60, 50), colors)).chroma;
+    expect(full).toBeGreaterThan(0);
+    expect(half).toBeCloseTo(full / 2, 2);
+    expect(lightnessAndChroma(seriesColor(own(262, 60, 0), colors)).chroma).toBe(0);
+  });
+
+  it('reaches different chroma for different hues at 100% saturation: it is a share of what fits the screen', () => {
+    const red = lightnessAndChroma(seriesColor(own(25, 70, 100), colors)).chroma;
+    const blue = lightnessAndChroma(seriesColor(own(262, 70, 100), colors)).chroma;
+    expect(red).toBeGreaterThan(blue);
+  });
+
+  it('survives out-of-range values from stored data', () => {
+    const { lightness } = lightnessAndChroma(seriesColor(own(262, 500, 900), colors));
+    expect(lightness).toBeLessThanOrEqual(0.95);
+    expect(lightnessAndChroma(seriesColor(own(262, -5, -5), colors)).lightness).toBeGreaterThanOrEqual(0.2);
+  });
+});
+
+describe('seriesColorById', () => {
+  it('uses hue 0 for an id the map does not know', () => {
+    expect(seriesColorById(new Map(), 99, colors)).toBe(hueToColor(0, colors));
+  });
+});
+
+describe('assignSeriesColors', () => {
+  it('keeps each series own lightness and saturation next to its assigned hue', () => {
+    const result = assignSeriesColors([
+      { id: 1, hue: 200, lightness: 40, saturation: null },
+      { id: 2, hue: null, lightness: null, saturation: 70 },
+    ]);
+    expect(result.get(1)).toEqual({ hue: 200, lightness: 40, saturation: null });
+    expect(result.get(2)).toEqual({
+      hue: assignSeriesHues([{ id: 2, hue: null }]).get(2),
+      lightness: null,
+      saturation: 70,
+    });
   });
 });

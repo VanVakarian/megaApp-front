@@ -1,4 +1,6 @@
 import type { ChartColors } from '@app/shared/chart-config';
+import { maxChroma } from '@app/shared/oklch-gamut';
+import type { PaletteTuning } from '@app/shared/types';
 
 // Golden angle: the standard way to place N points around a circle so they stay maximally
 // spread regardless of N — no clustering, no fixed palette-length ceiling to wrap around.
@@ -49,25 +51,69 @@ function scanAutoHue(cursor: { step: number }, pinnedHues: readonly number[]): n
   return nextCandidate();
 }
 
-// Same lightness-inversion logic as CHART_COLORS_LIGHT/DARK's main/secondary/virtual roles,
-// generalized from 3 fixed roles to N generated hues: one fixed OKLCH lightness/chroma recipe
-// per theme, hue is the only thing that varies between categories. Perceptually uniform in
-// OKLCH (unlike HSL), so every category reads as equally prominent regardless of its hue.
-const LIGHTNESS_CHROMA_BY_THEME = {
-  light: { lightness: 0.7, chroma: 0.2 },
-  dark: { lightness: 0.7, chroma: 0.2 },
+// A chart color is three numbers, which is the least that can reach any color: hue (which color),
+// lightness (how light or dark) and saturation (how pure or grey). Saturation is a share of the
+// most vivid chroma the screen can show at that hue and lightness (see oklch-gamut.ts), so every
+// combination is a real, unclipped color. Perceptually uniform in OKLCH (unlike HSL).
+//
+// A category sets its own hue, lightness and saturation, or leaves lightness/saturation at the
+// user's palette default (one per theme, in settings), which itself starts at DEFAULT_PALETTE_TUNING.
+export const DEFAULT_PALETTE_TUNING: PaletteTuning = { lightness: 70, saturation: 100 };
+
+// Slider limits; lightness stops short of black and white, where no color is left to tell apart.
+export const PALETTE_LIMITS = {
+  lightness: { min: 20, max: 95 },
+  saturation: { min: 0, max: 100 },
 };
 
 // Alpha for a muted (non-hovered) category segment when another category is highlighted across
-// a stacked-bar chart (see category-hover-highlight.ts). One value for both themes: the OKLCH
-// lightness/chroma recipe above already normalizes perceived weight per theme, so the same alpha
-// reads as an equivalently muted tone against either theme's chart background.
+// a stacked-bar chart (see category-hover-highlight.ts).
 export const CATEGORY_DIM_ALPHA = 0.25;
 
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max);
+}
+
+// One chart series' color. null lightness/saturation follow the palette default in ChartColors.
+export interface SeriesColor {
+  hue: number;
+  lightness: number | null;
+  saturation: number | null;
+}
+
+export function seriesColor(series: SeriesColor, colors: ChartColors, alpha?: number): string {
+  const lightnessPercent = clamp(
+    series.lightness ?? colors.palette.lightness,
+    PALETTE_LIMITS.lightness.min,
+    PALETTE_LIMITS.lightness.max,
+  );
+  const saturationPercent = clamp(
+    series.saturation ?? colors.palette.saturation,
+    PALETTE_LIMITS.saturation.min,
+    PALETTE_LIMITS.saturation.max,
+  );
+
+  const lightness = lightnessPercent / 100;
+  // Rounded down so the printed chroma never lands a hair outside the gamut.
+  const chroma = Math.floor((saturationPercent / 100) * maxChroma(lightness, series.hue) * 1000) / 1000;
+
+  const color = `${lightness.toFixed(3)} ${chroma.toFixed(3)} ${series.hue.toFixed(1)}`;
+  return alpha === undefined ? `oklch(${color})` : `oklch(${color} / ${alpha})`;
+}
+
+// A series' color by id; an id the map does not know (data newer than the categories) gets hue 0.
+export function seriesColorById(
+  seriesColors: ReadonlyMap<number, SeriesColor>,
+  seriesId: number,
+  colors: ChartColors,
+  alpha?: number,
+): string {
+  return seriesColor(seriesColors.get(seriesId) ?? { hue: 0, lightness: null, saturation: null }, colors, alpha);
+}
+
+// A hue at the palette default lightness and saturation.
 export function hueToColor(hue: number, colors: ChartColors, alpha?: number): string {
-  const { lightness, chroma } = colors.isDark ? LIGHTNESS_CHROMA_BY_THEME.dark : LIGHTNESS_CHROMA_BY_THEME.light;
-  const h = hue.toFixed(1);
-  return alpha === undefined ? `oklch(${lightness} ${chroma} ${h})` : `oklch(${lightness} ${chroma} ${h} / ${alpha})`;
+  return seriesColor({ hue, lightness: null, saturation: null }, colors, alpha);
 }
 
 export interface SeriesHueInput {
@@ -90,6 +136,23 @@ export function assignSeriesHues(series: readonly SeriesHueInput[]): Map<number,
   const auto = series.filter((item) => item.hue === null).sort((a, b) => a.id - b.id);
   for (const item of auto) hues.set(item.id, scanAutoHue(cursor, pinnedHues));
   return hues;
+}
+
+export interface SeriesColorInput extends SeriesHueInput {
+  lightness: number | null;
+  saturation: number | null;
+}
+
+// The color of every series of one chart: its hue from assignSeriesHues, its own lightness and
+// saturation if it has them.
+export function assignSeriesColors(series: readonly SeriesColorInput[]): Map<number, SeriesColor> {
+  const hues = assignSeriesHues(series);
+  return new Map(
+    series.map((item) => [
+      item.id,
+      { hue: hues.get(item.id)!, lightness: item.lightness, saturation: item.saturation },
+    ]),
+  );
 }
 
 export interface CategoricalPalette {

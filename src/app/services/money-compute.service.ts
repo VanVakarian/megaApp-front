@@ -1,8 +1,9 @@
-import { Injectable, Signal, computed, inject } from '@angular/core';
-import { assignSeriesHues } from '../shared/categorical-palette';
-import { INCOME_SERIES_ORDER, seriesOrderIndex } from '../shared/chart-config';
+import { Injectable, Signal, computed, inject, signal } from '@angular/core';
+import { SeriesColor, SeriesColorInput, assignSeriesColors } from '../shared/categorical-palette';
+import { EXPENSE_SERIES_ORDER, INCOME_SERIES_ORDER, seriesOrderIndex } from '../shared/chart-config';
 import {
   EXPENSE_VIRTUAL_SERIES,
+  EXPENSE_VIRTUAL_SERIES_NAMES,
   INCOME_VIRTUAL_SERIES,
   INCOME_VIRTUAL_SERIES_NAMES,
   SeriesChart,
@@ -29,6 +30,7 @@ import {
   ExpenseChartData,
   IncomeChartCategorySeries,
   IncomeChartData,
+  SeriesShare,
   Transaction,
   TransactionKind,
 } from '../shared/types';
@@ -43,6 +45,27 @@ interface MonthlyBuckets {
   brokerDelta: Record<string, Record<string, number>>;
   income: Record<string, Record<number, Record<number, number>>>;
   expense: Record<string, Record<number, Record<number, number>>>;
+}
+
+export interface CategoryColorDraft extends SeriesColorInput {
+  categoryType: CategoryType;
+}
+
+// The colors preview shows the typical chart: an average over the last year.
+const SHARE_WINDOW_MONTHS = 12;
+
+// Series with a positive total, as shares of their sum, ordered like the chart stacks them (names
+// not in `order` keep their relative order, after the listed ones).
+function toSeriesShares(
+  totals: ReadonlyMap<number, number>,
+  names: ReadonlyMap<number, string>,
+  order: readonly string[],
+): SeriesShare[] {
+  const positive = [...names].filter(([id]) => (totals.get(id) ?? 0) > 0);
+  const grandTotal = positive.reduce((sum, [id]) => sum + totals.get(id)!, 0);
+  return positive
+    .sort(([, a], [, b]) => seriesOrderIndex(order, a) - seriesOrderIndex(order, b))
+    .map(([id, name]) => ({ id, name, share: totals.get(id)! / grandTotal }));
 }
 
 @Injectable({ providedIn: 'root' })
@@ -103,13 +126,43 @@ export class MoneyComputeService {
     createSeriesResolver(this.moneyService.categories$$(), () => this.tradeSeriesIndex$$()),
   );
 
-  public readonly expenseSeriesHues$$: Signal<Map<number, number>> = computed(() =>
-    this.buildSeriesHues(CategoryType.EXPENSE, Object.values(EXPENSE_VIRTUAL_SERIES)),
+  // A category color being edited in the category form, shown on the charts before it is saved.
+  private readonly colorDraft$$ = signal<CategoryColorDraft | null>(null);
+
+  public readonly expenseSeriesColors$$: Signal<Map<number, SeriesColor>> = computed(() =>
+    this.buildSeriesColors(
+      CategoryType.EXPENSE,
+      Object.values(EXPENSE_VIRTUAL_SERIES),
+      this.draftFor(CategoryType.EXPENSE),
+    ),
   );
 
-  public readonly incomeSeriesHues$$: Signal<Map<number, number>> = computed(() =>
-    this.buildSeriesHues(CategoryType.INCOME, Object.values(INCOME_VIRTUAL_SERIES)),
+  public readonly incomeSeriesColors$$: Signal<Map<number, SeriesColor>> = computed(() =>
+    this.buildSeriesColors(
+      CategoryType.INCOME,
+      Object.values(INCOME_VIRTUAL_SERIES),
+      this.draftFor(CategoryType.INCOME),
+    ),
   );
+
+  public setColorDraft(draft: CategoryColorDraft | null): void {
+    this.colorDraft$$.set(draft);
+  }
+
+  // How much of the last year's total each series is, in the order the chart stacks them.
+  public readonly expenseSeriesShares$$: Signal<SeriesShare[]> = computed(() => this.buildExpenseSeriesShares());
+
+  public readonly incomeSeriesShares$$: Signal<SeriesShare[]> = computed(() => this.buildIncomeSeriesShares());
+
+  // The colors a chart would have if `draft` were saved as a category's color — the live preview in
+  // the category form. The draft replaces the stored category with that id, or joins as a new one.
+  public previewSeriesColors(categoryType: CategoryType, draft: SeriesColorInput): Map<number, SeriesColor> {
+    const virtualSeriesIds =
+      categoryType === CategoryType.EXPENSE
+        ? Object.values(EXPENSE_VIRTUAL_SERIES)
+        : Object.values(INCOME_VIRTUAL_SERIES);
+    return this.buildSeriesColors(categoryType, virtualSeriesIds, draft);
+  }
 
   private readonly monthlyBuckets$$: Signal<MonthlyBuckets> = computed(() =>
     this.telemetry.measure(
@@ -582,11 +635,69 @@ export class MoneyComputeService {
     return generateMonthRange(firstMonthISO, lastMonthISO).map((month) => this.toEomISO(month));
   }
 
-  private buildSeriesHues(categoryType: CategoryType, virtualSeriesIds: number[]): Map<number, number> {
-    const categorySeries = this.moneyService
+  private draftFor(categoryType: CategoryType): SeriesColorInput | undefined {
+    const draft = this.colorDraft$$();
+    return draft?.categoryType === categoryType ? draft : undefined;
+  }
+
+  private buildSeriesColors(
+    categoryType: CategoryType,
+    virtualSeriesIds: number[],
+    draft?: SeriesColorInput,
+  ): Map<number, SeriesColor> {
+    const categorySeries: SeriesColorInput[] = this.moneyService
       .categories$$()
       .filter((category) => category.id !== undefined && category.categoryType === categoryType)
-      .map((category) => ({ id: category.id!, hue: category.hue ?? null }));
-    return assignSeriesHues([...categorySeries, ...virtualSeriesIds.map((id) => ({ id, hue: null }))]);
+      .map((category) => ({
+        id: category.id!,
+        hue: category.hue ?? null,
+        lightness: category.lightness ?? null,
+        saturation: category.saturation ?? null,
+      }));
+    const virtualSeries: SeriesColorInput[] = virtualSeriesIds.map((id) => ({
+      id,
+      hue: null,
+      lightness: null,
+      saturation: null,
+    }));
+    const stored = [...categorySeries, ...virtualSeries].filter((series) => series.id !== draft?.id);
+    return assignSeriesColors(draft ? [...stored, draft] : stored);
+  }
+
+  private buildExpenseSeriesShares(): SeriesShare[] {
+    const { categories, monthRows } = this.expenseChartData$$();
+    const names = new Map<number, string>(categories.map((category) => [category.id, category.name]));
+    names.set(EXPENSE_VIRTUAL_SERIES.UNCATEGORIZED, EXPENSE_VIRTUAL_SERIES_NAMES[EXPENSE_VIRTUAL_SERIES.UNCATEGORIZED]);
+
+    const totals = new Map<number, number>();
+    const addToTotal = (seriesId: number, amount: number): void => {
+      totals.set(seriesId, (totals.get(seriesId) ?? 0) + amount);
+    };
+    // Rows exist only for months with expenses, so the window is counted in calendar months from the
+    // latest one, not in rows.
+    const monthNumber = (period: string): number => {
+      const [year, month] = period.split('-').map(Number);
+      return year * 12 + month;
+    };
+    const latestMonth = monthRows.length ? monthNumber(monthRows[monthRows.length - 1].period) : 0;
+    for (const row of monthRows.filter((item) => monthNumber(item.period) > latestMonth - SHARE_WINDOW_MONTHS)) {
+      for (const [seriesId, amount] of Object.entries(row.categoryAmounts)) addToTotal(Number(seriesId), amount);
+      addToTotal(EXPENSE_VIRTUAL_SERIES.UNCATEGORIZED, row.uncategorizedAmount);
+    }
+    return toSeriesShares(totals, names, EXPENSE_SERIES_ORDER);
+  }
+
+  private buildIncomeSeriesShares(): SeriesShare[] {
+    const { categorySeries } = this.incomeChartData$$();
+    const names = new Map<number, string>(categorySeries.map((series) => [series.categoryId, series.categoryName]));
+
+    const totals = new Map<number, number>();
+    for (const series of categorySeries) {
+      totals.set(
+        series.categoryId,
+        series.values.slice(-SHARE_WINDOW_MONTHS).reduce((sum, value) => sum + Math.max(0, value), 0),
+      );
+    }
+    return toSeriesShares(totals, names, INCOME_SERIES_ORDER);
   }
 }

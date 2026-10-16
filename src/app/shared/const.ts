@@ -11,6 +11,8 @@ export const DEFAULT_REQUEST_STATUS_FADE_OUT_TIMER: number = 3000;
 export const DEFAULT_SETTINGS: UserSettings = {
   selectedChapterFood: false,
   selectedChapterMoney: false,
+  chartPaletteLight: null,
+  chartPaletteDark: null,
   userName: '',
 };
 

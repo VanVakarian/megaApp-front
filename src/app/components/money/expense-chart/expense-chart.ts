@@ -15,7 +15,7 @@ import { ChartThemeService } from '@app/services/chart-theme.service';
 import { MoneyComputeService } from '@app/services/money-compute.service';
 import { MoneyService } from '@app/services/money.service';
 import { TelemetryService } from '@app/services/telemetry.service';
-import { CATEGORY_DIM_ALPHA, hueToColor } from '@app/shared/categorical-palette';
+import { CATEGORY_DIM_ALPHA, SeriesColor, seriesColorById } from '@app/shared/categorical-palette';
 import { createCategoryHoverHighlight } from '@app/shared/category-hover-highlight';
 import {
   ChartColors,
@@ -97,8 +97,8 @@ export class ExpenseChart implements AfterViewInit, OnDestroy {
   // Chart.js caches a scale's resolved grid/border/ticks color internally — mutating
   // chart.data and calling chart.update('none') doesn't reliably repaint it after a theme
   // toggle (see the identical comment/fix in food-stats-charts.ts). Recreating the chart
-  // whenever the ChartColors reference changes sidesteps it; plain data updates stay a
-  // cheap in-place mutation.
+  // whenever the theme (light/dark) changes sidesteps it; plain data updates, including a new
+  // category palette, stay a cheap in-place mutation.
   private lastColors: ChartColors | null = null;
 
   private yearBoundaries: { year: string; startIdx: number; endIdx: number }[] = [];
@@ -145,7 +145,7 @@ export class ExpenseChart implements AfterViewInit, OnDestroy {
     const yearly = this.yearlyMode$$();
     const ymax = this.yMaxInput$$();
     const monthRange = this.monthRangeInput();
-    const hues = this.moneyComputeService.expenseSeriesHues$$();
+    const seriesColors = this.moneyComputeService.expenseSeriesColors$$();
     // Dataset colors here are category-identity colors, not theme colors — colors$$ is only
     // needed to detect a theme switch and recreate the chart so its grid/tick colors repaint.
     const colors = this.chartThemeService.colors$$();
@@ -153,14 +153,14 @@ export class ExpenseChart implements AfterViewInit, OnDestroy {
       'money.expense_chart_render',
       () => {
         let chart = this.chart$$();
-        if (chart && colors !== this.lastColors) {
+        if (chart && colors.isDark !== this.lastColors?.isDark) {
           chart.destroy();
           chart = this.createChart(colors);
           this.chart$$.set(chart);
         }
         this.lastColors = colors;
         if (!chart) return;
-        this.rebuildChartDatasets(chart, data, activeSeries, yearly, ymax, monthRange, colors, hues);
+        this.rebuildChartDatasets(chart, data, activeSeries, yearly, ymax, monthRange, colors, seriesColors);
       },
       () => ({ months: data.monthRows.length, series: activeSeries.length, yearly }),
     );
@@ -308,8 +308,9 @@ export class ExpenseChart implements AfterViewInit, OnDestroy {
   }
 
   protected getCategoryColor(categoryId: number): string {
-    return hueToColor(
-      this.moneyComputeService.expenseSeriesHues$$().get(categoryId) ?? 0,
+    return seriesColorById(
+      this.moneyComputeService.expenseSeriesColors$$(),
+      categoryId,
       this.chartThemeService.colors$$(),
     );
   }
@@ -322,7 +323,7 @@ export class ExpenseChart implements AfterViewInit, OnDestroy {
     yMaxRaw: string,
     monthRange: [string, string] | null,
     colors: ChartColors,
-    hues: ReadonlyMap<number, number>,
+    seriesColors: ReadonlyMap<number, SeriesColor>,
   ): void {
     const effectiveData: ExpenseChartData =
       !yearly && monthRange !== null
@@ -380,9 +381,8 @@ export class ExpenseChart implements AfterViewInit, OnDestroy {
       : () => '';
 
     const datasets: ChartDataset<'bar'>[] = activeSeries.map((series) => {
-      const hue = hues.get(series.categoryId) ?? 0;
-      const color = hueToColor(hue, colors);
-      const dimColor = hueToColor(hue, colors, CATEGORY_DIM_ALPHA);
+      const color = seriesColorById(seriesColors, series.categoryId, colors);
+      const dimColor = seriesColorById(seriesColors, series.categoryId, colors, CATEGORY_DIM_ALPHA);
       const resolveColor = () => {
         const hovered = this.hoveredCategoryName$$();
         return hovered === null || hovered === series.categoryName ? color : dimColor;

@@ -1,8 +1,8 @@
 import { bmiBandsPlugin } from '@app/shared/bmi-bands-plugin';
-import { createCategoricalPalette } from '@app/shared/categorical-palette';
+import { createCategoricalPalette, DEFAULT_PALETTE_TUNING } from '@app/shared/categorical-palette';
 import { formatMetricUnitValue, MetricUnit } from '@app/shared/metric-units';
 import { formatMetricTickLabel } from '@app/shared/metrics-series';
-import { MetricGranularity } from '@app/shared/types';
+import { MetricGranularity, PaletteTuning } from '@app/shared/types';
 import { ChartConfiguration } from 'chart.js';
 
 export interface ChartColors {
@@ -15,6 +15,8 @@ export interface ChartColors {
   text: string;
   grid: string;
   isDark: boolean;
+  // How vivid/light category colors are (see hueToColor); the user's override of the default.
+  palette: PaletteTuning;
 }
 
 export interface MonthLabelsPluginOptions {
@@ -72,6 +74,7 @@ export const CHART_COLORS_LIGHT: ChartColors = {
   text: '#64748b',
   grid: '#e2e8f0',
   isDark: false,
+  palette: DEFAULT_PALETTE_TUNING,
 };
 
 export const CHART_COLORS_DARK: ChartColors = {
@@ -84,6 +87,7 @@ export const CHART_COLORS_DARK: ChartColors = {
   text: '#94a3b8',
   grid: '#334155',
   isDark: true,
+  palette: DEFAULT_PALETTE_TUNING,
 };
 
 export function createWeightChartConfig(colors: ChartColors): ChartConfiguration {
